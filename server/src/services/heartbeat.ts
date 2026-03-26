@@ -7,6 +7,7 @@ import {
   agentRuntimeState,
   agentTaskSessions,
   agentWakeupRequests,
+  activityLog,
   heartbeatRunEvents,
   heartbeatRuns,
   issues,
@@ -25,6 +26,7 @@ import { costService } from "./costs.js";
 import { secretService } from "./secrets.js";
 import { resolveDefaultAgentWorkspaceDir } from "../home-paths.js";
 import { summarizeHeartbeatRunResultJson } from "./heartbeat-run-summary.js";
+import { buildIssueAutoReplyComment, shouldPostIssueAutoReply, type IssueAutoReplyStatus } from "./issue-auto-reply.js";
 import {
   buildWorkspaceReadyComment,
   ensureRuntimeServicesForRun,
@@ -33,6 +35,7 @@ import {
   releaseRuntimeServicesForRun,
 } from "./workspace-runtime.js";
 import { issueService } from "./issues.js";
+import { logActivity } from "./activity-log.js";
 import {
   buildExecutionWorkspaceAdapterConfig,
   parseIssueExecutionWorkspaceSettings,
@@ -89,6 +92,12 @@ const heartbeatRunListColumns = {
 
 function appendExcerpt(prev: string, chunk: string) {
   return appendWithCap(prev, chunk, MAX_EXCERPT_BYTES);
+}
+
+function parseContextSnapshot(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? { ...(value as Record<string, unknown>) }
+    : {};
 }
 
 function normalizeMaxConcurrentRuns(value: unknown) {
@@ -1060,6 +1069,101 @@ export function heartbeatService(db: Db) {
     return updated;
   }
 
+  async function getAutoReplyCommentIdForRun(runId: string) {
+    const existing = await db
+      .select({
+        commentId: sql<string | null>`${activityLog.details} ->> 'commentId'`.as("commentId"),
+      })
+      .from(activityLog)
+      .where(
+        and(
+          eq(activityLog.runId, runId),
+          eq(activityLog.action, "issue.comment_added"),
+          eq(activityLog.entityType, "issue"),
+          sql`${activityLog.details} ->> 'autoReply' = 'true'`,
+        ),
+      )
+      .orderBy(desc(activityLog.createdAt))
+      .limit(1)
+      .then((rows) => rows[0] ?? null);
+
+    return readNonEmptyString(existing?.commentId);
+  }
+
+  async function persistRunAutoReplyComment(runId: string, commentId: string) {
+    const existing = await getRun(runId);
+    if (!existing) return null;
+    const contextSnapshot = parseContextSnapshot(existing.contextSnapshot);
+    const nextContextSnapshot = {
+      ...contextSnapshot,
+      autoReplyCommentId: commentId,
+      autoReplyPostedAt: new Date().toISOString(),
+    };
+
+    return db
+      .update(heartbeatRuns)
+      .set({
+        contextSnapshot: nextContextSnapshot,
+        updatedAt: new Date(),
+      })
+      .where(eq(heartbeatRuns.id, runId))
+      .returning()
+      .then((rows) => rows[0] ?? null);
+  }
+
+  async function postIssueAutoReplyComment(input: {
+    run: typeof heartbeatRuns.$inferSelect;
+    agent: typeof agents.$inferSelect;
+    issueId: string;
+    status: IssueAutoReplyStatus;
+    adapterResult: AdapterExecutionResult;
+  }) {
+    const contextSnapshot = parseContextSnapshot(input.run.contextSnapshot);
+    if (!shouldPostIssueAutoReply(contextSnapshot)) return null;
+
+    const existingCommentId =
+      readNonEmptyString(contextSnapshot.autoReplyCommentId) ??
+      (await getAutoReplyCommentIdForRun(input.run.id));
+    if (existingCommentId) {
+      if (!readNonEmptyString(contextSnapshot.autoReplyCommentId)) {
+        await persistRunAutoReplyComment(input.run.id, existingCommentId);
+      }
+      return existingCommentId;
+    }
+
+    const body = buildIssueAutoReplyComment({
+      status: input.status,
+      summary: input.adapterResult.summary,
+      resultJson: input.adapterResult.resultJson ?? null,
+      errorMessage: input.adapterResult.errorMessage ?? null,
+      question: input.adapterResult.question ?? null,
+    });
+    if (!body) return null;
+
+    const comment = await issuesSvc.addComment(input.issueId, body, { agentId: input.agent.id });
+    await logActivity(db, {
+      companyId: input.run.companyId,
+      actorType: "agent",
+      actorId: input.agent.id,
+      agentId: input.agent.id,
+      runId: input.run.id,
+      action: "issue.comment_added",
+      entityType: "issue",
+      entityId: input.issueId,
+      details: {
+        commentId: comment.id,
+        bodySnippet: comment.body.slice(0, 120),
+        autoReply: true,
+        source: "heartbeat_auto_reply",
+        replyToCommentId: readNonEmptyString(contextSnapshot.commentId),
+        issueId: input.issueId,
+        runStatus: input.status,
+      },
+    });
+    await persistRunAutoReplyComment(input.run.id, comment.id);
+    return comment.id;
+  }
+
   async function setWakeupStatus(
     wakeupRequestId: string | null | undefined,
     status: string,
@@ -1951,6 +2055,22 @@ export function heartbeatService(db: Db) {
             });
           }
         }
+        if (issueId) {
+          try {
+            await postIssueAutoReplyComment({
+              run: finalizedRun,
+              agent,
+              issueId,
+              status,
+              adapterResult,
+            });
+          } catch (err) {
+            await onLog(
+              "stderr",
+              `[paperclip] Failed to post issue auto-reply comment: ${err instanceof Error ? err.message : String(err)}\n`,
+            );
+          }
+        }
       }
       await finalizeAgentStatus(agent.id, outcome);
     } catch (err) {
@@ -2010,6 +2130,33 @@ export function heartbeatService(db: Db) {
             lastRunId: failedRun.id,
             lastError: message,
           });
+        }
+        if (issueId) {
+          try {
+            await postIssueAutoReplyComment({
+              run: failedRun,
+              agent,
+              issueId,
+              status: "failed",
+              adapterResult: {
+                exitCode: null,
+                signal: null,
+                timedOut: false,
+                errorMessage: message,
+                resultJson: null,
+              },
+            });
+          } catch (replyErr) {
+            logger.warn(
+              {
+                err: replyErr,
+                runId: failedRun.id,
+                issueId,
+                agentId: agent.id,
+              },
+              "failed to post issue auto-reply comment after adapter failure",
+            );
+          }
         }
       }
 
