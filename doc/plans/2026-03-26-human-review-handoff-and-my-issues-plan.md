@@ -1,7 +1,7 @@
 # Human Review Handoff and My Issues Plan
 
 Date: 2026-03-26
-Status: In Progress
+Status: Completed
 Owner: UI + Server + Skills + Docs
 
 ## Execution Update
@@ -34,13 +34,23 @@ Completed in this slice:
   - disabling it through the UI removed the grant from the database;
   - an agent bearer key received `403 Missing permission: tasks:assign` when the grant was removed;
   - the same agent bearer key successfully reassigned an issue once the grant was restored
+- deployed the changes to the live Paperclip instance and verified:
+  - `/my-issues` resolves correctly in the live app instead of falling through to `:companyPrefix`;
+  - `My Issues` loads user-assigned work from the live backend;
+  - a temporary live smoke issue assigned to the logged-in board user appeared in `My Issues`;
+  - after cleanup, the issue disappeared from the active `My Issues` list again
+- added `My Issues` count semantics in the sidebar:
+  - `Inbox` keeps its attention-style aggregate badge;
+  - `My Issues` now shows the count of active issues assigned to the current user;
+  - this count is driven by the same active-status query as the `My Issues` page itself
+- added regression coverage for the new sidebar count:
+  - `pnpm --filter @paperclipai/ui exec vitest run src/components/Sidebar.test.tsx`
 
 Still pending:
 
-- browser-level verification against the remote/live instance after these changes are actually deployed there;
 - broader regression coverage beyond `MyIssues`;
-- any follow-up decision about whether `My Issues` should later include “created by me” as a separate filter/tab;
-- deciding whether the legacy `canCreateAgents` fallback in task assignment should remain indefinitely or be retired after canonical grants are deployed.
+- any future product decision about whether `My Issues` should later include “created by me” as a separate filter/tab;
+- deciding whether the legacy `canCreateAgents` fallback in task assignment should remain indefinitely or be retired after canonical grants are fully rolled out.
 
 ## Context
 
@@ -224,7 +234,7 @@ Reason:
 - it avoids adding new backend filtering for `createdByUserId` in the same change;
 - it keeps semantics crisp.
 
-If needed, “created by me” can be added as a follow-up tab/filter.
+If needed, “created by me” can be added later as a separate tab/filter, but it is not part of the active `My Issues` contract.
 
 ### Required changes
 
@@ -262,7 +272,9 @@ This keeps the product model coherent and matches the existing spec.
 ### Required changes
 
 1. Update docs where needed so the intended split is explicit.
-2. Review whether inbox badge logic should count user-assigned review tasks in a later follow-up.
+2. Keep the count semantics distinct:
+   - `Inbox` badge = attention items
+   - `My Issues` badge = active assigned issues
 3. Avoid mixing “assignment discoverability” with “alert stream” in the first fix.
 
 ### Acceptance criteria
@@ -274,20 +286,27 @@ This keeps the product model coherent and matches the existing spec.
 
 ## Follow-Up: assignment permissions for manager agents
 
-This plan does **not** directly solve manager-agent `tasks:assign` access.
+This plan originally did **not** directly solve manager-agent `tasks:assign` access.
 
-That is a separate issue:
+That was treated as a separate issue because:
 
 - it affects whether a manager can route work autonomously;
 - it does not change the correctness of the human review handoff model.
 
-Recommended follow-up:
+Outcome:
 
-1. separately decide which manager roles should receive `tasks:assign`;
-2. define whether this is:
-   - a default company grant;
-   - an onboarding default;
-   - or an explicit board-managed permission.
+- canonical member grants are now the supported path;
+- newly created/imported agents now receive memberships automatically;
+- pre-existing agents are self-healed into memberships via the members path;
+- `AgentDetail` now exposes a `Can assign tasks` toggle backed by canonical member grants.
+
+Remaining product question:
+
+1. decide which manager roles should receive `tasks:assign` by default;
+2. decide whether that default belongs in:
+   - company bootstrap;
+   - agent onboarding defaults;
+   - or explicit board-managed policy.
 
 ## Implementation Phases
 
@@ -374,3 +393,7 @@ This work is done when all are true:
 2. Human-assigned review tasks are discoverable through `My Issues` without manual issue filtering.
 3. `Inbox` is no longer required as the primary retrieval path for human-assigned tasks.
 4. The docs, UI, and runtime behavior all describe the same model.
+
+Result:
+
+- Done.

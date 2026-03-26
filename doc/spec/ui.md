@@ -111,11 +111,11 @@ No section header — these are always at the top, below the company header.
 
 ```
   Inbox                    3
-  My Issues
+  My Issues                2
 ```
 
 - **Inbox** — items requiring the board operator's attention. Badge count on the right. Includes: pending approvals, budget alerts, failed heartbeats. The number is the total unread/unresolved count.
-- **My Issues** — issues created by or assigned to the board operator.
+- **My Issues** — active issues assigned to the current board operator. Badge count on the right. The number is the count of active assigned issues, not an unread count.
 
 ### 3.3 Work Section
 
