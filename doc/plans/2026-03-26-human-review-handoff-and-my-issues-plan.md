@@ -45,10 +45,16 @@ Completed in this slice:
   - this count is driven by the same active-status query as the `My Issues` page itself
 - added regression coverage for the new sidebar count:
   - `pnpm --filter @paperclipai/ui exec vitest run src/components/Sidebar.test.tsx`
+- converted the manual `tasks:assign` smoke into automated server regression coverage:
+  - `pnpm --filter @paperclipai/server exec vitest run src/__tests__/issue-task-assignment-permissions.test.ts`
+  - verifies:
+    - `403 Missing permission: tasks:assign` without canonical grant or legacy fallback;
+    - assignment succeeds with canonical `tasks:assign` grant;
+    - legacy `canCreateAgents` fallback still works until explicitly retired
 
 Still pending:
 
-- broader regression coverage beyond `MyIssues`;
+- broader regression coverage beyond the targeted `My Issues` and `tasks:assign` slices;
 - any future product decision about whether `My Issues` should later include “created by me” as a separate filter/tab;
 - deciding whether the legacy `canCreateAgents` fallback in task assignment should remain indefinitely or be retired after canonical grants are fully rolled out.
 
