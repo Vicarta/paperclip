@@ -4,6 +4,7 @@ import { describe, expect, it, beforeEach, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { Issue } from "@paperclipai/shared";
 import { queryKeys } from "../lib/queryKeys";
+import { MY_ISSUE_ACTIVE_STATUSES } from "../lib/myIssues";
 
 const listMock = vi.fn();
 const useQueryMock = vi.fn();
@@ -89,7 +90,7 @@ describe("MyIssues", () => {
 
     expect(listMock).toHaveBeenCalledWith("company-1", {
       assigneeUserId: "me",
-      status: "backlog,todo,in_progress,in_review,blocked",
+      status: MY_ISSUE_ACTIVE_STATUSES,
     });
   });
 

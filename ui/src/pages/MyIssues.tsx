@@ -10,6 +10,7 @@ import { EntityRow } from "../components/EntityRow";
 import { EmptyState } from "../components/EmptyState";
 import { PageSkeleton } from "../components/PageSkeleton";
 import { formatDate } from "../lib/utils";
+import { MY_ISSUE_ACTIVE_STATUSES } from "../lib/myIssues";
 import { CircleUser } from "lucide-react";
 
 export function MyIssues() {
@@ -25,7 +26,7 @@ export function MyIssues() {
     queryFn: () =>
       issuesApi.list(selectedCompanyId!, {
         assigneeUserId: "me",
-        status: "backlog,todo,in_progress,in_review,blocked",
+        status: MY_ISSUE_ACTIVE_STATUSES,
       }),
     enabled: !!selectedCompanyId,
   });
