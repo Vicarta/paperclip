@@ -45,6 +45,9 @@ Completed in this slice:
   - this count is driven by the same active-status query as the `My Issues` page itself
 - added regression coverage for the new sidebar count:
   - `pnpm --filter @paperclipai/ui exec vitest run src/components/Sidebar.test.tsx`
+- added route-level regression coverage for the original `/my-issues` routing failure:
+  - `pnpm --filter @paperclipai/ui exec vitest run src/App.my-issues-route.test.tsx`
+  - verifies unprefixed `/my-issues` redirects to the selected company prefix instead of falling through to `:companyPrefix`
 - converted the manual `tasks:assign` smoke into automated server regression coverage:
   - `pnpm --filter @paperclipai/server exec vitest run src/__tests__/issue-task-assignment-permissions.test.ts`
   - verifies:
