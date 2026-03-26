@@ -1090,6 +1090,27 @@ export function heartbeatService(db: Db) {
     return readNonEmptyString(existing?.commentId);
   }
 
+  async function getNonAutoReplyCommentIdForRun(runId: string) {
+    const existing = await db
+      .select({
+        commentId: sql<string | null>`${activityLog.details} ->> 'commentId'`.as("commentId"),
+      })
+      .from(activityLog)
+      .where(
+        and(
+          eq(activityLog.runId, runId),
+          eq(activityLog.action, "issue.comment_added"),
+          eq(activityLog.entityType, "issue"),
+          sql`coalesce(${activityLog.details} ->> 'autoReply', 'false') <> 'true'`,
+        ),
+      )
+      .orderBy(desc(activityLog.createdAt))
+      .limit(1)
+      .then((rows) => rows[0] ?? null);
+
+    return readNonEmptyString(existing?.commentId);
+  }
+
   async function persistRunAutoReplyComment(runId: string, commentId: string) {
     const existing = await getRun(runId);
     if (!existing) return null;
@@ -1129,6 +1150,11 @@ export function heartbeatService(db: Db) {
         await persistRunAutoReplyComment(input.run.id, existingCommentId);
       }
       return existingCommentId;
+    }
+
+    const existingManualCommentId = await getNonAutoReplyCommentIdForRun(input.run.id);
+    if (existingManualCommentId) {
+      return existingManualCommentId;
     }
 
     const body = buildIssueAutoReplyComment({

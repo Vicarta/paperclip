@@ -54,6 +54,8 @@ describe("sanitizeIssueAutoReplyText", () => {
           "[paperclip] Loaded agent instructions file: /astrogen/agents/cto/AGENTS.md",
           "The above agent instructions were loaded from /astrogen/agents/cto/AGENTS.md.",
           "Resolve any relative file references from /astrogen/agents/cto/.",
+          "Triggered comment: /AST/issues/AST-11#comment-123",
+          "Wake context handled: issue_reopened_via_comment on AST-11",
           "I updated the growth plan and created the next experiment brief.",
         ].join("\n"),
       ),
@@ -67,6 +69,7 @@ describe("sanitizeIssueAutoReplyText", () => {
           "[paperclip] Warning: could not read agent instructions file",
           "tokens: in=12 out=24 cached=0",
           "stdout: /tmp/foo",
+          "Confirmed inbox is empty (1)",
         ].join("\n"),
       ),
     ).toBeNull();

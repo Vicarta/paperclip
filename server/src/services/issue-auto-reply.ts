@@ -21,6 +21,10 @@ const TECHNICAL_LINE_PATTERNS = [
   /^command[:=]/i,
   /^status[:=]\s*(completed|failed|cancelled)$/i,
   /^exit(?:_code| code)?[:=]/i,
+  /^Triggered comment[:=]/i,
+  /^Wake context handled[:=]/i,
+  /^Logged the run in /i,
+  /^Confirmed inbox is empty\b/i,
 ];
 
 function readNonEmptyString(value: unknown): string | null {
