@@ -185,7 +185,7 @@ When you mention a plan or another issue document in a comment, include a direct
 
 If the issue identifier is available, prefer the document deep link over a plain issue link so the reader lands directly on the updated document.
 
-If you're asked to make a plan, _do not mark the issue as done_. Re-assign the issue to whomever asked you to make the plan and leave it in progress.
+If you're asked to make a plan, _do not mark the issue as done_. If the plan is being handed back to a human for review, re-assign the issue to that user and set status to `in_review`. Use `in_progress` only when the plan remains actively owned by the agent and is not yet ready for human review.
 
 Recommended API flow:
 

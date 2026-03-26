@@ -955,6 +955,7 @@ export function companyPortabilityService(db: Db) {
         }
 
         const created = await agents.create(targetCompany.id, patch);
+        await access.ensureMembership(targetCompany.id, "agent", created.id, "member", "active");
         importedSlugToAgentId.set(planAgent.slug, created.id);
         existingSlugToAgentId.set(normalizeAgentUrlKey(created.name) ?? created.id, created.id);
         resultAgents.push({

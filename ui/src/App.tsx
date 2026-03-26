@@ -21,6 +21,7 @@ import { ApprovalDetail } from "./pages/ApprovalDetail";
 import { Costs } from "./pages/Costs";
 import { Activity } from "./pages/Activity";
 import { Inbox } from "./pages/Inbox";
+import { MyIssues } from "./pages/MyIssues";
 import { CompanySettings } from "./pages/CompanySettings";
 import { DesignGuide } from "./pages/DesignGuide";
 import { InstanceSettings } from "./pages/InstanceSettings";
@@ -153,6 +154,7 @@ function boardRoutes() {
       <Route path="inbox/unread" element={<Inbox />} />
       <Route path="inbox/all" element={<Inbox />} />
       <Route path="inbox/new" element={<Navigate to="/inbox/recent" replace />} />
+      <Route path="my-issues" element={<MyIssues />} />
       <Route path="design-guide" element={<DesignGuide />} />
       <Route path="tests/ux/runs" element={<RunTranscriptUxLab />} />
       <Route path=":pluginRoutePath" element={<PluginPage />} />
@@ -308,6 +310,7 @@ export function App() {
             <Route path="plugins/:pluginId" element={<PluginSettings />} />
           </Route>
           <Route path="companies" element={<UnprefixedBoardRedirect />} />
+          <Route path="my-issues" element={<UnprefixedBoardRedirect />} />
           <Route path="issues" element={<UnprefixedBoardRedirect />} />
           <Route path="issues/:issueId" element={<UnprefixedBoardRedirect />} />
           <Route path="settings" element={<LegacySettingsRedirect />} />

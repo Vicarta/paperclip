@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { useParams, useNavigate, Link, Navigate, useBeforeUnload } from "@/lib/router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { agentsApi, type AgentKey, type ClaudeLoginResult } from "../api/agents";
+import { accessApi } from "../api/access";
 import { heartbeatsApi } from "../api/heartbeats";
 import { ApiError } from "../api/client";
 import { ChartCard, RunActivityChart, PriorityChart, IssueStatusChart, SuccessRateChart } from "../components/ActivityCharts";
@@ -58,7 +59,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { AgentIcon, AgentIconPicker } from "../components/AgentIconPicker";
 import { RunTranscriptView, type TranscriptMode } from "../components/transcript/RunTranscriptView";
-import { isUuidLike, type Agent, type HeartbeatRun, type HeartbeatRunEvent, type AgentRuntimeState, type LiveEvent } from "@paperclipai/shared";
+import { isUuidLike, type Agent, type HeartbeatRun, type HeartbeatRunEvent, type AgentRuntimeState, type LiveEvent, type PermissionKey } from "@paperclipai/shared";
 import { redactHomePathUserSegments, redactHomePathUserSegmentsInValue } from "@paperclipai/adapter-utils";
 import { agentRouteRef } from "../lib/utils";
 
@@ -294,9 +295,18 @@ export function AgentDetail() {
     enabled: !!resolvedCompanyId,
   });
 
+  const { data: companyMembers = [] } = useQuery({
+    queryKey: queryKeys.access.members(resolvedCompanyId!),
+    queryFn: () => accessApi.listMembers(resolvedCompanyId!),
+    enabled: !!resolvedCompanyId,
+  });
+
   const assignedIssues = (allIssues ?? [])
     .filter((i) => i.assigneeAgentId === agent?.id)
     .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+  const agentMember = companyMembers.find(
+    (member) => member.principalType === "agent" && member.principalId === agent?.id,
+  );
   const reportsToAgent = (allAgents ?? []).find((a) => a.id === agent?.reportsTo);
   const directReports = (allAgents ?? []).filter((a) => a.reportsTo === agent?.id && a.status !== "terminated");
   const mobileLiveRun = useMemo(
@@ -397,6 +407,24 @@ export function AgentDetail() {
     },
     onError: (err) => {
       setActionError(err instanceof Error ? err.message : "Failed to update permissions");
+    },
+  });
+
+  const updateMemberGrants = useMutation({
+    mutationFn: (grants: Array<{ permissionKey: PermissionKey; scope?: Record<string, unknown> | null }>) => {
+      if (!resolvedCompanyId || !agentMember) {
+        return Promise.reject(new Error("Agent membership not found"));
+      }
+      return accessApi.updateMemberPermissions(resolvedCompanyId, agentMember.id, grants);
+    },
+    onSuccess: () => {
+      setActionError(null);
+      if (resolvedCompanyId) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.access.members(resolvedCompanyId) });
+      }
+    },
+    onError: (err) => {
+      setActionError(err instanceof Error ? err.message : "Failed to update company grants");
     },
   });
 
@@ -664,6 +692,8 @@ export function AgentDetail() {
           onCancelActionChange={setCancelConfigAction}
           onSavingChange={setConfigSaving}
           updatePermissions={updatePermissions}
+          agentMember={agentMember}
+          updateMemberGrants={updateMemberGrants}
         />
       )}
 
@@ -927,6 +957,8 @@ function AgentConfigurePage({
   onCancelActionChange,
   onSavingChange,
   updatePermissions,
+  agentMember,
+  updateMemberGrants,
 }: {
   agent: Agent;
   agentId: string;
@@ -936,6 +968,14 @@ function AgentConfigurePage({
   onCancelActionChange: (cancel: (() => void) | null) => void;
   onSavingChange: (saving: boolean) => void;
   updatePermissions: { mutate: (canCreate: boolean) => void; isPending: boolean };
+  agentMember?: {
+    id: string;
+    grants: Array<{ permissionKey: PermissionKey; scope: Record<string, unknown> | null }>;
+  };
+  updateMemberGrants: {
+    mutate: (grants: Array<{ permissionKey: PermissionKey; scope?: Record<string, unknown> | null }>) => void;
+    isPending: boolean;
+  };
 }) {
   const queryClient = useQueryClient();
   const [revisionsOpen, setRevisionsOpen] = useState(false);
@@ -961,10 +1001,12 @@ function AgentConfigurePage({
         onDirtyChange={onDirtyChange}
         onSaveActionChange={onSaveActionChange}
         onCancelActionChange={onCancelActionChange}
-        onSavingChange={onSavingChange}
-        updatePermissions={updatePermissions}
-        companyId={companyId}
-      />
+          onSavingChange={onSavingChange}
+          updatePermissions={updatePermissions}
+          agentMember={agentMember}
+          updateMemberGrants={updateMemberGrants}
+          companyId={companyId}
+        />
       <div>
         <h3 className="text-sm font-medium mb-3">API Keys</h3>
         <KeysTab agentId={agentId} companyId={companyId} />
@@ -1034,6 +1076,8 @@ function ConfigurationTab({
   onCancelActionChange,
   onSavingChange,
   updatePermissions,
+  agentMember,
+  updateMemberGrants,
 }: {
   agent: Agent;
   companyId?: string;
@@ -1042,6 +1086,14 @@ function ConfigurationTab({
   onCancelActionChange: (cancel: (() => void) | null) => void;
   onSavingChange: (saving: boolean) => void;
   updatePermissions: { mutate: (canCreate: boolean) => void; isPending: boolean };
+  agentMember?: {
+    id: string;
+    grants: Array<{ permissionKey: PermissionKey; scope: Record<string, unknown> | null }>;
+  };
+  updateMemberGrants: {
+    mutate: (grants: Array<{ permissionKey: PermissionKey; scope?: Record<string, unknown> | null }>) => void;
+    isPending: boolean;
+  };
 }) {
   const queryClient = useQueryClient();
   const [awaitingRefreshAfterSave, setAwaitingRefreshAfterSave] = useState(false);
@@ -1084,6 +1136,25 @@ function ConfigurationTab({
     onSavingChange(isConfigSaving);
   }, [onSavingChange, isConfigSaving]);
 
+  const hasTaskAssignGrant = Boolean(
+    agentMember?.grants.some((grant) => grant.permissionKey === "tasks:assign"),
+  );
+
+  function toggleGrant(permissionKey: PermissionKey, enabled: boolean) {
+    const next = (agentMember?.grants ?? [])
+      .filter((grant) => grant.permissionKey !== permissionKey)
+      .map((grant) => ({
+        permissionKey: grant.permissionKey,
+        scope: grant.scope,
+      }));
+
+    if (enabled) {
+      next.push({ permissionKey, scope: null });
+    }
+
+    updateMemberGrants.mutate(next);
+  }
+
   return (
     <div className="space-y-6">
       <AgentConfigForm
@@ -1101,7 +1172,7 @@ function ConfigurationTab({
 
       <div>
         <h3 className="text-sm font-medium mb-3">Permissions</h3>
-        <div className="border border-border rounded-lg p-4">
+        <div className="border border-border rounded-lg p-4 space-y-3">
           <div className="flex items-center justify-between text-sm">
             <span>Can create new agents</span>
             <Button
@@ -1114,6 +1185,19 @@ function ConfigurationTab({
               disabled={updatePermissions.isPending}
             >
               {agent.permissions?.canCreateAgents ? "Enabled" : "Disabled"}
+            </Button>
+          </div>
+
+          <div className="flex items-center justify-between text-sm">
+            <span>Can assign tasks</span>
+            <Button
+              variant={hasTaskAssignGrant ? "default" : "outline"}
+              size="sm"
+              className="h-7 px-2.5 text-xs"
+              onClick={() => toggleGrant("tasks:assign", !hasTaskAssignGrant)}
+              disabled={updateMemberGrants.isPending || !agentMember}
+            >
+              {hasTaskAssignGrant ? "Enabled" : "Disabled"}
             </Button>
           </div>
         </div>
