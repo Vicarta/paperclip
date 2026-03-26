@@ -161,29 +161,30 @@ function usePluginBridgeContext(): PluginBridgeContextValue {
  * `{ code: PluginBridgeErrorCode, message: string, details?: unknown }`.
  * This helper extracts that structure from the ApiError thrown by the client.
  */
+function createBridgeError(
+  code: PluginBridgeErrorCode,
+  message: string,
+  details?: unknown,
+): PluginBridgeError {
+  return Object.assign(new Error(message), {
+    code,
+    details,
+  });
+}
+
 function extractBridgeError(err: unknown): PluginBridgeError {
   if (err instanceof ApiError && err.body && typeof err.body === "object") {
     const body = err.body as Record<string, unknown>;
     if (typeof body.code === "string" && typeof body.message === "string") {
-      return {
-        code: body.code as PluginBridgeErrorCode,
-        message: body.message,
-        details: body.details,
-      };
+      return createBridgeError(body.code as PluginBridgeErrorCode, body.message, body.details);
     }
     // Fallback: the server returned a plain { error: string } body
     if (typeof body.error === "string") {
-      return {
-        code: "UNKNOWN",
-        message: body.error,
-      };
+      return createBridgeError("UNKNOWN", body.error);
     }
   }
 
-  return {
-    code: "UNKNOWN",
-    message: err instanceof Error ? err.message : String(err),
-  };
+  return createBridgeError("UNKNOWN", err instanceof Error ? err.message : String(err));
 }
 
 // ---------------------------------------------------------------------------
