@@ -1152,6 +1152,27 @@ export function heartbeatService(db: Db) {
     return Number(count ?? 0);
   }
 
+  async function markAgentRunning(agentId: string, companyId: string) {
+    const runningAgent = await db
+      .update(agents)
+      .set({ status: "running", updatedAt: new Date() })
+      .where(eq(agents.id, agentId))
+      .returning()
+      .then((rows) => rows[0] ?? null);
+
+    if (runningAgent) {
+      publishLiveEvent({
+        companyId,
+        type: "agent.status",
+        payload: {
+          agentId: runningAgent.id,
+          status: runningAgent.status,
+          outcome: "running",
+        },
+      });
+    }
+  }
+
   async function claimQueuedRun(run: typeof heartbeatRuns.$inferSelect) {
     if (run.status !== "queued") return run;
     const claimedAt = new Date();
@@ -1183,6 +1204,13 @@ export function heartbeatService(db: Db) {
       },
     });
 
+    await appendRunEvent(claimed, 1, {
+      eventType: "lifecycle",
+      stream: "system",
+      level: "info",
+      message: "run claimed",
+    });
+    await markAgentRunning(claimed.agentId, claimed.companyId);
     await setWakeupStatus(claimed.wakeupRequestId, "claimed", { claimedAt });
     return claimed;
   }
@@ -1645,7 +1673,7 @@ export function heartbeatService(db: Db) {
       taskKey,
     };
 
-    let seq = 1;
+    let seq = 2;
     let handle: RunLogHandle | null = null;
     let stdoutExcerpt = "";
     let stderrExcerpt = "";
@@ -1664,24 +1692,7 @@ export function heartbeatService(db: Db) {
         .then((rows) => rows[0] ?? null);
       if (runningWithSession) run = runningWithSession;
 
-      const runningAgent = await db
-        .update(agents)
-        .set({ status: "running", updatedAt: new Date() })
-        .where(eq(agents.id, agent.id))
-        .returning()
-        .then((rows) => rows[0] ?? null);
-
-      if (runningAgent) {
-        publishLiveEvent({
-          companyId: runningAgent.companyId,
-          type: "agent.status",
-          payload: {
-            agentId: runningAgent.id,
-            status: runningAgent.status,
-            outcome: "running",
-          },
-        });
-      }
+      await markAgentRunning(agent.id, agent.companyId);
 
       const currentRun = run;
       await appendRunEvent(currentRun, seq++, {
@@ -2113,7 +2124,7 @@ export function heartbeatService(db: Db) {
             const failedAgent = await getAgent(failedRun.agentId).catch(() => null);
             // Emit a run-log event so the failure is visible in the run timeline,
             // consistent with what the inner catch block does for adapter failures.
-            await appendRunEvent(failedRun, 1, {
+            await appendRunEvent(failedRun, 2, {
               eventType: "error",
               stream: "system",
               level: "error",
