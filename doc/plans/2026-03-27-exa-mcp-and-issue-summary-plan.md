@@ -127,6 +127,14 @@ Verified properties:
 - plugin tool lookup and execution now work correctly when the caller filters by the plugin database UUID rather than the manifest key;
 - live `web-search` execution succeeded through `POST /api/agents/me/plugin-tools/execute` after the secrets runtime was repaired;
 - standard `tasks:assign` permissions remain unchanged.
+- issue-summary fallback was verified on a real live run that failed before any agent-authored result comment:
+  - smoke run `0ab25ea0-a034-4e5d-95fd-1e7e78fbe9e0`
+  - smoke issue `609aba40-b776-4c62-b725-c002359776db`
+  - agent adapter failure: `Process adapter missing command`
+  - host-posted fallback comment: `I couldn't complete this request. Process adapter missing command`
+- temporary smoke artifacts were cleaned after verification:
+  - smoke issues `c4c6a2fe-aec2-4104-afdf-e1fd21f926a1` and `609aba40-b776-4c62-b725-c002359776db` are `cancelled`
+  - smoke agents `78442d01-4039-4f85-9f80-ce26599cd70a` and `321bdf4a-cd36-465c-898a-fff51a9097c6` are `terminated`
 
 Secrets runtime root cause and resolution:
 
