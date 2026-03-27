@@ -26,6 +26,12 @@ import { secretService } from "./secrets.js";
 import { resolveDefaultAgentWorkspaceDir } from "../home-paths.js";
 import { summarizeHeartbeatRunResultJson } from "./heartbeat-run-summary.js";
 import {
+  buildIssueSummaryFallbackComment,
+  isSystemIssueComment,
+  shouldPostIssueSummaryFallback,
+  type IssueSummaryFallbackStatus,
+} from "./issue-summary-fallback.js";
+import {
   buildWorkspaceReadyComment,
   ensureRuntimeServicesForRun,
   persistAdapterManagedRuntimeServices,
@@ -168,6 +174,15 @@ export type ResolvedWorkspaceForRun = {
 
 function readNonEmptyString(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value : null;
+}
+
+function readCommentCreatedAt(value: unknown): Date | null {
+  if (value instanceof Date) return value;
+  if (typeof value === "string" || typeof value === "number") {
+    const parsed = new Date(value);
+    if (!Number.isNaN(parsed.getTime())) return parsed;
+  }
+  return null;
 }
 
 function normalizeUsageTotals(usage: UsageSummary | null | undefined): UsageTotals | null {
@@ -1360,6 +1375,53 @@ export function heartbeatService(db: Db) {
     });
   }
 
+  async function hasMeaningfulIssueCommentForRun(input: {
+    issueId: string;
+    agentId: string;
+    startedAt: Date | null | undefined;
+  }) {
+    const comments = await issuesSvc.listComments(input.issueId, { order: "desc", limit: 100 });
+    const startedAtMs = input.startedAt?.getTime() ?? null;
+    return comments.some((comment) => {
+      if (comment.authorAgentId !== input.agentId) return false;
+      const createdAt = readCommentCreatedAt(comment.createdAt);
+      if (startedAtMs != null && createdAt && createdAt.getTime() < startedAtMs) return false;
+      if (isSystemIssueComment(comment.body)) return false;
+      return true;
+    });
+  }
+
+  async function maybePostIssueSummaryFallbackComment(input: {
+    run: typeof heartbeatRuns.$inferSelect;
+    agent: typeof agents.$inferSelect;
+    status: IssueSummaryFallbackStatus;
+    adapterResult: AdapterExecutionResult;
+  }) {
+    const contextSnapshot = parseObject(input.run.contextSnapshot);
+    if (!shouldPostIssueSummaryFallback(contextSnapshot)) return null;
+
+    const issueId = readNonEmptyString(contextSnapshot.issueId);
+    if (!issueId) return null;
+
+    const hasMeaningfulComment = await hasMeaningfulIssueCommentForRun({
+      issueId,
+      agentId: input.agent.id,
+      startedAt: input.run.startedAt,
+    });
+    if (hasMeaningfulComment) return null;
+
+    const body = buildIssueSummaryFallbackComment({
+      status: input.status,
+      summary: input.adapterResult.summary,
+      resultJson: input.adapterResult.resultJson ?? null,
+      errorMessage: input.adapterResult.errorMessage ?? null,
+      question: input.adapterResult.question ?? null,
+    });
+    if (!body) return null;
+
+    return await issuesSvc.addComment(issueId, body, { agentId: input.agent.id });
+  }
+
   async function executeRun(runId: string) {
     let run = await getRun(runId);
     if (!run) return;
@@ -1926,6 +1988,12 @@ export function heartbeatService(db: Db) {
           },
         });
         await releaseIssueExecutionAndPromote(finalizedRun);
+        await maybePostIssueSummaryFallbackComment({
+          run: finalizedRun,
+          agent,
+          status: outcome,
+          adapterResult,
+        });
       }
 
       if (finalizedRun) {
@@ -1989,6 +2057,17 @@ export function heartbeatService(db: Db) {
           message,
         });
         await releaseIssueExecutionAndPromote(failedRun);
+        await maybePostIssueSummaryFallbackComment({
+          run: failedRun,
+          agent,
+          status: "failed",
+          adapterResult: {
+            exitCode: null,
+            signal: null,
+            timedOut: false,
+            errorMessage: message,
+          },
+        });
 
         await updateRuntimeState(agent, failedRun, {
           exitCode: null,
@@ -2031,6 +2110,7 @@ export function heartbeatService(db: Db) {
           }).catch(() => undefined);
           const failedRun = await getRun(runId).catch(() => null);
           if (failedRun) {
+            const failedAgent = await getAgent(failedRun.agentId).catch(() => null);
             // Emit a run-log event so the failure is visible in the run timeline,
             // consistent with what the inner catch block does for adapter failures.
             await appendRunEvent(failedRun, 1, {
@@ -2040,6 +2120,19 @@ export function heartbeatService(db: Db) {
               message,
             }).catch(() => undefined);
             await releaseIssueExecutionAndPromote(failedRun).catch(() => undefined);
+            if (failedAgent) {
+              await maybePostIssueSummaryFallbackComment({
+                run: failedRun,
+                agent: failedAgent,
+                status: "failed",
+                adapterResult: {
+                  exitCode: null,
+                  signal: null,
+                  timedOut: false,
+                  errorMessage: message,
+                },
+              }).catch(() => undefined);
+            }
           }
           // Ensure the agent is not left stuck in "running" if the inner catch handler's
           // DB calls threw (e.g. a transient DB error in finalizeAgentStatus).
