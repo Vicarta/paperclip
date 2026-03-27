@@ -100,3 +100,30 @@ Apply to issue-context runs generally, not only comment-triggered runs. Comment-
 3. Wire the fallback into heartbeat finalization.
 4. Run targeted test suites.
 5. Summarize local install and live deployment steps.
+
+## Live rollout status
+
+Completed on the live Paperclip instance:
+
+- rebuilt the authenticated private Paperclip app from the patched source checkout;
+- installed `paperclip.exa-agent-tools` from the local package path;
+- stored the Exa API key in Company Secrets and saved only `exaApiKeySecretRef` in plugin config;
+- confirmed the plugin manifest exposes a custom `settingsPage` slot and `format: "secret-ref"` for the key field;
+- confirmed the live plugin loader activated the worker and registered 3 tools:
+  - `paperclip.exa-agent-tools:web-search`
+  - `paperclip.exa-agent-tools:crawl-url`
+  - `paperclip.exa-agent-tools:code-context`
+- merged the broader issue-summary fallback into the live `heartbeat.ts` on top of the already-diverged `issue-auto-reply` runtime branch.
+
+Verified properties:
+
+- plugin config does not store the plaintext Exa API key;
+- the Company Secrets list returns metadata only for the Exa key secret;
+- the running app logs show successful activation of the Exa plugin and agent-tool registration;
+- standard `tasks:assign` permissions remain unchanged.
+
+Operational caveat:
+
+- the live source checkout remains intentionally dirty because it already carried unrelated local changes before rollout;
+- the deployment was applied without resetting or stashing those unrelated edits;
+- `server/src/services/heartbeat.ts.bak-20260327` is kept on the host as a rollback copy of the pre-merge heartbeat implementation.
