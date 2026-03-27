@@ -19,7 +19,7 @@ Add two instance-level capabilities without weakening existing task governance:
 ### Product shape
 
 - Package path: `packages/plugins/examples/plugin-exa-agent-tools`
-- Plugin type: worker-only first-party development plugin
+- Plugin type: worker + settings UI first-party development plugin
 - Installation model:
   - local-path install in development;
   - later npm/private registry package if promoted from example status
@@ -42,12 +42,16 @@ Each tool will proxy to the official hosted Exa MCP endpoint:
 - Worker resolves it with `ctx.secrets.resolve(...)`
 - The resolved key is used only at request time
 - No secret value is written to logs, config snapshots, or committed files
+- Operators enter the Exa API key only through the plugin settings page
+- The settings page seals the key into Company Secrets and persists only the secret ref
+- Once saved, the current key is never shown again; operators can only replace/rotate it
 
 ### Technical approach
 
 - Use the official MCP TypeScript client SDK against the remote Streamable HTTP endpoint.
 - Keep a tiny helper around MCP connection and tool invocation so tests can stub it.
 - Restrict the remote endpoint to only the tools we need.
+- Use a custom plugin settings page instead of the generic auto-form so the API key can be replace-only in the UI.
 
 ### Verification
 
@@ -91,7 +95,7 @@ Apply to issue-context runs generally, not only comment-triggered runs. Comment-
 
 ## Execution order
 
-1. Build the Exa plugin package and tests.
+1. Build the Exa plugin package, settings page, and tests.
 2. Build the generic issue-summary fallback service.
 3. Wire the fallback into heartbeat finalization.
 4. Run targeted test suites.

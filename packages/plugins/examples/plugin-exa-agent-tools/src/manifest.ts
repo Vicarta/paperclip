@@ -1,5 +1,12 @@
 import type { PaperclipPluginManifestV1 } from "@paperclipai/plugin-sdk";
-import { DEFAULT_EXA_MCP_URL, PLUGIN_ID, PLUGIN_VERSION, TOOL_NAMES } from "./constants.js";
+import {
+  DEFAULT_EXA_MCP_URL,
+  EXPORT_NAMES,
+  PLUGIN_ID,
+  PLUGIN_VERSION,
+  SLOT_IDS,
+  TOOL_NAMES,
+} from "./constants.js";
 
 const manifest: PaperclipPluginManifestV1 = {
   id: PLUGIN_ID,
@@ -13,17 +20,20 @@ const manifest: PaperclipPluginManifestV1 = {
     "http.outbound",
     "secrets.read-ref",
     "agent.tools.register",
+    "instance.settings.register",
   ],
   entrypoints: {
     worker: "./dist/worker.js",
+    ui: "./dist/ui",
   },
   instanceConfigSchema: {
     type: "object",
     properties: {
       exaApiKeySecretRef: {
         type: "string",
+        format: "secret-ref",
         title: "Exa API Key Secret Ref",
-        description: "Paperclip secret UUID that stores the Exa API key. Leave empty to use Exa's hosted free plan limits.",
+        description: "Paperclip secret UUID that stores the Exa API key. This is managed by the custom plugin settings page.",
         default: "",
       },
       exaMcpUrl: {
@@ -33,6 +43,16 @@ const manifest: PaperclipPluginManifestV1 = {
         default: DEFAULT_EXA_MCP_URL,
       },
     },
+  },
+  ui: {
+    slots: [
+      {
+        type: "settingsPage",
+        id: SLOT_IDS.settingsPage,
+        displayName: "Exa Settings",
+        exportName: EXPORT_NAMES.settingsPage,
+      },
+    ],
   },
   tools: [
     {
