@@ -6,6 +6,26 @@ async function getConfig(ctx: Parameters<NonNullable<Parameters<typeof definePlu
   return await ctx.config.get() as ExaPluginConfig;
 }
 
+function normalizeCrawlArgs(params: Record<string, unknown>) {
+  const next = { ...params };
+  const url =
+    typeof next.url === "string" && next.url.trim().length > 0
+      ? next.url.trim()
+      : null;
+  const urls = Array.isArray(next.urls)
+    ? next.urls.filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+    : [];
+
+  if (urls.length === 0 && url) {
+    next.urls = [url];
+  } else if (urls.length > 0) {
+    next.urls = urls;
+  }
+
+  delete next.url;
+  return next;
+}
+
 const plugin = definePlugin({
   async setup(ctx) {
     ctx.logger.info(`${PLUGIN_ID} plugin setup complete`);
@@ -49,18 +69,25 @@ const plugin = definePlugin({
           type: "object",
           properties: {
             url: { type: "string" },
+            urls: {
+              type: "array",
+              items: { type: "string" },
+            },
             subpages: { type: "number" },
             text: { type: "boolean" },
             livecrawl: { type: "string", enum: ["fallback", "preferred"] },
           },
-          required: ["url"],
+          anyOf: [
+            { required: ["url"] },
+            { required: ["urls"] },
+          ],
         },
       },
       async (params): Promise<ToolResult> => {
         const config = await getConfig(ctx);
         const result = await callExaMcpTool({
           toolName: EXA_MCP_TOOLS.crawling,
-          args: params as Record<string, unknown>,
+          args: normalizeCrawlArgs(params as Record<string, unknown>),
           config,
           resolveSecret: (secretRef) => ctx.secrets.resolve(secretRef),
         });

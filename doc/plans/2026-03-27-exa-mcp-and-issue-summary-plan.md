@@ -135,6 +135,12 @@ Verified properties:
 - temporary smoke artifacts were cleaned after verification:
   - smoke issues `c4c6a2fe-aec2-4104-afdf-e1fd21f926a1` and `609aba40-b776-4c62-b725-c002359776db` are `cancelled`
   - smoke agents `78442d01-4039-4f85-9f80-ce26599cd70a` and `321bdf4a-cd36-465c-898a-fff51a9097c6` are `terminated`
+- local-adapter authentication was repaired for live heartbeats by mirroring `BETTER_AUTH_SECRET` into `PAPERCLIP_AGENT_JWT_SECRET` in compose; this restored injected `PAPERCLIP_API_KEY` for `codex_local` assignment wakes
+- live EXA smoke on `AST-35` confirmed the agent can now:
+  - receive authenticated heartbeat env (`PAPERCLIP_API_KEY` present),
+  - reach `GET /api/agents/me` and `GET /api/agents/me/inbox-lite`,
+  - execute EXA plugin tools from a normal assignment wake
+- the first live `crawl-url` attempts exposed a schema mismatch between the plugin's intuitive `url` parameter and Exa MCP's actual `urls[]` contract; the plugin was updated to accept both forms and normalize to `urls[]` before forwarding to Exa
 
 Secrets runtime root cause and resolution:
 

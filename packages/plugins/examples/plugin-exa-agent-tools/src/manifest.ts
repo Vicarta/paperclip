@@ -80,11 +80,18 @@ const manifest: PaperclipPluginManifestV1 = {
         type: "object",
         properties: {
           url: { type: "string" },
+          urls: {
+            type: "array",
+            items: { type: "string" },
+          },
           subpages: { type: "number" },
           text: { type: "boolean" },
           livecrawl: { type: "string", enum: ["fallback", "preferred"] },
         },
-        required: ["url"],
+        anyOf: [
+          { required: ["url"] },
+          { required: ["urls"] },
+        ],
       },
     },
     {

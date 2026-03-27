@@ -61,4 +61,31 @@ describe("plugin-exa-agent-tools", () => {
 
     expect(result).toEqual({ error: "Rate limited" });
   });
+
+  it("normalizes singular crawl url input into Exa urls[] args", async () => {
+    const harness = createTestHarness({
+      manifest,
+      config: {
+        exaApiKeySecretRef: "secret-1",
+      },
+    });
+    await plugin.definition.setup(harness.ctx);
+
+    callExaMcpToolMock.mockResolvedValueOnce({
+      isError: false,
+      content: "Fetched page",
+      data: { content: [{ type: "text", text: "Fetched page" }], structuredContent: null },
+    });
+
+    const result = await harness.executeTool(TOOL_NAMES.crawlUrl, { url: "https://example.com" });
+
+    expect(callExaMcpToolMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        toolName: "crawling_exa",
+        args: { urls: ["https://example.com"] },
+        config: { exaApiKeySecretRef: "secret-1" },
+      }),
+    );
+    expect(result.content).toBe("Fetched page");
+  });
 });
