@@ -349,13 +349,15 @@ export function createPluginToolRegistry(
     listTools(filter?: ToolListFilter): RegisteredTool[] {
       if (filter?.pluginId) {
         const pluginTools = byPlugin.get(filter.pluginId);
-        if (!pluginTools) return [];
-        const result: RegisteredTool[] = [];
-        for (const name of pluginTools) {
-          const tool = byNamespace.get(name);
-          if (tool) result.push(tool);
+        if (pluginTools) {
+          const result: RegisteredTool[] = [];
+          for (const name of pluginTools) {
+            const tool = byNamespace.get(name);
+            if (tool) result.push(tool);
+          }
+          return result;
         }
-        return result;
+        return Array.from(byNamespace.values()).filter((tool) => tool.pluginDbId === filter.pluginId);
       }
 
       return Array.from(byNamespace.values());
