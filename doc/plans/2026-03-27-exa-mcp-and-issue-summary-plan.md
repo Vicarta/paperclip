@@ -106,6 +106,9 @@ Apply to issue-context runs generally, not only comment-triggered runs. Comment-
 Completed on the live Paperclip instance:
 
 - rebuilt the authenticated private Paperclip app from the patched source checkout;
+- added agent-facing plugin tool routes so authenticated agents can discover and execute plugin tools without caller-supplied run context:
+  - `GET /api/agents/me/plugin-tools`
+  - `POST /api/agents/me/plugin-tools/execute`
 - installed `paperclip.exa-agent-tools` from the local package path;
 - stored the Exa API key in Company Secrets and saved only `exaApiKeySecretRef` in plugin config;
 - confirmed the plugin manifest exposes a custom `settingsPage` slot and `format: "secret-ref"` for the key field;
@@ -120,7 +123,24 @@ Verified properties:
 - plugin config does not store the plaintext Exa API key;
 - the Company Secrets list returns metadata only for the Exa key secret;
 - the running app logs show successful activation of the Exa plugin and agent-tool registration;
+- authenticated agent requests can now reach plugin tools through the Paperclip API surface using actor-derived `agentId/companyId/runId`;
+- plugin tool lookup and execution now work correctly when the caller filters by the plugin database UUID rather than the manifest key;
+- live `web-search` execution succeeded through `POST /api/agents/me/plugin-tools/execute` after the secrets runtime was repaired;
 - standard `tasks:assign` permissions remain unchanged.
+
+Secrets runtime root cause and resolution:
+
+- the live compose environment did not pass `PAPERCLIP_HOME` / `PAPERCLIP_INSTANCE_ID`, so the server process could not discover `/paperclip/instances/default/config.json` on its own;
+- because of that, the running app did not inherit the correct `secrets.localEncrypted.keyFilePath`, and plugin secret resolution fell back to `/app/data/secrets/master.key`;
+- the fallback path was both incorrect for the deployed instance and unwritable for the container user, which first surfaced as `EACCES` and then as undecryptable legacy ciphertext for the already-saved Exa secret;
+- the rollout was fixed by passing the instance/secrets env vars explicitly in compose:
+  - `PAPERCLIP_HOME=/paperclip`
+  - `PAPERCLIP_INSTANCE_ID=default`
+  - `PAPERCLIP_CONFIG=/paperclip/instances/default/config.json`
+  - `PAPERCLIP_SECRETS_PROVIDER=local_encrypted`
+  - `PAPERCLIP_SECRETS_STRICT_MODE=false`
+  - `PAPERCLIP_SECRETS_MASTER_KEY_FILE=/paperclip/instances/default/secrets/master.key`
+- after the env fix, the existing Exa secret was rotated again under the correct master key, restoring successful `ctx.secrets.resolve(...)` without changing the plugin config shape.
 
 Operational caveat:
 

@@ -23,6 +23,12 @@ services:
       DATABASE_URL: postgres://paperclip:paperclip@db:5432/paperclip
       PORT: "3100"
       SERVE_UI: "true"
+      PAPERCLIP_HOME: "/paperclip"
+      PAPERCLIP_INSTANCE_ID: "default"
+      PAPERCLIP_CONFIG: "/paperclip/instances/default/config.json"
+      PAPERCLIP_SECRETS_PROVIDER: "local_encrypted"
+      PAPERCLIP_SECRETS_STRICT_MODE: "false"
+      PAPERCLIP_SECRETS_MASTER_KEY_FILE: "/paperclip/instances/default/secrets/master.key"
       PAPERCLIP_DEPLOYMENT_MODE: "authenticated"
       PAPERCLIP_DEPLOYMENT_EXPOSURE: "private"
       PAPERCLIP_PUBLIC_URL: "${PAPERCLIP_PUBLIC_URL:-http://localhost:3100}"
