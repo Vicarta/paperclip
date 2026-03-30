@@ -14,7 +14,7 @@ import { formatAssigneeUserLabel } from "../lib/assignees";
 import { StatusIcon } from "./StatusIcon";
 import { PriorityIcon } from "./PriorityIcon";
 import { Identity } from "./Identity";
-import { formatDate, cn, projectUrl } from "../lib/utils";
+import { formatDateTime, cn, projectUrl } from "../lib/utils";
 import { timeAgo } from "../lib/timeAgo";
 import { Separator } from "@/components/ui/separator";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -35,6 +35,35 @@ function PropertyRow({ label, children }: { label: string; children: React.React
     <div className="flex items-center gap-3 py-1.5">
       <span className="text-xs text-muted-foreground shrink-0 w-20">{label}</span>
       <div className="flex items-center gap-1.5 min-w-0 flex-1">{children}</div>
+    </div>
+  );
+}
+
+function DateTimeValue({ value }: { value: Date | string }) {
+  const isoValue = new Date(value).toISOString();
+  const formattedValue = formatDateTime(value);
+  return (
+    <time className="text-sm" dateTime={isoValue} title={formattedValue}>
+      {formattedValue}
+    </time>
+  );
+}
+
+function RelativeWithAbsoluteDateTime({ value }: { value: Date | string }) {
+  const isoValue = new Date(value).toISOString();
+  const formattedValue = formatDateTime(value);
+  return (
+    <div className="flex min-w-0 flex-col">
+      <time className="text-sm" dateTime={isoValue} title={formattedValue}>
+        {timeAgo(value)}
+      </time>
+      <time
+        className="text-xs text-muted-foreground"
+        dateTime={isoValue}
+        title={formattedValue}
+      >
+        {formattedValue}
+      </time>
     </div>
   );
 }
@@ -615,19 +644,19 @@ export function IssueProperties({ issue, onUpdate, inline }: IssuePropertiesProp
         )}
         {issue.startedAt && (
           <PropertyRow label="Started">
-            <span className="text-sm">{formatDate(issue.startedAt)}</span>
+            <DateTimeValue value={issue.startedAt} />
           </PropertyRow>
         )}
         {issue.completedAt && (
           <PropertyRow label="Completed">
-            <span className="text-sm">{formatDate(issue.completedAt)}</span>
+            <DateTimeValue value={issue.completedAt} />
           </PropertyRow>
         )}
         <PropertyRow label="Created">
-          <span className="text-sm">{formatDate(issue.createdAt)}</span>
+          <DateTimeValue value={issue.createdAt} />
         </PropertyRow>
         <PropertyRow label="Updated">
-          <span className="text-sm">{timeAgo(issue.updatedAt)}</span>
+          <RelativeWithAbsoluteDateTime value={issue.updatedAt} />
         </PropertyRow>
       </div>
     </div>
