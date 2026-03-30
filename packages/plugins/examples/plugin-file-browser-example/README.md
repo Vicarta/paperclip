@@ -4,20 +4,27 @@ Example Paperclip plugin that demonstrates:
 
 - **projectSidebarItem** — An optional "Files" link under each project in the sidebar that opens the project detail with this plugin’s tab selected. This is controlled by plugin settings and defaults to off.
 - **detailTab** (entityType project) — A project detail tab with a workspace-path selector, a desktop two-column layout (file tree left, editor right), and a mobile one-panel flow with a back button from editor to file tree, including save support.
+- **editor wrap toggle** — The editor defaults to wrapped lines for text-heavy files and exposes a `Wrap On/Off` toggle in the toolbar. The preference is stored locally in the browser.
 
 This is a repo-local example plugin for development. It should not be assumed to ship in a generic production build unless it is explicitly included.
 
 ## Slots
 
-| Slot                | Type                | Description                                      |
-|---------------------|---------------------|--------------------------------------------------|
-| Files (sidebar)     | `projectSidebarItem`| Optional link under each project → project detail + tab. |
-| Files (tab)         | `detailTab`         | Responsive tree/editor layout with save support.|
+| Slot            | Type                 | Description                                              |
+| --------------- | -------------------- | -------------------------------------------------------- |
+| Files (sidebar) | `projectSidebarItem` | Optional link under each project → project detail + tab. |
+| Files (tab)     | `detailTab`          | Responsive tree/editor layout with save support.         |
 
 ## Settings
 
 - `Show Files in Sidebar` — toggles the project sidebar link on or off. Defaults to off.
 - `Comment File Links` — controls whether comment annotations and the comment context-menu action are shown.
+
+## Editor behavior
+
+- The file editor uses CodeMirror with line wrapping enabled by default.
+- Operators can toggle wrapping from the toolbar without leaving the file tab.
+- The wrap preference is persisted in `localStorage`, so the same browser keeps the last chosen mode.
 
 ## Capabilities
 
