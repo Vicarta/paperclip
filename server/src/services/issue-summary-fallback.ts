@@ -1,3 +1,4 @@
+import type { ProjectHumanFacingLanguage } from "@paperclipai/shared";
 import type { AdapterExecutionResult } from "../adapters/index.js";
 import { summarizeHeartbeatRunResultJson } from "./heartbeat-run-summary.js";
 
@@ -122,6 +123,7 @@ export function buildIssueSummaryFallbackComment(input: {
   resultJson?: Record<string, unknown> | null;
   errorMessage?: string | null;
   question?: AdapterExecutionResult["question"] | null;
+  humanFacingLanguage?: ProjectHumanFacingLanguage | null;
 }) {
   if (input.question) {
     return buildQuestionReply(input.question);
@@ -137,12 +139,20 @@ export function buildIssueSummaryFallbackComment(input: {
 
   const reason = readFailureReason(input);
   if (input.status === "timed_out") {
+    const timeoutPrefix =
+      input.humanFacingLanguage === "uk"
+        ? "Я не зміг завершити це в межах відведеного часу."
+        : "I couldn't finish this within the allotted time.";
     return reason
-      ? `I couldn't finish this within the allotted time.\n\n${reason}`
-      : "I couldn't finish this within the allotted time.";
+      ? `${timeoutPrefix}\n\n${reason}`
+      : timeoutPrefix;
   }
 
+  const failurePrefix =
+    input.humanFacingLanguage === "uk"
+      ? "Я не зміг виконати цей запит."
+      : "I couldn't complete this request.";
   return reason
-    ? `I couldn't complete this request.\n\n${reason}`
-    : "I couldn't complete this request.";
+    ? `${failurePrefix}\n\n${reason}`
+    : failurePrefix;
 }

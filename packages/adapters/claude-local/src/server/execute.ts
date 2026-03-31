@@ -383,9 +383,11 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     !sessionId && bootstrapPromptTemplate.trim().length > 0
       ? renderTemplate(bootstrapPromptTemplate, templateData).trim()
       : "";
+  const humanFacingLanguageInstruction = asString(context.paperclipHumanFacingLanguageInstruction, "").trim();
   const sessionHandoffNote = asString(context.paperclipSessionHandoffMarkdown, "").trim();
   const prompt = joinPromptSections([
     renderedBootstrapPrompt,
+    humanFacingLanguageInstruction,
     sessionHandoffNote,
     renderedPrompt,
   ]);

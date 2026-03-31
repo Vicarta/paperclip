@@ -286,12 +286,14 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     !sessionId && bootstrapPromptTemplate.trim().length > 0
       ? renderTemplate(bootstrapPromptTemplate, templateData).trim()
       : "";
+  const humanFacingLanguageInstruction = asString(context.paperclipHumanFacingLanguageInstruction, "").trim();
   const sessionHandoffNote = asString(context.paperclipSessionHandoffMarkdown, "").trim();
   const paperclipEnvNote = renderPaperclipEnvNote(env);
   const apiAccessNote = renderApiAccessNote(env);
   const prompt = joinPromptSections([
     instructionsPrefix,
     renderedBootstrapPrompt,
+    humanFacingLanguageInstruction,
     sessionHandoffNote,
     paperclipEnvNote,
     apiAccessNote,

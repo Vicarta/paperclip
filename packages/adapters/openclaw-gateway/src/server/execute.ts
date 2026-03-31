@@ -451,6 +451,18 @@ function buildStandardPaperclipPayload(
   if (workspace) {
     standardPaperclip.workspace = workspace;
   }
+  const project = asRecord(ctx.context.paperclipProject);
+  if (project) {
+    standardPaperclip.project = project;
+  }
+  const humanFacingLanguage = nonEmpty(ctx.context.paperclipHumanFacingLanguage);
+  if (humanFacingLanguage) {
+    standardPaperclip.humanFacingLanguage = humanFacingLanguage;
+  }
+  const humanFacingLanguageInstruction = nonEmpty(ctx.context.paperclipHumanFacingLanguageInstruction);
+  if (humanFacingLanguageInstruction) {
+    standardPaperclip.humanFacingLanguageInstruction = humanFacingLanguageInstruction;
+  }
   if (workspaces.length > 0) {
     standardPaperclip.workspaces = workspaces;
   }
