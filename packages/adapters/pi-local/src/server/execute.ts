@@ -289,9 +289,11 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     !canResumeSession && bootstrapPromptTemplate.trim().length > 0
       ? renderTemplate(bootstrapPromptTemplate, templateData).trim()
       : "";
+  const humanFacingLanguageInstruction = asString(context.paperclipHumanFacingLanguageInstruction, "").trim();
   const sessionHandoffNote = asString(context.paperclipSessionHandoffMarkdown, "").trim();
   const userPrompt = joinPromptSections([
     renderedBootstrapPrompt,
+    humanFacingLanguageInstruction,
     sessionHandoffNote,
     renderedHeartbeatPrompt,
   ]);

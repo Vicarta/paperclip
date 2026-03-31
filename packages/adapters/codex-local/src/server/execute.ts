@@ -803,9 +803,14 @@ export async function execute(
     context.paperclipSessionHandoffMarkdown,
     ""
   ).trim();
+  const humanFacingLanguageInstruction = asString(
+    context.paperclipHumanFacingLanguageInstruction,
+    ""
+  ).trim();
   const basePromptSections = [
     instructionsPrefix,
     renderedBootstrapPrompt,
+    humanFacingLanguageInstruction,
     sessionHandoffNote,
   ];
   const promptMetrics = {

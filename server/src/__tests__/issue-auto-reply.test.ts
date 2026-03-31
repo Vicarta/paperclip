@@ -107,6 +107,16 @@ describe("buildIssueAutoReplyComment", () => {
     ).toBe("I couldn't complete this request.\n\nCould not access the upstream API with the current credentials.");
   });
 
+  it("localizes failure reply wrappers for Ukrainian project defaults", () => {
+    expect(
+      buildIssueAutoReplyComment({
+        status: "failed",
+        errorMessage: "Не вдалося дістатися до upstream API.",
+        humanFacingLanguage: "uk",
+      }),
+    ).toBe("Я не зміг виконати цей запит.\n\nНе вдалося дістатися до upstream API.");
+  });
+
   it("formats timeout replies cleanly", () => {
     expect(
       buildIssueAutoReplyComment({
@@ -114,6 +124,16 @@ describe("buildIssueAutoReplyComment", () => {
         errorMessage: "The repository scan did not finish before the timeout.",
       }),
     ).toBe("I couldn't finish this within the allotted time.\n\nThe repository scan did not finish before the timeout.");
+  });
+
+  it("localizes timeout reply wrappers for Ukrainian project defaults", () => {
+    expect(
+      buildIssueAutoReplyComment({
+        status: "timed_out",
+        errorMessage: "Сканування репозиторію не завершилося вчасно.",
+        humanFacingLanguage: "uk",
+      }),
+    ).toBe("Я не зміг завершити це в межах відведеного часу.\n\nСканування репозиторію не завершилося вчасно.");
   });
 
   it("renders compact question comments when adapter asks a question", () => {

@@ -150,6 +150,13 @@ export const PROJECT_COLORS = [
   "#3b82f6", // blue
 ] as const;
 
+export const PROJECT_HUMAN_FACING_LANGUAGES = ["uk", "en"] as const;
+export type ProjectHumanFacingLanguage = (typeof PROJECT_HUMAN_FACING_LANGUAGES)[number];
+export const PROJECT_HUMAN_FACING_LANGUAGE_LABELS: Record<ProjectHumanFacingLanguage, string> = {
+  uk: "Ukrainian",
+  en: "English",
+};
+
 export const APPROVAL_TYPES = ["hire_agent", "approve_ceo_strategy"] as const;
 export type ApprovalType = (typeof APPROVAL_TYPES)[number];
 

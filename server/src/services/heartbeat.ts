@@ -28,6 +28,10 @@ import { resolveDefaultAgentWorkspaceDir } from "../home-paths.js";
 import { summarizeHeartbeatRunResultJson } from "./heartbeat-run-summary.js";
 import { buildIssueAutoReplyComment, shouldPostIssueAutoReply, type IssueAutoReplyStatus } from "./issue-auto-reply.js";
 import {
+  buildProjectHumanFacingLanguageInstruction,
+  normalizeProjectHumanFacingLanguage,
+} from "./project-human-facing-language.js";
+import {
   buildWorkspaceReadyComment,
   ensureRuntimeServicesForRun,
   persistAdapterManagedRuntimeServices,
@@ -1157,12 +1161,26 @@ export function heartbeatService(db: Db) {
       return existingManualCommentId;
     }
 
+    const issueProjectId = await db
+      .select({ projectId: issues.projectId })
+      .from(issues)
+      .where(and(eq(issues.id, input.issueId), eq(issues.companyId, input.run.companyId)))
+      .then((rows) => rows[0]?.projectId ?? null);
+    const projectHumanFacingLanguage = issueProjectId
+      ? await db
+          .select({ humanFacingLanguage: projects.humanFacingLanguage })
+          .from(projects)
+          .where(and(eq(projects.id, issueProjectId), eq(projects.companyId, input.run.companyId)))
+          .then((rows) => normalizeProjectHumanFacingLanguage(rows[0]?.humanFacingLanguage))
+      : null;
+
     const body = buildIssueAutoReplyComment({
       status: input.status,
       summary: input.adapterResult.summary,
       resultJson: input.adapterResult.resultJson ?? null,
       errorMessage: input.adapterResult.errorMessage ?? null,
       question: input.adapterResult.question ?? null,
+      humanFacingLanguage: projectHumanFacingLanguage,
     });
     if (!body) return null;
 
@@ -1551,13 +1569,23 @@ export function heartbeatService(db: Db) {
     );
     const contextProjectId = readNonEmptyString(context.projectId);
     const executionProjectId = issueAssigneeConfig?.projectId ?? contextProjectId;
-    const projectExecutionWorkspacePolicy = executionProjectId
+    const projectRuntimeContext = executionProjectId
       ? await db
-          .select({ executionWorkspacePolicy: projects.executionWorkspacePolicy })
+          .select({
+            executionWorkspacePolicy: projects.executionWorkspacePolicy,
+            humanFacingLanguage: projects.humanFacingLanguage,
+            name: projects.name,
+          })
           .from(projects)
           .where(and(eq(projects.id, executionProjectId), eq(projects.companyId, agent.companyId)))
-          .then((rows) => parseProjectExecutionWorkspacePolicy(rows[0]?.executionWorkspacePolicy))
+          .then((rows) => rows[0] ?? null)
       : null;
+    const projectExecutionWorkspacePolicy = parseProjectExecutionWorkspacePolicy(
+      projectRuntimeContext?.executionWorkspacePolicy,
+    );
+    const projectHumanFacingLanguage = normalizeProjectHumanFacingLanguage(
+      projectRuntimeContext?.humanFacingLanguage,
+    );
     const taskSession = taskKey
       ? await getTaskSession(agent.companyId, agent.id, agent.adapterType, taskKey)
       : null;
@@ -1655,6 +1683,28 @@ export function heartbeatService(db: Db) {
       worktreePath: executionWorkspace.worktreePath,
       agentHome: resolveDefaultAgentWorkspaceDir(agent.id),
     };
+    if (executionWorkspace.projectId) {
+      context.paperclipProject = {
+        id: executionWorkspace.projectId,
+        name: projectRuntimeContext?.name ?? null,
+        humanFacingLanguage: projectHumanFacingLanguage,
+      };
+    } else {
+      delete context.paperclipProject;
+    }
+    const humanFacingLanguageInstruction = buildProjectHumanFacingLanguageInstruction(
+      projectHumanFacingLanguage,
+    );
+    if (projectHumanFacingLanguage) {
+      context.paperclipHumanFacingLanguage = projectHumanFacingLanguage;
+    } else {
+      delete context.paperclipHumanFacingLanguage;
+    }
+    if (humanFacingLanguageInstruction) {
+      context.paperclipHumanFacingLanguageInstruction = humanFacingLanguageInstruction;
+    } else {
+      delete context.paperclipHumanFacingLanguageInstruction;
+    }
     context.paperclipWorkspaces = resolvedWorkspace.workspaceHints;
     const runtimeServiceIntents = (() => {
       const runtimeConfig = parseObject(resolvedConfig.workspaceRuntime);

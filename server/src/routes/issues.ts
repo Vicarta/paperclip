@@ -376,6 +376,7 @@ export function issueRoutes(db: Db, storage: StorageService) {
             name: project.name,
             status: project.status,
             targetDate: project.targetDate,
+            humanFacingLanguage: project.humanFacingLanguage,
           }
         : null,
       goal: goal

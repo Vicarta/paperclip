@@ -1,7 +1,11 @@
 import { useState } from "react";
 import { Link } from "@/lib/router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { Project } from "@paperclipai/shared";
+import {
+  PROJECT_HUMAN_FACING_LANGUAGE_LABELS,
+  type Project,
+  type ProjectHumanFacingLanguage,
+} from "@paperclipai/shared";
 import { StatusBadge } from "./StatusBadge";
 import { cn, formatDate } from "../lib/utils";
 import { goalsApi } from "../api/goals";
@@ -41,6 +45,7 @@ export type ProjectConfigFieldKey =
   | "name"
   | "description"
   | "status"
+  | "human_facing_language"
   | "goals"
   | "execution_workspace_enabled"
   | "execution_workspace_default_mode"
@@ -51,6 +56,10 @@ export type ProjectConfigFieldKey =
   | "execution_workspace_teardown_command";
 
 const REPO_ONLY_CWD_SENTINEL = "/__paperclip_repo_only__";
+const HUMAN_FACING_LANGUAGE_OPTIONS: Array<{ value: ProjectHumanFacingLanguage; label: string }> = [
+  { value: "uk", label: PROJECT_HUMAN_FACING_LANGUAGE_LABELS.uk },
+  { value: "en", label: PROJECT_HUMAN_FACING_LANGUAGE_LABELS.en },
+];
 
 function SaveIndicator({ state }: { state: ProjectFieldSaveState }) {
   if (state === "saving") {
@@ -406,6 +415,34 @@ export function ProjectProperties({ project, onUpdate, onFieldUpdate, getFieldSa
             />
           ) : (
             <StatusBadge status={project.status} />
+          )}
+        </PropertyRow>
+        <PropertyRow
+          label={<FieldLabel label="Human-facing language" state={fieldState("human_facing_language")} />}
+        >
+          {onUpdate || onFieldUpdate ? (
+            <select
+              value={project.humanFacingLanguage ?? ""}
+              onChange={(event) =>
+                commitField("human_facing_language", {
+                  humanFacingLanguage: event.target.value.length > 0 ? event.target.value : null,
+                })
+              }
+              className="h-8 rounded border border-border bg-transparent px-2 text-sm outline-none"
+            >
+              <option value="">Default / unset</option>
+              {HUMAN_FACING_LANGUAGE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <span className="text-sm text-muted-foreground">
+              {project.humanFacingLanguage
+                ? PROJECT_HUMAN_FACING_LANGUAGE_LABELS[project.humanFacingLanguage]
+                : "Default / unset"}
+            </span>
           )}
         </PropertyRow>
         {project.leadAgentId && (
