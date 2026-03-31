@@ -1,5 +1,13 @@
 # Project Human-Facing Language (V1)
 
+## Repo Context
+
+For the Astrogen project, the correct repository of record is:
+
+- [Vicarta/astrogen-ukraine](https://github.com/Vicarta/astrogen-ukraine/)
+
+Do not treat `Vicarta/paperclip` as the canonical repo for Astrogen project work, artifacts, or documentation sync.
+
 ## Goal
 
 Add one simple project-level setting:
@@ -314,4 +322,3 @@ V1 is done when:
 - issue comments, clarification comments, manager summaries, and direct human-facing replies use it by default;
 - host-authored fallback replies use localized wrapper text;
 - markdown artifacts and structured outputs are not automatically translated just because the project has a human-facing language setting.
-
