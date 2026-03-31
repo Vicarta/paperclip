@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { PROJECT_HUMAN_FACING_LANGUAGE_LABELS } from "@paperclipai/shared";
 import { useCompany } from "../context/CompanyContext";
 import { useBreadcrumbs } from "../context/BreadcrumbContext";
 import { companiesApi } from "../api/companies";
 import { accessApi } from "../api/access";
+import { projectsApi } from "../api/projects";
 import { queryKeys } from "../lib/queryKeys";
+import { projectRouteRef } from "../lib/utils";
 import { Button } from "@/components/ui/button";
 import { Settings, Check } from "lucide-react";
 import { CompanyPatternIcon } from "../components/CompanyPatternIcon";
@@ -34,6 +37,8 @@ export function CompanySettings() {
   const [companyName, setCompanyName] = useState("");
   const [description, setDescription] = useState("");
   const [brandColor, setBrandColor] = useState("");
+  const [projectLanguageSaveErrorById, setProjectLanguageSaveErrorById] =
+    useState<Record<string, string | null>>({});
 
   // Sync local state from selected company
   useEffect(() => {
@@ -62,6 +67,50 @@ export function CompanySettings() {
     }) => companiesApi.update(selectedCompanyId!, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.companies.all });
+    }
+  });
+
+  const { data: projects } = useQuery({
+    queryKey: selectedCompanyId
+      ? queryKeys.projects.list(selectedCompanyId)
+      : ["projects", "none"],
+    queryFn: () => projectsApi.list(selectedCompanyId!),
+    enabled: !!selectedCompanyId
+  });
+
+  const projectLanguageMutation = useMutation({
+    mutationFn: ({
+      projectId,
+      humanFacingLanguage
+    }: {
+      projectId: string;
+      humanFacingLanguage: "uk" | "en" | null;
+    }) =>
+      projectsApi.update(
+        projectId,
+        { humanFacingLanguage },
+        selectedCompanyId ?? undefined
+      ),
+    onSuccess: (_, variables) => {
+      setProjectLanguageSaveErrorById((current) => ({
+        ...current,
+        [variables.projectId]: null
+      }));
+      queryClient.invalidateQueries({
+        queryKey: selectedCompanyId
+          ? queryKeys.projects.list(selectedCompanyId)
+          : queryKeys.projects.detail(variables.projectId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.projects.detail(variables.projectId)
+      });
+    },
+    onError: (error, variables) => {
+      setProjectLanguageSaveErrorById((current) => ({
+        ...current,
+        [variables.projectId]:
+          error instanceof Error ? error.message : "Failed to save"
+      }));
     }
   });
 
@@ -291,6 +340,86 @@ export function CompanySettings() {
           )}
         </div>
       )}
+
+      {/* Hiring */}
+      <div className="space-y-4">
+        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+          Human-facing language
+        </div>
+        <div className="space-y-3 rounded-md border border-border px-4 py-4">
+          <p className="text-sm text-muted-foreground">
+            Default language for issue comments, clarification comments,
+            manager summaries, and other human-facing replies. This remains a
+            per-project setting.
+          </p>
+          <div className="space-y-3">
+            {(projects ?? []).length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No projects found for this company.
+              </p>
+            ) : (
+              (projects ?? []).map((project) => {
+                const routeRef = projectRouteRef(project);
+                const saveError = projectLanguageSaveErrorById[project.id];
+                const isSaving =
+                  projectLanguageMutation.isPending &&
+                  projectLanguageMutation.variables?.projectId === project.id;
+                return (
+                  <div
+                    key={project.id}
+                    className="flex flex-col gap-2 rounded-md border border-border/70 px-3 py-3 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div className="min-w-0 space-y-0.5">
+                      <div className="text-sm font-medium">{project.name}</div>
+                      <div className="text-xs text-muted-foreground">
+                        Current:{" "}
+                        {project.humanFacingLanguage
+                          ? PROJECT_HUMAN_FACING_LANGUAGE_LABELS[
+                              project.humanFacingLanguage
+                            ]
+                          : "Default / unset"}
+                      </div>
+                      <a
+                        href={`/projects/${routeRef}/configuration`}
+                        className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                      >
+                        Open project configuration
+                      </a>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={project.humanFacingLanguage ?? ""}
+                        onChange={(event) =>
+                          projectLanguageMutation.mutate({
+                            projectId: project.id,
+                            humanFacingLanguage: event.target.value
+                              ? (event.target.value as "uk" | "en")
+                              : null
+                          })
+                        }
+                        disabled={isSaving}
+                        className="h-8 rounded border border-border bg-transparent px-2 text-sm outline-none"
+                      >
+                        <option value="">Default / unset</option>
+                        <option value="uk">Ukrainian</option>
+                        <option value="en">English</option>
+                      </select>
+                      {isSaving && (
+                        <span className="text-xs text-muted-foreground">
+                          Saving...
+                        </span>
+                      )}
+                    </div>
+                    {saveError && (
+                      <div className="text-xs text-destructive">{saveError}</div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* Hiring */}
       <div className="space-y-4">
