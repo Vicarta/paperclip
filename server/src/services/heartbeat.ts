@@ -7,6 +7,7 @@ import {
   agentRuntimeState,
   agentTaskSessions,
   agentWakeupRequests,
+  activityLog,
   heartbeatRunEvents,
   heartbeatRuns,
   issues,
@@ -25,6 +26,7 @@ import { costService } from "./costs.js";
 import { secretService } from "./secrets.js";
 import { resolveDefaultAgentWorkspaceDir } from "../home-paths.js";
 import { summarizeHeartbeatRunResultJson } from "./heartbeat-run-summary.js";
+import { buildIssueAutoReplyComment, shouldPostIssueAutoReply, type IssueAutoReplyStatus } from "./issue-auto-reply.js";
 import {
   buildIssueSummaryFallbackComment,
   isSystemIssueComment,
@@ -43,6 +45,7 @@ import {
   releaseRuntimeServicesForRun,
 } from "./workspace-runtime.js";
 import { issueService } from "./issues.js";
+import { logActivity } from "./activity-log.js";
 import {
   buildExecutionWorkspaceAdapterConfig,
   parseIssueExecutionWorkspaceSettings,
@@ -99,6 +102,12 @@ const heartbeatRunListColumns = {
 
 function appendExcerpt(prev: string, chunk: string) {
   return appendWithCap(prev, chunk, MAX_EXCERPT_BYTES);
+}
+
+function parseContextSnapshot(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? { ...(value as Record<string, unknown>) }
+    : {};
 }
 
 function normalizeMaxConcurrentRuns(value: unknown) {
@@ -178,6 +187,15 @@ export type ResolvedWorkspaceForRun = {
 
 function readNonEmptyString(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value : null;
+}
+
+function readCommentCreatedAt(value: unknown): Date | null {
+  if (value instanceof Date) return value;
+  if (typeof value === "string" || typeof value === "number") {
+    const parsed = new Date(value);
+    if (!Number.isNaN(parsed.getTime())) return parsed;
+  }
+  return null;
 }
 
 function readCommentCreatedAt(value: unknown): Date | null {
