@@ -779,7 +779,6 @@ export function issueRoutes(db: Db, storage: StorageService) {
         agentId: actor.agentId ?? undefined,
         userId: actor.actorType === "user" ? actor.actorId : undefined,
       });
-
       await logActivity(db, {
         companyId: issue.companyId,
         actorType: actor.actorType,
@@ -1154,7 +1153,6 @@ export function issueRoutes(db: Db, storage: StorageService) {
       agentId: actor.agentId ?? undefined,
       userId: actor.actorType === "user" ? actor.actorId : undefined,
     });
-
     await logActivity(db, {
       companyId: currentIssue.companyId,
       actorType: actor.actorType,
