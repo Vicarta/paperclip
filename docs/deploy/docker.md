@@ -46,6 +46,14 @@ All data is persisted under the bind mount (`./data/docker-paperclip`):
 - Local secrets key
 - Agent workspace data
 
+Plugin installs are also persisted under `PAPERCLIP_HOME/plugins`.
+
+This matters for UI changes to installed plugins:
+
+- Updating a plugin inside the source repo does not update a running Docker deployment by itself.
+- The live host serves plugin UI and worker code from the installed package under `/paperclip/plugins/<plugin-slug>/`.
+- To change a live plugin, update or reinstall the installed plugin package, or replace its built `dist` bundle inside the mounted Paperclip data directory/volume.
+
 ## Claude and Codex Adapters in Docker
 
 The Docker image pre-installs:
