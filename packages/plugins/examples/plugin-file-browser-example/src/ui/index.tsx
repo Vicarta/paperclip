@@ -700,6 +700,26 @@ export function FilesTab({ context }: PluginDetailTabProps) {
     }
   }
 
+  function handleDownload() {
+    if (!selectedPath) {
+      return;
+    }
+
+    const content = viewRef.current
+      ? viewRef.current.state.doc.toString()
+      : fileContentData?.content ?? "";
+    const fileName = selectedPath.split(/[\\/]/).at(-1) || "file";
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+    const downloadUrl = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = downloadUrl;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(downloadUrl);
+  }
+
   return (
     <div className="space-y-4">
       <div className="rounded-lg border border-border bg-card p-4">
@@ -853,6 +873,14 @@ export function FilesTab({ context }: PluginDetailTabProps) {
               <div className="truncate text-sm text-foreground">{selectedPath ?? "No file selected"}</div>
             </div>
             <div className="flex items-center gap-3">
+              <button
+                type="button"
+                className="rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={!selectedWorkspace || !selectedPath || isSaving}
+                onClick={() => handleDownload()}
+              >
+                Download
+              </button>
               <button
                 type="button"
                 className="rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
