@@ -32,6 +32,12 @@ function isProjectPluginTab(value: string | null): value is ProjectPluginTab {
   return typeof value === "string" && value.startsWith("plugin:");
 }
 
+function buildPluginTabSearch(tab: ProjectPluginTab, options?: { file?: string | null }): string {
+  const params = new URLSearchParams({ tab });
+  if (options?.file) params.set("file", options.file);
+  return `?${params.toString()}`;
+}
+
 function resolveProjectTab(pathname: string, projectId: string): ProjectTab | null {
   const segments = pathname.split("/").filter(Boolean);
   const projectsIdx = segments.indexOf("projects");
@@ -226,6 +232,10 @@ export function ProjectDetail() {
     const tab = new URLSearchParams(location.search).get("tab");
     return isProjectPluginTab(tab) ? tab : null;
   }, [location.search]);
+  const pluginFileFromSearch = useMemo(
+    () => new URLSearchParams(location.search).get("file"),
+    [location.search],
+  );
   const activeTab = activeRouteTab ?? pluginTabFromSearch;
 
   const { data: project, isLoading, error } = useQuery({
@@ -292,7 +302,10 @@ export function ProjectDetail() {
     if (!project) return;
     if (routeProjectRef === canonicalProjectRef) return;
     if (isProjectPluginTab(activeTab)) {
-      navigate(`/projects/${canonicalProjectRef}?tab=${encodeURIComponent(activeTab)}`, { replace: true });
+      navigate(
+        `/projects/${canonicalProjectRef}${buildPluginTabSearch(activeTab, { file: pluginFileFromSearch })}`,
+        { replace: true },
+      );
       return;
     }
     if (activeTab === "overview") {
@@ -312,7 +325,7 @@ export function ProjectDetail() {
       return;
     }
     navigate(`/projects/${canonicalProjectRef}`, { replace: true });
-  }, [project, routeProjectRef, canonicalProjectRef, activeTab, filter, navigate]);
+  }, [project, routeProjectRef, canonicalProjectRef, activeTab, filter, navigate, pluginFileFromSearch]);
 
   useEffect(() => {
     closePanel();
@@ -377,7 +390,7 @@ export function ProjectDetail() {
 
   const handleTabChange = (tab: ProjectTab) => {
     if (isProjectPluginTab(tab)) {
-      navigate(`/projects/${canonicalProjectRef}?tab=${encodeURIComponent(tab)}`);
+      navigate(`/projects/${canonicalProjectRef}${buildPluginTabSearch(tab, { file: pluginFileFromSearch })}`);
       return;
     }
     if (tab === "overview") {
