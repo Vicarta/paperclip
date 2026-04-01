@@ -5,12 +5,25 @@ import type {
   PluginCommentContextMenuItemProps,
 } from "@paperclipai/plugin-sdk/ui";
 import { usePluginAction, usePluginData } from "@paperclipai/plugin-sdk/ui";
-import { useMemo, useState, useEffect, useRef, type MouseEvent, type RefObject } from "react";
+import {
+  useMemo,
+  useState,
+  useEffect,
+  useRef,
+  type MouseEvent,
+  type RefObject,
+} from "react";
 import { EditorView } from "@codemirror/view";
 import { basicSetup } from "codemirror";
 import { javascript } from "@codemirror/lang-javascript";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { tags } from "@lezer/highlight";
+import {
+  FILE_SORT_BY_OPTIONS,
+  type FileEntry,
+  type FileSortBy,
+  type FileSortDir,
+} from "../file-browser-types.js";
 
 const PLUGIN_KEY = "paperclip-file-browser-example";
 const FILES_TAB_SLOT_ID = "files-tab";
@@ -128,7 +141,6 @@ const editorLightHighlightStyle = HighlightStyle.define([
 ]);
 
 type Workspace = { id: string; projectId: string; name: string; path: string; isPrimary: boolean };
-type FileEntry = { name: string; path: string; isDirectory: boolean };
 type FileTreeNodeProps = {
   entry: FileEntry;
   companyId: string | null;
@@ -136,6 +148,8 @@ type FileTreeNodeProps = {
   workspaceId: string;
   selectedPath: string | null;
   onSelect: (path: string) => void;
+  sortBy: FileSortBy;
+  sortDir: FileSortDir;
   depth?: number;
 };
 
@@ -242,6 +256,8 @@ function FileTreeNode({
   workspaceId,
   selectedPath,
   onSelect,
+  sortBy,
+  sortDir,
   depth = 0,
 }: FileTreeNodeProps) {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -264,12 +280,14 @@ function FileTreeNode({
           <ExpandedDirectoryChildren
             directoryPath={entry.path}
             companyId={companyId}
-            projectId={projectId}
-            workspaceId={workspaceId}
-            selectedPath={selectedPath}
-            onSelect={onSelect}
-            depth={depth}
-          />
+          projectId={projectId}
+          workspaceId={workspaceId}
+          selectedPath={selectedPath}
+          onSelect={onSelect}
+          sortBy={sortBy}
+          sortDir={sortDir}
+          depth={depth}
+        />
         ) : null}
       </li>
     );
@@ -298,6 +316,8 @@ function ExpandedDirectoryChildren({
   workspaceId,
   selectedPath,
   onSelect,
+  sortBy,
+  sortDir,
   depth,
 }: {
   directoryPath: string;
@@ -306,6 +326,8 @@ function ExpandedDirectoryChildren({
   workspaceId: string;
   selectedPath: string | null;
   onSelect: (path: string) => void;
+  sortBy: FileSortBy;
+  sortDir: FileSortDir;
   depth: number;
 }) {
   const { data: childData } = usePluginData<{ entries: FileEntry[] }>("fileList", {
@@ -313,6 +335,8 @@ function ExpandedDirectoryChildren({
     projectId,
     workspaceId,
     directoryPath,
+    sortBy,
+    sortDir,
   });
   const children = childData?.entries ?? [];
 
@@ -331,9 +355,69 @@ function ExpandedDirectoryChildren({
           workspaceId={workspaceId}
           selectedPath={selectedPath}
           onSelect={onSelect}
+          sortBy={sortBy}
+          sortDir={sortDir}
           depth={depth + 1}
         />
       ))}
+    </ul>
+  );
+}
+
+function formatModifiedAt(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Unknown";
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
+}
+
+function SearchResultsList({
+  entries,
+  loading,
+  selectedPath,
+  onSelect,
+}: {
+  entries: FileEntry[];
+  loading: boolean;
+  selectedPath: string | null;
+  onSelect: (path: string) => void;
+}) {
+  if (loading) {
+    return <p className="px-2 py-3 text-sm text-muted-foreground">Searching files...</p>;
+  }
+
+  if (entries.length === 0) {
+    return <p className="px-2 py-3 text-sm text-muted-foreground">No matching files found.</p>;
+  }
+
+  return (
+    <ul className="space-y-1">
+      {entries.map((entry) => {
+        const isSelected = selectedPath === entry.path;
+        return (
+          <li key={entry.path}>
+            <button
+              type="button"
+              className={`flex w-full items-center justify-between gap-3 rounded-md border px-3 py-2 text-left text-sm transition-colors ${
+                isSelected
+                  ? "border-accent bg-accent/70 text-foreground"
+                  : "border-transparent text-muted-foreground hover:border-border hover:bg-accent/40 hover:text-foreground"
+              }`}
+              onClick={() => onSelect(entry.path)}
+            >
+              <div className="min-w-0 space-y-0.5">
+                <div className="truncate font-medium">{entry.name}</div>
+                <div className="truncate text-xs text-muted-foreground">{entry.path}</div>
+              </div>
+              <div className="shrink-0 text-xs text-muted-foreground">
+                {formatModifiedAt(entry.modifiedAt)}
+              </div>
+            </button>
+          </li>
+        );
+      })}
     </ul>
   );
 }
@@ -420,21 +504,65 @@ export function FilesTab({ context }: PluginDetailTabProps) {
   const workspaces = workspacesData ?? [];
   const workspaceSelectKey = workspaces.map((w) => `${w.id}:${workspaceLabel(w)}`).join("|");
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState<FileSortBy>(() => {
+    if (typeof window === "undefined") return "name";
+    const stored = window.localStorage.getItem("paperclip:file-browser-example:sortBy");
+    return stored === "modified" ? "modified" : "name";
+  });
+  const [sortDir, setSortDir] = useState<FileSortDir>(() => {
+    if (typeof window === "undefined") return "asc";
+    const stored = window.localStorage.getItem("paperclip:file-browser-example:sortDir");
+    return stored === "desc" ? "desc" : "asc";
+  });
   const resolvedWorkspaceId = workspaceId ?? workspaces[0]?.id ?? null;
   const selectedWorkspace = useMemo(
     () => workspaces.find((w) => w.id === resolvedWorkspaceId) ?? null,
     [workspaces, resolvedWorkspaceId],
   );
+  const isSearchMode = searchQuery.trim().length > 0;
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("paperclip:file-browser-example:sortBy", sortBy);
+  }, [sortBy]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("paperclip:file-browser-example:sortDir", sortDir);
+  }, [sortDir]);
 
   const fileListParams = useMemo(
-    () => (selectedWorkspace ? { projectId, companyId, workspaceId: selectedWorkspace.id } : {}),
-    [companyId, projectId, selectedWorkspace],
+    () =>
+      selectedWorkspace
+        ? { projectId, companyId, workspaceId: selectedWorkspace.id, sortBy, sortDir }
+        : {},
+    [companyId, projectId, selectedWorkspace, sortBy, sortDir],
   );
   const { data: fileListData, loading: fileListLoading } = usePluginData<{ entries: FileEntry[] }>(
     "fileList",
     fileListParams,
   );
   const entries = fileListData?.entries ?? [];
+  const fileSearchParams = useMemo(
+    () =>
+      selectedWorkspace
+        ? {
+            projectId,
+            companyId,
+            workspaceId: selectedWorkspace.id,
+            query: searchQuery,
+            sortBy,
+            sortDir,
+          }
+        : {},
+    [companyId, projectId, searchQuery, selectedWorkspace, sortBy, sortDir],
+  );
+  const { data: fileSearchData, loading: fileSearchLoading } = usePluginData<{ entries: FileEntry[] }>(
+    "fileSearchByName",
+    fileSearchParams,
+  );
+  const searchEntries = fileSearchData?.entries ?? [];
 
   // Track the `?file=` query parameter across navigations (popstate).
   const [urlFilePath, setUrlFilePath] = useState<string | null>(() => {
@@ -606,11 +734,76 @@ export function FilesTab({ context }: PluginDetailTabProps) {
           style={{ display: isMobile && mobileView === "editor" ? "none" : "flex" }}
         >
           <div className="border-b border-border px-3 py-2 text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-            File Tree
+            {isSearchMode ? "Search Results" : "File Tree"}
+          </div>
+          <div className="border-b border-border px-3 py-3">
+            <div className="flex flex-col gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  type="search"
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape" && searchQuery) {
+                      event.preventDefault();
+                      setSearchQuery("");
+                      setMobileView("browser");
+                    }
+                  }}
+                  placeholder="Search files"
+                  className="min-w-0 flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm outline-none"
+                />
+                <select
+                  value={sortBy}
+                  onChange={(event) => setSortBy(event.target.value === "modified" ? "modified" : "name")}
+                  className="rounded-md border border-input bg-background px-3 py-2 text-sm outline-none"
+                  aria-label="Sort files by"
+                >
+                  {FILE_SORT_BY_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {option === "name" ? "Name" : "Modified"}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => setSortDir((value) => (value === "asc" ? "desc" : "asc"))}
+                  className="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground hover:bg-accent"
+                  aria-label="Toggle sort direction"
+                >
+                  {sortDir === "asc" ? "Asc" : "Desc"}
+                </button>
+                {isSearchMode ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchQuery("");
+                      setMobileView("browser");
+                    }}
+                    className="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground hover:bg-accent"
+                  >
+                    Close search
+                  </button>
+                ) : null}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {selectedWorkspace ? workspaceLabel(selectedWorkspace) : "Select a workspace to browse files."}
+              </div>
+            </div>
           </div>
           <div className="min-h-0 flex-1 overflow-auto p-2">
             {selectedWorkspace ? (
-              fileListLoading ? (
+              isSearchMode ? (
+                <SearchResultsList
+                  entries={searchEntries}
+                  loading={fileSearchLoading}
+                  selectedPath={selectedPath}
+                  onSelect={(path) => {
+                    setSelectedPath(path);
+                    setMobileView("editor");
+                  }}
+                />
+              ) : fileListLoading ? (
                 <p className="px-2 py-3 text-sm text-muted-foreground">Loading files...</p>
               ) : entries.length > 0 ? (
                 <ul className="space-y-0.5">
@@ -626,6 +819,8 @@ export function FilesTab({ context }: PluginDetailTabProps) {
                         setSelectedPath(path);
                         setMobileView("editor");
                       }}
+                      sortBy={sortBy}
+                      sortDir={sortDir}
                     />
                   ))}
                 </ul>
