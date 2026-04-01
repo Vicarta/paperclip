@@ -1,31 +1,8 @@
 import { definePlugin, runWorker } from "@paperclipai/plugin-sdk";
 import * as fs from "node:fs";
-import * as path from "node:path";
+import { listWorkspaceDirectoryEntries, resolveWorkspace, sanitizeWorkspacePath, searchWorkspaceFilesByName } from "./file-browser.js";
 
 const PLUGIN_NAME = "file-browser-example";
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const PATH_LIKE_PATTERN = /[\\/]/;
-const WINDOWS_DRIVE_PATH_PATTERN = /^[A-Za-z]:[\\/]/;
-
-function looksLikePath(value: string): boolean {
-  const normalized = value.trim();
-  return (PATH_LIKE_PATTERN.test(normalized) || WINDOWS_DRIVE_PATH_PATTERN.test(normalized))
-    && !UUID_PATTERN.test(normalized);
-}
-
-function sanitizeWorkspacePath(pathValue: string): string {
-  return looksLikePath(pathValue) ? pathValue.trim() : "";
-}
-
-function resolveWorkspace(workspacePath: string, requestedPath?: string): string | null {
-  const root = path.resolve(workspacePath);
-  const resolved = requestedPath ? path.resolve(root, requestedPath) : root;
-  const relative = path.relative(root, resolved);
-  if (relative.startsWith("..") || path.isAbsolute(relative)) {
-    return null;
-  }
-  return resolved;
-}
 
 /**
  * Regex that matches file-path-like tokens in comment text.
@@ -113,6 +90,8 @@ const plugin = definePlugin({
         const companyId = typeof params.companyId === "string" ? params.companyId : "";
         const workspaceId = params.workspaceId as string;
         const directoryPath = typeof params.directoryPath === "string" ? params.directoryPath : "";
+        const sortBy = params.sortBy === "modified" ? "modified" : "name";
+        const sortDir = params.sortDir === "desc" ? "desc" : "asc";
         if (!projectId || !companyId || !workspaceId) return { entries: [] };
         const workspaces = await ctx.projects.listWorkspaces(projectId, companyId);
         const workspace = workspaces.find((w) => w.id === workspaceId);
@@ -120,27 +99,31 @@ const plugin = definePlugin({
         const workspacePath = sanitizeWorkspacePath(workspace.path);
         if (!workspacePath) return { entries: [] };
         const dirPath = resolveWorkspace(workspacePath, directoryPath);
-        if (!dirPath) {
-          return { entries: [] };
-        }
-        if (!fs.existsSync(dirPath) || !fs.statSync(dirPath).isDirectory()) {
-          return { entries: [] };
-        }
-        const names = fs.readdirSync(dirPath).sort((a, b) => a.localeCompare(b));
-        const entries = names.map((name) => {
-          const full = path.join(dirPath, name);
-          const stat = fs.lstatSync(full);
-          const relativePath = path.relative(workspacePath, full);
-          return {
-            name,
-            path: relativePath,
-            isDirectory: stat.isDirectory(),
-          };
-        }).sort((a, b) => {
-          if (a.isDirectory !== b.isDirectory) return a.isDirectory ? -1 : 1;
-          return a.name.localeCompare(b.name);
-        });
-        return { entries };
+        if (!dirPath) return { entries: [] };
+        return {
+          entries: listWorkspaceDirectoryEntries(workspacePath, directoryPath, sortBy, sortDir),
+        };
+      },
+    );
+
+    ctx.data.register(
+      "fileSearchByName",
+      async (params: Record<string, unknown>) => {
+        const projectId = params.projectId as string;
+        const companyId = typeof params.companyId === "string" ? params.companyId : "";
+        const workspaceId = params.workspaceId as string;
+        const query = typeof params.query === "string" ? params.query : "";
+        const sortBy = params.sortBy === "modified" ? "modified" : "name";
+        const sortDir = params.sortDir === "desc" ? "desc" : "asc";
+        if (!projectId || !companyId || !workspaceId || !query.trim()) return { entries: [] };
+        const workspaces = await ctx.projects.listWorkspaces(projectId, companyId);
+        const workspace = workspaces.find((w) => w.id === workspaceId);
+        if (!workspace) return { entries: [] };
+        const workspacePath = sanitizeWorkspacePath(workspace.path);
+        if (!workspacePath) return { entries: [] };
+        return {
+          entries: searchWorkspaceFilesByName(workspacePath, query, sortBy, sortDir),
+        };
       },
     );
 
