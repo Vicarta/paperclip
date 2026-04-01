@@ -55,6 +55,7 @@ import {
 import { redactCurrentUserText, redactCurrentUserValue } from "../log-redaction.js";
 
 const MAX_LIVE_LOG_CHUNK_BYTES = 8 * 1024;
+const MAX_PAPERCLIP_ISSUE_CONTEXT_CHARS = 16_000;
 const HEARTBEAT_MAX_CONCURRENT_RUNS_DEFAULT = 1;
 const HEARTBEAT_MAX_CONCURRENT_RUNS_MAX = 10;
 const DEFERRED_WAKE_CONTEXT_KEY = "_paperclipWakeContext";
@@ -196,6 +197,50 @@ function readCommentCreatedAt(value: unknown): Date | null {
     if (!Number.isNaN(parsed.getTime())) return parsed;
   }
   return null;
+}
+
+function truncateContextText(value: string, maxChars = MAX_PAPERCLIP_ISSUE_CONTEXT_CHARS): string {
+  const trimmed = value.trim();
+  if (trimmed.length <= maxChars) return trimmed;
+  return `${trimmed.slice(0, maxChars - 1).trimEnd()}…`;
+}
+
+function buildPaperclipIssueContextMarkdown(input: {
+  issue: {
+    identifier: string | null;
+    title: string | null;
+    status: string | null;
+    description: string | null;
+  } | null;
+  wakeComment: {
+    id: string | null;
+    body: string | null;
+  } | null;
+}): string | null {
+  if (!input.issue) return null;
+
+  const sections: string[] = [];
+  const issueLabel = [input.issue.identifier, input.issue.title].filter(Boolean).join(" ");
+  sections.push("## Current Paperclip Issue");
+  if (issueLabel) sections.push(`- Issue: ${issueLabel}`);
+  if (input.issue.status) sections.push(`- Status: ${input.issue.status}`);
+
+  const description = truncateContextText(input.issue.description ?? "");
+  if (description) {
+    sections.push("### Issue Description");
+    sections.push(description);
+  }
+
+  const wakeCommentBody = truncateContextText(input.wakeComment?.body ?? "", 6_000);
+  if (wakeCommentBody) {
+    sections.push("### Wake Comment");
+    if (input.wakeComment?.id) {
+      sections.push(`- Comment ID: ${input.wakeComment.id}`);
+    }
+    sections.push(wakeCommentBody);
+  }
+
+  return sections.join("\n\n").trim();
 }
 
 function normalizeUsageTotals(usage: UsageSummary | null | undefined): UsageTotals | null {
@@ -1710,17 +1755,22 @@ export function heartbeatService(db: Db) {
       agent.companyId,
       mergedConfig,
     );
+    const wakeCommentId =
+      readNonEmptyString(context.wakeCommentId) ?? readNonEmptyString(context.commentId);
     const issueRef = issueId
       ? await db
           .select({
             id: issues.id,
             identifier: issues.identifier,
             title: issues.title,
+            status: issues.status,
+            description: issues.description,
           })
           .from(issues)
           .where(and(eq(issues.id, issueId), eq(issues.companyId, agent.companyId)))
           .then((rows) => rows[0] ?? null)
       : null;
+    const wakeComment = wakeCommentId ? await issuesSvc.getComment(wakeCommentId) : null;
     const executionWorkspace = await realizeExecutionWorkspace({
       base: {
         baseCwd: resolvedWorkspace.cwd,
@@ -1793,6 +1843,27 @@ export function heartbeatService(db: Db) {
       context.paperclipHumanFacingLanguageInstruction = humanFacingLanguageInstruction;
     } else {
       delete context.paperclipHumanFacingLanguageInstruction;
+    }
+    const paperclipCurrentIssueMarkdown = buildPaperclipIssueContextMarkdown({
+      issue: issueRef,
+      wakeComment:
+        wakeComment && (!issueId || wakeComment.issueId === issueId)
+          ? {
+              id: wakeComment.id,
+              body: wakeComment.body,
+            }
+          : null,
+    });
+    if (paperclipCurrentIssueMarkdown) {
+      context.paperclipCurrentIssueMarkdown = paperclipCurrentIssueMarkdown;
+    } else {
+      delete context.paperclipCurrentIssueMarkdown;
+    }
+    const paperclipWakeCommentMarkdown = truncateContextText(wakeComment?.body ?? "", 6_000);
+    if (paperclipWakeCommentMarkdown) {
+      context.paperclipWakeCommentMarkdown = paperclipWakeCommentMarkdown;
+    } else {
+      delete context.paperclipWakeCommentMarkdown;
     }
     context.paperclipWorkspaces = resolvedWorkspace.workspaceHints;
     const runtimeServiceIntents = (() => {

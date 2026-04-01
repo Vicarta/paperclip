@@ -289,10 +289,12 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     !canResumeSession && bootstrapPromptTemplate.trim().length > 0
       ? renderTemplate(bootstrapPromptTemplate, templateData).trim()
       : "";
+  const currentIssueContext = asString(context.paperclipCurrentIssueMarkdown, "").trim();
   const humanFacingLanguageInstruction = asString(context.paperclipHumanFacingLanguageInstruction, "").trim();
   const sessionHandoffNote = asString(context.paperclipSessionHandoffMarkdown, "").trim();
   const userPrompt = joinPromptSections([
     renderedBootstrapPrompt,
+    currentIssueContext,
     humanFacingLanguageInstruction,
     sessionHandoffNote,
     renderedHeartbeatPrompt,
@@ -301,6 +303,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     systemPromptChars: renderedSystemPromptExtension.length,
     promptChars: userPrompt.length,
     bootstrapPromptChars: renderedBootstrapPrompt.length,
+    currentIssueContextChars: currentIssueContext.length,
     sessionHandoffChars: sessionHandoffNote.length,
     heartbeatPromptChars: renderedHeartbeatPrompt.length,
   };

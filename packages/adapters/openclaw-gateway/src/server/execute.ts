@@ -463,6 +463,14 @@ function buildStandardPaperclipPayload(
   if (humanFacingLanguageInstruction) {
     standardPaperclip.humanFacingLanguageInstruction = humanFacingLanguageInstruction;
   }
+  const currentIssueMarkdown = nonEmpty(ctx.context.paperclipCurrentIssueMarkdown);
+  if (currentIssueMarkdown) {
+    standardPaperclip.currentIssueMarkdown = currentIssueMarkdown;
+  }
+  const wakeCommentMarkdown = nonEmpty(ctx.context.paperclipWakeCommentMarkdown);
+  if (wakeCommentMarkdown) {
+    standardPaperclip.wakeCommentMarkdown = wakeCommentMarkdown;
+  }
   if (workspaces.length > 0) {
     standardPaperclip.workspaces = workspaces;
   }

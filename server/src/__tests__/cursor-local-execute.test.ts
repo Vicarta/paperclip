@@ -84,7 +84,10 @@ describe("cursor execute", () => {
           },
           promptTemplate: "Follow the paperclip heartbeat.",
         },
-        context: {},
+        context: {
+          paperclipCurrentIssueMarkdown:
+            "## Current Paperclip Issue\n\n- Issue: AST-99 Blog Briefs\n\n### Issue Description\n\nApproved titles live here.",
+        },
         authToken: "run-jwt-token",
         onLog: async () => {},
         onMeta: async (meta) => {
@@ -108,8 +111,11 @@ describe("cursor execute", () => {
           "PAPERCLIP_RUN_ID",
         ]),
       );
+      expect(capture.prompt).toContain("## Current Paperclip Issue");
+      expect(capture.prompt).toContain("Approved titles live here.");
       expect(capture.prompt).toContain("Paperclip runtime note:");
       expect(capture.prompt).toContain("PAPERCLIP_API_KEY");
+      expect(invocationPrompt).toContain("Approved titles live here.");
       expect(invocationPrompt).toContain("Paperclip runtime note:");
       expect(invocationPrompt).toContain("PAPERCLIP_API_URL");
     } finally {

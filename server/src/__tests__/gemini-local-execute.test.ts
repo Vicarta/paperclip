@@ -82,7 +82,10 @@ describe("gemini execute", () => {
           },
           promptTemplate: "Follow the paperclip heartbeat.",
         },
-        context: {},
+        context: {
+          paperclipCurrentIssueMarkdown:
+            "## Current Paperclip Issue\n\n- Issue: AST-99 Blog Briefs\n\n### Issue Description\n\nApproved titles live here.",
+        },
         authToken: "run-jwt-token",
         onLog: async () => {},
         onMeta: async (meta) => {
@@ -98,6 +101,8 @@ describe("gemini execute", () => {
       expect(capture.argv).toContain("stream-json");
       expect(capture.argv).toContain("--approval-mode");
       expect(capture.argv).toContain("yolo");
+      expect(capture.argv.at(-1)).toContain("## Current Paperclip Issue");
+      expect(capture.argv.at(-1)).toContain("Approved titles live here.");
       expect(capture.argv.at(-1)).toContain("Follow the paperclip heartbeat.");
       expect(capture.argv.at(-1)).toContain("Paperclip runtime note:");
       expect(capture.paperclipEnvKeys).toEqual(

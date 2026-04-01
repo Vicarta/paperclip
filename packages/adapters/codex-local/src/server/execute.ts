@@ -395,6 +395,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     context.paperclipSessionHandoffMarkdown,
     ""
   ).trim();
+  const currentIssueContext = asString(context.paperclipCurrentIssueMarkdown, "").trim();
   const humanFacingLanguageInstruction = asString(
     context.paperclipHumanFacingLanguageInstruction,
     ""
@@ -402,6 +403,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
   const prompt = joinPromptSections([
     instructionsPrefix,
     renderedBootstrapPrompt,
+    currentIssueContext,
     humanFacingLanguageInstruction,
     sessionHandoffNote,
     renderedPrompt,
@@ -410,6 +412,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     promptChars: prompt.length,
     instructionsChars,
     bootstrapPromptChars: renderedBootstrapPrompt.length,
+    currentIssueContextChars: currentIssueContext.length,
     sessionHandoffChars: sessionHandoffNote.length,
     heartbeatPromptChars: renderedPrompt.length,
   };
