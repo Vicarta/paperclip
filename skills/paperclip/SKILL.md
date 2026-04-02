@@ -20,6 +20,33 @@ Manual local CLI mode (outside heartbeat runs): use `paperclipai agent local-cli
 
 **Run audit trail:** You MUST include `-H 'X-Paperclip-Run-Id: $PAPERCLIP_RUN_ID'` on ALL API requests that modify issues (checkout, update, comment, create subtask, release). This links your actions to the current heartbeat run for traceability.
 
+## Plugin Tools
+
+Some Paperclip deployments expose plugin-contributed agent tools through the control plane API.
+
+When the current task explicitly requires search, crawling, or another plugin-backed capability:
+
+1. Discover available tools:
+   - `GET /api/agents/me/plugin-tools`
+   - or `GET /api/agents/me/plugin-tools?pluginId=<plugin-id>`
+2. Choose the namespaced tool name (example: `paperclip.exa-agent-tools:web-search`).
+3. Execute it with your current run context:
+
+```json
+POST /api/agents/me/plugin-tools/execute
+{
+  "tool": "paperclip.exa-agent-tools:web-search",
+  "parameters": { "query": "..." },
+  "projectId": "<current-project-id>"
+}
+```
+
+Rules:
+
+- The host derives `agentId`, `runId`, and `companyId` from your authenticated agent session.
+- Prefer fetching the current issue heartbeat context first when you need `projectId`.
+- Treat plugin tools as execution aids, not a substitute for the Paperclip heartbeat protocol.
+
 ## The Heartbeat Procedure
 
 Follow these steps every time you wake up:
@@ -185,7 +212,7 @@ When you mention a plan or another issue document in a comment, include a direct
 
 If the issue identifier is available, prefer the document deep link over a plain issue link so the reader lands directly on the updated document.
 
-If you're asked to make a plan, _do not mark the issue as done_. Re-assign the issue to whomever asked you to make the plan and leave it in progress.
+If you're asked to make a plan, _do not mark the issue as done_. If the plan is being handed back to a human for review, re-assign the issue to that user and set status to `in_review`. Use `in_progress` only when the plan remains actively owned by the agent and is not yet ready for human review.
 
 Recommended API flow:
 

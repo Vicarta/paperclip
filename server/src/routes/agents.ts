@@ -42,8 +42,13 @@ import {
 import { DEFAULT_CURSOR_LOCAL_MODEL } from "@paperclipai/adapter-cursor-local";
 import { DEFAULT_GEMINI_LOCAL_MODEL } from "@paperclipai/adapter-gemini-local";
 import { ensureOpenCodeModelConfiguredAndAvailable } from "@paperclipai/adapter-opencode-local/server";
+import type { PluginToolDispatcher } from "../services/plugin-tool-dispatcher.js";
 
-export function agentRoutes(db: Db) {
+type AgentRouteDeps = {
+  toolDispatcher?: PluginToolDispatcher;
+};
+
+export function agentRoutes(db: Db, deps: AgentRouteDeps = {}) {
   const DEFAULT_INSTRUCTIONS_PATH_KEYS: Record<string, string> = {
     claude_local: "instructionsFilePath",
     codex_local: "instructionsFilePath",
@@ -603,6 +608,71 @@ export function agentRoutes(db: Db) {
     );
   });
 
+  router.get("/agents/me/plugin-tools", async (req, res) => {
+    if (req.actor.type !== "agent" || !req.actor.agentId || !req.actor.companyId) {
+      res.status(401).json({ error: "Agent authentication required" });
+      return;
+    }
+    if (!deps.toolDispatcher) {
+      res.status(501).json({ error: "Plugin tool dispatch is not enabled" });
+      return;
+    }
+    const pluginId = typeof req.query.pluginId === "string" ? req.query.pluginId : undefined;
+    const filter = pluginId ? { pluginId } : undefined;
+    res.json(deps.toolDispatcher.listToolsForAgent(filter));
+  });
+
+  router.post("/agents/me/plugin-tools/execute", async (req, res) => {
+    if (req.actor.type !== "agent" || !req.actor.agentId || !req.actor.companyId) {
+      res.status(401).json({ error: "Agent authentication required" });
+      return;
+    }
+    if (!req.actor.runId) {
+      res.status(409).json({ error: "Active agent run context required" });
+      return;
+    }
+    if (!deps.toolDispatcher) {
+      res.status(501).json({ error: "Plugin tool dispatch is not enabled" });
+      return;
+    }
+
+    const body = req.body as {
+      tool?: unknown;
+      parameters?: unknown;
+      projectId?: unknown;
+    } | undefined;
+
+    if (!body || typeof body.tool !== "string" || body.tool.trim().length === 0) {
+      res.status(400).json({ error: '"tool" is required and must be a string' });
+      return;
+    }
+    if (typeof body.projectId !== "string" || body.projectId.trim().length === 0) {
+      res.status(400).json({ error: '"projectId" is required and must be a string' });
+      return;
+    }
+
+    try {
+      const result = await deps.toolDispatcher.executeTool(
+        body.tool,
+        body.parameters ?? {},
+        {
+          agentId: req.actor.agentId,
+          runId: req.actor.runId,
+          companyId: req.actor.companyId,
+          projectId: body.projectId.trim(),
+        },
+      );
+      res.json(result);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (message.includes("not running") || message.includes("worker")) {
+        res.status(502).json({ error: message });
+      } else {
+        res.status(500).json({ error: message });
+      }
+    }
+  });
+
   router.get("/agents/:id", async (req, res) => {
     const id = req.params.id as string;
     const agent = await svc.getById(id);
@@ -802,6 +872,7 @@ export function agentRoutes(db: Db) {
       spentMonthlyCents: 0,
       lastHeartbeatAt: null,
     });
+    await access.ensureMembership(companyId, "agent", agent.id, "member", "active");
 
     let approval: Awaited<ReturnType<typeof approvalsSvc.getById>> | null = null;
     const actor = getActorInfo(req);
@@ -927,6 +998,7 @@ export function agentRoutes(db: Db) {
       spentMonthlyCents: 0,
       lastHeartbeatAt: null,
     });
+    await access.ensureMembership(companyId, "agent", agent.id, "member", "active");
 
     const actor = getActorInfo(req);
     await logActivity(db, {

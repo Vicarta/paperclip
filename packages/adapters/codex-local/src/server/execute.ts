@@ -803,6 +803,7 @@ export async function execute(
     context.paperclipSessionHandoffMarkdown,
     ""
   ).trim();
+  const currentIssueContext = asString(context.paperclipCurrentIssueMarkdown, "").trim();
   const humanFacingLanguageInstruction = asString(
     context.paperclipHumanFacingLanguageInstruction,
     ""
@@ -810,12 +811,14 @@ export async function execute(
   const basePromptSections = [
     instructionsPrefix,
     renderedBootstrapPrompt,
+    currentIssueContext,
     humanFacingLanguageInstruction,
     sessionHandoffNote,
   ];
   const promptMetrics = {
     instructionsChars,
     bootstrapPromptChars: renderedBootstrapPrompt.length,
+    currentIssueContextChars: currentIssueContext.length,
     sessionHandoffChars: sessionHandoffNote.length,
     heartbeatPromptChars: renderedPrompt.length,
   };

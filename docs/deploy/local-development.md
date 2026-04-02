@@ -96,3 +96,11 @@ Override with environment variables:
 ```sh
 PAPERCLIP_HOME=/custom/path PAPERCLIP_INSTANCE_ID=dev pnpm paperclipai run
 ```
+
+## Canonical Worktree
+
+The canonical local Paperclip tree is:
+
+- `/Users/savitsky/CodexProjects/paper-clip/local-paperclip`
+
+If an auxiliary worktree exists for feature isolation, treat it as temporary. Merge the branch back into the canonical tree and remove the extra worktree when the feature line is consolidated.

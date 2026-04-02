@@ -33,6 +33,10 @@ export interface PrincipalPermissionGrant {
   updatedAt: Date;
 }
 
+export interface CompanyMemberAccess extends CompanyMembership {
+  grants: PrincipalPermissionGrant[];
+}
+
 export interface Invite {
   id: string;
   companyId: string | null;

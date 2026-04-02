@@ -1,5 +1,6 @@
 import {
   Inbox,
+  CircleUser,
   CircleDot,
   Target,
   LayoutDashboard,
@@ -18,7 +19,9 @@ import { SidebarAgents } from "./SidebarAgents";
 import { useDialog } from "../context/DialogContext";
 import { useCompany } from "../context/CompanyContext";
 import { heartbeatsApi } from "../api/heartbeats";
+import { issuesApi } from "../api/issues";
 import { queryKeys } from "../lib/queryKeys";
+import { MY_ISSUE_ACTIVE_STATUSES } from "../lib/myIssues";
 import { useInboxBadge } from "../hooks/useInboxBadge";
 import { Button } from "@/components/ui/button";
 import { PluginSlotOutlet } from "@/plugins/slots";
@@ -33,7 +36,17 @@ export function Sidebar() {
     enabled: !!selectedCompanyId,
     refetchInterval: 10_000,
   });
+  const { data: myIssues = [] } = useQuery({
+    queryKey: queryKeys.issues.listAssignedToMe(selectedCompanyId!),
+    queryFn: () =>
+      issuesApi.list(selectedCompanyId!, {
+        assigneeUserId: "me",
+        status: MY_ISSUE_ACTIVE_STATUSES,
+      }),
+    enabled: !!selectedCompanyId,
+  });
   const liveRunCount = liveRuns?.length ?? 0;
+  const myIssuesCount = myIssues.length;
 
   function openSearch() {
     document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }));
@@ -86,6 +99,7 @@ export function Sidebar() {
             badgeTone={inboxBadge.failedRuns > 0 ? "danger" : "default"}
             alert={inboxBadge.failedRuns > 0}
           />
+          <SidebarNavItem to="/my-issues" label="My Issues" icon={CircleUser} badge={myIssuesCount} />
           <PluginSlotOutlet
             slotTypes={["sidebar"]}
             context={pluginContext}

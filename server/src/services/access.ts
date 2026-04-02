@@ -1,6 +1,7 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import type { Db } from "@paperclipai/db";
 import {
+  agents as agentsTable,
   companyMemberships,
   instanceUserRoles,
   principalPermissionGrants,
@@ -8,6 +9,7 @@ import {
 import type { PermissionKey, PrincipalType } from "@paperclipai/shared";
 
 type MembershipRow = typeof companyMemberships.$inferSelect;
+type PermissionGrantRow = typeof principalPermissionGrants.$inferSelect;
 type GrantInput = {
   permissionKey: PermissionKey;
   scope?: Record<string, unknown> | null;
@@ -83,6 +85,54 @@ export function accessService(db: Db) {
       .orderBy(sql`${companyMemberships.createdAt} desc`);
   }
 
+  async function ensureAgentMemberships(companyId: string) {
+    const [members, agents] = await Promise.all([
+      listMembers(companyId),
+      db
+        .select({ id: agentsTable.id })
+        .from(agentsTable)
+        .where(eq(agentsTable.companyId, companyId)),
+    ]);
+
+    const existingAgentIds = new Set(
+      members.filter((member) => member.principalType === "agent").map((member) => member.principalId),
+    );
+    const missingAgentIds = agents.map((agent) => agent.id).filter((agentId) => !existingAgentIds.has(agentId));
+
+    if (missingAgentIds.length === 0) return;
+
+    await db.transaction(async (tx) => {
+      for (const agentId of missingAgentIds) {
+        await tx.insert(companyMemberships).values({
+          companyId,
+          principalType: "agent",
+          principalId: agentId,
+          status: "active",
+          membershipRole: "member",
+        });
+      }
+    });
+  }
+
+  async function listMembersWithGrants(companyId: string) {
+    await ensureAgentMemberships(companyId);
+    const [members, grants] = await Promise.all([
+      listMembers(companyId),
+      db
+        .select()
+        .from(principalPermissionGrants)
+        .where(eq(principalPermissionGrants.companyId, companyId)),
+    ]);
+
+    return members.map((member) => ({
+      ...member,
+      grants: grants.filter(
+        (grant: PermissionGrantRow) =>
+          grant.principalType === member.principalType && grant.principalId === member.principalId,
+      ),
+    }));
+  }
+
   async function setMemberPermissions(
     companyId: string,
     memberId: string,
@@ -122,7 +172,21 @@ export function accessService(db: Db) {
       }
     });
 
-    return member;
+    const updatedGrants = await db
+      .select()
+      .from(principalPermissionGrants)
+      .where(
+        and(
+          eq(principalPermissionGrants.companyId, companyId),
+          eq(principalPermissionGrants.principalType, member.principalType),
+          eq(principalPermissionGrants.principalId, member.principalId),
+        ),
+      );
+
+    return {
+      ...member,
+      grants: updatedGrants,
+    };
   }
 
   async function promoteInstanceAdmin(userId: string) {
@@ -258,6 +322,7 @@ export function accessService(db: Db) {
     getMembership,
     ensureMembership,
     listMembers,
+    listMembersWithGrants,
     setMemberPermissions,
     promoteInstanceAdmin,
     demoteInstanceAdmin,

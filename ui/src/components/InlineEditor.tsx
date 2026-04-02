@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { cn } from "../lib/utils";
 import { MarkdownEditor, type MarkdownEditorRef, type MentionOption } from "./MarkdownEditor";
+import { MarkdownBody } from "./MarkdownBody";
 import { useAutosaveIndicator } from "../hooks/useAutosaveIndicator";
 
 interface InlineEditorProps {
@@ -91,6 +92,10 @@ export function InlineEditor({
     }
   }, [draft, multiline, onSave, value]);
 
+  const startMultilineEditing = useCallback(() => {
+    setMultilineFocused(true);
+  }, []);
+
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === "Enter" && !multiline) {
       e.preventDefault();
@@ -138,7 +143,7 @@ export function InlineEditor({
     };
   }, [autosaveState, commit, draft, markDirty, multiline, multilineFocused, reset, runSave, value]);
 
-  if (multiline) {
+  if (multiline && multilineFocused) {
     return (
       <div
         className={cn(
@@ -201,6 +206,28 @@ export function InlineEditor({
           </span>
         </div>
       </div>
+    );
+  }
+
+  if (multiline) {
+    const DisplayTag = "div";
+    return (
+      <DisplayTag
+        className={cn(
+          "cursor-pointer rounded transition-colors overflow-hidden hover:bg-accent/20",
+          markdownPad,
+          !value && "text-muted-foreground italic",
+        )}
+        onClick={startMultilineEditing}
+      >
+        {value ? (
+          <MarkdownBody className={cn("text-[15px] leading-7 [&>*:first-child]:mt-0 [&>*:last-child]:mb-0", className)}>
+            {value}
+          </MarkdownBody>
+        ) : (
+          placeholder
+        )}
+      </DisplayTag>
     );
   }
 

@@ -10,7 +10,8 @@ import { EntityRow } from "../components/EntityRow";
 import { EmptyState } from "../components/EmptyState";
 import { PageSkeleton } from "../components/PageSkeleton";
 import { formatDate } from "../lib/utils";
-import { ListTodo } from "lucide-react";
+import { MY_ISSUE_ACTIVE_STATUSES } from "../lib/myIssues";
+import { CircleUser } from "lucide-react";
 
 export function MyIssues() {
   const { selectedCompanyId } = useCompany();
@@ -21,30 +22,31 @@ export function MyIssues() {
   }, [setBreadcrumbs]);
 
   const { data: issues, isLoading, error } = useQuery({
-    queryKey: queryKeys.issues.list(selectedCompanyId!),
-    queryFn: () => issuesApi.list(selectedCompanyId!),
+    queryKey: queryKeys.issues.listAssignedToMe(selectedCompanyId!),
+    queryFn: () =>
+      issuesApi.list(selectedCompanyId!, {
+        assigneeUserId: "me",
+        status: MY_ISSUE_ACTIVE_STATUSES,
+      }),
     enabled: !!selectedCompanyId,
   });
 
   if (!selectedCompanyId) {
-    return <EmptyState icon={ListTodo} message="Select a company to view your issues." />;
+    return <EmptyState icon={CircleUser} message="Select a company to view your issues." />;
   }
 
   if (isLoading) {
     return <PageSkeleton variant="list" />;
   }
 
-  // Show issues that are not assigned (user-created or unassigned)
-  const myIssues = (issues ?? []).filter(
-    (i) => !i.assigneeAgentId && !["done", "cancelled"].includes(i.status)
-  );
+  const myIssues = issues ?? [];
 
   return (
     <div className="space-y-4">
       {error && <p className="text-sm text-destructive">{error.message}</p>}
 
       {myIssues.length === 0 && (
-        <EmptyState icon={ListTodo} message="No issues assigned to you." />
+        <EmptyState icon={CircleUser} message="No issues assigned to you." />
       )}
 
       {myIssues.length > 0 && (

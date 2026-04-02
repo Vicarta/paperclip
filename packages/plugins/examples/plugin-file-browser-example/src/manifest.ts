@@ -10,8 +10,8 @@ const manifest: PaperclipPluginManifestV1 = {
   id: PLUGIN_ID,
   apiVersion: 1,
   version: "0.2.0",
-  displayName: "File Browser (Example)",
-  description: "Example plugin that adds a Files link under each project in the sidebar, a file browser + editor tab on the project detail page, and per-comment file link annotations with a context menu action to open referenced files.",
+  displayName: "File Browser",
+  description: "Plugin that adds a Files link under each project in the sidebar, a file browser + editor tab on the project detail page, and per-comment file link annotations with a context menu action to open referenced files.",
   author: "Paperclip",
   categories: ["workspace", "ui"],
   capabilities: [

@@ -27,6 +27,10 @@ import {
 import { redactCurrentUserText } from "../log-redaction.js";
 import { resolveIssueGoalId, resolveNextIssueGoalId } from "./issue-goal-fallback.js";
 import { getDefaultCompanyGoal } from "./goals.js";
+import {
+  HUMAN_DECISION_NEEDED_LABEL,
+  shouldAutoApplyHumanDecisionLabel,
+} from "./issue-human-decision-label.js";
 
 const ALL_ISSUE_STATUSES = ["backlog", "todo", "in_progress", "in_review", "blocked", "done", "cancelled"];
 const MAX_ISSUE_COMMENT_PAGE_LIMIT = 500;
@@ -1190,6 +1194,26 @@ export function issueService(db: Db) {
         .update(issues)
         .set({ updatedAt: new Date() })
         .where(eq(issues.id, issueId));
+
+      if (shouldAutoApplyHumanDecisionLabel({ actorAgentId: actor.agentId, body: redactedBody })) {
+        await db.transaction(async (tx) => {
+          const label = await tx
+            .select()
+            .from(labels)
+            .where(and(eq(labels.companyId, issue.companyId), eq(labels.name, HUMAN_DECISION_NEEDED_LABEL)))
+            .then((rows) => rows[0] ?? null);
+          if (!label) return;
+
+          const currentLabelIds = await tx
+            .select({ labelId: issueLabels.labelId })
+            .from(issueLabels)
+            .where(eq(issueLabels.issueId, issueId))
+            .then((rows) => rows.map((row) => row.labelId));
+
+          if (currentLabelIds.includes(label.id)) return;
+          await syncIssueLabels(issueId, issue.companyId, [...currentLabelIds, label.id], tx);
+        });
+      }
 
       return redactIssueComment(comment);
     },
