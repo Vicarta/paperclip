@@ -104,3 +104,25 @@ The canonical local Paperclip tree is:
 - `/Users/savitsky/CodexProjects/paper-clip/local-paperclip`
 
 If an auxiliary worktree exists for feature isolation, treat it as temporary. Merge the branch back into the canonical tree and remove the extra worktree when the feature line is consolidated.
+
+## Server-First Verification For User-Facing Changes
+
+For user-facing Paperclip changes in this environment, local success is not sufficient.
+
+Rules:
+
+- Treat the live server as the canonical verification target for UI and plugin behavior.
+- Commit the source change in the canonical local tree and push it to GitHub.
+- If the user needs to verify the change immediately, deploy the built runtime artifact to the live server in the same work session.
+- Do not report a Files plugin or similar UI fix as complete until the live server runtime has been updated.
+
+Current deployment facts for this environment:
+
+- The live Paperclip stack runs from `/home/paperclip/apps/paperclip/docker-compose.yml`.
+- The app container is `paperclip-app-1`.
+- The running Files plugin bundle is loaded from `/paperclip/plugins/plugin-file-browser-example/...` inside that container.
+
+Implication:
+
+- Updating `/home/paperclip/.../paperclip-src` alone does not guarantee that the already-running plugin bundle has changed.
+- For urgent live verification, update the running plugin bundle in the container or its mounted Paperclip volume, then verify the served behavior on the server.

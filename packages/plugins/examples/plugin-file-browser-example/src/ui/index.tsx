@@ -45,8 +45,38 @@ const editorBaseTheme = {
   },
 };
 
-const editorDarkTheme = EditorView.theme({
+function createEditorTheme(isDark: boolean, wrapLines: boolean) {
+  const wrapTheme = wrapLines
+    ? {
+        ".cm-content": {
+          ...editorBaseTheme[".cm-content"],
+          whiteSpace: "break-spaces",
+          overflowWrap: "anywhere",
+          wordBreak: "break-word",
+        },
+        ".cm-line": {
+          whiteSpace: "inherit",
+          overflowWrap: "anywhere",
+          wordBreak: "break-word",
+        },
+      }
+    : {
+        ".cm-content": {
+          ...editorBaseTheme[".cm-content"],
+          whiteSpace: "pre",
+          overflowWrap: "normal",
+          wordBreak: "normal",
+        },
+        ".cm-line": {
+          whiteSpace: "pre",
+          overflowWrap: "normal",
+          wordBreak: "normal",
+        },
+      };
+
+  const themeSpec = isDark ? {
   ...editorBaseTheme,
+  ...wrapTheme,
   "&": {
     ...editorBaseTheme["&"],
     backgroundColor: "oklch(0.23 0.02 255)",
@@ -77,10 +107,9 @@ const editorDarkTheme = EditorView.theme({
   ".cm-nonmatchingBracket": {
     color: "oklch(0.70 0.08 24)",
   },
-}, { dark: true });
-
-const editorLightTheme = EditorView.theme({
+} : {
   ...editorBaseTheme,
+  ...wrapTheme,
   "&": {
     ...editorBaseTheme["&"],
     backgroundColor: "color-mix(in oklab, var(--card) 92%, var(--background))",
@@ -115,7 +144,10 @@ const editorLightTheme = EditorView.theme({
   ".cm-nonmatchingBracket": {
     color: "var(--destructive)",
   },
-});
+};
+
+  return EditorView.theme(themeSpec, { dark: isDark });
+}
 
 const editorDarkHighlightStyle = HighlightStyle.define([
   { tag: tags.keyword, color: "oklch(0.78 0.025 265)" },
@@ -518,6 +550,10 @@ export function FilesTab({ context }: PluginDetailTabProps) {
     const stored = window.localStorage.getItem("paperclip:file-browser-example:sortDir");
     return stored === "desc" ? "desc" : "asc";
   });
+  const [wrapLines, setWrapLines] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem("paperclip:file-browser-example:wrapLines") === "true";
+  });
   const resolvedWorkspaceId = workspaceId ?? workspaces[0]?.id ?? null;
   const selectedWorkspace = useMemo(
     () => workspaces.find((w) => w.id === resolvedWorkspaceId) ?? null,
@@ -534,6 +570,11 @@ export function FilesTab({ context }: PluginDetailTabProps) {
     if (typeof window === "undefined") return;
     window.localStorage.setItem("paperclip:file-browser-example:sortDir", sortDir);
   }, [sortDir]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("paperclip:file-browser-example:wrapLines", String(wrapLines));
+  }, [wrapLines]);
 
   const fileListParams = useMemo(
     () =>
@@ -638,7 +679,8 @@ export function FilesTab({ context }: PluginDetailTabProps) {
       extensions: [
         basicSetup,
         javascript(),
-        isDarkMode ? editorDarkTheme : editorLightTheme,
+        createEditorTheme(isDarkMode, wrapLines),
+        ...(wrapLines ? [EditorView.lineWrapping] : []),
         syntaxHighlighting(isDarkMode ? editorDarkHighlightStyle : editorLightHighlightStyle),
         EditorView.updateListener.of((update) => {
           if (!update.docChanged) return;
@@ -655,7 +697,7 @@ export function FilesTab({ context }: PluginDetailTabProps) {
       view.destroy();
       viewRef.current = null;
     };
-  }, [fileContentData?.content, selectedPath, isDarkMode]);
+  }, [fileContentData?.content, selectedPath, isDarkMode, wrapLines]);
 
   useEffect(() => {
     const handleKeydown = (event: KeyboardEvent) => {
@@ -873,6 +915,16 @@ export function FilesTab({ context }: PluginDetailTabProps) {
               <div className="truncate text-sm text-foreground">{selectedPath ?? "No file selected"}</div>
             </div>
             <div className="flex items-center gap-3">
+              <button
+                type="button"
+                className="rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={!selectedPath}
+                onClick={() => setWrapLines((value) => !value)}
+                aria-pressed={wrapLines}
+                title={wrapLines ? "Disable wrapped lines" : "Enable wrapped lines"}
+              >
+                {wrapLines ? "Wrap: On" : "Wrap: Off"}
+              </button>
               <button
                 type="button"
                 className="rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
