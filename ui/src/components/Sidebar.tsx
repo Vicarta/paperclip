@@ -19,10 +19,9 @@ import { SidebarAgents } from "./SidebarAgents";
 import { useDialog } from "../context/DialogContext";
 import { useCompany } from "../context/CompanyContext";
 import { heartbeatsApi } from "../api/heartbeats";
-import { issuesApi } from "../api/issues";
 import { queryKeys } from "../lib/queryKeys";
-import { MY_ISSUE_ACTIVE_STATUSES } from "../lib/myIssues";
 import { useInboxBadge } from "../hooks/useInboxBadge";
+import { useMyIssues } from "../hooks/useMyIssues";
 import { Button } from "@/components/ui/button";
 import { PluginSlotOutlet } from "@/plugins/slots";
 
@@ -36,15 +35,7 @@ export function Sidebar() {
     enabled: !!selectedCompanyId,
     refetchInterval: 10_000,
   });
-  const { data: myIssues = [] } = useQuery({
-    queryKey: queryKeys.issues.listAssignedToMe(selectedCompanyId!),
-    queryFn: () =>
-      issuesApi.list(selectedCompanyId!, {
-        assigneeUserId: "me",
-        status: MY_ISSUE_ACTIVE_STATUSES,
-      }),
-    enabled: !!selectedCompanyId,
-  });
+  const { data: myIssues = [] } = useMyIssues(selectedCompanyId);
   const liveRunCount = liveRuns?.length ?? 0;
   const myIssuesCount = myIssues.length;
 

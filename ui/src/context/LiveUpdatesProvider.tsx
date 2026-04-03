@@ -362,6 +362,7 @@ function invalidateActivityQueries(
   if (entityType === "issue") {
     queryClient.invalidateQueries({ queryKey: queryKeys.issues.list(companyId) });
     queryClient.invalidateQueries({ queryKey: queryKeys.issues.listAssignedToMe(companyId) });
+    queryClient.invalidateQueries({ queryKey: queryKeys.issues.listHumanDecisionNeededForMeBase(companyId) });
     if (entityId) {
       const details = readRecord(payload.details);
       const issueRefs = resolveIssueQueryRefs(queryClient, companyId, entityId, details);

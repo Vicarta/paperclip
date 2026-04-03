@@ -1,17 +1,14 @@
 import { useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { issuesApi } from "../api/issues";
 import { useCompany } from "../context/CompanyContext";
 import { useBreadcrumbs } from "../context/BreadcrumbContext";
-import { queryKeys } from "../lib/queryKeys";
 import { StatusIcon } from "../components/StatusIcon";
 import { PriorityIcon } from "../components/PriorityIcon";
 import { EntityRow } from "../components/EntityRow";
 import { EmptyState } from "../components/EmptyState";
 import { PageSkeleton } from "../components/PageSkeleton";
 import { formatDate } from "../lib/utils";
-import { MY_ISSUE_ACTIVE_STATUSES } from "../lib/myIssues";
 import { CircleUser } from "lucide-react";
+import { useMyIssues } from "../hooks/useMyIssues";
 
 export function MyIssues() {
   const { selectedCompanyId } = useCompany();
@@ -21,15 +18,7 @@ export function MyIssues() {
     setBreadcrumbs([{ label: "My Issues" }]);
   }, [setBreadcrumbs]);
 
-  const { data: issues, isLoading, error } = useQuery({
-    queryKey: queryKeys.issues.listAssignedToMe(selectedCompanyId!),
-    queryFn: () =>
-      issuesApi.list(selectedCompanyId!, {
-        assigneeUserId: "me",
-        status: MY_ISSUE_ACTIVE_STATUSES,
-      }),
-    enabled: !!selectedCompanyId,
-  });
+  const { data: issues, isLoading, error } = useMyIssues(selectedCompanyId);
 
   if (!selectedCompanyId) {
     return <EmptyState icon={CircleUser} message="Select a company to view your issues." />;
@@ -46,7 +35,7 @@ export function MyIssues() {
       {error && <p className="text-sm text-destructive">{error.message}</p>}
 
       {myIssues.length === 0 && (
-        <EmptyState icon={CircleUser} message="No issues assigned to you." />
+        <EmptyState icon={CircleUser} message="No active issues require your attention." />
       )}
 
       {myIssues.length > 0 && (

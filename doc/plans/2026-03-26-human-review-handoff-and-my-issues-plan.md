@@ -61,6 +61,9 @@ Completed in this slice:
     - active issues touched by the current board user that carry `Human Decision Needed`;
   - kept the UI as a single list rather than splitting separate sections;
   - updated the sidebar badge to use the same merged semantics as the page itself
+- clarified label lifecycle:
+  - once human clarification or human action resolves the blocker, `Human Decision Needed` should be removed;
+  - the label should remain only while human attention is still actually required
 
 Still pending:
 
