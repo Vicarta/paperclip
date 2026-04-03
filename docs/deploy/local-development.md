@@ -126,3 +126,28 @@ Implication:
 
 - Updating `/home/paperclip/.../paperclip-src` alone does not guarantee that the already-running plugin bundle has changed.
 - For urgent live verification, update the running plugin bundle in the container or its mounted Paperclip volume, then verify the served behavior on the server.
+
+## Live Server Backup Growth
+
+For the current Paperclip server environment, large growth in `paperclip_paperclip_data` is expected unless backup retention is tuned.
+
+Observed on `2026-04-03`:
+
+- Docker volume `paperclip_paperclip_data` was about `15.85GB`.
+- Almost all of that space lived under `/paperclip/instances/default/data/backups`.
+- The live instance config had:
+  - `database.backup.enabled = true`
+  - `database.backup.intervalMinutes = 60`
+  - `database.backup.retentionDays = 30`
+- The live server had about `205` SQL backup files in that directory.
+
+Implication:
+
+- The main volume growth source is scheduled SQL backups, not plugin files, logs, or workspace directories.
+- If the instance stores rich conversation history and artifacts, hourly backups with 30-day retention can grow quickly.
+
+Operational guidance:
+
+- When server disk usage looks unexpectedly high, inspect `/paperclip/instances/default/data/backups` before blaming the main Paperclip runtime.
+- If the current recovery target does not require 30 days of hourly snapshots, reduce `retentionDays` and/or increase `intervalMinutes`.
+- After changing retention policy, prune old backups explicitly or wait for the next backup cycle to prune files older than the new window.
