@@ -44,8 +44,35 @@ POST /api/agents/me/plugin-tools/execute
 Rules:
 
 - The host derives `agentId`, `runId`, and `companyId` from your authenticated agent session.
+- `projectId` is required for plugin-tool execution. Treat it as mandatory, not optional.
 - Prefer fetching the current issue heartbeat context first when you need `projectId`.
+- Do not guess legacy plugin routes or plugin-specific execute endpoints. Use only:
+  - `GET /api/agents/me/plugin-tools`
+  - `POST /api/agents/me/plugin-tools/execute`
+- If the task already specifies a validated tool recipe, execute that recipe directly instead of spending the heartbeat rediscovering old routes.
 - Treat plugin tools as execution aids, not a substitute for the Paperclip heartbeat protocol.
+
+Example: Bright Data async dataset execution for whole-account Instagram retrieval
+
+```json
+POST /api/agents/me/plugin-tools/execute
+{
+  "projectId": "<current-project-id>",
+  "tool": "paperclip.bright-data-agent-tools:run-dataset-request",
+  "parameters": {
+    "datasetId": "gd_l1vikfch901nx3by4",
+    "type": "discover_new",
+    "discoverBy": "user_name",
+    "input": [{ "user_name": "astrogen.com.ua" }],
+    "autoDownload": true,
+    "downloadFormat": "json",
+    "pollIntervalMs": 5000,
+    "maxWaitMs": 240000
+  }
+}
+```
+
+Use the async wrapper when the issue asks for a larger social/account retrieval job. Do not manually split `trigger -> progress -> snapshot` unless the issue specifically requires lower-level control.
 
 ## The Heartbeat Procedure
 
