@@ -135,11 +135,25 @@ Observed on `2026-04-03`:
 
 - Docker volume `paperclip_paperclip_data` was about `15.85GB`.
 - Almost all of that space lived under `/paperclip/instances/default/data/backups`.
-- The live instance config had:
-  - `database.backup.enabled = true`
-  - `database.backup.intervalMinutes = 60`
-  - `database.backup.retentionDays = 30`
+- The live instance `config.json` had no explicit `backup` block, so backup cadence was coming from runtime defaults.
 - The live server had about `205` SQL backup files in that directory.
+- `docker builder prune` reclaimed about `11.3GB` of build cache outside the named volume.
+
+Applied remediation on `2026-04-03`:
+
+- Added an explicit live config block:
+  - `backup.intervalMinutes = 180`
+  - `backup.retentionDays = 7`
+- Restarted `paperclip-app-1` so the new policy was loaded.
+- Pruned backup files older than 7 days.
+- Thinned the remaining 7-day backlog to one snapshot per 3-hour bucket so the existing backup set matched the new cadence.
+
+After remediation:
+
+- `paperclip_paperclip_data` dropped from about `15G` to about `6.0G`.
+- `/paperclip/instances/default/data/backups` dropped to about `5.5G`.
+- Total backup file count dropped to `76`.
+- Docker build cache dropped to `0B`.
 
 Implication:
 
@@ -149,5 +163,6 @@ Implication:
 Operational guidance:
 
 - When server disk usage looks unexpectedly high, inspect `/paperclip/instances/default/data/backups` before blaming the main Paperclip runtime.
-- If the current recovery target does not require 30 days of hourly snapshots, reduce `retentionDays` and/or increase `intervalMinutes`.
+- If the current recovery target does not require 30 days of hourly snapshots, add an explicit `backup` block in the live instance config instead of relying on hidden defaults.
 - After changing retention policy, prune old backups explicitly or wait for the next backup cycle to prune files older than the new window.
+- If you change cadence from hourly to a wider interval, consider thinning the recent backlog too; otherwise disk usage will stay inflated until enough time passes naturally.
