@@ -8,6 +8,7 @@ import {
   downloadBrightDataSnapshot,
   getBrightDataSnapshotProgress,
   listBrightDataTools,
+  resolveInstagramAccountPostSet,
   runBrightDataDatasetRequest,
   triggerBrightDataDatasetRequest,
 } from "../src/bright-data-mcp-client.js";
@@ -22,6 +23,7 @@ vi.mock("../src/bright-data-mcp-client.js", async () => {
     getBrightDataSnapshotProgress: vi.fn(),
     downloadBrightDataSnapshot: vi.fn(),
     runBrightDataDatasetRequest: vi.fn(),
+    resolveInstagramAccountPostSet: vi.fn(),
   };
 });
 
@@ -31,6 +33,7 @@ const triggerBrightDataDatasetRequestMock = vi.mocked(triggerBrightDataDatasetRe
 const getBrightDataSnapshotProgressMock = vi.mocked(getBrightDataSnapshotProgress);
 const downloadBrightDataSnapshotMock = vi.mocked(downloadBrightDataSnapshot);
 const runBrightDataDatasetRequestMock = vi.mocked(runBrightDataDatasetRequest);
+const resolveInstagramAccountPostSetMock = vi.mocked(resolveInstagramAccountPostSet);
 
 describe("plugin-bright-data-agent-tools", () => {
   beforeEach(() => {
@@ -40,6 +43,7 @@ describe("plugin-bright-data-agent-tools", () => {
     getBrightDataSnapshotProgressMock.mockReset();
     downloadBrightDataSnapshotMock.mockReset();
     runBrightDataDatasetRequestMock.mockReset();
+    resolveInstagramAccountPostSetMock.mockReset();
   });
 
   it("registers Bright Data-backed tools and lists remote tools", async () => {
@@ -209,5 +213,40 @@ describe("plugin-bright-data-agent-tools", () => {
       }),
     );
     expect(result.content).toContain("ready");
+  });
+
+  it("resolves a full Instagram account post set", async () => {
+    const harness = createTestHarness({
+      manifest,
+      config: { brightDataTokenSecretRef: "secret-1" },
+    });
+    await plugin.definition.setup(harness.ctx);
+
+    resolveInstagramAccountPostSetMock.mockResolvedValueOnce({
+      content: "Resolved Instagram account post set for @astrogen.com.ua.",
+      data: {
+        handle: "astrogen.com.ua",
+        profileUrl: "https://www.instagram.com/astrogen.com.ua/",
+        canonicalUrlCount: 49,
+        finalDetailedCount: 49,
+        isComplete: true,
+      },
+    });
+
+    const result = await harness.executeTool(TOOL_NAMES.resolveInstagramAccountPostSet, {
+      handleOrUrl: "https://www.instagram.com/astrogen.com.ua/",
+      expectedPostCount: 49,
+    });
+
+    expect(resolveInstagramAccountPostSetMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        params: expect.objectContaining({
+          handleOrUrl: "https://www.instagram.com/astrogen.com.ua/",
+          expectedPostCount: 49,
+        }),
+        config: { brightDataTokenSecretRef: "secret-1" },
+      }),
+    );
+    expect(result.content).toContain("@astrogen.com.ua");
   });
 });

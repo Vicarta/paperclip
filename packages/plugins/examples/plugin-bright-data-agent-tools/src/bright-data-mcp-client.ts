@@ -38,6 +38,13 @@ type BrightDataRunDatasetParams = BrightDataDatasetTriggerParams & {
   downloadFormat?: string;
 };
 
+type BrightDataResolveInstagramAccountPostSetParams = {
+  handleOrUrl: string;
+  expectedPostCount?: number;
+  maxWaitMs?: number;
+  pollIntervalMs?: number;
+};
+
 type SnapshotProgressPayload = {
   status?: string;
   error_message?: string;
@@ -435,6 +442,39 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function normalizeInstagramHandle(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+
+  if (/^https?:\/\//i.test(trimmed)) {
+    try {
+      const url = new URL(trimmed);
+      const parts = url.pathname.split("/").filter(Boolean);
+      return parts[0]?.replace(/^@/, "").trim() ?? "";
+    } catch {
+      return "";
+    }
+  }
+
+  const withoutAt = trimmed.replace(/^@/, "");
+  return withoutAt.split("/").filter(Boolean)[0] ?? "";
+}
+
+function normalizeInstagramPostUrl(value: unknown) {
+  return typeof value === "string" && value.trim().length > 0
+    ? value.trim().replace(/\/+$/, "")
+    : "";
+}
+
+function chunkArray<T>(items: T[], size: number) {
+  const normalizedSize = Math.max(1, size);
+  const chunks: T[][] = [];
+  for (let index = 0; index < items.length; index += normalizedSize) {
+    chunks.push(items.slice(index, index + normalizedSize));
+  }
+  return chunks;
+}
+
 export async function runBrightDataDatasetRequest(input: {
   params: BrightDataRunDatasetParams;
   config: BrightDataPluginConfig;
@@ -519,6 +559,172 @@ export async function runBrightDataDatasetRequest(input: {
       progress: lastProgress,
       trigger: trigger.data,
       timedOut: true,
+    },
+  };
+}
+
+export async function resolveInstagramAccountPostSet(input: {
+  params: BrightDataResolveInstagramAccountPostSetParams;
+  config: BrightDataPluginConfig;
+  resolveSecret: (secretRef: string) => Promise<string>;
+}) {
+  const handle = normalizeInstagramHandle(input.params.handleOrUrl);
+  if (!handle) {
+    throw new Error('"handleOrUrl" must be an Instagram handle or profile URL');
+  }
+
+  const profileUrl = `https://www.instagram.com/${handle}/`;
+  const maxWaitMs = Math.max(1_000, normalizeNumber(input.params.maxWaitMs) ?? 120_000);
+  const pollIntervalMs = Math.max(1_000, normalizeNumber(input.params.pollIntervalMs) ?? 5_000);
+
+  const profileRun = await runBrightDataDatasetRequest({
+    params: {
+      datasetId: "gd_l1vikfch901nx3by4",
+      type: "discover_new",
+      discoverBy: "user_name",
+      input: [{ user_name: handle }],
+      maxWaitMs,
+      pollIntervalMs,
+      autoDownload: true,
+      downloadFormat: "json",
+    },
+    config: input.config,
+    resolveSecret: input.resolveSecret,
+  });
+
+  const profileSnapshot = Array.isArray(profileRun.data.snapshot) ? profileRun.data.snapshot : [];
+  const profile = isRecord(profileSnapshot[0]) ? profileSnapshot[0] : {};
+  const embeddedPosts = Array.isArray(profile.posts) ? profile.posts.filter(isRecord) : [];
+  const embeddedUrls = new Set(
+    embeddedPosts
+      .map((item) => normalizeInstagramPostUrl(item.url))
+      .filter((value) => value.length > 0),
+  );
+
+  const visiblePostCount =
+    normalizeNumber(profile.posts_count) ??
+    normalizeNumber(input.params.expectedPostCount) ??
+    undefined;
+
+  const supplementalInput: Record<string, unknown> = { url: profileUrl };
+  if (visiblePostCount !== undefined) {
+    supplementalInput.num_of_posts = visiblePostCount;
+  }
+
+  const supplementalRun = await runBrightDataDatasetRequest({
+    params: {
+      datasetId: "gd_lk5ns7kz21pck8jpis",
+      type: "discover_new",
+      discoverBy: "url",
+      input: [supplementalInput],
+      maxWaitMs,
+      pollIntervalMs,
+      autoDownload: true,
+      downloadFormat: "json",
+    },
+    config: input.config,
+    resolveSecret: input.resolveSecret,
+  });
+
+  const supplementalSnapshot = Array.isArray(supplementalRun.data.snapshot)
+    ? supplementalRun.data.snapshot.filter(isRecord)
+    : [];
+
+  const ownerDetailedItems = supplementalSnapshot.filter((item) => {
+    const postedBy = normalizeInstagramHandle(typeof item.user_posted === "string" ? item.user_posted : "");
+    return postedBy === handle;
+  });
+
+  const ownerUrls = new Set(
+    ownerDetailedItems
+      .map((item) => normalizeInstagramPostUrl(item.url))
+      .filter((value) => value.length > 0),
+  );
+
+  const canonicalUrls = [...new Set([...ownerUrls, ...embeddedUrls])];
+  const missingUrls = canonicalUrls.filter((url) => !ownerUrls.has(url));
+
+  const missingDetailedItems: Record<string, unknown>[] = [];
+  for (const chunk of chunkArray(missingUrls, 20)) {
+    const collectRun = await runBrightDataDatasetRequest({
+      params: {
+        datasetId: "gd_lk5ns7kz21pck8jpis",
+        input: chunk.map((url) => ({ url })),
+        maxWaitMs,
+        pollIntervalMs,
+        autoDownload: true,
+        downloadFormat: "json",
+      },
+      config: input.config,
+      resolveSecret: input.resolveSecret,
+    });
+
+    const chunkSnapshot = Array.isArray(collectRun.data.snapshot)
+      ? collectRun.data.snapshot.filter(isRecord)
+      : [];
+    missingDetailedItems.push(...chunkSnapshot);
+  }
+
+  const detailedByUrl = new Map<string, Record<string, unknown>>();
+  for (const item of ownerDetailedItems) {
+    const url = normalizeInstagramPostUrl(item.url);
+    if (url) detailedByUrl.set(url, item);
+  }
+  for (const item of missingDetailedItems) {
+    const url = normalizeInstagramPostUrl(item.url);
+    if (url) detailedByUrl.set(url, item);
+  }
+
+  const finalDetailedItems = canonicalUrls
+    .map((url) => detailedByUrl.get(url))
+    .filter((value): value is Record<string, unknown> => Boolean(value));
+
+  const collaboratorAuthors = [...new Set(
+    finalDetailedItems
+      .map((item) => normalizeInstagramHandle(typeof item.user_posted === "string" ? item.user_posted : ""))
+      .filter((author) => author.length > 0 && author !== handle),
+  )];
+
+  const contentTypeCounts = finalDetailedItems.reduce<Record<string, number>>((acc, item) => {
+    const contentType =
+      typeof item.content_type === "string" && item.content_type.trim().length > 0
+        ? item.content_type.trim()
+        : "UNKNOWN";
+    acc[contentType] = (acc[contentType] ?? 0) + 1;
+    return acc;
+  }, {});
+
+  const isComplete =
+    visiblePostCount === undefined
+      ? finalDetailedItems.length === canonicalUrls.length
+      : finalDetailedItems.length === canonicalUrls.length && canonicalUrls.length === visiblePostCount;
+
+  return {
+    content: [
+      `Resolved Instagram account post set for @${handle}.`,
+      `Visible profile posts_count: ${visiblePostCount ?? "unknown"}.`,
+      `Canonical URLs: ${canonicalUrls.length}.`,
+      `Detailed records: ${finalDetailedItems.length}.`,
+      `Missing URLs after enrichment: ${canonicalUrls.length - finalDetailedItems.length}.`,
+      isComplete ? "Coverage is complete for the canonical URL set." : "Coverage is incomplete.",
+    ].join("\n"),
+    data: {
+      handle,
+      profileUrl,
+      visiblePostCount: visiblePostCount ?? null,
+      embeddedPostCount: embeddedUrls.size,
+      ownerCandidateCount: ownerUrls.size,
+      canonicalUrlCount: canonicalUrls.length,
+      missingUrlCount: missingUrls.length,
+      finalDetailedCount: finalDetailedItems.length,
+      isComplete,
+      collaboratorAuthors,
+      contentTypeCounts,
+      canonicalUrls,
+      missingUrls,
+      profile,
+      embeddedPosts,
+      items: finalDetailedItems,
     },
   };
 }

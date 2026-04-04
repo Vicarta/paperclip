@@ -52,27 +52,29 @@ Rules:
 - If the task already specifies a validated tool recipe, execute that recipe directly instead of spending the heartbeat rediscovering old routes.
 - Treat plugin tools as execution aids, not a substitute for the Paperclip heartbeat protocol.
 
-Example: Bright Data async dataset execution for whole-account Instagram retrieval
+Example: Bright Data whole-account Instagram retrieval through the validated composite tool
 
 ```json
 POST /api/agents/me/plugin-tools/execute
 {
   "projectId": "<current-project-id>",
-  "tool": "paperclip.bright-data-agent-tools:run-dataset-request",
+  "tool": "paperclip.bright-data-agent-tools:resolve-instagram-account-post-set",
   "parameters": {
-    "datasetId": "gd_l1vikfch901nx3by4",
-    "type": "discover_new",
-    "discoverBy": "user_name",
-    "input": [{ "user_name": "astrogen.com.ua" }],
-    "autoDownload": true,
-    "downloadFormat": "json",
+    "handleOrUrl": "astrogen.com.ua",
+    "expectedPostCount": 49,
     "pollIntervalMs": 5000,
     "maxWaitMs": 240000
   }
 }
 ```
 
-Use the async wrapper when the issue asks for a larger social/account retrieval job. Do not manually split `trigger -> progress -> snapshot` unless the issue specifically requires lower-level control.
+Use the account-set resolver when the issue asks for full Instagram account coverage. It packages the validated composite Bright Data recipe for `@astrogen.com.ua`:
+- authoritative profile metadata via `gd_l1vikfch901nx3by4` with `discoverBy=user_name`;
+- supplemental canonical URL discovery via `gd_lk5ns7kz21pck8jpis`;
+- owner filtering;
+- exact-post enrichment for any remaining canonical URLs.
+
+Use the lower-level async wrapper only when the issue explicitly needs custom dataset control. Do not manually split `trigger -> progress -> snapshot` unless the issue specifically requires it.
 
 ## The Heartbeat Procedure
 

@@ -1,5 +1,5 @@
 export const PLUGIN_ID = "paperclip.bright-data-agent-tools";
-export const PLUGIN_VERSION = "0.2.0";
+export const PLUGIN_VERSION = "0.3.0";
 
 export const SLOT_IDS = {
   settingsPage: "bright-data-agent-tools-settings-page",
@@ -16,6 +16,7 @@ export const TOOL_NAMES = {
   getSnapshotProgress: "get-snapshot-progress",
   downloadSnapshot: "download-snapshot",
   runDatasetRequest: "run-dataset-request",
+  resolveInstagramAccountPostSet: "resolve-instagram-account-post-set",
 } as const;
 
 export const DEFAULT_BRIGHT_DATA_MCP_URL = "https://mcp.brightdata.com/mcp";

@@ -176,6 +176,21 @@ const manifest: PaperclipPluginManifestV1 = {
         required: ["datasetId", "input"],
       },
     },
+    {
+      name: TOOL_NAMES.resolveInstagramAccountPostSet,
+      displayName: "Bright Data Resolve Instagram Account Post Set",
+      description: "Resolve a full canonical Instagram account post set and detailed records through the validated Bright Data composite recipe.",
+      parametersSchema: {
+        type: "object",
+        properties: {
+          handleOrUrl: { type: "string" },
+          expectedPostCount: { type: "number" },
+          maxWaitMs: { type: "number" },
+          pollIntervalMs: { type: "number" },
+        },
+        required: ["handleOrUrl"],
+      },
+    },
   ],
 };
 

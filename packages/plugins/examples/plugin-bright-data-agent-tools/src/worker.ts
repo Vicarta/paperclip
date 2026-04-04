@@ -4,6 +4,7 @@ import {
   downloadBrightDataSnapshot,
   getBrightDataSnapshotProgress,
   listBrightDataTools,
+  resolveInstagramAccountPostSet,
   runBrightDataDatasetRequest,
   triggerBrightDataDatasetRequest,
   type BrightDataPluginConfig,
@@ -244,6 +245,43 @@ const plugin = definePlugin({
               pollIntervalMs: record.pollIntervalMs as number | undefined,
               autoDownload: record.autoDownload as boolean | undefined,
               downloadFormat: record.downloadFormat as string | undefined,
+            },
+            config,
+            resolveSecret: (secretRef) => ctx.secrets.resolve(secretRef),
+          });
+          return { content: result.content, data: result.data };
+        } catch (error) {
+          return { error: error instanceof Error ? error.message : String(error) };
+        }
+      },
+    );
+
+    ctx.tools.register(
+      TOOL_NAMES.resolveInstagramAccountPostSet,
+      {
+        displayName: "Bright Data Resolve Instagram Account Post Set",
+        description: "Resolve a full canonical Instagram account post set and detailed records through the validated Bright Data composite recipe.",
+        parametersSchema: {
+          type: "object",
+          properties: {
+            handleOrUrl: { type: "string" },
+            expectedPostCount: { type: "number" },
+            maxWaitMs: { type: "number" },
+            pollIntervalMs: { type: "number" },
+          },
+          required: ["handleOrUrl"],
+        },
+      },
+      async (params): Promise<ToolResult> => {
+        try {
+          const config = await getConfig(ctx);
+          const record = params as Record<string, unknown>;
+          const result = await resolveInstagramAccountPostSet({
+            params: {
+              handleOrUrl: readString(record, "handleOrUrl"),
+              expectedPostCount: record.expectedPostCount as number | undefined,
+              maxWaitMs: record.maxWaitMs as number | undefined,
+              pollIntervalMs: record.pollIntervalMs as number | undefined,
             },
             config,
             resolveSecret: (secretRef) => ctx.secrets.resolve(secretRef),
