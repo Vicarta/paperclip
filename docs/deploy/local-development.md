@@ -152,6 +152,7 @@ Applied remediation on `2026-04-04`:
   - `/home/paperclip/apps/paperclip/archived-checkouts/docker-compose.codex-serper.override-20260404-184348.yml`
 - The live app was rebuilt and restarted with plain:
   - `docker compose -f docker-compose.yml up -d --build app`
+- The canonical Compose service name for the Paperclip web/server container is `app`.
 
 Verification target after this remediation:
 
@@ -202,3 +203,21 @@ Operational guidance:
 - If the current recovery target does not require 30 days of hourly snapshots, add an explicit `backup` block in the live instance config instead of relying on hidden defaults.
 - After changing retention policy, prune old backups explicitly or wait for the next backup cycle to prune files older than the new window.
 - If you change cadence from hourly to a wider interval, consider thinning the recent backlog too; otherwise disk usage will stay inflated until enough time passes naturally.
+
+## Live App Memory Headroom
+
+Observed on `2026-04-04` during a live Astrogen SEO workflow test:
+
+- `paperclip-app-1` restarted unexpectedly while `CMO` and `Semantic Core Strategist` runs were active.
+- The server log showed:
+  - `FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory`
+- The crash happened around the default Node heap ceiling of roughly `2GB`, which caused active heartbeat runs to be reaped as orphaned with `process_lost`.
+
+Applied remediation:
+
+- Set `NODE_OPTIONS=--max-old-space-size=4096` for the Paperclip server container in `docker-compose.yml`.
+
+Implication:
+
+- Long-running live agent tests, especially when the UI is polling multiple company pages and logs at once, need more headroom than the default Node heap.
+- If `process_lost` appears on otherwise healthy runs after heavy UI activity, check for an app-container OOM before blaming the agent contract or plugin tooling.

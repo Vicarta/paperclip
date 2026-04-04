@@ -4,7 +4,7 @@ Example Paperclip plugin that demonstrates:
 
 - **projectSidebarItem** — An optional "Files" link under each project in the sidebar that opens the project detail with this plugin’s tab selected. This is controlled by plugin settings and defaults to off.
 - **detailTab** (entityType project) — A project detail tab with a workspace selector, a searchable/sortable left browser pane, a desktop two-column layout (browser left, editor right), and a mobile one-panel flow with a back button from editor to browser, including save support.
-- **editor wrap toggle** — The editor defaults to wrapped lines for text-heavy files and exposes a `Wrap On/Off` toggle in the toolbar. The preference is stored locally in the browser.
+- **editor wrap toggle** — The editor supports `Wrap: On / Wrap: Off` in the toolbar so operators can switch between text-friendly wrapping and code-style horizontal scrolling.
 
 This is a repo-local example plugin for development. It should not be assumed to ship in a generic production build unless it is explicitly included.
 
@@ -22,9 +22,10 @@ This is a repo-local example plugin for development. It should not be assumed to
 
 ## Editor behavior
 
-- The file editor uses CodeMirror with line wrapping enabled by default.
-- Operators can toggle wrapping from the toolbar without leaving the file tab.
-- The wrap preference is persisted in `localStorage`, so the same browser keeps the last chosen mode.
+- The file editor uses CodeMirror with a user-controlled wrap mode.
+- `Wrap: Off` keeps long lines on a single visual line with horizontal scrolling.
+- `Wrap: On` is available for text-heavy documents where line wrapping is easier to read.
+- The last chosen wrap mode is stored locally in the browser.
 
 ## Capabilities
 
