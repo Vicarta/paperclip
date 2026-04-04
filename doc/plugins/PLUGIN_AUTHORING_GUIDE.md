@@ -37,8 +37,8 @@ That creates a package with:
 - `src/worker.ts`
 - `src/ui/index.tsx`
 - `tests/plugin.spec.ts`
-- `esbuild.config.mjs`
-- `rollup.config.mjs`
+- `scripts/build-ui.mjs`
+- `src/index.ts`
 
 Inside this monorepo, the scaffold uses `workspace:*` for `@paperclipai/plugin-sdk`.
 
@@ -58,6 +58,12 @@ pnpm build
 For local development, install it into Paperclip from an absolute local path through the plugin manager or API. The server supports local filesystem installs and watches local-path plugins for file changes so worker restarts happen automatically after rebuilds.
 
 If a trusted local-path plugin declares `paperclipPlugin.manifest` but has not been built yet, the host may attempt a local `pnpm build` during install so bundled example plugins can be installed from source without pre-publishing artifacts.
+
+For local-path installs, make the plugin package self-contained after build. `dist/manifest.js` and `dist/worker.js` must not import relative modules that are missing from `dist/`, or live installs will fail even if the package builds locally. The safest pattern is:
+
+- compile worker and manifest with `tsc` into `dist/`
+- bundle only the browser UI with `scripts/build-ui.mjs`
+- export `src/index.ts` for repo-local development
 
 Example:
 
