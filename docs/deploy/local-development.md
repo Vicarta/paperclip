@@ -119,6 +119,7 @@ Rules:
 Current deployment facts for this environment:
 
 - The live Paperclip stack runs from `/home/paperclip/apps/paperclip/docker-compose.yml`.
+- The canonical server checkout is `/home/paperclip/apps/paperclip/paperclip-src`.
 - The app container is `paperclip-app-1`.
 - The running Files plugin bundle is loaded from `/paperclip/plugins/plugin-file-browser-example/...` inside that container.
 
@@ -126,6 +127,41 @@ Implication:
 
 - Updating `/home/paperclip/.../paperclip-src` alone does not guarantee that the already-running plugin bundle has changed.
 - For urgent live verification, update the running plugin bundle in the container or its mounted Paperclip volume, then verify the served behavior on the server.
+
+## Canonical Server Tree
+
+For this server environment, keep exactly one active Paperclip source tree:
+
+- `/home/paperclip/apps/paperclip/paperclip-src`
+
+Operational rules:
+
+- `docker-compose.yml` must build from `./paperclip-src`.
+- Do not keep a second active deploy checkout such as `paperclip-src-*` alongside the canonical tree.
+- Do not rely on a persistent Compose override file to point the app at an alternate source tree for normal operation.
+- If you need temporary isolation for risky work, create a temporary checkout only long enough to validate the change, then either:
+  - merge it back into the canonical branch and promote it to `/home/paperclip/apps/paperclip/paperclip-src`, or
+  - archive it outside the active deploy path.
+
+Applied remediation on `2026-04-04`:
+
+- The temporary deploy tree `paperclip-src-codex-serper` was promoted into the canonical path `/home/paperclip/apps/paperclip/paperclip-src`.
+- The previously active dirty tree was preserved at:
+  - `/home/paperclip/apps/paperclip/archived-checkouts/paperclip-src-pre-single-tree-20260404-184348`
+- The temporary override file was archived at:
+  - `/home/paperclip/apps/paperclip/archived-checkouts/docker-compose.codex-serper.override-20260404-184348.yml`
+- The live app was rebuilt and restarted with plain:
+  - `docker compose -f docker-compose.yml up -d --build app`
+
+Verification target after this remediation:
+
+- `paperclip-app-1` should report Compose config files:
+  - `/home/paperclip/apps/paperclip/docker-compose.yml`
+
+Implication:
+
+- If a future deploy requires an alternate checkout, treat that as an exceptional migration step, not as a steady-state deployment model.
+- When consolidating, preserve the displaced tree under `archived-checkouts/` before replacing the canonical path so no in-progress work is lost.
 
 ## Live Server Backup Growth
 
