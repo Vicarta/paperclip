@@ -1745,17 +1745,41 @@ export function pluginLoader(
       );
 
       // ------------------------------------------------------------------
-      // 1. Resolve worker entrypoint
+      // 1. Ensure repo-local plugin build artifacts exist
+      // ------------------------------------------------------------------
+      if (plugin.packagePath && existsSync(plugin.packagePath)) {
+        const pkgJson = await readPackageJson(plugin.packagePath);
+        if (pkgJson) {
+          const workerRelPath = manifest.entrypoints.worker;
+          const workerAbsPath = path.resolve(plugin.packagePath, workerRelPath);
+          if (!existsSync(workerAbsPath)) {
+            const built = await maybeBuildLocalPluginPackage({
+              packageRoot: plugin.packagePath,
+              packageName: plugin.packageName,
+              pkgJson,
+            });
+            if (built) {
+              log.info(
+                { pluginId, pluginKey, packagePath: plugin.packagePath },
+                "plugin-loader: built missing local plugin artifacts during activation",
+              );
+            }
+          }
+        }
+      }
+
+      // ------------------------------------------------------------------
+      // 2. Resolve worker entrypoint
       // ------------------------------------------------------------------
       const workerEntrypoint = resolveWorkerEntrypoint(plugin, localPluginDir);
 
       // ------------------------------------------------------------------
-      // 2. Build host handlers for this plugin
+      // 3. Build host handlers for this plugin
       // ------------------------------------------------------------------
       const hostHandlers = buildHostHandlers(pluginId, manifest);
 
       // ------------------------------------------------------------------
-      // 3. Retrieve plugin config (if any)
+      // 4. Retrieve plugin config (if any)
       // ------------------------------------------------------------------
       let config: Record<string, unknown> = {};
       try {
@@ -1769,7 +1793,7 @@ export function pluginLoader(
       }
 
       // ------------------------------------------------------------------
-      // 4. Spawn worker process
+      // 5. Spawn worker process
       // ------------------------------------------------------------------
       const workerOptions: WorkerStartOptions = {
         entrypointPath: workerEntrypoint,
@@ -1797,7 +1821,7 @@ export function pluginLoader(
       );
 
       // ------------------------------------------------------------------
-      // 5. Sync job declarations and register with scheduler
+      // 6. Sync job declarations and register with scheduler
       // ------------------------------------------------------------------
       const jobDeclarations = manifest.jobs ?? [];
       if (jobDeclarations.length > 0) {
@@ -1812,7 +1836,7 @@ export function pluginLoader(
       }
 
       // ------------------------------------------------------------------
-      // 6. Register event subscriptions
+      // 7. Register event subscriptions
       //
       // Note: Event subscriptions are declared at runtime by the plugin
       // worker via the SDK's ctx.events.on() calls. The event bus manages
