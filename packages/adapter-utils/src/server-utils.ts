@@ -31,6 +31,7 @@ type ChildProcessWithEvents = ChildProcess & {
 export const runningProcesses = new Map<string, RunningProcess>();
 export const MAX_CAPTURE_BYTES = 4 * 1024 * 1024;
 export const MAX_EXCERPT_BYTES = 32 * 1024;
+const LOG_FLUSH_GRACE_MS = 5_000;
 const SENSITIVE_ENV_KEY = /(key|token|secret|password|passwd|authorization|cookie)/i;
 const PAPERCLIP_SKILL_ROOT_RELATIVE_CANDIDATES = [
   "../../skills",
@@ -543,7 +544,26 @@ export async function runChildProcess(
           if (timeout) clearTimeout(timeout);
           clearIdleTimer.clear();
           runningProcesses.delete(runId);
-          void logChain.finally(() => {
+          let logFlushTimedOut = false;
+          const waitForLogDrain = Promise.race([
+            logChain.catch((err) => {
+              onLogError(err, runId, "failed while draining process log chain");
+            }),
+            new Promise<void>((resolve) =>
+              setTimeout(() => {
+                logFlushTimedOut = true;
+                resolve();
+              }, LOG_FLUSH_GRACE_MS),
+            ),
+          ]);
+          void waitForLogDrain.finally(() => {
+            const finalStderr =
+              logFlushTimedOut
+                ? appendWithCap(
+                    stderr,
+                    `[paperclip] Log drain exceeded ${LOG_FLUSH_GRACE_MS}ms after process close; finalization continued.\n`,
+                  )
+                : stderr;
             resolve({
               exitCode: code,
               signal,
@@ -552,10 +572,10 @@ export async function runChildProcess(
               stderr:
                 idleTimedOut && opts.idleTimeoutSec && opts.idleTimeoutSec > 0
                   ? appendWithCap(
-                      stderr,
+                      finalStderr,
                       `[paperclip] Process produced no stdout/stderr for ${opts.idleTimeoutSec}s and was terminated.\n`,
                     )
-                  : stderr,
+                  : finalStderr,
             });
           });
         });

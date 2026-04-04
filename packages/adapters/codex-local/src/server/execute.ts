@@ -104,6 +104,7 @@ const MARKDOWN_NEW_CONVERT_URL = "https://markdown.new/convert";
 const MARKDOWN_NEW_TIMEOUT_MS = 30_000;
 const MAX_PDF_MARKDOWN_PROMPT_CHARS_PER_FILE = 20_000;
 const MAX_PDF_MARKDOWN_PROMPT_CHARS_TOTAL = 60_000;
+const CODEX_SESSION_SCAN_LIMIT = 200;
 
 function sanitizeAttachmentFilename(raw: string | null, fallback: string) {
   const trimmed = (raw ?? "").trim();
@@ -226,6 +227,50 @@ function normalizeMarkdownNewContent(value: unknown): string {
   const rootContent = asString(obj.content, "");
   if (rootContent.trim().length > 0) return rootContent;
   return "";
+}
+
+async function collectJsonlFiles(dir: string, limit: number): Promise<string[]> {
+  const pending = [dir];
+  const files: string[] = [];
+  while (pending.length > 0 && files.length < limit) {
+    const current = pending.pop();
+    if (!current) continue;
+    const entries = await fs.readdir(current, { withFileTypes: true }).catch(() => []);
+    for (const entry of entries) {
+      if (files.length >= limit) break;
+      const candidate = path.join(current, entry.name);
+      if (entry.isDirectory()) {
+        pending.push(candidate);
+        continue;
+      }
+      if (entry.isFile() && entry.name.endsWith(".jsonl")) {
+        files.push(candidate);
+      }
+    }
+  }
+  return files;
+}
+
+async function readSessionSummaryFromCodexHome(input: {
+  codexHome: string | null;
+  threadId: string | null;
+}): Promise<ReturnType<typeof parseCodexJsonl> | null> {
+  if (!input.codexHome || !input.threadId) return null;
+  const sessionsRoot = path.join(input.codexHome, "sessions");
+  const candidateFiles = await collectJsonlFiles(sessionsRoot, CODEX_SESSION_SCAN_LIMIT);
+  let latestMatch: { file: string; mtimeMs: number } | null = null;
+  for (const file of candidateFiles) {
+    if (!file.includes(input.threadId)) continue;
+    const stat = await fs.stat(file).catch(() => null);
+    if (!stat) continue;
+    if (!latestMatch || stat.mtimeMs > latestMatch.mtimeMs) {
+      latestMatch = { file, mtimeMs: stat.mtimeMs };
+    }
+  }
+  if (!latestMatch) return null;
+  const content = await fs.readFile(latestMatch.file, "utf8").catch(() => "");
+  if (!content.trim()) return null;
+  return parseCodexJsonl(content);
 }
 
 async function ingestPdfViaMarkdownNew(input: {
@@ -985,13 +1030,36 @@ export async function execute(
       },
     });
     const cleanedStderr = stripCodexRolloutNoise(proc.stderr);
+    const parsedStdout = parseCodexJsonl(proc.stdout);
+    const parsedSession =
+      !parsedStdout.errorMessage && parsedStdout.sessionId
+        ? await readSessionSummaryFromCodexHome({
+            codexHome: effectiveCodexHome,
+            threadId: parsedStdout.sessionId,
+          })
+        : null;
+    const parsed =
+      parsedSession && parsedSession.errorMessage
+        ? {
+            sessionId: parsedStdout.sessionId ?? parsedSession.sessionId,
+            summary: parsedStdout.summary || parsedSession.summary,
+            usage:
+              parsedStdout.usage.inputTokens ||
+              parsedStdout.usage.cachedInputTokens ||
+              parsedStdout.usage.outputTokens
+                ? parsedStdout.usage
+                : parsedSession.usage,
+            errorMessage: parsedSession.errorMessage,
+            interrupted: parsedStdout.interrupted || parsedSession.interrupted,
+          }
+        : parsedStdout;
     return {
       proc: {
         ...proc,
         stderr: cleanedStderr,
       },
       rawStderr: proc.stderr,
-      parsed: parseCodexJsonl(proc.stdout),
+      parsed,
     };
   };
 
