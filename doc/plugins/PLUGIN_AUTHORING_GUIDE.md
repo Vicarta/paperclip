@@ -57,6 +57,8 @@ pnpm build
 
 For local development, install it into Paperclip from an absolute local path through the plugin manager or API. The server supports local filesystem installs and watches local-path plugins for file changes so worker restarts happen automatically after rebuilds.
 
+If a trusted local-path plugin declares `paperclipPlugin.manifest` but has not been built yet, the host may attempt a local `pnpm build` during install so bundled example plugins can be installed from source without pre-publishing artifacts.
+
 Example:
 
 ```bash

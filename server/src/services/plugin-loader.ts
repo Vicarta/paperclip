@@ -577,6 +577,43 @@ function resolveManifestPath(
   return null;
 }
 
+async function maybeBuildLocalPluginPackage(input: {
+  packageRoot: string;
+  packageName: string;
+  pkgJson: Record<string, unknown>;
+}) {
+  const paperclipPlugin = input.pkgJson["paperclipPlugin"];
+  if (
+    paperclipPlugin === null ||
+    typeof paperclipPlugin !== "object" ||
+    Array.isArray(paperclipPlugin)
+  ) {
+    return false;
+  }
+
+  const hasBuildScript =
+    input.pkgJson["scripts"] &&
+    typeof input.pkgJson["scripts"] === "object" &&
+    !Array.isArray(input.pkgJson["scripts"]) &&
+    typeof (input.pkgJson["scripts"] as Record<string, unknown>)["build"] === "string";
+
+  if (!hasBuildScript) {
+    return false;
+  }
+
+  logger.info(
+    { packageRoot: input.packageRoot, packageName: input.packageName },
+    "plugin-loader: manifest missing for local plugin, attempting local build",
+  );
+
+  await execFileAsync("pnpm", ["build"], {
+    cwd: input.packageRoot,
+    timeout: 240_000,
+  });
+
+  return true;
+}
+
 function parseSemver(version: string): ParsedSemver | null {
   const match = version.match(
     /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$/,
@@ -865,7 +902,17 @@ export function pluginLoader(
     const pkgJson = await readPackageJson(resolvedPackagePath);
     if (!pkgJson) throw new Error(`Missing package.json at ${resolvedPackagePath}`);
 
-    const manifestPath = resolveManifestPath(resolvedPackagePath, pkgJson);
+    let manifestPath = resolveManifestPath(resolvedPackagePath, pkgJson);
+    if ((!manifestPath || !existsSync(manifestPath)) && localPath) {
+      const built = await maybeBuildLocalPluginPackage({
+        packageRoot: resolvedPackagePath,
+        packageName: resolvedPackageName,
+        pkgJson,
+      });
+      if (built) {
+        manifestPath = resolveManifestPath(resolvedPackagePath, pkgJson);
+      }
+    }
     if (!manifestPath || !existsSync(manifestPath)) {
       throw new Error(
         `Package ${resolvedPackageName} at ${resolvedPackagePath} does not appear to be a Paperclip plugin (no manifest found).`,
