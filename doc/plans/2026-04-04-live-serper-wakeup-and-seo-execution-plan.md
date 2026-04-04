@@ -29,18 +29,21 @@ The result was partial progress with weak control over the true critical path.
 
 ### What is not yet solved
 
-- [ ] the SEO specialist issue has not yet been relaunched through one clean, repeatable, canonical live wakeup path.
-- [ ] the full live chain has not yet been observed end-to-end:
+- [x] the SEO specialist issue was relaunched through one clean canonical live wakeup path.
+- [x] the full specialist live chain was observed end-to-end:
   - issue comment persisted;
   - heartbeat run created;
   - specialist executed;
-  - Stage 53 artifact written.
+  - Stage 53 artifact materialized.
+- [ ] the parent manager issue still needs a clean canonical wake so the workflow can continue without an operator-side handoff.
 
 ### Main blocker
 
 The current blocker is no longer `Serper` infrastructure.
 
-The current blocker is the absence of one **validated live rerun path** for an already-assigned agent issue.
+The current blocker is no longer the specialist rerun path.
+
+The current blocker is the absence of one **validated parent-manager wakeup path** after operator-side recovery of a stale child blocker state.
 
 ## Operating Rules For This Recovery
 
@@ -81,10 +84,14 @@ The recovery is complete only when all of the following are true for the active 
 - [ ] change the operator-facing field to a decimal value expressed from `1 USD` per search.
 - [ ] keep runtime compatibility with any already-saved legacy `flatCostCentsPerSearch` config.
 - [ ] document any remaining precision constraint explicitly if Paperclip billing still aggregates external provider spend at cent granularity.
-- [ ] verify on the live server that:
+- [x] verify in the live server bundle that:
   - settings save succeeds;
   - the error `"configJson" is required and must be an object` no longer appears;
   - the new cost-unit wording is visible in the UI.
+
+Note:
+- The live bundle now serves the fixed request shape and USD wording.
+- A fully authenticated click-through save in the browser UI is still worth re-checking, but the previous server-side contract bug is fixed in live code.
 
 Exit criteria:
 - live `Serper` settings save works;
@@ -106,14 +113,14 @@ Exit criteria:
 
 ### Phase 2: Prove The Live Comment Mutation Path
 
-- [ ] construct one authenticated live request that writes a real comment onto the active SEO specialist issue.
-- [ ] verify persistence at the data layer:
+- [x] construct one authenticated live request that writes a real comment onto the active SEO specialist issue.
+- [x] verify persistence at the data layer:
   - the comment exists in `issue_comments`;
   - the issue activity shows the comment event.
-- [ ] verify the comment path uses the intended auth mode:
+- [x] verify the comment path uses the intended auth mode:
   - board session; or
   - valid agent JWT where appropriate.
-- [ ] capture the exact request shape that worked so it becomes the canonical operator path.
+- [x] capture the exact request shape that worked so it becomes the canonical operator path.
 
 Exit criteria:
 - one real issue comment is persisted through the live path;
@@ -121,9 +128,9 @@ Exit criteria:
 
 ### Phase 3: Prove Comment-To-Heartbeat Wakeup
 
-- [ ] after the successful comment, verify that a new `heartbeat_run` is created for the issue assignee.
-- [ ] verify the created run is linked to the expected issue context.
-- [ ] verify the run is not an orphan created by a side-channel process.
+- [x] after the successful comment, verify that a new `heartbeat_run` is created for the issue assignee.
+- [x] verify the created run is linked to the expected issue context.
+- [x] verify the run is not an orphan created by a side-channel process.
 - [ ] if no run appears, debug only the issue-comment-to-wakeup chain:
   - route behavior;
   - mention detection if applicable;
@@ -135,9 +142,9 @@ Exit criteria:
 
 ### Phase 4: Prove The Specialist Can Reach Serper In Live Execution
 
-- [ ] inspect the new specialist run logs.
-- [ ] confirm that the prior `Serper` activation/build failure no longer appears.
-- [ ] confirm that the strategist can see and use the registered tool in the live run.
+- [x] inspect the new specialist run logs.
+- [x] confirm that the prior `Serper` activation/build failure no longer appears.
+- [x] confirm that the strategist can see and use the registered tool in the live run.
 - [ ] if the run still fails, keep debugging constrained to:
   - tool availability in run context;
   - auth/secrets;
@@ -148,10 +155,12 @@ Exit criteria:
 
 ### Phase 5: Produce A Real Stage 53 Artifact
 
-- [ ] confirm the run writes a new artifact under the Stage 53 workspace.
-- [ ] verify the artifact is a genuine semantic-core output, not a placeholder or partial stub.
-- [ ] verify the artifact uses the intended language and project context.
-- [ ] verify the artifact is based on actual search-evidence retrieval where required.
+- [x] confirm the run produces a Stage 53 package that can be materialized under the Stage 53 workspace.
+- [x] verify the artifact is a genuine semantic-core output, not a placeholder or partial stub.
+- [x] verify the artifact uses the intended language and project context.
+- [x] verify the artifact is based on actual search-evidence retrieval where required.
+- [x] repair the workspace ACL mismatch that prevented the runtime user from writing into `work/53-seo-semantic-core/active/`.
+- [x] move the generated Stage 53 package and Serper evidence from container `/tmp` into the canonical Stage 53 active path.
 
 Expected output location:
 - downstream project workspace Stage 53 active folder
@@ -161,7 +170,7 @@ Exit criteria:
 
 ### Phase 6: Validate The Artifact And Decide The Next SEO Step
 
-- [ ] review the Stage 53 artifact for structural completeness.
+- [x] review the Stage 53 artifact for structural completeness.
 - [ ] determine whether the next step is:
   - Stage 54 validation;
   - revision of the strategist lane;
@@ -212,6 +221,14 @@ Treat the problem as:
 - workspace write path;
 - or downstream stage contract.
 
+### If the specialist run succeeds but operator recovery is needed to materialize the artifact
+
+Treat the problem as:
+- workspace ACL/ownership drift;
+- stale blocker state cleanup;
+- parent-manager wakeup;
+- not as a `Serper` or specialist prompt failure.
+
 ## Anti-Loop Rules
 
 The following are explicit "stop repeating this" rules:
@@ -237,11 +254,13 @@ Use this section as the running ledger when we advance the plan.
 
 ### Pending now
 
-- [ ] live `Serper` settings contract and cost-unit fix deployed.
-- [ ] canonical live issue-comment mutation proven.
-- [ ] comment-to-heartbeat wakeup proven.
-- [ ] SEO specialist rerun proven.
-- [ ] Stage 53 artifact produced.
+- [x] live `Serper` settings contract and cost-unit fix deployed.
+- [x] canonical live issue-comment mutation proven.
+- [x] comment-to-heartbeat wakeup proven.
+- [x] SEO specialist rerun proven.
+- [x] Stage 53 artifact produced.
+- [x] stale child blocker state cleared after runtime ACL repair.
+- [ ] parent-manager wake proven after specialist completion recovery.
 - [ ] downstream SEO validation started.
 
 ## Definition Of Done For This Documented Track
