@@ -33,20 +33,68 @@ export interface LogActivityInput {
   details?: Record<string, unknown> | null;
 }
 
+function isInvalidRunIdActivityError(error: unknown) {
+  if (!error || typeof error !== "object") return false;
+  const code = "code" in error ? (error as { code?: unknown }).code : undefined;
+  const constraint =
+    "constraint_name" in error
+      ? (error as { constraint_name?: unknown }).constraint_name
+      : undefined;
+  return (
+    code === "22P02" ||
+    (code === "23503" && constraint === "activity_log_run_id_heartbeat_runs_id_fk")
+  );
+}
+
 export async function logActivity(db: Db, input: LogActivityInput) {
   const sanitizedDetails = input.details ? sanitizeRecord(input.details) : null;
   const redactedDetails = sanitizedDetails ? redactCurrentUserValue(sanitizedDetails) : null;
-  await db.insert(activityLog).values({
-    companyId: input.companyId,
-    actorType: input.actorType,
-    actorId: input.actorId,
-    action: input.action,
-    entityType: input.entityType,
-    entityId: input.entityId,
-    agentId: input.agentId ?? null,
-    runId: input.runId ?? null,
-    details: redactedDetails,
-  });
+  let effectiveRunId = input.runId ?? null;
+
+  try {
+    await db.insert(activityLog).values({
+      companyId: input.companyId,
+      actorType: input.actorType,
+      actorId: input.actorId,
+      action: input.action,
+      entityType: input.entityType,
+      entityId: input.entityId,
+      agentId: input.agentId ?? null,
+      runId: effectiveRunId,
+      details: redactedDetails,
+    });
+  } catch (error) {
+    if (!effectiveRunId || !isInvalidRunIdActivityError(error)) {
+      throw error;
+    }
+
+    logger.warn(
+      {
+        companyId: input.companyId,
+        actorType: input.actorType,
+        actorId: input.actorId,
+        action: input.action,
+        entityType: input.entityType,
+        entityId: input.entityId,
+        runId: effectiveRunId,
+        err: error,
+      },
+      "logActivity received a runId that is not a valid heartbeat run; retrying without runId",
+    );
+
+    effectiveRunId = null;
+    await db.insert(activityLog).values({
+      companyId: input.companyId,
+      actorType: input.actorType,
+      actorId: input.actorId,
+      action: input.action,
+      entityType: input.entityType,
+      entityId: input.entityId,
+      agentId: input.agentId ?? null,
+      runId: null,
+      details: redactedDetails,
+    });
+  }
 
   publishLiveEvent({
     companyId: input.companyId,
@@ -58,7 +106,7 @@ export async function logActivity(db: Db, input: LogActivityInput) {
       entityType: input.entityType,
       entityId: input.entityId,
       agentId: input.agentId ?? null,
-      runId: input.runId ?? null,
+      runId: effectiveRunId,
       details: redactedDetails,
     },
   });
@@ -76,7 +124,7 @@ export async function logActivity(db: Db, input: LogActivityInput) {
       payload: {
         ...redactedDetails,
         agentId: input.agentId ?? null,
-        runId: input.runId ?? null,
+        runId: effectiveRunId,
       },
     };
     void _pluginEventBus.emit(event).then(({ errors }) => {
