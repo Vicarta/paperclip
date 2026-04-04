@@ -3,7 +3,7 @@ import { createTestHarness } from "@paperclipai/plugin-sdk/testing";
 import manifest from "../src/manifest.js";
 import plugin from "../src/worker.js";
 import { TOOL_NAMES } from "../src/constants.js";
-import { searchSerper } from "../src/serper-client.js";
+import { readConfiguredFlatCostCents, searchSerper } from "../src/serper-client.js";
 
 vi.mock("../src/serper-client.js", async () => {
   const actual = await vi.importActual<typeof import("../src/serper-client.js")>(
@@ -54,7 +54,7 @@ describe("plugin-serper-agent-tools", () => {
       manifest,
       config: {
         serperApiKeySecretRef: "secret-1",
-        flatCostCentsPerSearch: 15,
+        flatCostUsdPerSearch: 0.15,
       },
     });
     await plugin.definition.setup(harness.ctx);
@@ -80,5 +80,13 @@ describe("plugin-serper-agent-tools", () => {
         costCents: 15,
       }),
     ]);
+  });
+
+  it("keeps legacy flatCostCentsPerSearch configs readable", () => {
+    expect(
+      readConfiguredFlatCostCents({
+        flatCostCentsPerSearch: 15,
+      }),
+    ).toBe(15);
   });
 });

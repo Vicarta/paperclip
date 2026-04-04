@@ -3,6 +3,7 @@ import { DEFAULT_SERPER_API_BASE_URL } from "./constants.js";
 export type SerperPluginConfig = {
   serperApiKeySecretRef?: string;
   serperApiBaseUrl?: string;
+  flatCostUsdPerSearch?: number;
   flatCostCentsPerSearch?: number;
 };
 
@@ -43,6 +44,12 @@ function normalizeBaseUrl(value: unknown) {
 function normalizeFlatCostCents(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) && value >= 0
     ? Math.round(value)
+    : 0;
+}
+
+function normalizeFlatCostUsd(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0
+    ? value
     : 0;
 }
 
@@ -123,6 +130,10 @@ function summarizeResults(payload: SerperSearchResponse, type: SerperSearchParam
 }
 
 export function readConfiguredFlatCostCents(config: SerperPluginConfig) {
+  const usd = normalizeFlatCostUsd(config.flatCostUsdPerSearch);
+  if (usd > 0) {
+    return Math.round(usd * 100);
+  }
   return normalizeFlatCostCents(config.flatCostCentsPerSearch);
 }
 

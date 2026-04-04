@@ -45,11 +45,11 @@ const manifest: PaperclipPluginManifestV1 = {
         description: "Base URL for Serper REST API requests.",
         default: DEFAULT_SERPER_API_BASE_URL,
       },
-      flatCostCentsPerSearch: {
+      flatCostUsdPerSearch: {
         type: "number",
-        title: "Flat Cost Per Search (cents)",
+        title: "Flat Cost Per Search (USD)",
         description:
-          "Operator-maintained marginal cost per Serper request for billing attribution. Set to 0 to disable external cost events.",
+          "Operator-maintained marginal USD cost per Serper request for billing attribution. Use decimal USD values such as 0.001. Set to 0 to disable external cost events.",
         default: 0,
       },
     },

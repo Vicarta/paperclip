@@ -11,6 +11,7 @@ import { DEFAULT_SERPER_API_BASE_URL } from "../constants.js";
 type PluginConfig = {
   serperApiKeySecretRef?: string;
   serperApiBaseUrl?: string;
+  flatCostUsdPerSearch?: number;
   flatCostCentsPerSearch?: number;
 };
 
@@ -114,7 +115,7 @@ export function SerperSettingsPage({ context }: PluginSettingsPageProps) {
   const [serperApiBaseUrl, setSerperApiBaseUrl] = useState(
     DEFAULT_SERPER_API_BASE_URL,
   );
-  const [flatCostCentsPerSearch, setFlatCostCentsPerSearch] = useState("0");
+  const [flatCostUsdPerSearch, setFlatCostUsdPerSearch] = useState("0");
   const [replaceKey, setReplaceKey] = useState(false);
   const [apiKey, setApiKey] = useState("");
 
@@ -142,12 +143,17 @@ export function SerperSettingsPage({ context }: PluginSettingsPageProps) {
             ? nextConfig.serperApiBaseUrl
             : DEFAULT_SERPER_API_BASE_URL,
         );
-        setFlatCostCentsPerSearch(
+        const nextFlatCostUsd =
+          typeof nextConfig.flatCostUsdPerSearch === "number" &&
+          Number.isFinite(nextConfig.flatCostUsdPerSearch)
+            ? nextConfig.flatCostUsdPerSearch
+            : typeof nextConfig.flatCostCentsPerSearch === "number" &&
+                Number.isFinite(nextConfig.flatCostCentsPerSearch)
+              ? nextConfig.flatCostCentsPerSearch / 100
+              : 0;
+        setFlatCostUsdPerSearch(
           String(
-            typeof nextConfig.flatCostCentsPerSearch === "number" &&
-              Number.isFinite(nextConfig.flatCostCentsPerSearch)
-              ? nextConfig.flatCostCentsPerSearch
-              : 0,
+            nextFlatCostUsd,
           ),
         );
       } catch (error) {
@@ -183,7 +189,7 @@ export function SerperSettingsPage({ context }: PluginSettingsPageProps) {
     try {
       let secretId = config.serperApiKeySecretRef ?? "";
       const trimmedKey = apiKey.trim();
-      const numericFlatCost = Number.parseFloat(flatCostCentsPerSearch);
+      const numericFlatCostUsd = Number.parseFloat(flatCostUsdPerSearch);
 
       if (trimmedKey.length > 0) {
         if (secretId) {
@@ -210,15 +216,15 @@ export function SerperSettingsPage({ context }: PluginSettingsPageProps) {
       const nextConfig: PluginConfig = {
         serperApiBaseUrl: serperApiBaseUrl.trim() || DEFAULT_SERPER_API_BASE_URL,
         serperApiKeySecretRef: secretId || "",
-        flatCostCentsPerSearch:
-          Number.isFinite(numericFlatCost) && numericFlatCost >= 0
-            ? numericFlatCost
+        flatCostUsdPerSearch:
+          Number.isFinite(numericFlatCostUsd) && numericFlatCostUsd >= 0
+            ? numericFlatCostUsd
             : 0,
       };
 
       await api(`/plugins/${pluginId}/config`, {
         method: "POST",
-        body: JSON.stringify(nextConfig),
+        body: JSON.stringify({ configJson: nextConfig }),
       });
 
       const nextSecrets = companyId
@@ -279,17 +285,17 @@ export function SerperSettingsPage({ context }: PluginSettingsPageProps) {
           </div>
 
           <div>
-            <label style={labelStyle}>Flat Cost Per Search (cents)</label>
+            <label style={labelStyle}>Flat Cost Per Search (USD)</label>
             <input
               style={inputStyle}
               type="number"
               min="0"
-              step="1"
-              value={flatCostCentsPerSearch}
+              step="0.000001"
+              value={flatCostUsdPerSearch}
               onChange={(event: ChangeEvent<HTMLInputElement>) =>
-                setFlatCostCentsPerSearch(event.target.value)
+                setFlatCostUsdPerSearch(event.target.value)
               }
-              placeholder="0"
+              placeholder="0.001"
             />
             <p
               style={{
@@ -299,7 +305,10 @@ export function SerperSettingsPage({ context }: PluginSettingsPageProps) {
               }}
             >
               Used only for external provider billing attribution inside
-              Paperclip. Set to 0 to disable cost events.
+              Paperclip. Enter a decimal USD value from 1 USD, for example
+              0.001. Set to 0 to disable cost events. Paperclip currently
+              aggregates external provider spend in whole cents, so values
+              below $0.01 may round down in cost reports.
             </p>
           </div>
 
