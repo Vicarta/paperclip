@@ -38,6 +38,15 @@ import { logger } from "../middleware/logger.js";
  */
 export const TOOL_NAMESPACE_SEPARATOR = ":";
 
+const LONG_RUNNING_TOOL_TIMEOUT_MS = 5 * 60 * 1_000;
+
+function resolveToolTimeoutMs(namespacedName: string): number | undefined {
+  if (namespacedName === "paperclip.bright-data-agent-tools:resolve-instagram-account-post-set") {
+    return LONG_RUNNING_TOOL_TIMEOUT_MS;
+  }
+  return undefined;
+}
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -424,7 +433,12 @@ export function createPluginToolRegistry(
         runContext,
       };
 
-      const result = await workerManager.call(dbId, "executeTool", rpcParams);
+      const result = await workerManager.call(
+        dbId,
+        "executeTool",
+        rpcParams,
+        resolveToolTimeoutMs(namespacedName),
+      );
 
       log.debug(
         {
