@@ -159,7 +159,7 @@ interface EventRegistration {
 // ---------------------------------------------------------------------------
 
 /** Default timeout for worker→host RPC calls. */
-const DEFAULT_RPC_TIMEOUT_MS = 30_000;
+const DEFAULT_RPC_TIMEOUT_MS = 5 * 60 * 1_000;
 
 // ---------------------------------------------------------------------------
 // startWorkerRpcHost
