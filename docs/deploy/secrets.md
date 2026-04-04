@@ -81,3 +81,31 @@ Agent environment variables use secret references:
 ```
 
 The server resolves and decrypts these at runtime, injecting the real value into the agent process environment.
+
+## Third-Party Provider Keys In Plugin Settings
+
+For plugin-managed third-party providers such as Serper, Bright Data, DataForSEO, and similar services:
+
+- never store raw provider keys in frontend-visible config;
+- never commit provider keys into repo-tracked files;
+- store the plaintext only once in Company Secrets;
+- keep only the secret reference in plugin config or other persisted settings;
+- resolve the secret server-side at runtime.
+
+If a plugin exposes operator settings for a third-party provider, prefer a custom settings page that:
+
+- shows whether a secret is configured;
+- allows replace-only rotation;
+- persists only the secret ref, not the raw key.
+
+## External Provider Cost Attribution
+
+If a plugin calls a paid third-party provider, it should attribute that spend through Paperclip cost events when practical.
+
+Recommended pattern:
+
+- store an operator-managed marginal cost in plugin settings;
+- emit provider-attributed cost events server-side;
+- show those events in the Costs view alongside model-token costs.
+
+This keeps external service spend visible without exposing provider credentials client-side.

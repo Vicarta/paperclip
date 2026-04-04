@@ -76,12 +76,13 @@ export function Costs() {
   const { data, isLoading, error } = useQuery({
     queryKey: queryKeys.costs(selectedCompanyId!, from || undefined, to || undefined),
     queryFn: async () => {
-      const [summary, byAgent, byProject] = await Promise.all([
+      const [summary, byAgent, byProject, byProvider] = await Promise.all([
         costsApi.summary(selectedCompanyId!, from || undefined, to || undefined),
         costsApi.byAgent(selectedCompanyId!, from || undefined, to || undefined),
         costsApi.byProject(selectedCompanyId!, from || undefined, to || undefined),
+        costsApi.byProvider(selectedCompanyId!, from || undefined, to || undefined),
       ]);
-      return { summary, byAgent, byProject };
+      return { summary, byAgent, byProject, byProvider };
     },
     enabled: !!selectedCompanyId,
   });
@@ -170,7 +171,7 @@ export function Costs() {
           </Card>
 
           {/* By Agent / By Project */}
-          <div className="grid md:grid-cols-2 gap-4">
+          <div className="grid xl:grid-cols-3 gap-4">
             <Card>
               <CardContent className="p-4">
                 <h3 className="text-sm font-semibold mb-3">By Agent</h3>
@@ -230,6 +231,37 @@ export function Costs() {
                           {row.projectName ?? row.projectId ?? "Unattributed"}
                         </span>
                         <span className="font-medium tabular-nums">{formatCents(row.costCents)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <h3 className="text-sm font-semibold mb-3">By Provider</h3>
+                {data.byProvider.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No provider-attributed cost events yet.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {data.byProvider.map((row) => (
+                      <div
+                        key={`${row.provider}:${row.model ?? "na"}`}
+                        className="flex items-start justify-between text-sm"
+                      >
+                        <div className="min-w-0">
+                          <span className="font-medium block truncate">{row.provider}</span>
+                          <span className="text-xs text-muted-foreground block truncate">
+                            {row.model ?? "n/a"} · {row.eventCount} events
+                          </span>
+                        </div>
+                        <div className="text-right shrink-0 ml-2 tabular-nums">
+                          <span className="font-medium block">{formatCents(row.costCents)}</span>
+                          <span className="text-xs text-muted-foreground block">
+                            in {formatTokens(row.inputTokens)} / out {formatTokens(row.outputTokens)} tok
+                          </span>
+                        </div>
                       </div>
                     ))}
                   </div>

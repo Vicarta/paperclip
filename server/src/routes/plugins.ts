@@ -139,6 +139,22 @@ const BUNDLED_PLUGIN_EXAMPLES: AvailablePluginExample[] = [
     localPath: "packages/plugins/examples/plugin-kitchen-sink-example",
     tag: "example",
   },
+  {
+    packageName: "@paperclipai/plugin-bright-data-agent-tools",
+    pluginKey: "paperclip.bright-data-agent-tools",
+    displayName: "Bright Data Agent Tools",
+    description: "Server-side Bright Data MCP connector for social and scraping tool access via Paperclip secrets.",
+    localPath: "packages/plugins/examples/plugin-bright-data-agent-tools",
+    tag: "example",
+  },
+  {
+    packageName: "@paperclipai/plugin-serper-agent-tools",
+    pluginKey: "paperclip.serper-agent-tools",
+    displayName: "Serper Agent Tools",
+    description: "Server-side Serper.dev connector for Google SERP retrieval with secret-backed settings.",
+    localPath: "packages/plugins/examples/plugin-serper-agent-tools",
+    tag: "example",
+  },
 ];
 
 function listBundledPluginExamples(): AvailablePluginExample[] {

@@ -24,6 +24,7 @@ import type {
   PluginWorkspace,
   AgentSession,
   AgentSessionEvent,
+  PluginCostReportEntry,
 } from "./types.js";
 
 export interface TestHarnessOptions {
@@ -70,6 +71,7 @@ export interface TestHarness {
   simulateSessionEvent(sessionId: string, event: Omit<AgentSessionEvent, "sessionId">): void;
   logs: TestHarnessLogEntry[];
   activity: Array<{ message: string; entityType?: string; entityId?: string; metadata?: Record<string, unknown> }>;
+  costs: PluginCostReportEntry[];
   metrics: Array<{ name: string; value: number; tags?: Record<string, string> }>;
 }
 
@@ -131,6 +133,7 @@ export function createTestHarness(options: TestHarnessOptions): TestHarness {
 
   const logs: TestHarnessLogEntry[] = [];
   const activity: TestHarness["activity"] = [];
+  const costs: TestHarness["costs"] = [];
   const metrics: TestHarness["metrics"] = [];
 
   const state = new Map<string, unknown>();
@@ -209,6 +212,12 @@ export function createTestHarness(options: TestHarnessOptions): TestHarness {
       async log(entry) {
         requireCapability(manifest, capabilitySet, "activity.log.write");
         activity.push(entry);
+      },
+    },
+    costs: {
+      async report(entry) {
+        requireCapability(manifest, capabilitySet, "costs.write");
+        costs.push(entry);
       },
     },
     state: {
@@ -698,6 +707,7 @@ export function createTestHarness(options: TestHarnessOptions): TestHarness {
     },
     logs,
     activity,
+    costs,
     metrics,
   };
 

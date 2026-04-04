@@ -200,5 +200,29 @@ export function costService(db: Db) {
         .groupBy(runProjectLinks.projectId, projects.name)
         .orderBy(desc(costCentsExpr));
     },
+
+    byProvider: async (companyId: string, range?: CostDateRange) => {
+      const conditions: ReturnType<typeof eq>[] = [eq(costEvents.companyId, companyId)];
+      if (range?.from) conditions.push(gte(costEvents.occurredAt, range.from));
+      if (range?.to) conditions.push(lte(costEvents.occurredAt, range.to));
+
+      return db
+        .select({
+          provider: costEvents.provider,
+          model: sql<string | null>`nullif(${costEvents.model}, '')`,
+          costCents: sql<number>`coalesce(sum(${costEvents.costCents}), 0)::int`,
+          inputTokens: sql<number>`coalesce(sum(${costEvents.inputTokens}), 0)::int`,
+          outputTokens: sql<number>`coalesce(sum(${costEvents.outputTokens}), 0)::int`,
+          eventCount: sql<number>`count(*)::int`,
+        })
+        .from(costEvents)
+        .where(and(...conditions))
+        .groupBy(costEvents.provider, costEvents.model)
+        .orderBy(
+          desc(sql`coalesce(sum(${costEvents.costCents}), 0)::int`),
+          costEvents.provider,
+          costEvents.model,
+        );
+    },
   };
 }

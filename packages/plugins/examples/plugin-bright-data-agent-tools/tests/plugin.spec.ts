@@ -249,4 +249,41 @@ describe("plugin-bright-data-agent-tools", () => {
     );
     expect(result.content).toContain("@astrogen.com.ua");
   });
+
+  it("reports external spend when flat cost is configured", async () => {
+    const harness = createTestHarness({
+      manifest,
+      config: {
+        brightDataTokenSecretRef: "secret-1",
+        flatCostCentsPerInvocation: 42,
+      },
+    });
+    await plugin.definition.setup(harness.ctx);
+
+    callBrightDataToolMock.mockResolvedValueOnce({
+      isError: false,
+      content: "Fetched profile",
+      data: { content: [{ type: "text", text: "Fetched profile" }], structuredContent: null },
+    });
+
+    await harness.executeTool(
+      TOOL_NAMES.callTool,
+      {
+        remoteToolName: "web_data_instagram_profiles",
+        arguments: { url: "https://www.instagram.com/astrogen.com.ua/" },
+      },
+      { companyId: "company-1", agentId: "agent-1", projectId: "project-1" },
+    );
+
+    expect(harness.costs).toEqual([
+      expect.objectContaining({
+        companyId: "company-1",
+        agentId: "agent-1",
+        projectId: "project-1",
+        provider: "brightdata.com",
+        model: "mcp/web_data_instagram_profiles",
+        costCents: 42,
+      }),
+    ]);
+  });
 });

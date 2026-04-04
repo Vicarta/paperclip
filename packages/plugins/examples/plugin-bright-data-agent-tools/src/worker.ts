@@ -4,6 +4,7 @@ import {
   downloadBrightDataSnapshot,
   getBrightDataSnapshotProgress,
   listBrightDataTools,
+  readConfiguredFlatCostCents,
   resolveInstagramAccountPostSet,
   runBrightDataDatasetRequest,
   triggerBrightDataDatasetRequest,
@@ -20,6 +21,31 @@ function readString(record: Record<string, unknown>, key: string) {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : "";
 }
 
+async function maybeReportBrightDataCost(input: {
+  ctx: Parameters<NonNullable<Parameters<typeof definePlugin>[0]["setup"]>>[0];
+  runCtx: {
+    companyId: string;
+    agentId: string;
+    projectId?: string | null;
+  };
+  config: BrightDataPluginConfig;
+  model: string;
+}) {
+  const flatCostCents = readConfiguredFlatCostCents(input.config);
+  if (flatCostCents <= 0) return;
+  await input.ctx.costs.report({
+    companyId: input.runCtx.companyId,
+    agentId: input.runCtx.agentId,
+    projectId: input.runCtx.projectId ?? null,
+    provider: "brightdata.com",
+    model: input.model,
+    costCents: flatCostCents,
+    inputTokens: 0,
+    outputTokens: 0,
+    occurredAt: new Date().toISOString(),
+  });
+}
+
 const plugin = definePlugin({
   async setup(ctx) {
     ctx.logger.info(`${PLUGIN_ID} plugin setup complete`);
@@ -34,11 +60,17 @@ const plugin = definePlugin({
           properties: {},
         },
       },
-      async (): Promise<ToolResult> => {
+      async (_params, runCtx): Promise<ToolResult> => {
         const config = await getConfig(ctx);
         const result = await listBrightDataTools({
           config,
           resolveSecret: (secretRef) => ctx.secrets.resolve(secretRef),
+        });
+        await maybeReportBrightDataCost({
+          ctx,
+          runCtx,
+          config,
+          model: "mcp/list-tools",
         });
         return { content: result.content, data: result.data };
       },
@@ -61,7 +93,7 @@ const plugin = definePlugin({
           required: ["remoteToolName"],
         },
       },
-      async (params): Promise<ToolResult> => {
+      async (params, runCtx): Promise<ToolResult> => {
         const config = await getConfig(ctx);
         const record = params as Record<string, unknown>;
         const remoteToolName =
@@ -83,6 +115,15 @@ const plugin = definePlugin({
           config,
           resolveSecret: (secretRef) => ctx.secrets.resolve(secretRef),
         });
+
+        if (!result.isError) {
+          await maybeReportBrightDataCost({
+            ctx,
+            runCtx,
+            config,
+            model: `mcp/${remoteToolName}`,
+          });
+        }
 
         return result.isError
           ? { error: result.content || "Bright Data tool call failed" }
@@ -109,13 +150,14 @@ const plugin = definePlugin({
           required: ["datasetId", "input"],
         },
       },
-      async (params): Promise<ToolResult> => {
+      async (params, runCtx): Promise<ToolResult> => {
         try {
           const config = await getConfig(ctx);
           const record = params as Record<string, unknown>;
+          const datasetId = readString(record, "datasetId");
           const result = await triggerBrightDataDatasetRequest({
             params: {
-              datasetId: readString(record, "datasetId"),
+              datasetId,
               input: record.input as Record<string, unknown> | Array<Record<string, unknown>>,
               includeErrors: record.includeErrors as boolean | undefined,
               customOutputFields: record.customOutputFields as string | undefined,
@@ -131,6 +173,12 @@ const plugin = definePlugin({
             },
             config,
             resolveSecret: (secretRef) => ctx.secrets.resolve(secretRef),
+          });
+          await maybeReportBrightDataCost({
+            ctx,
+            runCtx,
+            config,
+            model: datasetId ? `dataset/${datasetId}/trigger` : "dataset/trigger",
           });
           return { content: result.content, data: result.data };
         } catch (error) {
@@ -152,14 +200,23 @@ const plugin = definePlugin({
           required: ["snapshotId"],
         },
       },
-      async (params): Promise<ToolResult> => {
+      async (params, runCtx): Promise<ToolResult> => {
         try {
           const config = await getConfig(ctx);
           const record = params as Record<string, unknown>;
+          const snapshotId = readString(record, "snapshotId");
           const result = await getBrightDataSnapshotProgress({
-            snapshotId: readString(record, "snapshotId"),
+            snapshotId,
             config,
             resolveSecret: (secretRef) => ctx.secrets.resolve(secretRef),
+          });
+          await maybeReportBrightDataCost({
+            ctx,
+            runCtx,
+            config,
+            model: snapshotId
+              ? `dataset/snapshot-progress/${snapshotId}`
+              : "dataset/snapshot-progress",
           });
           return { content: result.content, data: result.data };
         } catch (error) {
@@ -182,15 +239,24 @@ const plugin = definePlugin({
           required: ["snapshotId"],
         },
       },
-      async (params): Promise<ToolResult> => {
+      async (params, runCtx): Promise<ToolResult> => {
         try {
           const config = await getConfig(ctx);
           const record = params as Record<string, unknown>;
+          const snapshotId = readString(record, "snapshotId");
           const result = await downloadBrightDataSnapshot({
-            snapshotId: readString(record, "snapshotId"),
+            snapshotId,
             format: record.format as string | undefined,
             config,
             resolveSecret: (secretRef) => ctx.secrets.resolve(secretRef),
+          });
+          await maybeReportBrightDataCost({
+            ctx,
+            runCtx,
+            config,
+            model: snapshotId
+              ? `dataset/snapshot-download/${snapshotId}`
+              : "dataset/snapshot-download",
           });
           return { content: result.content, data: result.data };
         } catch (error) {
@@ -222,13 +288,14 @@ const plugin = definePlugin({
           required: ["datasetId", "input"],
         },
       },
-      async (params): Promise<ToolResult> => {
+      async (params, runCtx): Promise<ToolResult> => {
         try {
           const config = await getConfig(ctx);
           const record = params as Record<string, unknown>;
+          const datasetId = readString(record, "datasetId");
           const result = await runBrightDataDatasetRequest({
             params: {
-              datasetId: readString(record, "datasetId"),
+              datasetId,
               input: record.input as Record<string, unknown> | Array<Record<string, unknown>>,
               includeErrors: record.includeErrors as boolean | undefined,
               customOutputFields: record.customOutputFields as string | undefined,
@@ -248,6 +315,12 @@ const plugin = definePlugin({
             },
             config,
             resolveSecret: (secretRef) => ctx.secrets.resolve(secretRef),
+          });
+          await maybeReportBrightDataCost({
+            ctx,
+            runCtx,
+            config,
+            model: datasetId ? `dataset/${datasetId}/run` : "dataset/run",
           });
           return { content: result.content, data: result.data };
         } catch (error) {
@@ -272,7 +345,7 @@ const plugin = definePlugin({
           required: ["handleOrUrl"],
         },
       },
-      async (params): Promise<ToolResult> => {
+      async (params, runCtx): Promise<ToolResult> => {
         try {
           const config = await getConfig(ctx);
           const record = params as Record<string, unknown>;
@@ -285,6 +358,12 @@ const plugin = definePlugin({
             },
             config,
             resolveSecret: (secretRef) => ctx.secrets.resolve(secretRef),
+          });
+          await maybeReportBrightDataCost({
+            ctx,
+            runCtx,
+            config,
+            model: "instagram/account-post-set",
           });
           return { content: result.content, data: result.data };
         } catch (error) {

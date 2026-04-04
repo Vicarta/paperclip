@@ -130,6 +130,11 @@ export interface HostServices {
     }): Promise<void>;
   };
 
+  /** Provides `costs.report`. */
+  costs: {
+    report(params: WorkerToHostMethods["costs.report"][0]): Promise<void>;
+  };
+
   /** Provides `metrics.write`. */
   metrics: {
     write(params: WorkerToHostMethods["metrics.write"][0]): Promise<void>;
@@ -272,6 +277,9 @@ const METHOD_CAPABILITY_MAP: Record<WorkerToHostMethodName, PluginCapability | n
 
   // Activity
   "activity.log": "activity.log.write",
+
+  // Costs
+  "costs.report": "costs.write",
 
   // Metrics
   "metrics.write": "metrics.write",
@@ -426,6 +434,11 @@ export function createHostClientHandlers(
     // Activity
     "activity.log": gated("activity.log", async (params) => {
       return services.activity.log(params);
+    }),
+
+    // Costs
+    "costs.report": gated("costs.report", async (params) => {
+      return services.costs.report(params);
     }),
 
     // Metrics

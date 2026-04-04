@@ -15,6 +15,7 @@ type PluginConfig = {
   brightDataTokenSecretRef?: string;
   brightDataMcpUrl?: string;
   brightDataGroups?: string[];
+  flatCostCentsPerInvocation?: number;
 };
 
 type CompanySecret = {
@@ -114,6 +115,7 @@ export function BrightDataSettingsPage({ context }: PluginSettingsPageProps) {
   const [secrets, setSecrets] = useState<CompanySecret[]>([]);
   const [brightDataMcpUrl, setBrightDataMcpUrl] = useState(DEFAULT_BRIGHT_DATA_MCP_URL);
   const [groupText, setGroupText] = useState(DEFAULT_BRIGHT_DATA_GROUPS.join(", "));
+  const [flatCostCentsPerInvocation, setFlatCostCentsPerInvocation] = useState("0");
   const [replaceToken, setReplaceToken] = useState(false);
   const [token, setToken] = useState("");
 
@@ -144,6 +146,14 @@ export function BrightDataSettingsPage({ context }: PluginSettingsPageProps) {
           Array.isArray(nextConfig.brightDataGroups) && nextConfig.brightDataGroups.length > 0
             ? nextConfig.brightDataGroups.join(", ")
             : DEFAULT_BRIGHT_DATA_GROUPS.join(", "),
+        );
+        setFlatCostCentsPerInvocation(
+          String(
+            typeof nextConfig.flatCostCentsPerInvocation === "number" &&
+              Number.isFinite(nextConfig.flatCostCentsPerInvocation)
+              ? nextConfig.flatCostCentsPerInvocation
+              : 0,
+          ),
         );
       } catch (error) {
         if (!cancelled) {
@@ -179,6 +189,7 @@ export function BrightDataSettingsPage({ context }: PluginSettingsPageProps) {
         .split(",")
         .map((value) => value.trim())
         .filter((value) => value.length > 0);
+      const numericFlatCost = Number.parseFloat(flatCostCentsPerInvocation);
 
       if (trimmedToken.length > 0) {
         if (secretId) {
@@ -203,6 +214,10 @@ export function BrightDataSettingsPage({ context }: PluginSettingsPageProps) {
         brightDataMcpUrl: brightDataMcpUrl.trim() || DEFAULT_BRIGHT_DATA_MCP_URL,
         brightDataTokenSecretRef: secretId || "",
         brightDataGroups: groups.length > 0 ? groups : [...DEFAULT_BRIGHT_DATA_GROUPS],
+        flatCostCentsPerInvocation:
+          Number.isFinite(numericFlatCost) && numericFlatCost >= 0
+            ? numericFlatCost
+            : 0,
       };
 
       await api(`/plugins/${pluginId}/config`, {
@@ -264,6 +279,22 @@ export function BrightDataSettingsPage({ context }: PluginSettingsPageProps) {
             />
             <p style={{ marginTop: "6px", fontSize: "12px", color: "var(--muted-foreground)" }}>
               Comma-separated allowlist. Keep this scope narrow and social-first.
+            </p>
+          </div>
+
+          <div>
+            <label style={labelStyle}>Flat Cost Per Invocation (cents)</label>
+            <input
+              style={inputStyle}
+              inputMode="decimal"
+              value={flatCostCentsPerInvocation}
+              onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                setFlatCostCentsPerInvocation(event.target.value)
+              }
+              placeholder="0"
+            />
+            <p style={{ marginTop: "6px", fontSize: "12px", color: "var(--muted-foreground)" }}>
+              Optional operator-maintained marginal cost used for provider cost attribution in the Costs view.
             </p>
           </div>
 

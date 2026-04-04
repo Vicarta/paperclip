@@ -610,6 +610,26 @@ export function buildHostServices(
       },
     },
 
+    costs: {
+      async report(params) {
+        const companyId = ensureCompanyId(params.companyId);
+        await ensurePluginAvailableForCompany(companyId);
+        await costs.createEvent(companyId, {
+          agentId: params.agentId,
+          issueId: params.issueId ?? null,
+          projectId: params.projectId ?? null,
+          goalId: params.goalId ?? null,
+          billingCode: params.billingCode ?? null,
+          provider: params.provider,
+          model: params.model,
+          inputTokens: params.inputTokens ?? 0,
+          outputTokens: params.outputTokens ?? 0,
+          costCents: params.costCents,
+          occurredAt: params.occurredAt ? new Date(params.occurredAt) : new Date(),
+        });
+      },
+    },
+
     metrics: {
       async write(params) {
         const safeName = truncStr(String(params.name ?? ""), MAX_METRIC_NAME_LENGTH);

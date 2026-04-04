@@ -489,6 +489,30 @@ export interface PluginActivityClient {
   log(entry: PluginActivityLogEntry): Promise<void>;
 }
 
+export interface PluginCostReportEntry {
+  companyId: string;
+  agentId: string;
+  issueId?: string | null;
+  projectId?: string | null;
+  goalId?: string | null;
+  billingCode?: string | null;
+  provider: string;
+  model: string;
+  inputTokens?: number;
+  outputTokens?: number;
+  costCents: number;
+  occurredAt?: string;
+}
+
+/**
+ * `ctx.costs` — report plugin-originated external provider spend.
+ *
+ * Requires `costs.write`.
+ */
+export interface PluginCostsClient {
+  report(entry: PluginCostReportEntry): Promise<void>;
+}
+
 /**
  * `ctx.state` — read and write plugin-scoped key-value state.
  *
@@ -1043,6 +1067,9 @@ export interface PluginContext {
 
   /** Write activity log entries. Requires `activity.log.write`. */
   activity: PluginActivityClient;
+
+  /** Report plugin-originated external provider spend. Requires `costs.write`. */
+  costs: PluginCostsClient;
 
   /** Read and write scoped plugin state. Requires `plugin.state.read` / `plugin.state.write`. */
   state: PluginStateClient;

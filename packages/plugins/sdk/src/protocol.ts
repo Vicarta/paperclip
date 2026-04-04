@@ -511,6 +511,25 @@ export interface WorkerToHostMethods {
     result: void,
   ];
 
+  // Costs
+  "costs.report": [
+    params: {
+      companyId: string;
+      agentId: string;
+      issueId?: string | null;
+      projectId?: string | null;
+      goalId?: string | null;
+      billingCode?: string | null;
+      provider: string;
+      model: string;
+      inputTokens?: number;
+      outputTokens?: number;
+      costCents: number;
+      occurredAt?: string;
+    },
+    result: void,
+  ];
+
   // Metrics
   "metrics.write": [
     params: { name: string; value: number; tags?: Record<string, string> },

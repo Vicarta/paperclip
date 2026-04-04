@@ -98,6 +98,17 @@ UI:
 - `useHostContext`
 - typed slot props from `@paperclipai/plugin-sdk/ui`
 
+## Third-Party Provider Pattern
+
+If your plugin integrates with a paid external provider such as Serper, Bright Data, DataForSEO, or a similar service:
+
+- keep credentials server-side through Company Secrets;
+- persist only secret references in plugin config;
+- prefer a custom `settingsPage` for replace-only key entry and rotation;
+- do not expose raw keys in frontend config payloads or repo-tracked files.
+
+If the provider has billable request costs, prefer reporting provider-attributed external spend through the plugin host so that the Costs view can include both model spend and third-party service spend.
+
 Mount surfaces currently wired in the host include:
 
 - `page`

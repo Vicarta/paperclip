@@ -135,6 +135,7 @@ export type {
   CostEvent,
   CostSummary,
   CostByAgent,
+  CostByProvider,
   HeartbeatRun,
   HeartbeatRunEvent,
   AgentRuntimeState,

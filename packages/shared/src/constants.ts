@@ -340,6 +340,7 @@ export const PLUGIN_CAPABILITIES = [
   "agent.sessions.send",
   "agent.sessions.close",
   "activity.log.write",
+  "costs.write",
   "metrics.write",
   // Plugin State
   "plugin.state.read",

@@ -22,6 +22,7 @@ const manifest: PaperclipPluginManifestV1 = {
     "secrets.read-ref",
     "agent.tools.register",
     "instance.settings.register",
+    "costs.write",
   ],
   entrypoints: {
     worker: "./dist/worker.js",
@@ -49,6 +50,13 @@ const manifest: PaperclipPluginManifestV1 = {
         description: "Allowed Bright Data MCP groups to expose through this plugin.",
         items: { type: "string" },
         default: [...DEFAULT_BRIGHT_DATA_GROUPS],
+      },
+      flatCostCentsPerInvocation: {
+        type: "number",
+        title: "Flat Cost Per Invocation (cents)",
+        description:
+          "Operator-maintained marginal cost per Bright Data tool invocation for billing attribution. Set to 0 to disable external cost events.",
+        default: 0,
       },
     },
   },

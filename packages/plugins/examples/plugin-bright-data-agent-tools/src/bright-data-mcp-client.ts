@@ -9,6 +9,7 @@ export type BrightDataPluginConfig = {
   brightDataTokenSecretRef?: string;
   brightDataMcpUrl?: string;
   brightDataGroups?: string[];
+  flatCostCentsPerInvocation?: number;
 };
 
 type BrightDataDatasetTriggerInput =
@@ -104,6 +105,11 @@ function normalizeBoolean(value: unknown) {
 
 function normalizeNumber(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+export function readConfiguredFlatCostCents(config: BrightDataPluginConfig) {
+  const value = normalizeNumber(config.flatCostCentsPerInvocation);
+  return value !== undefined && value > 0 ? value : 0;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
