@@ -14,6 +14,13 @@ COPY packages/shared/package.json packages/shared/
 COPY packages/db/package.json packages/db/
 COPY packages/adapter-utils/package.json packages/adapter-utils/
 COPY packages/plugins/sdk/package.json packages/plugins/sdk/
+COPY packages/plugins/examples/plugin-authoring-smoke-example/package.json packages/plugins/examples/plugin-authoring-smoke-example/
+COPY packages/plugins/examples/plugin-bright-data-agent-tools/package.json packages/plugins/examples/plugin-bright-data-agent-tools/
+COPY packages/plugins/examples/plugin-exa-agent-tools/package.json packages/plugins/examples/plugin-exa-agent-tools/
+COPY packages/plugins/examples/plugin-file-browser-example/package.json packages/plugins/examples/plugin-file-browser-example/
+COPY packages/plugins/examples/plugin-hello-world-example/package.json packages/plugins/examples/plugin-hello-world-example/
+COPY packages/plugins/examples/plugin-kitchen-sink-example/package.json packages/plugins/examples/plugin-kitchen-sink-example/
+COPY packages/plugins/examples/plugin-serper-agent-tools/package.json packages/plugins/examples/plugin-serper-agent-tools/
 COPY packages/adapters/claude-local/package.json packages/adapters/claude-local/
 COPY packages/adapters/codex-local/package.json packages/adapters/codex-local/
 COPY packages/adapters/cursor-local/package.json packages/adapters/cursor-local/
