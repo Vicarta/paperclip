@@ -22,6 +22,26 @@ describe("codex_local parser", () => {
     });
     expect(parsed.errorMessage).toBe("model access denied");
   });
+
+  it("treats turn_aborted events as an interrupted failure", () => {
+    const stdout = [
+      JSON.stringify({ type: "thread.started", thread_id: "thread-123" }),
+      JSON.stringify({
+        type: "response_item",
+        payload: {
+          type: "message",
+          role: "user",
+          content: [{ type: "input_text", text: "<turn_aborted>interrupted</turn_aborted>" }],
+        },
+      }),
+      JSON.stringify({ type: "event_msg", payload: { type: "turn_aborted", reason: "interrupted" } }),
+    ].join("\n");
+
+    const parsed = parseCodexJsonl(stdout);
+    expect(parsed.sessionId).toBe("thread-123");
+    expect(parsed.interrupted).toBe(true);
+    expect(parsed.errorMessage).toBe("Codex turn was aborted");
+  });
 });
 
 describe("codex_local stale session detection", () => {

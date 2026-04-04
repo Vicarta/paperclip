@@ -719,6 +719,7 @@ export async function execute(
   await ensureCommandResolvable(command, cwd, runtimeEnv);
 
   const timeoutSec = asNumber(config.timeoutSec, 0);
+  const idleTimeoutSec = asNumber(config.idleTimeoutSec, 120);
   const graceSec = asNumber(config.graceSec, 20);
   const extraArgs = (() => {
     const fromExtraArgs = asStringArray(config.extraArgs);
@@ -971,6 +972,7 @@ export async function execute(
       env,
       stdin: prompt,
       timeoutSec,
+      idleTimeoutSec,
       graceSec,
       onLog: async (stream, chunk) => {
         if (stream !== "stderr") {
@@ -1008,11 +1010,17 @@ export async function execute(
     clearSessionOnMissingSession = false
   ): AdapterExecutionResult => {
     if (attempt.proc.timedOut) {
+      const timeoutMessage =
+        timeoutSec > 0
+          ? `Timed out after ${timeoutSec}s`
+          : idleTimeoutSec > 0
+            ? `Process became idle for ${idleTimeoutSec}s`
+            : "Process timed out";
       return {
         exitCode: attempt.proc.exitCode,
         signal: attempt.proc.signal,
         timedOut: true,
-        errorMessage: `Timed out after ${timeoutSec}s`,
+        errorMessage: timeoutMessage,
         clearSession: clearSessionOnMissingSession,
       };
     }
@@ -1042,8 +1050,6 @@ export async function execute(
       exitCode: attempt.proc.exitCode,
       signal: attempt.proc.signal,
       timedOut: false,
-      errorMessage:
-        (attempt.proc.exitCode ?? 0) === 0 ? null : fallbackErrorMessage,
       usage: attempt.parsed.usage,
       sessionId: resolvedSessionId,
       sessionParams: resolvedSessionParams,
@@ -1057,7 +1063,11 @@ export async function execute(
         stderr: attempt.proc.stderr,
       },
       summary: attempt.parsed.summary,
-      clearSession: Boolean(clearSessionOnMissingSession && !resolvedSessionId),
+      errorMessage: parsedError || ((attempt.proc.exitCode ?? 0) === 0 ? null : fallbackErrorMessage),
+      clearSession: Boolean(
+        (clearSessionOnMissingSession || attempt.parsed.interrupted) &&
+          !resolvedSessionId,
+      ),
     };
   };
 

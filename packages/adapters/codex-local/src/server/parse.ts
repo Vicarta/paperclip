@@ -4,6 +4,7 @@ export function parseCodexJsonl(stdout: string) {
   let sessionId: string | null = null;
   const messages: string[] = [];
   let errorMessage: string | null = null;
+  let interrupted = false;
   const usage = {
     inputTokens: 0,
     cachedInputTokens: 0,
@@ -18,6 +19,7 @@ export function parseCodexJsonl(stdout: string) {
     if (!event) continue;
 
     const type = asString(event.type, "");
+    const payload = parseObject(event.payload);
     if (type === "thread.started") {
       sessionId = asString(event.thread_id, sessionId ?? "") || sessionId;
       continue;
@@ -27,6 +29,28 @@ export function parseCodexJsonl(stdout: string) {
       const msg = asString(event.message, "").trim();
       if (msg) errorMessage = msg;
       continue;
+    }
+
+    if (
+      type === "event_msg" &&
+      asString(payload.type, "").trim() === "turn_aborted"
+    ) {
+      interrupted = true;
+      errorMessage = "Codex turn was aborted";
+      continue;
+    }
+
+    if (type === "response_item") {
+      const content = Array.isArray(payload.content) ? payload.content : [];
+      const abortedText = content
+        .map((entry) => parseObject(entry))
+        .map((entry) => asString(entry.text, ""))
+        .find((text) => text.includes("<turn_aborted>"));
+      if (abortedText) {
+        interrupted = true;
+        errorMessage = "Codex turn was aborted";
+        continue;
+      }
     }
 
     if (type === "item.completed") {
@@ -58,6 +82,7 @@ export function parseCodexJsonl(stdout: string) {
     summary: messages.join("\n\n").trim(),
     usage,
     errorMessage,
+    interrupted,
   };
 }
 

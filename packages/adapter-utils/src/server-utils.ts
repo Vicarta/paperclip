@@ -420,6 +420,7 @@ export async function runChildProcess(
     cwd: string;
     env: Record<string, string>;
     timeoutSec: number;
+    idleTimeoutSec?: number;
     graceSec: number;
     onLog: (stream: "stdout" | "stderr", chunk: string) => Promise<void>;
     onLogError?: (err: unknown, runId: string, message: string) => void;
@@ -464,9 +465,33 @@ export async function runChildProcess(
         runningProcesses.set(runId, { child, graceSec: opts.graceSec });
 
         let timedOut = false;
+        let idleTimedOut = false;
         let stdout = "";
         let stderr = "";
         let logChain: Promise<void> = Promise.resolve();
+
+        const clearIdleTimer = (() => {
+          let idleTimer: NodeJS.Timeout | null = null;
+          const reset = () => {
+            if (idleTimer) clearTimeout(idleTimer);
+            if (!opts.idleTimeoutSec || opts.idleTimeoutSec <= 0) return;
+            idleTimer = setTimeout(() => {
+              idleTimedOut = true;
+              timedOut = true;
+              child.kill("SIGTERM");
+              setTimeout(() => {
+                if (!child.killed) {
+                  child.kill("SIGKILL");
+                }
+              }, Math.max(1, opts.graceSec) * 1000);
+            }, opts.idleTimeoutSec * 1000);
+          };
+          const clear = () => {
+            if (idleTimer) clearTimeout(idleTimer);
+            idleTimer = null;
+          };
+          return { reset, clear };
+        })();
 
         const timeout =
           opts.timeoutSec > 0
@@ -481,9 +506,12 @@ export async function runChildProcess(
               }, opts.timeoutSec * 1000)
             : null;
 
+        clearIdleTimer.reset();
+
         child.stdout?.on("data", (chunk: unknown) => {
           const text = String(chunk);
           stdout = appendWithCap(stdout, text);
+          clearIdleTimer.reset();
           logChain = logChain
             .then(() => opts.onLog("stdout", text))
             .catch((err) => onLogError(err, runId, "failed to append stdout log chunk"));
@@ -492,6 +520,7 @@ export async function runChildProcess(
         child.stderr?.on("data", (chunk: unknown) => {
           const text = String(chunk);
           stderr = appendWithCap(stderr, text);
+          clearIdleTimer.reset();
           logChain = logChain
             .then(() => opts.onLog("stderr", text))
             .catch((err) => onLogError(err, runId, "failed to append stderr log chunk"));
@@ -499,6 +528,7 @@ export async function runChildProcess(
 
         child.on("error", (err: Error) => {
           if (timeout) clearTimeout(timeout);
+          clearIdleTimer.clear();
           runningProcesses.delete(runId);
           const errno = (err as NodeJS.ErrnoException).code;
           const pathValue = mergedEnv.PATH ?? mergedEnv.Path ?? "";
@@ -511,6 +541,7 @@ export async function runChildProcess(
 
         child.on("close", (code: number | null, signal: NodeJS.Signals | null) => {
           if (timeout) clearTimeout(timeout);
+          clearIdleTimer.clear();
           runningProcesses.delete(runId);
           void logChain.finally(() => {
             resolve({
@@ -518,7 +549,13 @@ export async function runChildProcess(
               signal,
               timedOut,
               stdout,
-              stderr,
+              stderr:
+                idleTimedOut && opts.idleTimeoutSec && opts.idleTimeoutSec > 0
+                  ? appendWithCap(
+                      stderr,
+                      `[paperclip] Process produced no stdout/stderr for ${opts.idleTimeoutSec}s and was terminated.\n`,
+                    )
+                  : stderr,
             });
           });
         });
