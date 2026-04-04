@@ -129,12 +129,12 @@ export function BrightDataSettingsPage({ context }: PluginSettingsPageProps) {
       }
       try {
         const [configResponse, secretsResponse] = await Promise.all([
-          api<{ configJson: Record<string, unknown> }>(`/plugins/${pluginId}/config`),
+          api<{ configJson?: Record<string, unknown> | null } | null>(`/plugins/${pluginId}/config`),
           api<CompanySecret[]>(`/companies/${companyId}/secrets`),
         ]);
 
         if (cancelled) return;
-        const nextConfig = (configResponse.configJson ?? {}) as PluginConfig;
+        const nextConfig = (configResponse?.configJson ?? {}) as PluginConfig;
         setConfig(nextConfig);
         setSecrets(secretsResponse);
         setBrightDataMcpUrl(
