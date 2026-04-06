@@ -29,6 +29,7 @@ import { logger } from "../middleware/logger.js";
 import { forbidden, HttpError, unauthorized } from "../errors.js";
 import { assertCompanyAccess, getActorInfo } from "./authz.js";
 import { shouldWakeAssigneeOnCheckout } from "./issues-checkout-wakeup.js";
+import { shouldWakeParentOnChildStatusChange } from "./issues-parent-wakeup.js";
 import { isAllowedContentType, MAX_ATTACHMENT_BYTES } from "../attachment-types.js";
 
 const MAX_ISSUE_COMMENT_LIMIT = 500;
@@ -804,6 +805,7 @@ export function issueRoutes(db: Db, storage: StorageService) {
       existing.status === "backlog" &&
       issue.status !== "backlog" &&
       req.body.status !== undefined;
+    const statusChanged = existing.status !== issue.status;
 
     // Merge all wakeups from this update into one enqueue per agent to avoid duplicate runs.
     void (async () => {
@@ -831,6 +833,42 @@ export function issueRoutes(db: Db, storage: StorageService) {
           requestedByActorId: actor.actorId,
           contextSnapshot: { issueId: issue.id, source: "issue.status_change" },
         });
+      }
+
+      if (statusChanged && issue.parentId) {
+        const parentIssue = await svc.getById(issue.parentId);
+        if (
+          parentIssue &&
+          shouldWakeParentOnChildStatusChange({
+            previousStatus: existing.status,
+            currentStatus: issue.status,
+            parentId: parentIssue.id,
+            parentAssigneeAgentId: parentIssue.assigneeAgentId,
+            parentStatus: parentIssue.status,
+          })
+        ) {
+          wakeups.set(parentIssue.assigneeAgentId!, {
+            source: "automation",
+            triggerDetail: "system",
+            reason: "child_issue_status_changed",
+            payload: {
+              issueId: parentIssue.id,
+              childIssueId: issue.id,
+              childStatus: issue.status,
+              mutation: "child_status_update",
+            },
+            requestedByActorType: actor.actorType,
+            requestedByActorId: actor.actorId,
+            contextSnapshot: {
+              issueId: parentIssue.id,
+              taskId: parentIssue.id,
+              source: "issue.child_status_change",
+              wakeReason: "child_issue_status_changed",
+              childIssueId: issue.id,
+              childStatus: issue.status,
+            },
+          });
+        }
       }
 
       if (commentBody && comment) {

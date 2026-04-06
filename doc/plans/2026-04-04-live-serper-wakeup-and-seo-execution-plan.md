@@ -396,13 +396,21 @@ Use this section as the running ledger when we advance the plan.
 - [x] canonical live issue-comment mutation proven.
 - [x] comment-to-heartbeat wakeup proven.
 - [x] SEO specialist rerun proven.
-- [ ] parent-manager wake / downstream SEO continuation.
+- [x] parent-manager wake / downstream SEO continuation.
 - [ ] Stage 53 rerun with `DataForSEO`-backed Ukrainian demand metrics.
 - [ ] activation-parity recovery for `Exa` and `Bright Data` plugin cards shown in live UI.
 - [x] Stage 53 artifact produced.
 - [x] stale child blocker state cleared after runtime ACL repair.
-- [ ] parent-manager wake proven after specialist completion recovery.
-- [ ] downstream SEO validation started.
+- [x] parent-manager wake proven after specialist completion recovery.
+- [x] downstream SEO validation started.
+
+### Completed after the initial SEO recovery
+
+- [x] `DataForSEO` credentials validated and Stage 53 rerun accepted (`AST-140`).
+- [x] downstream Stage 54 / Stage 56 / Stage 58 chain reached accepted state for `/money`.
+- [x] Stage 55 first SEO briefing batch executed and accepted for `/money`.
+- [x] systemic child-to-parent wakeup implemented in `PATCH /issues/:id` for child terminal transitions.
+- [x] route-level and unit coverage added for parent wakeup behavior.
 
 ## Definition Of Done For This Documented Track
 
@@ -412,3 +420,5 @@ This track is done when:
 - [ ] the live run uses the fixed `Serper` plugin successfully;
 - [ ] the downstream project receives a real Stage 53 semantic-core artifact;
 - [ ] we can move to the next SEO stage without relying on manual or experimental wakeup hacks.
+
+This Definition Of Done has now been met for the original SEO recovery track.
