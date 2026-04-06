@@ -16,6 +16,7 @@ COPY packages/adapter-utils/package.json packages/adapter-utils/
 COPY packages/plugins/sdk/package.json packages/plugins/sdk/
 COPY packages/plugins/examples/plugin-authoring-smoke-example/package.json packages/plugins/examples/plugin-authoring-smoke-example/
 COPY packages/plugins/examples/plugin-bright-data-agent-tools/package.json packages/plugins/examples/plugin-bright-data-agent-tools/
+COPY packages/plugins/examples/plugin-dataforseo-agent-tools/package.json packages/plugins/examples/plugin-dataforseo-agent-tools/
 COPY packages/plugins/examples/plugin-exa-agent-tools/package.json packages/plugins/examples/plugin-exa-agent-tools/
 COPY packages/plugins/examples/plugin-file-browser-example/package.json packages/plugins/examples/plugin-file-browser-example/
 COPY packages/plugins/examples/plugin-hello-world-example/package.json packages/plugins/examples/plugin-hello-world-example/
