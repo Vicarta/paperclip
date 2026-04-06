@@ -49,8 +49,8 @@ function createApp() {
       type: "board",
       userId: "user-1",
       companyIds: ["company-1"],
-      source: "session",
-      isInstanceAdmin: false,
+      source: "local_implicit",
+      isInstanceAdmin: true,
     };
     next();
   });
@@ -69,9 +69,9 @@ describe("agent adapter routes with company settings", () => {
     mockSecretsService.normalizeAdapterConfigForPersistence.mockImplementation(async (_companyId, config) => config);
     mockListAdapterModels.mockResolvedValue([]);
     mockFindServerAdapter.mockReturnValue({
-      type: "openrouter_local",
+      type: "openrouter",
       testEnvironment: vi.fn().mockResolvedValue({
-        adapterType: "openrouter_local",
+        adapterType: "openrouter",
         status: "pass",
         checks: [],
         testedAt: "2026-04-06T00:00:00.000Z",
@@ -95,10 +95,10 @@ describe("agent adapter routes with company settings", () => {
       },
     });
 
-    const res = await request(createApp()).get("/api/companies/company-1/adapters/openrouter_local/models");
+    const res = await request(createApp()).get("/api/companies/company-1/adapters/openrouter/models");
 
     expect(res.status).toBe(200);
-    expect(mockListAdapterModels).toHaveBeenCalledWith("openrouter_local", {
+    expect(mockListAdapterModels).toHaveBeenCalledWith("openrouter", {
       companyId: "company-1",
       config: {
         env: {
@@ -110,13 +110,13 @@ describe("agent adapter routes with company settings", () => {
 
   it("merges saved company adapter settings into test-environment config", async () => {
     const testEnvironment = vi.fn().mockResolvedValue({
-      adapterType: "openrouter_local",
+      adapterType: "openrouter",
       status: "pass",
       checks: [],
       testedAt: "2026-04-06T00:00:00.000Z",
     });
     mockFindServerAdapter.mockReturnValue({
-      type: "openrouter_local",
+      type: "openrouter",
       testEnvironment,
     });
     mockAdapterSettingsService.get.mockResolvedValue({
@@ -131,27 +131,27 @@ describe("agent adapter routes with company settings", () => {
         env: {
           OPENROUTER_API_KEY: "resolved-key",
         },
-        model: "openrouter/openai/gpt-5",
+        model: "openai/gpt-5",
       },
     });
 
     const res = await request(createApp())
-      .post("/api/companies/company-1/adapters/openrouter_local/test-environment")
+      .post("/api/companies/company-1/adapters/openrouter/test-environment")
       .send({
         adapterConfig: {
-          model: "openrouter/openai/gpt-5",
+          model: "openai/gpt-5",
         },
       });
 
     expect(res.status).toBe(200);
     expect(testEnvironment).toHaveBeenCalledWith({
       companyId: "company-1",
-      adapterType: "openrouter_local",
+      adapterType: "openrouter",
       config: {
         env: {
           OPENROUTER_API_KEY: "resolved-key",
         },
-        model: "openrouter/openai/gpt-5",
+        model: "openai/gpt-5",
       },
     });
   });

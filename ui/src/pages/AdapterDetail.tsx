@@ -17,9 +17,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 function runtimeKindLabel(kind: string) {
+  if (kind === "remote_api") return "Remote API";
   if (kind === "gateway") return "Gateway";
   if (kind === "builtin") return "Builtin";
   return "Local CLI";
+}
+
+function isOpenRouterAdapter(type: string) {
+  return type === "openrouter" || type === "openrouter_local";
 }
 
 function parseConfiguredSecretId(settingsJson: Record<string, unknown> | undefined): string {
@@ -63,17 +68,17 @@ export function AdapterDetailPage() {
   const adapterSettingsQuery = useQuery({
     queryKey: selectedCompanyId ? ["adapter-settings", selectedCompanyId, type] : ["adapter-settings", "none", type],
     queryFn: () => adaptersApi.getSettings(selectedCompanyId!, type),
-    enabled: Boolean(selectedCompanyId) && type === "openrouter_local",
+    enabled: Boolean(selectedCompanyId) && isOpenRouterAdapter(type),
   });
 
   const secretsQuery = useQuery({
     queryKey: selectedCompanyId ? ["company-secrets", selectedCompanyId] : ["company-secrets", "none"],
     queryFn: () => secretsApi.list(selectedCompanyId!),
-    enabled: Boolean(selectedCompanyId) && type === "openrouter_local",
+    enabled: Boolean(selectedCompanyId) && isOpenRouterAdapter(type),
   });
 
   useEffect(() => {
-    if (type !== "openrouter_local") return;
+    if (!isOpenRouterAdapter(type)) return;
     const configuredSecretId = parseConfiguredSecretId(adapterSettingsQuery.data?.settingsJson);
     if (configuredSecretId) setOpenRouterSecretId(configuredSecretId);
   }, [adapterSettingsQuery.data?.settingsJson, type]);
@@ -112,7 +117,7 @@ export function AdapterDetailPage() {
         throw new Error("Choose an existing secret or paste a new OpenRouter API key.");
       }
 
-      return adaptersApi.saveSettings(selectedCompanyId, "openrouter_local", {
+      return adaptersApi.saveSettings(selectedCompanyId, type, {
         env: {
           OPENROUTER_API_KEY: {
             type: "secret_ref",
@@ -206,6 +211,12 @@ export function AdapterDetailPage() {
                 can discover available runtimes, read their configuration contract, and inspect model discovery in the
                 currently selected company.
               </p>
+              {type === "openrouter" ? (
+                <p>
+                  This is the direct external OpenRouter runtime. Requests go from Paperclip to the OpenRouter HTTP API.
+                  No local CLI is required on the host.
+                </p>
+              ) : null}
               {type === "openrouter_local" ? (
                 <p>
                   This specific adapter is a local OpenCode runtime preset. It still requires OpenCode CLI on the
@@ -217,7 +228,7 @@ export function AdapterDetailPage() {
             </CardContent>
           </Card>
 
-          {type === "openrouter_local" ? (
+          {isOpenRouterAdapter(type) ? (
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">Company Settings</CardTitle>

@@ -47,7 +47,7 @@ describe("adapter company settings routes", () => {
   it("returns empty settings when none are stored", async () => {
     mockSettingsService.get.mockResolvedValue(null);
 
-    const res = await request(createApp()).get("/api/companies/company-1/adapters/openrouter_local/settings");
+    const res = await request(createApp()).get("/api/companies/company-1/adapters/openrouter/settings");
 
     expect(res.status).toBe(200);
     expect(res.body.configured).toBe(false);
@@ -70,7 +70,7 @@ describe("adapter company settings routes", () => {
     });
 
     const res = await request(createApp())
-      .patch("/api/companies/company-1/adapters/openrouter_local/settings")
+      .patch("/api/companies/company-1/adapters/openrouter/settings")
       .send({
         settingsJson: {
           env: {
@@ -87,7 +87,7 @@ describe("adapter company settings routes", () => {
     });
     expect(mockSettingsService.upsert).toHaveBeenCalledWith(
       "company-1",
-      "openrouter_local",
+      "openrouter",
       {
         env: {
           OPENROUTER_API_KEY: { type: "secret_ref", secretId: "secret-1", version: "latest" },

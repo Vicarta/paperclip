@@ -526,11 +526,13 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
                       DEFAULT_CODEX_LOCAL_BYPASS_APPROVALS_AND_SANDBOX;
                   } else if (t === "gemini_local") {
                     nextValues.model = DEFAULT_GEMINI_LOCAL_MODEL;
-                  } else if (t === "cursor") {
-                    nextValues.model = DEFAULT_CURSOR_LOCAL_MODEL;
-                  } else if (t === "opencode_local") {
-                    nextValues.model = "";
-                  }
+  } else if (t === "cursor") {
+    nextValues.model = DEFAULT_CURSOR_LOCAL_MODEL;
+  } else if (t === "opencode_local") {
+    nextValues.model = "";
+  } else if (t === "openrouter") {
+    nextValues.model = "";
+  }
                   set!(nextValues);
                 } else {
                   // Clear all adapter config and explicitly blank out model + effort/mode keys

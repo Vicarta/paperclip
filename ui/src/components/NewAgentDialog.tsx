@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import {
   ArrowLeft,
   Bot,
+  Cable,
   Code,
   Gem,
   MousePointer2,
@@ -27,6 +28,7 @@ type AdvancedAdapterType =
   | "codex_local"
   | "gemini_local"
   | "opencode_local"
+  | "openrouter"
   | "openrouter_local"
   | "pi_local"
   | "cursor"
@@ -66,8 +68,14 @@ const ADVANCED_ADAPTER_OPTIONS: Array<{
     desc: "Local multi-provider agent",
   },
   {
+    value: "openrouter",
+    label: "OpenRouter",
+    icon: Cable,
+    desc: "Direct external OpenRouter HTTP adapter",
+  },
+  {
     value: "openrouter_local",
-    label: "OpenCode + OpenRouter",
+    label: "OpenCode + OpenRouter (local)",
     icon: OpenCodeLogoIcon,
     desc: "Local OpenCode runtime pinned to OpenRouter-backed models",
   },

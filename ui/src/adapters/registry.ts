@@ -4,6 +4,7 @@ import { codexLocalUIAdapter } from "./codex-local";
 import { cursorLocalUIAdapter } from "./cursor";
 import { geminiLocalUIAdapter } from "./gemini-local";
 import { openCodeLocalUIAdapter } from "./opencode-local";
+import { openRouterUIAdapter } from "./openrouter";
 import { openRouterLocalUIAdapter } from "./openrouter-local";
 import { piLocalUIAdapter } from "./pi-local";
 import { openClawGatewayUIAdapter } from "./openclaw-gateway";
@@ -16,6 +17,7 @@ const adaptersByType = new Map<string, UIAdapterModule>(
     codexLocalUIAdapter,
     geminiLocalUIAdapter,
     openCodeLocalUIAdapter,
+    openRouterUIAdapter,
     openRouterLocalUIAdapter,
     piLocalUIAdapter,
     cursorLocalUIAdapter,

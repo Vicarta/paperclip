@@ -15,6 +15,7 @@ const ADAPTER_DESCRIPTIONS: Record<string, string> = {
   codex_local: "Run agents locally with Codex.",
   gemini_local: "Run agents locally with Gemini CLI.",
   opencode_local: "Run agents locally through OpenCode with multi-provider routing.",
+  openrouter: "Run agents through the external OpenRouter HTTP API.",
   openrouter_local: "Run agents locally through OpenCode, pinned to OpenRouter-backed models.",
   pi_local: "Run agents locally with Pi.",
   cursor: "Run agents locally with Cursor.",
@@ -25,6 +26,7 @@ const ADAPTER_DESCRIPTIONS: Record<string, string> = {
 };
 
 function runtimeKindForAdapter(type: string): AdapterRuntimeKind {
+  if (type === "openrouter") return "remote_api";
   if (type === "openclaw_gateway" || type === "http") return "gateway";
   if (type === "process") return "builtin";
   return "local_cli";

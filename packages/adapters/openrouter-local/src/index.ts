@@ -1,5 +1,5 @@
 export const type = "openrouter_local";
-export const label = "OpenCode + OpenRouter (local)";
+export const label = "OpenCode (OpenRouter provider, local)";
 
 export const models: Array<{ id: string; label: string }> = [];
 

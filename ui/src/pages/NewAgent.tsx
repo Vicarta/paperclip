@@ -31,6 +31,7 @@ const SUPPORTED_ADVANCED_ADAPTER_TYPES = new Set<CreateConfigValues["adapterType
   "codex_local",
   "gemini_local",
   "opencode_local",
+  "openrouter",
   "openrouter_local",
   "pi_local",
   "cursor",
@@ -51,6 +52,8 @@ function createValuesForAdapterType(
   } else if (adapterType === "cursor") {
     nextValues.model = DEFAULT_CURSOR_LOCAL_MODEL;
   } else if (adapterType === "opencode_local") {
+    nextValues.model = "";
+  } else if (adapterType === "openrouter") {
     nextValues.model = "";
   } else if (adapterType === "openrouter_local") {
     nextValues.model = "";
@@ -144,12 +147,18 @@ export function NewAgent() {
   function handleSubmit() {
     if (!selectedCompanyId || !name.trim()) return;
     setFormError(null);
-    if (configValues.adapterType === "opencode_local" || configValues.adapterType === "openrouter_local") {
+    if (
+      configValues.adapterType === "opencode_local" ||
+      configValues.adapterType === "openrouter" ||
+      configValues.adapterType === "openrouter_local"
+    ) {
       const selectedModel = configValues.model.trim();
       if (!selectedModel) {
         setFormError(
           configValues.adapterType === "openrouter_local"
-            ? "OpenRouter requires an explicit openrouter/* model."
+            ? "OpenRouter via OpenCode requires an explicit openrouter/* model."
+            : configValues.adapterType === "openrouter"
+            ? "OpenRouter requires an explicit provider/model identifier."
             : "OpenCode requires an explicit model in provider/model format.",
         );
         return;
@@ -158,13 +167,21 @@ export function NewAgent() {
         setFormError(
           adapterModelsError instanceof Error
             ? adapterModelsError.message
-            : `Failed to load ${configValues.adapterType === "openrouter_local" ? "OpenRouter" : "OpenCode"} models.`,
+            : `Failed to load ${
+                configValues.adapterType === "openrouter" || configValues.adapterType === "openrouter_local"
+                  ? "OpenRouter"
+                  : "OpenCode"
+              } models.`,
         );
         return;
       }
       if (adapterModelsLoading || adapterModelsFetching) {
         setFormError(
-          `${configValues.adapterType === "openrouter_local" ? "OpenRouter" : "OpenCode"} models are still loading. Please wait and try again.`,
+          `${
+            configValues.adapterType === "openrouter" || configValues.adapterType === "openrouter_local"
+              ? "OpenRouter"
+              : "OpenCode"
+          } models are still loading. Please wait and try again.`,
         );
         return;
       }
@@ -172,8 +189,16 @@ export function NewAgent() {
       if (!discovered.some((entry) => entry.id === selectedModel)) {
         setFormError(
           discovered.length === 0
-            ? `No ${configValues.adapterType === "openrouter_local" ? "OpenRouter" : "OpenCode"} models discovered. Verify provider authentication.`
-            : `Configured ${configValues.adapterType === "openrouter_local" ? "OpenRouter" : "OpenCode"} model is unavailable: ${selectedModel}`,
+            ? `No ${
+                configValues.adapterType === "openrouter" || configValues.adapterType === "openrouter_local"
+                  ? "OpenRouter"
+                  : "OpenCode"
+              } models discovered. Verify provider authentication.`
+            : `Configured ${
+                configValues.adapterType === "openrouter" || configValues.adapterType === "openrouter_local"
+                  ? "OpenRouter"
+                  : "OpenCode"
+              } model is unavailable: ${selectedModel}`,
         );
         return;
       }

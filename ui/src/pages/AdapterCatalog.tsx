@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Cable, ChevronRight, Cpu, FileCode2, RadioTower } from "lucide-react";
+import { Cable, ChevronRight, Cloud, Cpu, FileCode2, RadioTower } from "lucide-react";
 import { Link } from "@/lib/router";
 import { adaptersApi } from "@/api/adapters";
 import { useBreadcrumbs } from "@/context/BreadcrumbContext";
@@ -10,12 +10,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 function runtimeKindLabel(kind: string) {
+  if (kind === "remote_api") return "Remote API";
   if (kind === "gateway") return "Gateway";
   if (kind === "builtin") return "Builtin";
   return "Local CLI";
 }
 
 function RuntimeKindIcon({ kind }: { kind: string }) {
+  if (kind === "remote_api") return <Cloud className="h-4 w-4 text-muted-foreground" />;
   if (kind === "gateway") return <RadioTower className="h-4 w-4 text-muted-foreground" />;
   if (kind === "builtin") return <FileCode2 className="h-4 w-4 text-muted-foreground" />;
   return <Cpu className="h-4 w-4 text-muted-foreground" />;

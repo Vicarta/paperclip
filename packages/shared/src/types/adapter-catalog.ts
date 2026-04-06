@@ -1,4 +1,4 @@
-export type AdapterRuntimeKind = "local_cli" | "gateway" | "builtin";
+export type AdapterRuntimeKind = "local_cli" | "gateway" | "builtin" | "remote_api";
 
 export interface AdapterCatalogEntry {
   type: string;

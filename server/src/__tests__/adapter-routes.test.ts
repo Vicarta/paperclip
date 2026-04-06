@@ -40,14 +40,15 @@ describe("adapter routes", () => {
 
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body.some((entry: { type: string }) => entry.type === "openrouter")).toBe(true);
     expect(res.body.some((entry: { type: string }) => entry.type === "openrouter_local")).toBe(true);
   });
 
   it("returns adapter detail with configuration doc", async () => {
-    const res = await request(createApp()).get("/api/adapters/openrouter_local");
+    const res = await request(createApp()).get("/api/adapters/openrouter");
 
     expect(res.status).toBe(200);
-    expect(res.body.type).toBe("openrouter_local");
-    expect(res.body.configurationDoc).toContain("openrouter_local");
+    expect(res.body.type).toBe("openrouter");
+    expect(res.body.configurationDoc).toContain("openrouter");
   });
 });

@@ -44,6 +44,7 @@ import {
 import { DEFAULT_CURSOR_LOCAL_MODEL } from "@paperclipai/adapter-cursor-local";
 import { DEFAULT_GEMINI_LOCAL_MODEL } from "@paperclipai/adapter-gemini-local";
 import { ensureOpenCodeModelConfiguredAndAvailable } from "@paperclipai/adapter-opencode-local/server";
+import { ensureOpenRouterDirectModelConfiguredAndAvailable } from "@paperclipai/adapter-openrouter/server";
 import { ensureOpenRouterModelConfiguredAndAvailable } from "@paperclipai/adapter-openrouter-local/server";
 import type { PluginToolDispatcher } from "../services/plugin-tool-dispatcher.js";
 
@@ -57,6 +58,7 @@ export function agentRoutes(db: Db, deps: AgentRouteDeps = {}) {
       codex_local: "instructionsFilePath",
       gemini_local: "instructionsFilePath",
       opencode_local: "instructionsFilePath",
+      openrouter: "instructionsFilePath",
       openrouter_local: "instructionsFilePath",
       cursor: "instructionsFilePath",
     };
@@ -278,11 +280,25 @@ export function agentRoutes(db: Db, deps: AgentRouteDeps = {}) {
     adapterType: string | null | undefined,
     adapterConfig: Record<string, unknown>,
   ) {
-    if (adapterType !== "opencode_local" && adapterType !== "openrouter_local") return;
-    const { config: runtimeConfig } = await secretsSvc.resolveAdapterConfigForRuntime(companyId, adapterConfig);
+    if (
+      adapterType !== "opencode_local" &&
+      adapterType !== "openrouter" &&
+      adapterType !== "openrouter_local"
+    ) return;
+    const savedSettings = await adapterSettingsSvc.get(companyId, adapterType);
+    const mergedAdapterConfig = mergeAdapterConfigs(
+      (savedSettings?.settingsJson ?? {}) as Record<string, unknown>,
+      adapterConfig,
+    );
+    const { config: runtimeConfig } = await secretsSvc.resolveAdapterConfigForRuntime(companyId, mergedAdapterConfig);
     const runtimeEnv = asRecord(runtimeConfig.env) ?? {};
     try {
-      if (adapterType === "openrouter_local") {
+      if (adapterType === "openrouter") {
+        await ensureOpenRouterDirectModelConfiguredAndAvailable({
+          ...runtimeConfig,
+          env: runtimeEnv,
+        });
+      } else if (adapterType === "openrouter_local") {
         await ensureOpenRouterModelConfiguredAndAvailable({
           model: runtimeConfig.model,
           command: runtimeConfig.command,
@@ -1212,7 +1228,7 @@ export function agentRoutes(db: Db, deps: AgentRouteDeps = {}) {
       );
       patchData.adapterConfig = normalizedEffectiveAdapterConfig;
     }
-    if (touchesAdapterConfiguration && requestedAdapterType === "opencode_local") {
+    if (touchesAdapterConfiguration) {
       const effectiveAdapterConfig = asRecord(patchData.adapterConfig) ?? {};
       await assertAdapterConfigConstraints(
         existing.companyId,

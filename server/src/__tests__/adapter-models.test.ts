@@ -102,6 +102,31 @@ describe("adapter model listing", () => {
     expect(models).toEqual([]);
   });
 
+  it("lists direct OpenRouter models without local prefixes", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          data: [
+            { id: "openai/gpt-5", name: "GPT-5" },
+            { id: "anthropic/claude-sonnet-4.5", name: "Claude Sonnet 4.5" },
+          ],
+        }),
+    } as Response);
+
+    const models = await listAdapterModels("openrouter", {
+      config: {
+        env: {
+          OPENROUTER_API_KEY: "sk-or-v1-test",
+        },
+      },
+    });
+
+    expect(models.some((entry) => entry.id === "openai/gpt-5")).toBe(true);
+    expect(models.some((entry) => entry.id === "anthropic/claude-sonnet-4.5")).toBe(true);
+    expect(models.every((entry) => !entry.id.startsWith("openrouter/"))).toBe(true);
+  });
+
   it("filters model discovery for openrouter_local", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: true,
