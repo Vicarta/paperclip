@@ -4,7 +4,7 @@ import { OpenRouterLocalConfigFields } from "./config-fields";
 
 export const openRouterLocalUIAdapter: UIAdapterModule = {
   type: "openrouter_local",
-  label: "OpenRouter via OpenCode (local)",
+  label: "OpenCode + OpenRouter (local)",
   parseStdoutLine: parseOpenCodeStdoutLine,
   ConfigFields: OpenRouterLocalConfigFields,
   buildAdapterConfig: buildOpenRouterLocalConfig,

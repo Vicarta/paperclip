@@ -208,8 +208,9 @@ export function AdapterDetailPage() {
               </p>
               {type === "openrouter_local" ? (
                 <p>
-                  This specific adapter is still a local OpenCode-backed wrapper. The company-level settings below only
-                  centralize provider auth; they do not convert it into a direct HTTP runtime.
+                  This specific adapter is a local OpenCode runtime preset. It still requires OpenCode CLI on the
+                  Paperclip host. The company-level settings below only centralize OpenRouter provider auth; they do
+                  not convert it into a direct HTTP runtime.
                 </p>
               ) : null}
               <p className="font-mono text-xs text-foreground">{adapter.type}</p>

@@ -32,6 +32,8 @@ import {
 import { conflict, forbidden, notFound, unprocessable } from "../errors.js";
 import { assertBoard, assertCompanyAccess, getActorInfo } from "./authz.js";
 import { findServerAdapter, listAdapterModels } from "../adapters/index.js";
+import { adapterCompanySettingsService } from "../services/adapter-company-settings.js";
+import { mergeAdapterConfigs } from "../services/adapter-config-merge.js";
 import { redactEventPayload } from "../redaction.js";
 import { redactCurrentUserValue } from "../log-redaction.js";
 import { runClaudeLogin } from "@paperclipai/adapter-claude-local/server";
@@ -67,6 +69,7 @@ export function agentRoutes(db: Db, deps: AgentRouteDeps = {}) {
   const heartbeat = heartbeatService(db);
   const issueApprovalsSvc = issueApprovalService(db);
   const secretsSvc = secretService(db);
+  const adapterSettingsSvc = adapterCompanySettingsService(db);
   const strictSecretsMode = process.env.PAPERCLIP_SECRETS_STRICT_MODE === "true";
 
   function canCreateAgents(agent: { role: string; permissions: Record<string, unknown> | null | undefined }) {
@@ -435,7 +438,15 @@ export function agentRoutes(db: Db, deps: AgentRouteDeps = {}) {
     const companyId = req.params.companyId as string;
     assertCompanyAccess(req, companyId);
     const type = req.params.type as string;
-    const models = await listAdapterModels(type);
+    const savedSettings = await adapterSettingsSvc.get(companyId, type);
+    const { config: runtimeAdapterConfig } = await secretsSvc.resolveAdapterConfigForRuntime(
+      companyId,
+      (savedSettings?.settingsJson ?? {}) as Record<string, unknown>,
+    );
+    const models = await listAdapterModels(type, {
+      companyId,
+      config: runtimeAdapterConfig,
+    });
     res.json(models);
   });
 
@@ -453,16 +464,20 @@ export function agentRoutes(db: Db, deps: AgentRouteDeps = {}) {
         return;
       }
 
-      const inputAdapterConfig =
-        (req.body?.adapterConfig ?? {}) as Record<string, unknown>;
-      const normalizedAdapterConfig = await secretsSvc.normalizeAdapterConfigForPersistence(
+      const savedSettings = await adapterSettingsSvc.get(companyId, type);
+      const inputAdapterConfig = (req.body?.adapterConfig ?? {}) as Record<string, unknown>;
+      const normalizedInputAdapterConfig = await secretsSvc.normalizeAdapterConfigForPersistence(
         companyId,
         inputAdapterConfig,
         { strictMode: strictSecretsMode },
       );
+      const mergedAdapterConfig = mergeAdapterConfigs(
+        (savedSettings?.settingsJson ?? {}) as Record<string, unknown>,
+        normalizedInputAdapterConfig,
+      );
       const { config: runtimeAdapterConfig } = await secretsSvc.resolveAdapterConfigForRuntime(
         companyId,
-        normalizedAdapterConfig,
+        mergedAdapterConfig,
       );
 
       const result = await adapter.testEnvironment({

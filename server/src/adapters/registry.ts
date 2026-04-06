@@ -88,7 +88,7 @@ const codexLocalAdapter: ServerAdapterModule = {
   testEnvironment: codexTestEnvironment,
   sessionCodec: codexSessionCodec,
   models: codexModels,
-  listModels: listCodexModels,
+  listModels: async () => listCodexModels(),
   supportsLocalAgentJwt: true,
   agentConfigurationDoc: codexAgentConfigurationDoc,
 };
@@ -99,7 +99,7 @@ const cursorLocalAdapter: ServerAdapterModule = {
   testEnvironment: cursorTestEnvironment,
   sessionCodec: cursorSessionCodec,
   models: cursorModels,
-  listModels: listCursorModels,
+  listModels: async () => listCursorModels(),
   supportsLocalAgentJwt: true,
   agentConfigurationDoc: cursorAgentConfigurationDoc,
 };
@@ -129,7 +129,7 @@ const openCodeLocalAdapter: ServerAdapterModule = {
   testEnvironment: openCodeTestEnvironment,
   sessionCodec: openCodeSessionCodec,
   models: [],
-  listModels: listOpenCodeModels,
+  listModels: async (input) => listOpenCodeModels(input?.config ?? {}),
   supportsLocalAgentJwt: true,
   agentConfigurationDoc: openCodeAgentConfigurationDoc,
 };
@@ -140,7 +140,7 @@ const openRouterLocalAdapter: ServerAdapterModule = {
   testEnvironment: openRouterTestEnvironment,
   sessionCodec: openRouterSessionCodec,
   models: [],
-  listModels: listOpenRouterModels,
+  listModels: async (input) => listOpenRouterModels(input?.config ?? {}),
   supportsLocalAgentJwt: true,
   agentConfigurationDoc: openRouterAgentConfigurationDoc,
 };
@@ -151,7 +151,7 @@ const piLocalAdapter: ServerAdapterModule = {
   testEnvironment: piTestEnvironment,
   sessionCodec: piSessionCodec,
   models: [],
-  listModels: listPiModels,
+  listModels: async () => listPiModels(),
   supportsLocalAgentJwt: true,
   agentConfigurationDoc: piAgentConfigurationDoc,
 };
@@ -191,11 +191,14 @@ export function getServerAdapter(type: string): ServerAdapterModule {
   return adapter;
 }
 
-export async function listAdapterModels(type: string): Promise<{ id: string; label: string }[]> {
+export async function listAdapterModels(
+  type: string,
+  input?: { companyId?: string; config?: Record<string, unknown> },
+): Promise<{ id: string; label: string }[]> {
   const adapter = adaptersByType.get(type);
   if (!adapter) return [];
   if (adapter.listModels) {
-    const discovered = await adapter.listModels();
+    const discovered = await adapter.listModels(input);
     if (discovered.length > 0) return discovered;
   }
   return adapter.models ?? [];

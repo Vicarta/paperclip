@@ -4,7 +4,7 @@ Date: 2026-04-06
 
 ## Goal
 
-Add a first-class adapter catalog/settings surface to the Paperclip UI, add a first-class `openrouter_local` adapter without breaking the current adapter architecture, and introduce a real company-level adapter settings layer so provider credentials do not have to live in per-agent configs.
+Add a first-class adapter catalog/settings surface to the Paperclip UI, add a first-class `openrouter_local` adapter without breaking the current adapter architecture, and introduce a real company-level adapter settings layer so provider credentials do not have to live in per-agent configs. Keep runtime adapters and provider auth conceptually separate: `openrouter_local` is a local OpenCode runtime preset, not the future direct external OpenRouter runtime.
 
 ## Constraints
 
@@ -27,6 +27,7 @@ Add a first-class adapter catalog/settings surface to the Paperclip UI, add a fi
 - There is no first-class `openrouter_local` adapter today.
 - There is no company-level adapter settings persistence layer today, so provider auth has to be duplicated in agent configs.
 - A direct external OpenRouter HTTP adapter is architecturally different from an OpenCode-backed local wrapper and should not be faked by naming alone.
+- Model discovery and environment tests must also honor company-level adapter settings; otherwise saved provider credentials do not affect the adapter settings page where operators expect them to work.
 
 ## Deliverables
 
@@ -35,6 +36,7 @@ Add a first-class adapter catalog/settings surface to the Paperclip UI, add a fi
 3. First-class `openrouter_local` adapter wired into server, UI, onboarding, and validation.
 4. Company-level adapter settings persistence and UI for provider-backed adapters, starting with OpenRouter credentials.
 5. Tests covering adapter reflection, adapter settings persistence, and OpenRouter adapter basics.
+6. Adapter settings behavior that actually affects model discovery and adapter environment tests.
 
 ## Execution Plan
 
@@ -90,6 +92,12 @@ Add a first-class adapter catalog/settings surface to the Paperclip UI, add a fi
 - [x] Keep OpenRouter credentials server-side via Paperclip secrets, not plain frontend persistence.
 - [x] Clarify in labels/docs that `openrouter_local` is an OpenCode-backed local wrapper, not yet a direct HTTP adapter.
 
+### Phase 5.1 — Settings-Aware Discovery And Diagnostics
+- [x] Feed company-level adapter settings into server-side model discovery routes.
+- [x] Feed company-level adapter settings into adapter environment tests before per-request overrides.
+- [x] Tighten UI copy so `openrouter_local` reads as a local OpenCode runtime preset, not a direct external HTTP runtime.
+- [x] Add regression coverage for company adapter settings affecting models/test-environment routes.
+
 ### Phase 6 — Testing
 - [x] Add unit coverage for adapter reflection API.
 - [x] Add unit coverage for adapter settings persistence route.
@@ -101,6 +109,7 @@ Add a first-class adapter catalog/settings surface to the Paperclip UI, add a fi
 ## Current Status
 
 - Local implementation is complete for the adapter catalog, the first-class `openrouter_local` wrapper, and the new company-level adapter settings layer.
+- Saved OpenRouter provider auth now affects the adapter page's model discovery and environment testing flows instead of only heartbeat execution.
 - Targeted local tests/builds/typechecks are green for the touched server/ui/shared surfaces.
 - Live server now has:
   - `/api/adapters` and `/api/adapters/:type`
@@ -111,6 +120,7 @@ Add a first-class adapter catalog/settings surface to the Paperclip UI, add a fi
   - authenticated UI smoke on `/AST/instance/settings/adapters/openrouter_local`;
   - regression check that existing adapters (`Exa`, `Bright Data`, `Serper`, `DataForSEO`) still behave correctly after the new packaging changes.
   - design and implement a future true external `openrouter` HTTP adapter instead of overloading the semantics of `openrouter_local`.
+  - decide whether provider credentials should graduate from adapter-specific settings into a broader provider catalog/settings surface.
 
 ## Definition Of Done
 

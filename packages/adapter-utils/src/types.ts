@@ -178,7 +178,10 @@ export interface ServerAdapterModule {
   sessionCodec?: AdapterSessionCodec;
   supportsLocalAgentJwt?: boolean;
   models?: AdapterModel[];
-  listModels?: () => Promise<AdapterModel[]>;
+  listModels?: (input?: {
+    companyId?: string;
+    config?: Record<string, unknown>;
+  }) => Promise<AdapterModel[]>;
   agentConfigurationDoc?: string;
   /**
    * Optional lifecycle hook when an agent is approved/hired (join-request or hire_agent approval).

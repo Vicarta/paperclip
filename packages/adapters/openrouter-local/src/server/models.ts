@@ -16,8 +16,12 @@ function readConfiguredModel(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
-export async function listOpenRouterModels(): Promise<AdapterModel[]> {
-  const models = await listOpenCodeModels();
+export async function listOpenRouterModels(input: {
+  command?: unknown;
+  cwd?: unknown;
+  env?: unknown;
+} = {}): Promise<AdapterModel[]> {
+  const models = await listOpenCodeModels(input);
   return filterOpenRouterModels(models);
 }
 

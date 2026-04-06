@@ -14,6 +14,22 @@ describe("openrouter models", () => {
     ]);
   });
 
+  it("passes discovery config through to OpenCode model listing", async () => {
+    const spy = vi.spyOn(openCodeServer, "listOpenCodeModels").mockResolvedValue([]);
+
+    await listOpenRouterModels({
+      command: "opencode",
+      cwd: "/tmp/paperclip",
+      env: { OPENROUTER_API_KEY: "secret" },
+    });
+
+    expect(spy).toHaveBeenCalledWith({
+      command: "opencode",
+      cwd: "/tmp/paperclip",
+      env: { OPENROUTER_API_KEY: "secret" },
+    });
+  });
+
   it("rejects configured models outside openrouter namespace", async () => {
     await expect(
       ensureOpenRouterModelConfiguredAndAvailable({ model: "anthropic/claude-sonnet-4-5" }),

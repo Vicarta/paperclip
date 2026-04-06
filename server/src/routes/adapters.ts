@@ -15,7 +15,7 @@ const ADAPTER_DESCRIPTIONS: Record<string, string> = {
   codex_local: "Run agents locally with Codex.",
   gemini_local: "Run agents locally with Gemini CLI.",
   opencode_local: "Run agents locally through OpenCode with multi-provider routing.",
-  openrouter_local: "Run agents locally through OpenCode, constrained to OpenRouter-backed models.",
+  openrouter_local: "Run agents locally through OpenCode, pinned to OpenRouter-backed models.",
   pi_local: "Run agents locally with Pi.",
   cursor: "Run agents locally with Cursor.",
   openclaw_gateway: "Invoke agents through the OpenClaw gateway protocol.",

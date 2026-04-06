@@ -183,9 +183,13 @@ export async function ensureOpenCodeModelConfiguredAndAvailable(input: {
   return models;
 }
 
-export async function listOpenCodeModels(): Promise<AdapterModel[]> {
+export async function listOpenCodeModels(input: {
+  command?: unknown;
+  cwd?: unknown;
+  env?: unknown;
+} = {}): Promise<AdapterModel[]> {
   try {
-    return await discoverOpenCodeModelsCached();
+    return await discoverOpenCodeModelsCached(input);
   } catch {
     return [];
   }
