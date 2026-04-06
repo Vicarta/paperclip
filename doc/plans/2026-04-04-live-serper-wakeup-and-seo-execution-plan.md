@@ -36,6 +36,11 @@ The result was partial progress with weak control over the true critical path.
   - specialist executed;
   - Stage 53 artifact materialized.
 - [ ] the parent manager issue still needs a clean canonical wake so the workflow can continue without an operator-side handoff.
+- [ ] the older installed `Exa` and `Bright Data` plugins still need activation-parity recovery in live UI.
+  Current screenshot-level symptom:
+  - installed plugins are present in the manager UI;
+  - plugin cards show `error`;
+  - visible message: `Activation failed: Command failed: pnpm build`.
 
 ### Main blocker
 
@@ -183,6 +188,46 @@ Exit criteria:
 Exit criteria:
 - the next work item is unambiguous and based on observed results.
 
+### Phase 7: Restore Activation Parity For Existing Exa And Bright Data Plugins
+
+Why this exists:
+- the current SEO critical path is no longer blocked by `Serper`;
+- `DataForSEO` is now live and ready;
+- but the screenshot shows two older plugins still degraded in the operator UI:
+  - `paperclip.exa-agent-tools`
+  - `paperclip.bright-data-agent-tools`
+
+Required work:
+- [ ] inspect the current registry state for `Exa` and `Bright Data` plugin rows:
+  - package path;
+  - status;
+  - last error;
+  - whether the rows predate the Docker/importer fixes.
+- [ ] inspect live logs for the exact activation failure for each plugin instead of relying only on the generic UI banner.
+- [ ] compare their package importer coverage with the now-fixed `Serper` and `DataForSEO` path:
+  - `pnpm-lock.yaml`
+  - `Dockerfile` deps-stage package copies
+  - package build prerequisites
+- [ ] determine whether the correct recovery path is:
+  - `enable` on the existing plugin row;
+  - reinstall from bundled example;
+  - or uninstall + reinstall.
+- [ ] run the minimal safe recovery path for `Exa`.
+- [ ] run the minimal safe recovery path for `Bright Data`.
+- [ ] verify each plugin reaches `ready` and registers its tools in live runtime.
+- [ ] verify the plugin cards in the UI no longer show the generic build-failure banner.
+
+Rules:
+- Do not guess from the generic UI error text alone.
+- Use exact server logs and registry state for each plugin before choosing recovery.
+- Prefer `enable`/recovery over destructive reinstall if the stored config should be preserved.
+- If a reinstall is required, preserve server-side secrets and confirm they remain referenced correctly.
+
+Exit criteria:
+- `Exa Agent Tools` is `ready` in live UI.
+- `Bright Data Agent Tools` is `ready` in live UI.
+- neither card shows `Activation failed: Command failed: pnpm build`.
+
 ## Debug Decision Tree
 
 Use this exact branching logic to avoid another loop.
@@ -258,6 +303,9 @@ Use this section as the running ledger when we advance the plan.
 - [x] canonical live issue-comment mutation proven.
 - [x] comment-to-heartbeat wakeup proven.
 - [x] SEO specialist rerun proven.
+- [ ] parent-manager wake / downstream SEO continuation.
+- [ ] Stage 53 rerun with `DataForSEO`-backed Ukrainian demand metrics.
+- [ ] activation-parity recovery for `Exa` and `Bright Data` plugin cards shown in live UI.
 - [x] Stage 53 artifact produced.
 - [x] stale child blocker state cleared after runtime ACL repair.
 - [ ] parent-manager wake proven after specialist completion recovery.
