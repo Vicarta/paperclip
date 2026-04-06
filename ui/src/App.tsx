@@ -27,6 +27,8 @@ import { DesignGuide } from "./pages/DesignGuide";
 import { InstanceSettings } from "./pages/InstanceSettings";
 import { PluginManager } from "./pages/PluginManager";
 import { PluginSettings } from "./pages/PluginSettings";
+import { AdapterCatalogPage } from "./pages/AdapterCatalog";
+import { AdapterDetailPage } from "./pages/AdapterDetail";
 import { PluginPage } from "./pages/PluginPage";
 import { RunTranscriptUxLab } from "./pages/RunTranscriptUxLab";
 import { OrgChart } from "./pages/OrgChart";
@@ -302,13 +304,15 @@ export function App() {
         <Route element={<CloudAccessGate />}>
           <Route index element={<CompanyRootRedirect />} />
           <Route path="onboarding" element={<OnboardingRoutePage />} />
-          <Route path="instance" element={<Navigate to="/instance/settings/heartbeats" replace />} />
-          <Route path="instance/settings" element={<Layout />}>
-            <Route index element={<Navigate to="heartbeats" replace />} />
-            <Route path="heartbeats" element={<InstanceSettings />} />
-            <Route path="plugins" element={<PluginManager />} />
-            <Route path="plugins/:pluginId" element={<PluginSettings />} />
-          </Route>
+      <Route path="instance" element={<Navigate to="/instance/settings/heartbeats" replace />} />
+      <Route path="instance/settings" element={<Layout />}>
+        <Route index element={<Navigate to="heartbeats" replace />} />
+        <Route path="heartbeats" element={<InstanceSettings />} />
+        <Route path="adapters" element={<AdapterCatalogPage />} />
+        <Route path="adapters/:adapterType" element={<AdapterDetailPage />} />
+        <Route path="plugins" element={<PluginManager />} />
+        <Route path="plugins/:pluginId" element={<PluginSettings />} />
+      </Route>
           <Route path="companies" element={<UnprefixedBoardRedirect />} />
           <Route path="my-issues" element={<UnprefixedBoardRedirect />} />
           <Route path="issues" element={<UnprefixedBoardRedirect />} />

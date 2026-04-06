@@ -26,13 +26,45 @@ export const AGENT_ADAPTER_TYPES = [
   "http",
   "claude_local",
   "codex_local",
+  "gemini_local",
   "opencode_local",
+  "openrouter_local",
   "pi_local",
   "cursor",
   "openclaw_gateway",
   "hermes_local",
 ] as const;
 export type AgentAdapterType = (typeof AGENT_ADAPTER_TYPES)[number];
+
+export const AGENT_ADAPTER_LABELS: Record<AgentAdapterType, string> = {
+  process: "Process",
+  http: "HTTP",
+  claude_local: "Claude (local)",
+  codex_local: "Codex (local)",
+  gemini_local: "Gemini CLI (local)",
+  opencode_local: "OpenCode (local)",
+  openrouter_local: "OpenRouter (local)",
+  pi_local: "Pi (local)",
+  cursor: "Cursor (local)",
+  openclaw_gateway: "OpenClaw Gateway",
+  hermes_local: "Hermes (local)",
+};
+
+export const AGENT_ADAPTER_CREATION_UI_TYPES = [
+  "claude_local",
+  "codex_local",
+  "gemini_local",
+  "opencode_local",
+  "openrouter_local",
+  "cursor",
+] as const satisfies readonly AgentAdapterType[];
+
+export const AGENT_ADAPTER_ISSUE_OVERRIDE_TYPES = [
+  "claude_local",
+  "codex_local",
+  "opencode_local",
+  "openrouter_local",
+] as const satisfies readonly AgentAdapterType[];
 
 export const AGENT_ROLES = [
   "ceo",

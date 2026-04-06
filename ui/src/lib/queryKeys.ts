@@ -66,6 +66,10 @@ export const queryKeys = {
   instance: {
     schedulerHeartbeats: ["instance", "scheduler-heartbeats"] as const,
   },
+  adapters: {
+    all: ["adapters"] as const,
+    detail: (type: string) => ["adapters", type] as const,
+  },
   health: ["health"] as const,
   secrets: {
     list: (companyId: string) => ["secrets", companyId] as const,

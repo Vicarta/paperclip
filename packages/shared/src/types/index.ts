@@ -9,6 +9,7 @@ export type {
   AdapterEnvironmentCheck,
   AdapterEnvironmentTestResult,
 } from "./agent.js";
+export type { AdapterRuntimeKind, AdapterCatalogEntry, AdapterCatalogDetail } from "./adapter-catalog.js";
 export type { AssetImage } from "./asset.js";
 export type { Project, ProjectGoalRef, ProjectWorkspace } from "./project.js";
 export type {

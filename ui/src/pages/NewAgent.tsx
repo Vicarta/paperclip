@@ -31,6 +31,7 @@ const SUPPORTED_ADVANCED_ADAPTER_TYPES = new Set<CreateConfigValues["adapterType
   "codex_local",
   "gemini_local",
   "opencode_local",
+  "openrouter_local",
   "pi_local",
   "cursor",
   "openclaw_gateway",
@@ -50,6 +51,8 @@ function createValuesForAdapterType(
   } else if (adapterType === "cursor") {
     nextValues.model = DEFAULT_CURSOR_LOCAL_MODEL;
   } else if (adapterType === "opencode_local") {
+    nextValues.model = "";
+  } else if (adapterType === "openrouter_local") {
     nextValues.model = "";
   }
   return nextValues;
@@ -141,30 +144,36 @@ export function NewAgent() {
   function handleSubmit() {
     if (!selectedCompanyId || !name.trim()) return;
     setFormError(null);
-    if (configValues.adapterType === "opencode_local") {
+    if (configValues.adapterType === "opencode_local" || configValues.adapterType === "openrouter_local") {
       const selectedModel = configValues.model.trim();
       if (!selectedModel) {
-        setFormError("OpenCode requires an explicit model in provider/model format.");
+        setFormError(
+          configValues.adapterType === "openrouter_local"
+            ? "OpenRouter requires an explicit openrouter/* model."
+            : "OpenCode requires an explicit model in provider/model format.",
+        );
         return;
       }
       if (adapterModelsError) {
         setFormError(
           adapterModelsError instanceof Error
             ? adapterModelsError.message
-            : "Failed to load OpenCode models.",
+            : `Failed to load ${configValues.adapterType === "openrouter_local" ? "OpenRouter" : "OpenCode"} models.`,
         );
         return;
       }
       if (adapterModelsLoading || adapterModelsFetching) {
-        setFormError("OpenCode models are still loading. Please wait and try again.");
+        setFormError(
+          `${configValues.adapterType === "openrouter_local" ? "OpenRouter" : "OpenCode"} models are still loading. Please wait and try again.`,
+        );
         return;
       }
       const discovered = adapterModels ?? [];
       if (!discovered.some((entry) => entry.id === selectedModel)) {
         setFormError(
           discovered.length === 0
-            ? "No OpenCode models discovered. Run `opencode models` and authenticate providers."
-            : `Configured OpenCode model is unavailable: ${selectedModel}`,
+            ? `No ${configValues.adapterType === "openrouter_local" ? "OpenRouter" : "OpenCode"} models discovered. Verify provider authentication.`
+            : `Configured ${configValues.adapterType === "openrouter_local" ? "OpenRouter" : "OpenCode"} model is unavailable: ${selectedModel}`,
         );
         return;
       }

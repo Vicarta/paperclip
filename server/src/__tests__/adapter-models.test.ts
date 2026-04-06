@@ -101,4 +101,18 @@ describe("adapter model listing", () => {
     const models = await listAdapterModels("opencode_local");
     expect(models).toEqual([]);
   });
+
+  it("filters model discovery for openrouter_local", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: [
+          { id: "gpt-5-pro" },
+        ],
+      }),
+    } as Response);
+
+    const models = await listAdapterModels("openrouter_local");
+    expect(models.every((entry) => entry.id.startsWith("openrouter/"))).toBe(true);
+  });
 });

@@ -42,6 +42,7 @@ import {
 import { DEFAULT_CURSOR_LOCAL_MODEL } from "@paperclipai/adapter-cursor-local";
 import { DEFAULT_GEMINI_LOCAL_MODEL } from "@paperclipai/adapter-gemini-local";
 import { ensureOpenCodeModelConfiguredAndAvailable } from "@paperclipai/adapter-opencode-local/server";
+import { ensureOpenRouterModelConfiguredAndAvailable } from "@paperclipai/adapter-openrouter-local/server";
 import type { PluginToolDispatcher } from "../services/plugin-tool-dispatcher.js";
 
 type AgentRouteDeps = {
@@ -51,11 +52,12 @@ type AgentRouteDeps = {
 export function agentRoutes(db: Db, deps: AgentRouteDeps = {}) {
   const DEFAULT_INSTRUCTIONS_PATH_KEYS: Record<string, string> = {
     claude_local: "instructionsFilePath",
-    codex_local: "instructionsFilePath",
-    gemini_local: "instructionsFilePath",
-    opencode_local: "instructionsFilePath",
-    cursor: "instructionsFilePath",
-  };
+      codex_local: "instructionsFilePath",
+      gemini_local: "instructionsFilePath",
+      opencode_local: "instructionsFilePath",
+      openrouter_local: "instructionsFilePath",
+      cursor: "instructionsFilePath",
+    };
   const KNOWN_INSTRUCTIONS_PATH_KEYS = new Set(["instructionsFilePath", "agentsMdPath"]);
 
   const router = Router();
@@ -261,7 +263,7 @@ export function agentRoutes(db: Db, deps: AgentRouteDeps = {}) {
       next.model = DEFAULT_GEMINI_LOCAL_MODEL;
       return ensureGatewayDeviceKey(adapterType, next);
     }
-    // OpenCode requires explicit model selection — no default
+    // OpenCode and OpenRouter require explicit model selection — no default
     if (adapterType === "cursor" && !asNonEmptyString(next.model)) {
       next.model = DEFAULT_CURSOR_LOCAL_MODEL;
     }
@@ -273,19 +275,28 @@ export function agentRoutes(db: Db, deps: AgentRouteDeps = {}) {
     adapterType: string | null | undefined,
     adapterConfig: Record<string, unknown>,
   ) {
-    if (adapterType !== "opencode_local") return;
+    if (adapterType !== "opencode_local" && adapterType !== "openrouter_local") return;
     const { config: runtimeConfig } = await secretsSvc.resolveAdapterConfigForRuntime(companyId, adapterConfig);
     const runtimeEnv = asRecord(runtimeConfig.env) ?? {};
     try {
-      await ensureOpenCodeModelConfiguredAndAvailable({
-        model: runtimeConfig.model,
-        command: runtimeConfig.command,
-        cwd: runtimeConfig.cwd,
-        env: runtimeEnv,
-      });
+      if (adapterType === "openrouter_local") {
+        await ensureOpenRouterModelConfiguredAndAvailable({
+          model: runtimeConfig.model,
+          command: runtimeConfig.command,
+          cwd: runtimeConfig.cwd,
+          env: runtimeEnv,
+        });
+      } else {
+        await ensureOpenCodeModelConfiguredAndAvailable({
+          model: runtimeConfig.model,
+          command: runtimeConfig.command,
+          cwd: runtimeConfig.cwd,
+          env: runtimeEnv,
+        });
+      }
     } catch (err) {
       const reason = err instanceof Error ? err.message : String(err);
-      throw unprocessable(`Invalid opencode_local adapterConfig: ${reason}`);
+      throw unprocessable(`Invalid ${adapterType} adapterConfig: ${reason}`);
     }
   }
 

@@ -27,6 +27,7 @@ type AdvancedAdapterType =
   | "codex_local"
   | "gemini_local"
   | "opencode_local"
+  | "openrouter_local"
   | "pi_local"
   | "cursor"
   | "openclaw_gateway";
@@ -63,6 +64,12 @@ const ADVANCED_ADAPTER_OPTIONS: Array<{
     label: "OpenCode",
     icon: OpenCodeLogoIcon,
     desc: "Local multi-provider agent",
+  },
+  {
+    value: "openrouter_local",
+    label: "OpenRouter",
+    icon: OpenCodeLogoIcon,
+    desc: "Local OpenRouter-only agent",
   },
   {
     value: "pi_local",

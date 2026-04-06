@@ -18,18 +18,9 @@ import { PageTabBar } from "../components/PageTabBar";
 import { Tabs } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Bot, Plus, List, GitBranch, SlidersHorizontal } from "lucide-react";
-import { AGENT_ROLE_LABELS, type Agent } from "@paperclipai/shared";
+import { AGENT_ADAPTER_LABELS, AGENT_ROLE_LABELS, type Agent } from "@paperclipai/shared";
 
-const adapterLabels: Record<string, string> = {
-  claude_local: "Claude",
-  codex_local: "Codex",
-  gemini_local: "Gemini",
-  opencode_local: "OpenCode",
-  cursor: "Cursor",
-  openclaw_gateway: "OpenClaw Gateway",
-  process: "Process",
-  http: "HTTP",
-};
+const adapterLabels: Record<string, string> = AGENT_ADAPTER_LABELS;
 
 const roleLabels = AGENT_ROLE_LABELS as Record<string, string>;
 

@@ -72,6 +72,8 @@ vi.mock("./pages/MyIssues", () => ({ MyIssues: () => <div>my issues</div> }));
 vi.mock("./pages/CompanySettings", () => ({ CompanySettings: () => <div>company settings</div> }));
 vi.mock("./pages/DesignGuide", () => ({ DesignGuide: () => <div>design guide</div> }));
 vi.mock("./pages/InstanceSettings", () => ({ InstanceSettings: () => <div>instance settings</div> }));
+vi.mock("./pages/AdapterCatalog", () => ({ AdapterCatalogPage: () => <div>adapter catalog</div> }));
+vi.mock("./pages/AdapterDetail", () => ({ AdapterDetailPage: () => <div>adapter detail</div> }));
 vi.mock("./pages/PluginManager", () => ({ PluginManager: () => <div>plugin manager</div> }));
 vi.mock("./pages/PluginSettings", () => ({ PluginSettings: () => <div>plugin settings</div> }));
 vi.mock("./pages/PluginPage", () => ({ PluginPage: () => <div>plugin page</div> }));
