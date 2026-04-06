@@ -155,6 +155,14 @@ const BUNDLED_PLUGIN_EXAMPLES: AvailablePluginExample[] = [
     localPath: "packages/plugins/examples/plugin-serper-agent-tools",
     tag: "example",
   },
+  {
+    packageName: "@paperclipai/plugin-dataforseo-agent-tools",
+    pluginKey: "paperclip.dataforseo-agent-tools",
+    displayName: "DataForSEO Agent Tools",
+    description: "Server-side DataForSEO connector for keyword demand retrieval with secret-backed credentials.",
+    localPath: "packages/plugins/examples/plugin-dataforseo-agent-tools",
+    tag: "example",
+  },
 ];
 
 function listBundledPluginExamples(): AvailablePluginExample[] {
