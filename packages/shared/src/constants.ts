@@ -43,7 +43,7 @@ export const AGENT_ADAPTER_LABELS: Record<AgentAdapterType, string> = {
   codex_local: "Codex (local)",
   gemini_local: "Gemini CLI (local)",
   opencode_local: "OpenCode (local)",
-  openrouter_local: "OpenRouter (local)",
+  openrouter_local: "OpenRouter via OpenCode (local)",
   pi_local: "Pi (local)",
   cursor: "Cursor (local)",
   openclaw_gateway: "OpenClaw Gateway",

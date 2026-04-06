@@ -47,6 +47,8 @@ import {
 } from "./workspace-runtime.js";
 import { issueService } from "./issues.js";
 import { logActivity } from "./activity-log.js";
+import { adapterCompanySettingsService } from "./adapter-company-settings.js";
+import { mergeAdapterConfigs } from "./adapter-config-merge.js";
 import {
   buildExecutionWorkspaceAdapterConfig,
   parseIssueExecutionWorkspaceSettings,
@@ -630,6 +632,7 @@ export function heartbeatService(db: Db) {
   const runLogStore = getRunLogStore();
   const secretsSvc = secretService(db);
   const issuesSvc = issueService(db);
+  const adapterSettingsSvc = adapterCompanySettingsService(db);
   const activeRunExecutions = new Set<string>();
 
   async function getAgent(agentId: string) {
@@ -1781,6 +1784,11 @@ export function heartbeatService(db: Db) {
       sessionCodec.deserialize(taskSessionForRun?.sessionParamsJson ?? null),
     );
     const config = parseObject(agent.adapterConfig);
+    const companyAdapterSettings = await adapterSettingsSvc.get(agent.companyId, agent.adapterType);
+    const inheritedAdapterConfig = mergeAdapterConfigs(
+      parseObject(companyAdapterSettings?.settingsJson),
+      config,
+    );
     const executionWorkspaceMode = resolveExecutionWorkspaceMode({
       projectPolicy: projectExecutionWorkspacePolicy,
       issueSettings: issueExecutionWorkspaceSettings,
@@ -1793,15 +1801,16 @@ export function heartbeatService(db: Db) {
       { useProjectWorkspace: executionWorkspaceMode !== "agent_default" },
     );
     const workspaceManagedConfig = buildExecutionWorkspaceAdapterConfig({
-      agentConfig: config,
+      agentConfig: inheritedAdapterConfig,
       projectPolicy: projectExecutionWorkspacePolicy,
       issueSettings: issueExecutionWorkspaceSettings,
       mode: executionWorkspaceMode,
       legacyUseProjectWorkspace: issueAssigneeOverrides?.useProjectWorkspace ?? null,
     });
-    const mergedConfig = issueAssigneeOverrides?.adapterConfig
-      ? { ...workspaceManagedConfig, ...issueAssigneeOverrides.adapterConfig }
-      : workspaceManagedConfig;
+    const mergedConfig = mergeAdapterConfigs(
+      workspaceManagedConfig,
+      issueAssigneeOverrides?.adapterConfig ?? null,
+    );
     const { config: resolvedConfig, secretKeys } = await secretsSvc.resolveAdapterConfigForRuntime(
       agent.companyId,
       mergedConfig,

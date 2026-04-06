@@ -1,9 +1,10 @@
-import { useEffect, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Cable, ChevronLeft, Cpu, PlayCircle } from "lucide-react";
 import { Link, Navigate, useParams } from "@/lib/router";
 import { adaptersApi } from "@/api/adapters";
 import { agentsApi } from "@/api/agents";
+import { secretsApi } from "@/api/secrets";
 import { useBreadcrumbs } from "@/context/BreadcrumbContext";
 import { useCompany } from "@/context/CompanyContext";
 import { queryKeys } from "@/lib/queryKeys";
@@ -12,6 +13,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { MarkdownBody } from "@/components/MarkdownBody";
 import { agentUrl } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 function runtimeKindLabel(kind: string) {
   if (kind === "gateway") return "Gateway";
@@ -19,11 +22,25 @@ function runtimeKindLabel(kind: string) {
   return "Local CLI";
 }
 
+function parseConfiguredSecretId(settingsJson: Record<string, unknown> | undefined): string {
+  const env = settingsJson?.env;
+  if (!env || typeof env !== "object" || Array.isArray(env)) return "";
+  const binding = (env as Record<string, unknown>).OPENROUTER_API_KEY;
+  if (!binding || typeof binding !== "object" || Array.isArray(binding)) return "";
+  const secretId = (binding as Record<string, unknown>).secretId;
+  return typeof secretId === "string" ? secretId : "";
+}
+
 export function AdapterDetailPage() {
   const { setBreadcrumbs } = useBreadcrumbs();
   const { selectedCompanyId } = useCompany();
+  const queryClient = useQueryClient();
   const { adapterType } = useParams<{ adapterType: string }>();
   const type = adapterType ?? "";
+  const [openRouterSecretId, setOpenRouterSecretId] = useState("");
+  const [openRouterRawKey, setOpenRouterRawKey] = useState("");
+  const [openRouterSecretName, setOpenRouterSecretName] = useState("OpenRouter API Key");
+  const [settingsError, setSettingsError] = useState<string | null>(null);
 
   const detailQuery = useQuery({
     queryKey: queryKeys.adapters.detail(type),
@@ -43,6 +60,24 @@ export function AdapterDetailPage() {
     enabled: Boolean(selectedCompanyId) && type.length > 0,
   });
 
+  const adapterSettingsQuery = useQuery({
+    queryKey: selectedCompanyId ? ["adapter-settings", selectedCompanyId, type] : ["adapter-settings", "none", type],
+    queryFn: () => adaptersApi.getSettings(selectedCompanyId!, type),
+    enabled: Boolean(selectedCompanyId) && type === "openrouter_local",
+  });
+
+  const secretsQuery = useQuery({
+    queryKey: selectedCompanyId ? ["company-secrets", selectedCompanyId] : ["company-secrets", "none"],
+    queryFn: () => secretsApi.list(selectedCompanyId!),
+    enabled: Boolean(selectedCompanyId) && type === "openrouter_local",
+  });
+
+  useEffect(() => {
+    if (type !== "openrouter_local") return;
+    const configuredSecretId = parseConfiguredSecretId(adapterSettingsQuery.data?.settingsJson);
+    if (configuredSecretId) setOpenRouterSecretId(configuredSecretId);
+  }, [adapterSettingsQuery.data?.settingsJson, type]);
+
   useEffect(() => {
     const label = detailQuery.data?.label ?? "Adapter";
     setBreadcrumbs([{ label: "Instance Settings" }, { label: "Adapters", href: "/instance/settings/adapters" }, { label }]);
@@ -53,6 +88,53 @@ export function AdapterDetailPage() {
     () => (agentsQuery.data ?? []).filter((agent) => agent.adapterType === type),
     [agentsQuery.data, type],
   );
+
+  const saveOpenRouterSettings = useMutation({
+    mutationFn: async () => {
+      if (!selectedCompanyId) throw new Error("Select a company first.");
+      let secretId = openRouterSecretId.trim();
+      const newKey = openRouterRawKey.trim();
+
+      if (newKey) {
+        if (secretId) {
+          await secretsApi.rotate(secretId, { value: newKey });
+        } else {
+          const created = await secretsApi.create(selectedCompanyId, {
+            name: openRouterSecretName.trim() || "OpenRouter API Key",
+            value: newKey,
+            description: "API key for OpenRouter via OpenCode adapter settings",
+          });
+          secretId = created.id;
+        }
+      }
+
+      if (!secretId) {
+        throw new Error("Choose an existing secret or paste a new OpenRouter API key.");
+      }
+
+      return adaptersApi.saveSettings(selectedCompanyId, "openrouter_local", {
+        env: {
+          OPENROUTER_API_KEY: {
+            type: "secret_ref",
+            secretId,
+            version: "latest",
+          },
+        },
+      });
+    },
+    onSuccess: async () => {
+      setOpenRouterRawKey("");
+      setSettingsError(null);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["adapter-settings", selectedCompanyId, type] }),
+        queryClient.invalidateQueries({ queryKey: ["company-secrets", selectedCompanyId] }),
+        queryClient.invalidateQueries({ queryKey: selectedCompanyId ? queryKeys.agents.adapterModels(selectedCompanyId, type) : ["agents", "none", type] }),
+      ]);
+    },
+    onError: (error) => {
+      setSettingsError(error instanceof Error ? error.message : "Failed to save adapter settings.");
+    },
+  });
 
   if (detailQuery.isLoading) {
     return <div className="text-sm text-muted-foreground">Loading adapter details...</div>;
@@ -124,9 +206,90 @@ export function AdapterDetailPage() {
                 can discover available runtimes, read their configuration contract, and inspect model discovery in the
                 currently selected company.
               </p>
+              {type === "openrouter_local" ? (
+                <p>
+                  This specific adapter is still a local OpenCode-backed wrapper. The company-level settings below only
+                  centralize provider auth; they do not convert it into a direct HTTP runtime.
+                </p>
+              ) : null}
               <p className="font-mono text-xs text-foreground">{adapter.type}</p>
             </CardContent>
           </Card>
+
+          {type === "openrouter_local" ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Company Settings</CardTitle>
+                <CardDescription>
+                  Centralize <span className="font-mono">OPENROUTER_API_KEY</span> for all agents using this adapter in
+                  the selected company.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {!selectedCompanyId ? (
+                  <p className="text-sm text-muted-foreground">Select a company to configure provider authentication.</p>
+                ) : secretsQuery.isLoading || adapterSettingsQuery.isLoading ? (
+                  <p className="text-sm text-muted-foreground">Loading settings…</p>
+                ) : (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="openrouter-secret-select">Existing secret</Label>
+                      <select
+                        id="openrouter-secret-select"
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                        value={openRouterSecretId}
+                        onChange={(e) => setOpenRouterSecretId(e.target.value)}
+                      >
+                        <option value="">Select secret…</option>
+                        {(secretsQuery.data ?? []).map((secret) => (
+                          <option key={secret.id} value={secret.id}>
+                            {secret.name}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-xs text-muted-foreground">
+                        Current binding: {parseConfiguredSecretId(adapterSettingsQuery.data?.settingsJson) ? "configured" : "not configured"}
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="openrouter-secret-name">New secret name</Label>
+                      <Input
+                        id="openrouter-secret-name"
+                        value={openRouterSecretName}
+                        onChange={(e) => setOpenRouterSecretName(e.target.value)}
+                        placeholder="OpenRouter API Key"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="openrouter-raw-key">Paste new API key</Label>
+                      <Input
+                        id="openrouter-raw-key"
+                        type="password"
+                        value={openRouterRawKey}
+                        onChange={(e) => setOpenRouterRawKey(e.target.value)}
+                        placeholder="sk-or-v1-..."
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        If you paste a new value and select an existing secret, Paperclip will rotate that secret. If no
+                        secret is selected, Paperclip will create one.
+                      </p>
+                    </div>
+
+                    {settingsError ? <p className="text-sm text-destructive">{settingsError}</p> : null}
+
+                    <Button
+                      onClick={() => saveOpenRouterSettings.mutate()}
+                      disabled={saveOpenRouterSettings.isPending}
+                    >
+                      {saveOpenRouterSettings.isPending ? "Saving…" : "Save OpenRouter settings"}
+                    </Button>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          ) : null}
 
           <Card>
             <CardHeader>

@@ -1,5 +1,5 @@
 export const type = "openrouter_local";
-export const label = "OpenRouter (local)";
+export const label = "OpenRouter via OpenCode (local)";
 
 export const models: Array<{ id: string; label: string }> = [];
 
@@ -8,13 +8,13 @@ export const agentConfigurationDoc = `# openrouter_local agent configuration
 Adapter: openrouter_local
 
 Use when:
-- You want a first-class OpenRouter adapter in Paperclip
-- You want OpenCode runtime semantics, but constrained to OpenRouter-backed models
+- You want OpenCode local runtime semantics, but constrained to OpenRouter-backed models
+- You have OpenCode CLI installed on the Paperclip host
 - You want provider/model routing in OpenCode format, limited to openrouter/*
 
 Don't use when:
 - You need non-OpenRouter providers in one adapter (use opencode_local)
-- You need webhook-style external invocation (use openclaw_gateway or http)
+- You need a direct external HTTP adapter to OpenRouter
 - OpenCode CLI is not installed on the machine
 
 Core fields:
@@ -32,10 +32,11 @@ Operational fields:
 - graceSec (number, optional): SIGTERM grace period in seconds
 
 Required environment:
-- OPENROUTER_API_KEY should be provided through Paperclip company secrets and adapterConfig.env
+- OPENROUTER_API_KEY should be provided through Paperclip company secrets, preferably via company-level adapter settings
 
 Notes:
 - This adapter is a thin first-class wrapper over OpenCode local execution.
 - Model discovery is filtered to openrouter/* entries only.
 - Paperclip requires an explicit openrouter/* model value for openrouter_local agents.
+- This is not the future direct HTTP OpenRouter adapter. It still shells out to local OpenCode CLI.
 `;

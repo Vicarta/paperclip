@@ -23,6 +23,7 @@ import { dashboardRoutes } from "./routes/dashboard.js";
 import { sidebarBadgeRoutes } from "./routes/sidebar-badges.js";
 import { llmRoutes } from "./routes/llms.js";
 import { adapterRoutes } from "./routes/adapters.js";
+import { adapterCompanySettingsRoutes } from "./routes/adapter-company-settings.js";
 import { assetRoutes } from "./routes/assets.js";
 import { accessRoutes } from "./routes/access.js";
 import { pluginRoutes } from "./routes/plugins.js";
@@ -129,6 +130,7 @@ export async function createApp(
   );
   api.use("/companies", companyRoutes(db));
   api.use(adapterRoutes(db));
+  api.use(adapterCompanySettingsRoutes(db));
   api.use(assetRoutes(db, opts.storageService));
   api.use(projectRoutes(db));
   api.use(issueRoutes(db, opts.storageService));

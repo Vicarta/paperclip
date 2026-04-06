@@ -67,9 +67,9 @@ const ADVANCED_ADAPTER_OPTIONS: Array<{
   },
   {
     value: "openrouter_local",
-    label: "OpenRouter",
+    label: "OpenRouter via OpenCode",
     icon: OpenCodeLogoIcon,
-    desc: "Local OpenRouter-only agent",
+    desc: "OpenCode local runtime restricted to OpenRouter models",
   },
   {
     value: "pi_local",
