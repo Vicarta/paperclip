@@ -45,6 +45,8 @@ The result was partial progress with weak control over the true critical path.
   - installed plugins are present in the manager UI;
   - plugin cards show `error`;
   - visible message: `Activation failed: Command failed: pnpm build`.
+- [ ] specialist and validator runs can still finish useful work without performing a final issue lifecycle mutation.
+  This is now treated as a Paperclip runtime protocol defect rather than a prompt-only problem.
 
 ### Main blocker
 
@@ -52,7 +54,12 @@ The current blocker is no longer `Serper` infrastructure.
 
 The current blocker is no longer the specialist rerun path.
 
-The current blocker is the absence of one **authorized DataForSEO provider path** for the revised Stage 53 demand-collection contract.
+The current blocker is no longer the absence of one **authorized DataForSEO provider path** for the revised Stage 53 demand-collection contract.
+
+The current blocker is a **heartbeat lifecycle protocol gap**:
+- the adapter run can finish cleanly;
+- canonical artifacts can be written;
+- but the run may still exit without any explicit `issue.updated` lifecycle mutation.
 
 ## Operating Rules For This Recovery
 
@@ -232,6 +239,12 @@ Exit criteria:
 - one direct DataForSEO smoke test succeeds in live runtime;
 - `AST-140` is reawakened after that proof, not before.
 
+Current status:
+- [x] direct live DataForSEO smoke test now succeeds.
+- [x] revised Stage 53 demand-backed semantic core was produced in live runtime.
+- [x] the downstream SEO chain advanced through revised Stage 54 and revised Stage 56.
+- [ ] the general lifecycle protocol defect remains and must now be repaired at the Paperclip runtime level.
+
 ### Phase 7: Restore Activation Parity For Existing Exa And Bright Data Plugins
 
 Why this exists:
@@ -271,6 +284,42 @@ Exit criteria:
 - `Exa Agent Tools` is `ready` in live UI.
 - `Bright Data Agent Tools` is `ready` in live UI.
 - neither card shows `Activation failed: Command failed: pnpm build`.
+
+### Phase 9: Repair Heartbeat Issue Closeout Protocol
+
+Why this exists:
+- specialist and validator agents have repeatedly shown the same failure mode;
+- the problem is not that the work was not done;
+- the problem is that a run can still be marked successful on adapter-level completion even when it never performs a final issue lifecycle mutation.
+
+Diagnosis boundary:
+- do not add semantic artifact reconciliation;
+- do not let the server infer `done`, `blocked`, or `accepted` from markdown output;
+- keep ownership of issue outcome with the agent;
+- enforce only the runtime protocol that an assignee-owned issue run must emit an explicit lifecycle mutation before it can count as clean success.
+
+Required work:
+- [x] identify the runtime seam where `heartbeat` classifies `succeeded` before any issue-protocol validation.
+- [x] verify that issue lifecycle mutations are already observable through `activity_log` with `runId`.
+- [x] define a narrow protocol violation:
+  - issue-bound run;
+  - assignee-owned issue;
+  - no `issue.updated` mutation from that same `runId`;
+  - non-terminal issue state at run end.
+- [x] implement protocol-level detection without semantic inference from artifacts or comments.
+- [x] classify this case with a dedicated error code:
+  - `missing_issue_closeout`
+- [x] propagate the protocol failure into run finalization, wakeup status, and fallback-comment inputs.
+- [x] add targeted tests for the protocol classifier and rerun server typecheck.
+- [ ] deploy the runtime fix to the live Paperclip server.
+- [ ] verify on a real issue that:
+  - a run that writes output but skips lifecycle mutation no longer lands as clean `succeeded`;
+  - it is surfaced as protocol failure instead.
+
+Exit criteria:
+- missing closeout is treated as a runtime protocol failure rather than a silent success;
+- no artifact-based auto-close logic is introduced;
+- the live server exhibits the new failure classification on a real issue run.
 
 ## Debug Decision Tree
 

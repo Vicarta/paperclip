@@ -33,6 +33,7 @@ import {
   shouldPostIssueSummaryFallback,
   type IssueSummaryFallbackStatus,
 } from "./issue-summary-fallback.js";
+import { resolveIssueCloseoutProtocolViolation } from "./heartbeat-issue-closeout.js";
 import {
   buildProjectHumanFacingLanguageInstruction,
   normalizeProjectHumanFacingLanguage,
@@ -1642,6 +1643,56 @@ export function heartbeatService(db: Db) {
     return await issuesSvc.addComment(issueId, body, { agentId: input.agent.id });
   }
 
+  async function getIssueCloseoutProtocolStateForRun(input: {
+    runId: string;
+    companyId: string;
+    agentId: string;
+  }) {
+    const issue = await db
+      .select({
+        id: issues.id,
+        status: issues.status,
+        assigneeAgentId: issues.assigneeAgentId,
+      })
+      .from(issues)
+      .where(and(eq(issues.companyId, input.companyId), eq(issues.executionRunId, input.runId)))
+      .then((rows) => rows[0] ?? null);
+
+    if (!issue) {
+      return {
+        issueId: null,
+        issueStatus: null,
+        assigneeAgentId: null,
+        runAgentId: input.agentId,
+        lifecycleMutationCount: 0,
+      };
+    }
+
+    const mutationRow = await db
+      .select({
+        count: sql<number>`count(*)::int`.as("count"),
+      })
+      .from(activityLog)
+      .where(
+        and(
+          eq(activityLog.companyId, input.companyId),
+          eq(activityLog.runId, input.runId),
+          eq(activityLog.action, "issue.updated"),
+          eq(activityLog.entityType, "issue"),
+          eq(activityLog.entityId, issue.id),
+        ),
+      )
+      .then((rows) => rows[0] ?? null);
+
+    return {
+      issueId: issue.id,
+      issueStatus: issue.status,
+      assigneeAgentId: issue.assigneeAgentId,
+      runAgentId: input.agentId,
+      lifecycleMutationCount: Math.max(0, Number(mutationRow?.count ?? 0)),
+    };
+  }
+
   async function executeRun(runId: string) {
     let run = await getRun(runId);
     if (!run) return;
@@ -2166,6 +2217,21 @@ export function heartbeatService(db: Db) {
         outcome = "failed";
       }
 
+      const issueProtocolState =
+        outcome === "succeeded"
+          ? await getIssueCloseoutProtocolStateForRun({
+              runId: run.id,
+              companyId: run.companyId,
+              agentId: agent.id,
+            })
+          : null;
+      const issueProtocolViolation = issueProtocolState
+        ? resolveIssueCloseoutProtocolViolation(issueProtocolState)
+        : null;
+      if (issueProtocolViolation) {
+        outcome = "failed";
+      }
+
       let logSummary: { bytes: number; sha256?: string; compressed: boolean } | null = null;
       if (handle) {
         logSummary = await runLogStore.finalize(handle);
@@ -2179,6 +2245,17 @@ export function heartbeatService(db: Db) {
             : outcome === "timed_out"
               ? "timed_out"
               : "failed";
+      const finalErrorMessage =
+        issueProtocolViolation?.message ??
+        adapterResult.errorMessage ??
+        (outcome === "timed_out" ? "Timed out" : outcome === "failed" ? "Adapter failed" : null);
+      const finalAdapterResult =
+        issueProtocolViolation && adapterResult.errorMessage !== issueProtocolViolation.message
+          ? {
+              ...adapterResult,
+              errorMessage: issueProtocolViolation.message,
+            }
+          : adapterResult;
 
       const usageJson =
         normalizedUsage || adapterResult.costUsd != null
@@ -2208,16 +2285,16 @@ export function heartbeatService(db: Db) {
         error:
           outcome === "succeeded"
             ? null
-            : redactCurrentUserText(
-                adapterResult.errorMessage ?? (outcome === "timed_out" ? "Timed out" : "Adapter failed"),
-              ),
+            : issueProtocolViolation
+              ? issueProtocolViolation.message
+              : redactCurrentUserText(finalErrorMessage ?? "Adapter failed"),
         errorCode:
           outcome === "timed_out"
             ? "timeout"
             : outcome === "cancelled"
               ? "cancelled"
               : outcome === "failed"
-                ? (adapterResult.errorCode ?? "adapter_failed")
+                ? (issueProtocolViolation?.errorCode ?? adapterResult.errorCode ?? "adapter_failed")
                 : null,
         exitCode: adapterResult.exitCode,
         signal: adapterResult.signal,
@@ -2233,7 +2310,7 @@ export function heartbeatService(db: Db) {
 
       await setWakeupStatus(run.wakeupRequestId, outcome === "succeeded" ? "completed" : status, {
         finishedAt: new Date(),
-        error: adapterResult.errorMessage ?? null,
+        error: outcome === "succeeded" ? null : finalErrorMessage,
       });
 
       const finalizedRun = await getRun(run.id);
@@ -2246,6 +2323,16 @@ export function heartbeatService(db: Db) {
           payload: {
             status,
             exitCode: adapterResult.exitCode,
+            ...(issueProtocolViolation
+              ? {
+                  issueProtocol: {
+                    errorCode: issueProtocolViolation.errorCode,
+                    issueId: issueProtocolState?.issueId ?? null,
+                    issueStatus: issueProtocolState?.issueStatus ?? null,
+                    lifecycleMutationCount: issueProtocolState?.lifecycleMutationCount ?? 0,
+                  },
+                }
+              : {}),
           },
         });
         await releaseIssueExecutionAndPromote(finalizedRun);
@@ -2253,12 +2340,12 @@ export function heartbeatService(db: Db) {
           run: finalizedRun,
           agent,
           status: outcome,
-          adapterResult,
+          adapterResult: finalAdapterResult,
         });
       }
 
       if (finalizedRun) {
-        await updateRuntimeState(agent, finalizedRun, adapterResult, {
+        await updateRuntimeState(agent, finalizedRun, finalAdapterResult, {
           legacySessionId: nextSessionState.legacySessionId,
         }, normalizedUsage);
         if (taskKey) {
