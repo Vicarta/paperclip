@@ -35,6 +35,10 @@ The result was partial progress with weak control over the true critical path.
   - heartbeat run created;
   - specialist executed;
   - Stage 53 artifact materialized.
+- [x] the Stage 53 revision lane was reawakened after DataForSEO secrets were configured in live runtime.
+- [ ] the Stage 53 revision lane is still blocked by external provider authorization:
+  - `paperclip.dataforseo-agent-tools:google-ads-search-volume` runs;
+  - but DataForSEO returns `40100 You are not authorized to access this resource`.
 - [ ] the parent manager issue still needs a clean canonical wake so the workflow can continue without an operator-side handoff.
 - [ ] the older installed `Exa` and `Bright Data` plugins still need activation-parity recovery in live UI.
   Current screenshot-level symptom:
@@ -48,7 +52,7 @@ The current blocker is no longer `Serper` infrastructure.
 
 The current blocker is no longer the specialist rerun path.
 
-The current blocker is the absence of one **validated parent-manager wakeup path** after operator-side recovery of a stale child blocker state.
+The current blocker is the absence of one **authorized DataForSEO provider path** for the revised Stage 53 demand-collection contract.
 
 ## Operating Rules For This Recovery
 
@@ -176,6 +180,13 @@ Exit criteria:
 ### Phase 6: Validate The Artifact And Decide The Next SEO Step
 
 - [x] review the Stage 53 artifact for structural completeness.
+- [x] relaunch the revised Stage 53 lane after live DataForSEO plugin install and company secret wiring.
+- [x] verify that the revised lane reaches the DataForSEO tool instead of failing earlier in wakeup/runtime setup.
+- [x] identify the new blocker class from observed evidence:
+  - provider authorization failure (`40100`);
+  - not plugin registration;
+  - not plugin config refs;
+  - not wakeup routing.
 - [ ] determine whether the next step is:
   - Stage 54 validation;
   - revision of the strategist lane;
@@ -187,6 +198,39 @@ Exit criteria:
 
 Exit criteria:
 - the next work item is unambiguous and based on observed results.
+
+### Phase 8: Clear DataForSEO Authorization For Stage 53 Demand Metrics
+
+Why this exists:
+- the revised Stage 53 lane now reaches the correct provider tool in live runtime;
+- the provider call is no longer blocked by Paperclip plugin activation, wakeup routing, or missing secret refs;
+- the remaining blocker is a provider-side `40100` authorization failure.
+
+Required work:
+- [ ] verify directly, outside the strategist lane, that the configured credentials reproduce the same `40100` against the live DataForSEO endpoint.
+- [ ] confirm whether the operator entered:
+  - valid DataForSEO API credentials;
+  - the correct account login;
+  - the correct API password rather than a dashboard password or unrelated secret.
+- [ ] once corrected, rerun one minimal provider smoke test for:
+  - `location_name=Ukraine`
+  - `language_name=Ukrainian`
+  - one or two sample keywords only
+- [ ] only after the smoke test passes, wake `AST-140` again through the canonical issue-comment path.
+- [ ] verify the revised Stage 53 artifact now contains:
+  - keyword-level `UA search volume`
+  - `CPC` where available
+  - cluster summed `UA search volume`
+  - demand-backed prioritization
+
+Rules:
+- Do not mark the Stage 53 revision as recovered while the provider still returns `40100`.
+- Do not route this blocker back into `Serper`, `Exa`, `Bright Data`, or generic plugin debugging.
+- Treat this as a credentials/permissions problem until a direct smoke test proves otherwise.
+
+Exit criteria:
+- one direct DataForSEO smoke test succeeds in live runtime;
+- `AST-140` is reawakened after that proof, not before.
 
 ### Phase 7: Restore Activation Parity For Existing Exa And Bright Data Plugins
 
