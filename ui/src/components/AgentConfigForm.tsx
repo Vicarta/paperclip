@@ -159,6 +159,8 @@ const claudeThinkingEffortOptions = [
   { id: "high", label: "High" },
 ] as const;
 
+const PROMPT_TEMPLATE_STAGE_PATTERN = /\bStage\s+\d+(?:\.\d+)?\b/i;
+
 
 /* ---- Form ---- */
 
@@ -289,6 +291,18 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
     adapterType === "gemini_local" ||
     adapterType === "opencode_local" ||
     adapterType === "cursor";
+  const editPromptTemplate = !isCreate ? String(config.promptTemplate ?? "") : "";
+  const createPromptTemplate = isCreate ? props.values.promptTemplate ?? "" : "";
+  const showEditPromptStageWarning =
+    isLocal &&
+    !isCreate &&
+    PROMPT_TEMPLATE_STAGE_PATTERN.test(
+      String(eff("adapterConfig", "promptTemplate", editPromptTemplate)),
+    );
+  const showCreatePromptStageWarning =
+    isLocal &&
+    isCreate &&
+    PROMPT_TEMPLATE_STAGE_PATTERN.test(createPromptTemplate);
   const uiAdapter = useMemo(() => getUIAdapter(adapterType), [adapterType]);
 
   // Fetch adapter models for the effective adapter type
@@ -468,6 +482,11 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
                 <div className="rounded-md border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
                   Prompt template is replayed on every heartbeat. Keep it compact and dynamic to avoid recurring token cost and cache churn.
                 </div>
+                {showEditPromptStageWarning && (
+                  <div className="rounded-md border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs text-red-100">
+                    Avoid hardcoding numeric stage IDs in the prompt template. Keep this role-based; the active stage belongs in the issue and repository instructions.
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -601,6 +620,11 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
               <div className="rounded-md border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
                 Prompt template is replayed on every heartbeat. Prefer small task framing and variables like <code>{"{{ context.* }}"}</code> or <code>{"{{ run.* }}"}</code>; avoid repeating stable instructions here.
               </div>
+              {showCreatePromptStageWarning && (
+                <div className="rounded-md border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs text-red-100">
+                  Avoid hardcoding numeric stage IDs in the prompt template. Keep this role-based; the active stage belongs in the issue and repository instructions.
+                </div>
+              )}
             </>
           )}
 
