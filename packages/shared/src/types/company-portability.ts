@@ -31,7 +31,7 @@ export interface CompanyPortabilityAgentManifestEntry {
   adapterConfig: Record<string, unknown>;
   runtimeConfig: Record<string, unknown>;
   permissions: Record<string, unknown>;
-  budgetMonthlyCents: number;
+  budgetMonthlyUsd: number;
   metadata: Record<string, unknown> | null;
 }
 

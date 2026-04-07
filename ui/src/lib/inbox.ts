@@ -127,14 +127,14 @@ export function computeInboxBadgeData({
   ).length;
   const unreadTouchedIssues = unreadIssues.length;
   const agentErrorCount = dashboard?.agents.error ?? 0;
-  const monthBudgetCents = dashboard?.costs.monthBudgetCents ?? 0;
+  const monthBudgetUsd = dashboard?.costs.monthBudgetUsd ?? 0;
   const monthUtilizationPercent = dashboard?.costs.monthUtilizationPercent ?? 0;
   const showAggregateAgentError =
     agentErrorCount > 0 &&
     failedRuns === 0 &&
     !dismissed.has("alert:agent-errors");
   const showBudgetAlert =
-    monthBudgetCents > 0 &&
+    monthBudgetUsd > 0 &&
     monthUtilizationPercent >= 80 &&
     !dismissed.has("alert:budget");
   const alerts = Number(showAggregateAgentError) + Number(showBudgetAlert);

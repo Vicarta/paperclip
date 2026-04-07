@@ -2347,8 +2347,8 @@ export function accessRoutes(
               ? (existing.agentDefaultsPayload as Record<string, unknown>)
               : {},
           runtimeConfig: {},
-          budgetMonthlyCents: 0,
-          spentMonthlyCents: 0,
+          budgetMonthlyUsd: 0,
+          spentMonthlyUsd: 0,
           permissions: {},
           lastHeartbeatAt: null,
           metadata: null

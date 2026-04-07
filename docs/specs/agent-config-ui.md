@@ -70,7 +70,7 @@ Follows the existing `NewIssueDialog` / `NewProjectDialog` pattern: a `Dialog` c
 | Field | Control | Default |
 |-------|---------|---------|
 | Context Mode | Chip popover | `thin` |
-| Monthly Budget (cents) | Number input | 0 |
+| Monthly Budget (USD) | Number input | 0 |
 | Timeout (sec) | Number input | 900 |
 | Grace Period (sec) | Number input | 15 |
 | Extra Args | Text input | -- |

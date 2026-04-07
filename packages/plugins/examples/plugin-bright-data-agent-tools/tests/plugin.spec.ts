@@ -255,7 +255,7 @@ describe("plugin-bright-data-agent-tools", () => {
       manifest,
       config: {
         brightDataTokenSecretRef: "secret-1",
-        flatCostCentsPerInvocation: 42,
+        flatCostUsdPerInvocation: 0.42,
       },
     });
     await plugin.definition.setup(harness.ctx);
@@ -282,7 +282,7 @@ describe("plugin-bright-data-agent-tools", () => {
         projectId: "project-1",
         provider: "brightdata.com",
         model: "mcp/web_data_instagram_profiles",
-        costCents: 42,
+        costUsd: 0.42,
       }),
     ]);
   });

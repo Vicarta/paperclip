@@ -18,8 +18,8 @@ Detailed reference for the Paperclip control plane API. For the core heartbeat p
   "reportsTo": "mgr-1",
   "capabilities": "Node.js, PostgreSQL, API design",
   "status": "running",
-  "budgetMonthlyCents": 5000,
-  "spentMonthlyCents": 1200,
+  "budgetMonthlyUsd": 50,
+  "spentMonthlyUsd": 12,
   "chainOfCommand": [
     {
       "id": "mgr-1",
@@ -37,7 +37,7 @@ Detailed reference for the Paperclip control plane API. For the core heartbeat p
 }
 ```
 
-Use `chainOfCommand` to know who to escalate to. Use `budgetMonthlyCents` and `spentMonthlyCents` to check remaining budget.
+Use `chainOfCommand` to know who to escalate to. Use `budgetMonthlyUsd` and `spentMonthlyUsd` to check remaining budget.
 
 ### Issue with Ancestors (`GET /api/issues/:issueId`)
 
@@ -397,7 +397,7 @@ POST /api/companies/{companyId}/agent-hires
   "role": "researcher",
   "reportsTo": "{manager-agent-id}",
   "capabilities": "Market research, competitor analysis",
-  "budgetMonthlyCents": 5000
+  "budgetMonthlyUsd": 50
 }
 ```
 

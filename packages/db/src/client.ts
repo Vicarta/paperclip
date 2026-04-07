@@ -646,6 +646,31 @@ export async function applyPendingMigrations(url: string): Promise<void> {
   const initialState = await inspectMigrations(url);
   if (initialState.status === "upToDate") return;
 
+  if (initialState.reason === "pending-migrations") {
+    const repair = await reconcilePendingMigrationHistory(url);
+    let state = await inspectMigrations(url);
+    if (state.status === "upToDate") return;
+
+    if (repair.repairedMigrations.length > 0) {
+      state = await inspectMigrations(url);
+      if (state.status === "upToDate") return;
+    }
+
+    if (state.status !== "needsMigrations" || state.reason !== "pending-migrations") {
+      throw new Error("Migrations are still pending after attempted reconcile; run inspectMigrations for details.");
+    }
+
+    await applyPendingMigrationsManually(url, state.pendingMigrations);
+
+    const finalState = await inspectMigrations(url);
+    if (finalState.status !== "upToDate") {
+      throw new Error(
+        `Failed to apply pending migrations: ${finalState.pendingMigrations.join(", ")}`,
+      );
+    }
+    return;
+  }
+
   const sql = createUtilitySql(url);
 
   try {

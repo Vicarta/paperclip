@@ -159,8 +159,8 @@ const dashboard: DashboardSummary = {
     done: 0,
   },
   costs: {
-    monthSpendCents: 900,
-    monthBudgetCents: 1000,
+    monthSpendUsd: 900,
+    monthBudgetUsd: 1000,
     monthUtilizationPercent: 90,
   },
   pendingApprovals: 1,

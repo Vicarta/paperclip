@@ -63,7 +63,7 @@ export function dashboardService(db: Db) {
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
       const [{ monthSpend }] = await db
         .select({
-          monthSpend: sql<number>`coalesce(sum(${costEvents.costCents}), 0)::int`,
+          monthSpend: sql<number>`coalesce(sum(${costEvents.costUsd}), 0)::double precision`,
         })
         .from(costEvents)
         .where(
@@ -73,10 +73,10 @@ export function dashboardService(db: Db) {
           ),
         );
 
-      const monthSpendCents = Number(monthSpend);
+      const monthSpendUsd = Number(monthSpend);
       const utilization =
-        company.budgetMonthlyCents > 0
-          ? (monthSpendCents / company.budgetMonthlyCents) * 100
+        company.budgetMonthlyUsd > 0
+          ? (monthSpendUsd / company.budgetMonthlyUsd) * 100
           : 0;
 
       return {
@@ -89,8 +89,8 @@ export function dashboardService(db: Db) {
         },
         tasks: taskCounts,
         costs: {
-          monthSpendCents,
-          monthBudgetCents: company.budgetMonthlyCents,
+          monthSpendUsd,
+          monthBudgetUsd: company.budgetMonthlyUsd,
           monthUtilizationPercent: Number(utilization.toFixed(2)),
         },
         pendingApprovals,

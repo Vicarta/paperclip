@@ -305,10 +305,8 @@ export function SerperSettingsPage({ context }: PluginSettingsPageProps) {
               }}
             >
               Used only for external provider billing attribution inside
-              Paperclip. Enter a decimal USD value from 1 USD, for example
-              0.001. Set to 0 to disable cost events. Paperclip currently
-              aggregates external provider spend in whole cents, so values
-              below $0.01 may round down in cost reports.
+              Paperclip. Enter a decimal USD value under 1 USD when needed,
+              for example 0.001. Set to 0 to disable cost events.
             </p>
           </div>
 

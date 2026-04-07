@@ -676,7 +676,7 @@ export function companyPortabilityService(db: Db) {
           adapterConfig: portableAdapterConfig,
           runtimeConfig: portableRuntimeConfig,
           permissions: portablePermissions,
-          budgetMonthlyCents: agent.budgetMonthlyCents ?? 0,
+          budgetMonthlyUsd: agent.budgetMonthlyUsd ?? 0,
           metadata: (agent.metadata as Record<string, unknown> | null) ?? null,
         });
       }
@@ -924,7 +924,7 @@ export function companyPortabilityService(db: Db) {
           adapterType: manifestAgent.adapterType,
           adapterConfig,
           runtimeConfig: manifestAgent.runtimeConfig,
-          budgetMonthlyCents: manifestAgent.budgetMonthlyCents,
+          budgetMonthlyUsd: manifestAgent.budgetMonthlyUsd,
           permissions: manifestAgent.permissions,
           metadata: manifestAgent.metadata,
         };

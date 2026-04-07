@@ -7,8 +7,8 @@ export interface Company {
   status: CompanyStatus;
   issuePrefix: string;
   issueCounter: number;
-  budgetMonthlyCents: number;
-  spentMonthlyCents: number;
+  budgetMonthlyUsd: number;
+  spentMonthlyUsd: number;
   requireBoardApprovalForNewAgents: boolean;
   brandColor: string | null;
   createdAt: Date;

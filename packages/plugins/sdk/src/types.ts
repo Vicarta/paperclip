@@ -500,7 +500,8 @@ export interface PluginCostReportEntry {
   model: string;
   inputTokens?: number;
   outputTokens?: number;
-  costCents: number;
+  costUsd?: number;
+  costCents?: number;
   occurredAt?: string;
 }
 

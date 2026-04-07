@@ -15,6 +15,7 @@ type PluginConfig = {
   brightDataTokenSecretRef?: string;
   brightDataMcpUrl?: string;
   brightDataGroups?: string[];
+  flatCostUsdPerInvocation?: number;
   flatCostCentsPerInvocation?: number;
 };
 
@@ -115,7 +116,7 @@ export function BrightDataSettingsPage({ context }: PluginSettingsPageProps) {
   const [secrets, setSecrets] = useState<CompanySecret[]>([]);
   const [brightDataMcpUrl, setBrightDataMcpUrl] = useState(DEFAULT_BRIGHT_DATA_MCP_URL);
   const [groupText, setGroupText] = useState(DEFAULT_BRIGHT_DATA_GROUPS.join(", "));
-  const [flatCostCentsPerInvocation, setFlatCostCentsPerInvocation] = useState("0");
+  const [flatCostUsdPerInvocation, setFlatCostUsdPerInvocation] = useState("0");
   const [replaceToken, setReplaceToken] = useState(false);
   const [token, setToken] = useState("");
 
@@ -147,11 +148,14 @@ export function BrightDataSettingsPage({ context }: PluginSettingsPageProps) {
             ? nextConfig.brightDataGroups.join(", ")
             : DEFAULT_BRIGHT_DATA_GROUPS.join(", "),
         );
-        setFlatCostCentsPerInvocation(
+        setFlatCostUsdPerInvocation(
           String(
-            typeof nextConfig.flatCostCentsPerInvocation === "number" &&
-              Number.isFinite(nextConfig.flatCostCentsPerInvocation)
-              ? nextConfig.flatCostCentsPerInvocation
+            typeof nextConfig.flatCostUsdPerInvocation === "number" &&
+              Number.isFinite(nextConfig.flatCostUsdPerInvocation)
+              ? nextConfig.flatCostUsdPerInvocation
+              : typeof nextConfig.flatCostCentsPerInvocation === "number" &&
+                  Number.isFinite(nextConfig.flatCostCentsPerInvocation)
+                ? nextConfig.flatCostCentsPerInvocation / 100
               : 0,
           ),
         );
@@ -189,7 +193,7 @@ export function BrightDataSettingsPage({ context }: PluginSettingsPageProps) {
         .split(",")
         .map((value) => value.trim())
         .filter((value) => value.length > 0);
-      const numericFlatCost = Number.parseFloat(flatCostCentsPerInvocation);
+      const numericFlatCost = Number.parseFloat(flatCostUsdPerInvocation);
 
       if (trimmedToken.length > 0) {
         if (secretId) {
@@ -214,7 +218,7 @@ export function BrightDataSettingsPage({ context }: PluginSettingsPageProps) {
         brightDataMcpUrl: brightDataMcpUrl.trim() || DEFAULT_BRIGHT_DATA_MCP_URL,
         brightDataTokenSecretRef: secretId || "",
         brightDataGroups: groups.length > 0 ? groups : [...DEFAULT_BRIGHT_DATA_GROUPS],
-        flatCostCentsPerInvocation:
+        flatCostUsdPerInvocation:
           Number.isFinite(numericFlatCost) && numericFlatCost >= 0
             ? numericFlatCost
             : 0,
@@ -283,13 +287,13 @@ export function BrightDataSettingsPage({ context }: PluginSettingsPageProps) {
           </div>
 
           <div>
-            <label style={labelStyle}>Flat Cost Per Invocation (cents)</label>
+            <label style={labelStyle}>Flat Cost Per Invocation (USD)</label>
             <input
               style={inputStyle}
               inputMode="decimal"
-              value={flatCostCentsPerInvocation}
+              value={flatCostUsdPerInvocation}
               onChange={(event: ChangeEvent<HTMLInputElement>) =>
-                setFlatCostCentsPerInvocation(event.target.value)
+                setFlatCostUsdPerInvocation(event.target.value)
               }
               placeholder="0"
             />

@@ -219,7 +219,7 @@ export function NewAgent() {
           maxConcurrentRuns: 1,
         },
       },
-      budgetMonthlyCents: 0,
+      budgetMonthlyUsd: 0,
     });
   }
 

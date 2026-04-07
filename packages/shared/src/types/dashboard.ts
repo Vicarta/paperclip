@@ -13,8 +13,8 @@ export interface DashboardSummary {
     done: number;
   };
   costs: {
-    monthSpendCents: number;
-    monthBudgetCents: number;
+    monthSpendUsd: number;
+    monthBudgetUsd: number;
     monthUtilizationPercent: number;
   };
   pendingApprovals: number;

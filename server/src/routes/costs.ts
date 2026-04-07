@@ -34,7 +34,7 @@ export function costRoutes(db: Db) {
       action: "cost.reported",
       entityType: "cost_event",
       entityId: event.id,
-      details: { costCents: event.costCents, model: event.model },
+      details: { costUsd: event.costUsd, model: event.model },
     });
 
     res.status(201).json(event);
@@ -81,7 +81,7 @@ export function costRoutes(db: Db) {
   router.patch("/companies/:companyId/budgets", validate(updateBudgetSchema), async (req, res) => {
     assertBoard(req);
     const companyId = req.params.companyId as string;
-    const company = await companies.update(companyId, { budgetMonthlyCents: req.body.budgetMonthlyCents });
+    const company = await companies.update(companyId, { budgetMonthlyUsd: req.body.budgetMonthlyUsd });
     if (!company) {
       res.status(404).json({ error: "Company not found" });
       return;
@@ -94,7 +94,7 @@ export function costRoutes(db: Db) {
       action: "company.budget_updated",
       entityType: "company",
       entityId: companyId,
-      details: { budgetMonthlyCents: req.body.budgetMonthlyCents },
+      details: { budgetMonthlyUsd: req.body.budgetMonthlyUsd },
     });
 
     res.json(company);
@@ -115,7 +115,7 @@ export function costRoutes(db: Db) {
       }
     }
 
-    const updated = await agents.update(agentId, { budgetMonthlyCents: req.body.budgetMonthlyCents });
+    const updated = await agents.update(agentId, { budgetMonthlyUsd: req.body.budgetMonthlyUsd });
     if (!updated) {
       res.status(404).json({ error: "Agent not found" });
       return;
@@ -130,7 +130,7 @@ export function costRoutes(db: Db) {
       action: "agent.budget_updated",
       entityType: "agent",
       entityId: updated.id,
-      details: { budgetMonthlyCents: updated.budgetMonthlyCents },
+      details: { budgetMonthlyUsd: updated.budgetMonthlyUsd },
     });
 
     res.json(updated);

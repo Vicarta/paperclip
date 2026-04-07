@@ -22,8 +22,8 @@ export interface Agent {
   adapterType: AgentAdapterType;
   adapterConfig: Record<string, unknown>;
   runtimeConfig: Record<string, unknown>;
-  budgetMonthlyCents: number;
-  spentMonthlyCents: number;
+  budgetMonthlyUsd: number;
+  spentMonthlyUsd: number;
   permissions: AgentPermissions;
   lastHeartbeatAt: Date | null;
   metadata: Record<string, unknown> | null;

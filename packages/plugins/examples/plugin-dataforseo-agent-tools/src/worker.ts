@@ -56,7 +56,7 @@ const plugin = definePlugin({
             projectId: runCtx.projectId,
             provider: "dataforseo.com",
             model: "keywords_data/google_ads/search_volume/live",
-            costCents: Math.round(result.actualCostUsd * 100),
+            costUsd: result.actualCostUsd,
             inputTokens: 0,
             outputTokens: 0,
             occurredAt: new Date().toISOString(),

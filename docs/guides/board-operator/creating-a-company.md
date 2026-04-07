@@ -29,7 +29,7 @@ The CEO is the first agent you create. Choose an adapter type (Claude Local is a
 - **Role** — `ceo`
 - **Adapter** — how the agent runs (Claude Local, Codex Local, etc.)
 - **Prompt template** — instructions for what the CEO does on each heartbeat
-- **Budget** — monthly spend limit in cents
+- **Budget** — monthly spend limit in USD
 
 The CEO's prompt should instruct it to review company health, set strategy, and delegate work to reports.
 

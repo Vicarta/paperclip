@@ -38,7 +38,7 @@ PATCH /api/companies/{companyId}
 {
   "name": "Updated Name",
   "description": "Updated description",
-  "budgetMonthlyCents": 100000
+  "budgetMonthlyUsd": 1000
 }
 ```
 
@@ -58,6 +58,6 @@ Archives a company. Archived companies are hidden from default listings.
 | `name` | string | Company name |
 | `description` | string | Company description |
 | `status` | string | `active`, `paused`, `archived` |
-| `budgetMonthlyCents` | number | Monthly budget limit |
+| `budgetMonthlyUsd` | number | Monthly budget limit |
 | `createdAt` | string | ISO timestamp |
 | `updatedAt` | string | ISO timestamp |

@@ -14,7 +14,7 @@ const [company] = await db
     name: "Paperclip Demo Co",
     description: "A demo autonomous company",
     status: "active",
-    budgetMonthlyCents: 50000,
+    budgetMonthlyUsd: 500,
   })
   .returning();
 
@@ -28,7 +28,7 @@ const [ceo] = await db
     status: "idle",
     adapterType: "process",
     adapterConfig: { command: "echo", args: ["hello from ceo"] },
-    budgetMonthlyCents: 15000,
+    budgetMonthlyUsd: 150,
   })
   .returning();
 
@@ -43,7 +43,7 @@ const [engineer] = await db
     reportsTo: ceo!.id,
     adapterType: "process",
     adapterConfig: { command: "echo", args: ["hello from engineer"] },
-    budgetMonthlyCents: 10000,
+    budgetMonthlyUsd: 100,
   })
   .returning();
 

@@ -29,7 +29,7 @@ POST /api/companies/{companyId}/cost-events
   "model": "claude-sonnet-4-20250514",
   "inputTokens": 15000,
   "outputTokens": 3000,
-  "costCents": 12
+  "costUsd": 0.12
 }
 ```
 
@@ -39,7 +39,7 @@ Agents should check their budget at the start of each heartbeat:
 
 ```
 GET /api/agents/me
-# Check: spentMonthlyCents vs budgetMonthlyCents
+# Check: spentMonthlyUsd vs budgetMonthlyUsd
 ```
 
 If budget utilization is above 80%, focus on critical tasks only. At 100%, the agent is auto-paused.

@@ -123,14 +123,14 @@ export function approvalService(db: Db) {
               typeof payload.adapterConfig === "object" && payload.adapterConfig !== null
                 ? (payload.adapterConfig as Record<string, unknown>)
                 : {},
-            budgetMonthlyCents:
-              typeof payload.budgetMonthlyCents === "number" ? payload.budgetMonthlyCents : 0,
+            budgetMonthlyUsd:
+              typeof payload.budgetMonthlyUsd === "number" ? payload.budgetMonthlyUsd : 0,
             metadata:
               typeof payload.metadata === "object" && payload.metadata !== null
                 ? (payload.metadata as Record<string, unknown>)
                 : null,
             status: "idle",
-            spentMonthlyCents: 0,
+            spentMonthlyUsd: 0,
             permissions: undefined,
             lastHeartbeatAt: null,
           });

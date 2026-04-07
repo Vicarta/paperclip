@@ -6,7 +6,7 @@ import { useBreadcrumbs } from "../context/BreadcrumbContext";
 import { queryKeys } from "../lib/queryKeys";
 import { EmptyState } from "../components/EmptyState";
 import { PageSkeleton } from "../components/PageSkeleton";
-import { formatCents, formatTokens } from "../lib/utils";
+import { formatTokens, formatUsd } from "../lib/utils";
 import { Identity } from "../components/Identity";
 import { StatusBadge } from "../components/StatusBadge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -139,21 +139,21 @@ export function Costs() {
             <CardContent className="p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <p className="text-sm text-muted-foreground">{PRESET_LABELS[preset]}</p>
-                {data.summary.budgetCents > 0 && (
+                {data.summary.budgetUsd > 0 && (
                   <p className="text-sm text-muted-foreground">
                     {data.summary.utilizationPercent}% utilized
                   </p>
                 )}
               </div>
               <p className="text-2xl font-bold tabular-nums">
-                {formatCents(data.summary.spendCents)}{" "}
+                {formatUsd(data.summary.spendUsd)}{" "}
                 <span className="text-base font-normal text-muted-foreground">
-                  {data.summary.budgetCents > 0
-                    ? `/ ${formatCents(data.summary.budgetCents)}`
+                  {data.summary.budgetUsd > 0
+                    ? `/ ${formatUsd(data.summary.budgetUsd, 2)}`
                     : "Unlimited budget"}
                 </span>
               </p>
-              {data.summary.budgetCents > 0 && (
+              {data.summary.budgetUsd > 0 && (
                 <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
                   <div
                     className={`h-full rounded-full transition-[width,background-color] duration-150 ${
@@ -194,7 +194,7 @@ export function Costs() {
                           )}
                         </div>
                         <div className="text-right shrink-0 ml-2 tabular-nums">
-                          <span className="font-medium block">{formatCents(row.costCents)}</span>
+                          <span className="font-medium block">{formatUsd(row.costUsd)}</span>
                           <span className="text-xs text-muted-foreground block">
                             in {formatTokens(row.inputTokens)} / out {formatTokens(row.outputTokens)} tok
                           </span>
@@ -230,7 +230,7 @@ export function Costs() {
                         <span className="truncate">
                           {row.projectName ?? row.projectId ?? "Unattributed"}
                         </span>
-                        <span className="font-medium tabular-nums">{formatCents(row.costCents)}</span>
+                        <span className="font-medium tabular-nums">{formatUsd(row.costUsd)}</span>
                       </div>
                     ))}
                   </div>
@@ -257,7 +257,7 @@ export function Costs() {
                           </span>
                         </div>
                         <div className="text-right shrink-0 ml-2 tabular-nums">
-                          <span className="font-medium block">{formatCents(row.costCents)}</span>
+                          <span className="font-medium block">{formatUsd(row.costUsd)}</span>
                           <span className="text-xs text-muted-foreground block">
                             in {formatTokens(row.inputTokens)} / out {formatTokens(row.outputTokens)} tok
                           </span>

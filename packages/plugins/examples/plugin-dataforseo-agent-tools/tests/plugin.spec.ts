@@ -93,7 +93,7 @@ describe("plugin-dataforseo-agent-tools", () => {
         projectId: "project-1",
         provider: "dataforseo.com",
         model: "keywords_data/google_ads/search_volume/live",
-        costCents: 8,
+        costUsd: 0.075,
       }),
     ]);
   });

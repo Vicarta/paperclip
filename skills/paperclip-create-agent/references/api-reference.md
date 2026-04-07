@@ -47,7 +47,7 @@ Request body matches agent create shape:
       "wakeOnDemand": true
     }
   },
-  "budgetMonthlyCents": 0,
+  "budgetMonthlyUsd": 0,
   "sourceIssueId": "uuid-or-null",
   "sourceIssueIds": ["uuid-1", "uuid-2"]
 }

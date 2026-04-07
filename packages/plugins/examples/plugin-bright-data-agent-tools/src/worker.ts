@@ -4,7 +4,7 @@ import {
   downloadBrightDataSnapshot,
   getBrightDataSnapshotProgress,
   listBrightDataTools,
-  readConfiguredFlatCostCents,
+  readConfiguredFlatCostUsd,
   resolveInstagramAccountPostSet,
   runBrightDataDatasetRequest,
   triggerBrightDataDatasetRequest,
@@ -31,15 +31,15 @@ async function maybeReportBrightDataCost(input: {
   config: BrightDataPluginConfig;
   model: string;
 }) {
-  const flatCostCents = readConfiguredFlatCostCents(input.config);
-  if (flatCostCents <= 0) return;
+  const flatCostUsd = readConfiguredFlatCostUsd(input.config);
+  if (flatCostUsd <= 0) return;
   await input.ctx.costs.report({
     companyId: input.runCtx.companyId,
     agentId: input.runCtx.agentId,
     projectId: input.runCtx.projectId ?? null,
     provider: "brightdata.com",
     model: input.model,
-    costCents: flatCostCents,
+    costUsd: flatCostUsd,
     inputTokens: 0,
     outputTokens: 0,
     occurredAt: new Date().toISOString(),

@@ -51,11 +51,18 @@ const manifest: PaperclipPluginManifestV1 = {
         items: { type: "string" },
         default: [...DEFAULT_BRIGHT_DATA_GROUPS],
       },
-      flatCostCentsPerInvocation: {
+      flatCostUsdPerInvocation: {
         type: "number",
-        title: "Flat Cost Per Invocation (cents)",
+        title: "Flat Cost Per Invocation (USD)",
         description:
           "Operator-maintained marginal cost per Bright Data tool invocation for billing attribution. Set to 0 to disable external cost events.",
+        default: 0,
+      },
+      flatCostCentsPerInvocation: {
+        type: "number",
+        title: "Flat Cost Per Invocation (legacy cents)",
+        description:
+          "Deprecated compatibility field. New saves should use the USD field instead.",
         default: 0,
       },
     },

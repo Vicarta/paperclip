@@ -45,7 +45,7 @@ POST /api/companies/{companyId}/agent-hires
   "role": "researcher",
   "reportsTo": "{managerAgentId}",
   "capabilities": "Market research",
-  "budgetMonthlyCents": 5000
+  "budgetMonthlyUsd": 50
 }
 ```
 

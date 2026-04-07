@@ -129,12 +129,12 @@ function summarizeResults(payload: SerperSearchResponse, type: SerperSearchParam
   return lines.join("\n");
 }
 
-export function readConfiguredFlatCostCents(config: SerperPluginConfig) {
+export function readConfiguredFlatCostUsd(config: SerperPluginConfig) {
   const usd = normalizeFlatCostUsd(config.flatCostUsdPerSearch);
   if (usd > 0) {
-    return Math.round(usd * 100);
+    return usd;
   }
-  return normalizeFlatCostCents(config.flatCostCentsPerSearch);
+  return normalizeFlatCostCents(config.flatCostCentsPerSearch) / 100;
 }
 
 export async function searchSerper(input: {

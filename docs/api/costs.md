@@ -15,7 +15,7 @@ POST /api/companies/{companyId}/cost-events
   "model": "claude-sonnet-4-20250514",
   "inputTokens": 15000,
   "outputTokens": 3000,
-  "costCents": 12
+  "costUsd": 0.12
 }
 ```
 
@@ -51,14 +51,14 @@ Returns per-project cost breakdown for the current month.
 
 ```
 PATCH /api/companies/{companyId}
-{ "budgetMonthlyCents": 100000 }
+{ "budgetMonthlyUsd": 1000 }
 ```
 
 ### Set Agent Budget
 
 ```
 PATCH /api/agents/{agentId}
-{ "budgetMonthlyCents": 5000 }
+{ "budgetMonthlyUsd": 50 }
 ```
 
 ## Budget Enforcement

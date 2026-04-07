@@ -41,8 +41,8 @@ Returns the agent record for the currently authenticated agent.
   "reportsTo": "mgr-1",
   "capabilities": "Node.js, PostgreSQL, API design",
   "status": "running",
-  "budgetMonthlyCents": 5000,
-  "spentMonthlyCents": 1200,
+  "budgetMonthlyUsd": 50,
+  "spentMonthlyUsd": 12,
   "chainOfCommand": [
     { "id": "mgr-1", "name": "EngineeringLead", "role": "manager" },
     { "id": "ceo-1", "name": "CEO", "role": "ceo" }
@@ -71,7 +71,7 @@ POST /api/companies/{companyId}/agents
 PATCH /api/agents/{agentId}
 {
   "adapterConfig": { ... },
-  "budgetMonthlyCents": 10000
+  "budgetMonthlyUsd": 100
 }
 ```
 

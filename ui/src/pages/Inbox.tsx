@@ -500,7 +500,7 @@ export function Inbox() {
   const showAggregateAgentError = !!dashboard && dashboard.agents.error > 0 && !hasRunFailures && !dismissed.has("alert:agent-errors");
   const showBudgetAlert =
     !!dashboard &&
-    dashboard.costs.monthBudgetCents > 0 &&
+    dashboard.costs.monthBudgetUsd > 0 &&
     dashboard.costs.monthUtilizationPercent >= 80 &&
     !dismissed.has("alert:budget");
   const hasAlerts = showAggregateAgentError || showBudgetAlert;

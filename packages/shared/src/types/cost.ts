@@ -10,15 +10,15 @@ export interface CostEvent {
   model: string;
   inputTokens: number;
   outputTokens: number;
-  costCents: number;
+  costUsd: number;
   occurredAt: Date;
   createdAt: Date;
 }
 
 export interface CostSummary {
   companyId: string;
-  spendCents: number;
-  budgetCents: number;
+  spendUsd: number;
+  budgetUsd: number;
   utilizationPercent: number;
 }
 
@@ -26,7 +26,7 @@ export interface CostByAgent {
   agentId: string;
   agentName: string | null;
   agentStatus: string | null;
-  costCents: number;
+  costUsd: number;
   inputTokens: number;
   outputTokens: number;
   apiRunCount: number;
@@ -38,7 +38,7 @@ export interface CostByAgent {
 export interface CostByProvider {
   provider: string;
   model: string | null;
-  costCents: number;
+  costUsd: number;
   inputTokens: number;
   outputTokens: number;
   eventCount: number;

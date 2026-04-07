@@ -187,8 +187,8 @@ export function registerAgentCommands(program: Command): void {
                 role: row.role,
                 status: row.status,
                 reportsTo: row.reportsTo,
-                budgetMonthlyCents: row.budgetMonthlyCents,
-                spentMonthlyCents: row.spentMonthlyCents,
+                budgetMonthlyUsd: row.budgetMonthlyUsd,
+                spentMonthlyUsd: row.spentMonthlyUsd,
               }),
             );
           }

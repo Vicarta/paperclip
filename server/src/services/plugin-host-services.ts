@@ -624,7 +624,7 @@ export function buildHostServices(
           model: params.model,
           inputTokens: params.inputTokens ?? 0,
           outputTokens: params.outputTokens ?? 0,
-          costCents: params.costCents,
+          costUsd: params.costUsd ?? ((params.costCents ?? 0) / 100),
           occurredAt: params.occurredAt ? new Date(params.occurredAt) : new Date(),
         });
       },

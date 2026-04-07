@@ -66,7 +66,7 @@ export interface AgentRuntimeState {
   totalInputTokens: number;
   totalOutputTokens: number;
   totalCachedInputTokens: number;
-  totalCostCents: number;
+  totalCostUsd: number;
   lastError: string | null;
   createdAt: Date;
   updatedAt: Date;

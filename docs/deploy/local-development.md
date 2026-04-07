@@ -204,6 +204,11 @@ Operational guidance:
 - After changing retention policy, prune old backups explicitly or wait for the next backup cycle to prune files older than the new window.
 - If you change cadence from hourly to a wider interval, consider thinning the recent backlog too; otherwise disk usage will stay inflated until enough time passes naturally.
 
+## Upstream Sync
+
+For integrating newer changes from the original `paperclipai/paperclip` repository into this fork, follow
+[Upstream Update Workflow](/Users/savitsky/CodexProjects/paper-clip/local-paperclip/docs/deploy/upstream-update-workflow.md).
+
 ## Live App Memory Headroom
 
 Observed on `2026-04-04` during a live Astrogen SEO workflow test:

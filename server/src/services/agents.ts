@@ -33,7 +33,7 @@ const CONFIG_REVISION_FIELDS = [
   "adapterType",
   "adapterConfig",
   "runtimeConfig",
-  "budgetMonthlyCents",
+  "budgetMonthlyUsd",
   "metadata",
 ] as const;
 
@@ -93,7 +93,7 @@ function buildConfigSnapshot(
     adapterType: row.adapterType,
     adapterConfig,
     runtimeConfig,
-    budgetMonthlyCents: row.budgetMonthlyCents,
+    budgetMonthlyUsd: row.budgetMonthlyUsd,
     metadata,
   };
 }
@@ -128,8 +128,8 @@ function configPatchFromSnapshot(snapshot: unknown): Partial<typeof agents.$infe
   if (typeof snapshot.adapterType !== "string" || snapshot.adapterType.length === 0) {
     throw unprocessable("Invalid revision snapshot: adapterType");
   }
-  if (typeof snapshot.budgetMonthlyCents !== "number" || !Number.isFinite(snapshot.budgetMonthlyCents)) {
-    throw unprocessable("Invalid revision snapshot: budgetMonthlyCents");
+  if (typeof snapshot.budgetMonthlyUsd !== "number" || !Number.isFinite(snapshot.budgetMonthlyUsd)) {
+    throw unprocessable("Invalid revision snapshot: budgetMonthlyUsd");
   }
 
   return {
@@ -145,7 +145,7 @@ function configPatchFromSnapshot(snapshot: unknown): Partial<typeof agents.$infe
     adapterType: snapshot.adapterType,
     adapterConfig: isPlainRecord(snapshot.adapterConfig) ? snapshot.adapterConfig : {},
     runtimeConfig: isPlainRecord(snapshot.runtimeConfig) ? snapshot.runtimeConfig : {},
-    budgetMonthlyCents: Math.max(0, Math.floor(snapshot.budgetMonthlyCents)),
+    budgetMonthlyUsd: Math.max(0, snapshot.budgetMonthlyUsd),
     metadata: isPlainRecord(snapshot.metadata) || snapshot.metadata === null ? snapshot.metadata : null,
   };
 }

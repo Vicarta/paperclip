@@ -1533,7 +1533,7 @@ export function heartbeatService(db: Db) {
     const inputTokens = usage?.inputTokens ?? 0;
     const outputTokens = usage?.outputTokens ?? 0;
     const cachedInputTokens = usage?.cachedInputTokens ?? 0;
-    const additionalCostCents = Math.max(0, Math.round((result.costUsd ?? 0) * 100));
+    const additionalCostUsd = Math.max(0, result.costUsd ?? 0);
     const hasTokenUsage = inputTokens > 0 || outputTokens > 0 || cachedInputTokens > 0;
 
     await db
@@ -1547,12 +1547,12 @@ export function heartbeatService(db: Db) {
         totalInputTokens: sql`${agentRuntimeState.totalInputTokens} + ${inputTokens}`,
         totalOutputTokens: sql`${agentRuntimeState.totalOutputTokens} + ${outputTokens}`,
         totalCachedInputTokens: sql`${agentRuntimeState.totalCachedInputTokens} + ${cachedInputTokens}`,
-        totalCostCents: sql`${agentRuntimeState.totalCostCents} + ${additionalCostCents}`,
+        totalCostUsd: sql`${agentRuntimeState.totalCostUsd} + ${additionalCostUsd}`,
         updatedAt: new Date(),
       })
       .where(eq(agentRuntimeState.agentId, agent.id));
 
-    if (additionalCostCents > 0 || hasTokenUsage) {
+    if (additionalCostUsd > 0 || hasTokenUsage) {
       const costs = costService(db);
       await costs.createEvent(agent.companyId, {
         agentId: agent.id,
@@ -1560,7 +1560,7 @@ export function heartbeatService(db: Db) {
         model: result.model ?? "unknown",
         inputTokens,
         outputTokens,
-        costCents: additionalCostCents,
+        costUsd: additionalCostUsd,
         occurredAt: new Date(),
       });
     }
@@ -1918,6 +1918,16 @@ export function heartbeatService(db: Db) {
       context.paperclipCurrentIssueMarkdown = paperclipCurrentIssueMarkdown;
     } else {
       delete context.paperclipCurrentIssueMarkdown;
+    }
+    if (issueRef?.id) {
+      context.paperclipIssueId = issueRef.id;
+    } else {
+      delete context.paperclipIssueId;
+    }
+    if (issueRef?.identifier) {
+      context.paperclipIssueIdentifier = issueRef.identifier;
+    } else {
+      delete context.paperclipIssueIdentifier;
     }
     const paperclipWakeCommentMarkdown = truncateContextText(wakeComment?.body ?? "", 6_000);
     if (paperclipWakeCommentMarkdown) {

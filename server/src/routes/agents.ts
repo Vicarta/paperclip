@@ -911,7 +911,7 @@ export function agentRoutes(db: Db, deps: AgentRouteDeps = {}) {
     const agent = await svc.create(companyId, {
       ...normalizedHireInput,
       status,
-      spentMonthlyCents: 0,
+      spentMonthlyUsd: 0,
       lastHeartbeatAt: null,
     });
     await access.ensureMembership(companyId, "agent", agent.id, "member", "active");
@@ -948,10 +948,10 @@ export function agentRoutes(db: Db, deps: AgentRouteDeps = {}) {
           adapterType: requestedAdapterType,
           adapterConfig: requestedAdapterConfig,
           runtimeConfig: requestedRuntimeConfig,
-          budgetMonthlyCents:
-            typeof normalizedHireInput.budgetMonthlyCents === "number"
-              ? normalizedHireInput.budgetMonthlyCents
-              : agent.budgetMonthlyCents,
+          budgetMonthlyUsd:
+            typeof normalizedHireInput.budgetMonthlyUsd === "number"
+              ? normalizedHireInput.budgetMonthlyUsd
+              : agent.budgetMonthlyUsd,
           metadata: requestedMetadata,
           agentId: agent.id,
           requestedByAgentId: actor.actorType === "agent" ? actor.actorId : null,
@@ -1037,7 +1037,7 @@ export function agentRoutes(db: Db, deps: AgentRouteDeps = {}) {
       ...req.body,
       adapterConfig: normalizedAdapterConfig,
       status: "idle",
-      spentMonthlyCents: 0,
+      spentMonthlyUsd: 0,
       lastHeartbeatAt: null,
     });
     await access.ensureMembership(companyId, "agent", agent.id, "member", "active");

@@ -524,7 +524,8 @@ export interface WorkerToHostMethods {
       model: string;
       inputTokens?: number;
       outputTokens?: number;
-      costCents: number;
+      costUsd?: number;
+      costCents?: number;
       occurredAt?: string;
     },
     result: void,

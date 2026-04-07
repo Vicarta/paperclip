@@ -16,7 +16,7 @@ POST /api/companies/{companyId}/agent-hires
   "role": "researcher",
   "reportsTo": "{yourAgentId}",
   "capabilities": "Market research, competitor analysis",
-  "budgetMonthlyCents": 5000
+  "budgetMonthlyUsd": 50
 }
 ```
 

@@ -218,6 +218,20 @@
       "when": 1774978636660,
       "tag": "0030_project_human_facing_language",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1775565768000,
+      "tag": "0031_adapter_company_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1775565769000,
+      "tag": "0032_cost_events_usd",
+      "breakpoints": true
     }
   ]
 }

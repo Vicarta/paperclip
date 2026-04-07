@@ -9,6 +9,7 @@ export type BrightDataPluginConfig = {
   brightDataTokenSecretRef?: string;
   brightDataMcpUrl?: string;
   brightDataGroups?: string[];
+  flatCostUsdPerInvocation?: number;
   flatCostCentsPerInvocation?: number;
 };
 
@@ -107,9 +108,11 @@ function normalizeNumber(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) ? value : undefined;
 }
 
-export function readConfiguredFlatCostCents(config: BrightDataPluginConfig) {
-  const value = normalizeNumber(config.flatCostCentsPerInvocation);
-  return value !== undefined && value > 0 ? value : 0;
+export function readConfiguredFlatCostUsd(config: BrightDataPluginConfig) {
+  const usd = normalizeNumber(config.flatCostUsdPerInvocation);
+  if (usd !== undefined && usd > 0) return usd;
+  const cents = normalizeNumber(config.flatCostCentsPerInvocation);
+  return cents !== undefined && cents > 0 ? cents / 100 : 0;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

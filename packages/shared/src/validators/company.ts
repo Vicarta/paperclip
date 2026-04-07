@@ -4,7 +4,7 @@ import { COMPANY_STATUSES } from "../constants.js";
 export const createCompanySchema = z.object({
   name: z.string().min(1),
   description: z.string().optional().nullable(),
-  budgetMonthlyCents: z.number().int().nonnegative().optional().default(0),
+  budgetMonthlyUsd: z.number().nonnegative().optional().default(0),
 });
 
 export type CreateCompany = z.infer<typeof createCompanySchema>;
@@ -13,7 +13,7 @@ export const updateCompanySchema = createCompanySchema
   .partial()
   .extend({
     status: z.enum(COMPANY_STATUSES).optional(),
-    spentMonthlyCents: z.number().int().nonnegative().optional(),
+    spentMonthlyUsd: z.number().nonnegative().optional(),
     requireBoardApprovalForNewAgents: z.boolean().optional(),
     brandColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).nullable().optional(),
   });

@@ -31,7 +31,7 @@ export function costService(db: Db) {
       await db
         .update(agents)
         .set({
-          spentMonthlyCents: sql`${agents.spentMonthlyCents} + ${event.costCents}`,
+          spentMonthlyUsd: sql`${agents.spentMonthlyUsd} + ${event.costUsd}`,
           updatedAt: new Date(),
         })
         .where(eq(agents.id, event.agentId));
@@ -39,7 +39,7 @@ export function costService(db: Db) {
       await db
         .update(companies)
         .set({
-          spentMonthlyCents: sql`${companies.spentMonthlyCents} + ${event.costCents}`,
+          spentMonthlyUsd: sql`${companies.spentMonthlyUsd} + ${event.costUsd}`,
           updatedAt: new Date(),
         })
         .where(eq(companies.id, companyId));
@@ -52,8 +52,8 @@ export function costService(db: Db) {
 
       if (
         updatedAgent &&
-        updatedAgent.budgetMonthlyCents > 0 &&
-        updatedAgent.spentMonthlyCents >= updatedAgent.budgetMonthlyCents &&
+        updatedAgent.budgetMonthlyUsd > 0 &&
+        updatedAgent.spentMonthlyUsd >= updatedAgent.budgetMonthlyUsd &&
         updatedAgent.status !== "paused" &&
         updatedAgent.status !== "terminated"
       ) {
@@ -81,21 +81,22 @@ export function costService(db: Db) {
 
       const [{ total }] = await db
         .select({
-          total: sql<number>`coalesce(sum(${costEvents.costCents}), 0)::int`,
+          total: sql<number>`coalesce(sum(${costEvents.costUsd}), 0)::double precision`,
         })
         .from(costEvents)
         .where(and(...conditions));
 
-      const spendCents = Number(total);
+      const spendUsd = Number(total);
+      const budgetUsd = company.budgetMonthlyUsd;
       const utilization =
-        company.budgetMonthlyCents > 0
-          ? (spendCents / company.budgetMonthlyCents) * 100
+        budgetUsd > 0
+          ? (spendUsd / budgetUsd) * 100
           : 0;
 
       return {
         companyId,
-        spendCents,
-        budgetCents: company.budgetMonthlyCents,
+        spendUsd,
+        budgetUsd,
         utilizationPercent: Number(utilization.toFixed(2)),
       };
     },
@@ -110,7 +111,7 @@ export function costService(db: Db) {
           agentId: costEvents.agentId,
           agentName: agents.name,
           agentStatus: agents.status,
-          costCents: sql<number>`coalesce(sum(${costEvents.costCents}), 0)::int`,
+          costUsd: sql<number>`coalesce(sum(${costEvents.costUsd}), 0)::double precision`,
           inputTokens: sql<number>`coalesce(sum(${costEvents.inputTokens}), 0)::int`,
           outputTokens: sql<number>`coalesce(sum(${costEvents.outputTokens}), 0)::int`,
         })
@@ -118,7 +119,7 @@ export function costService(db: Db) {
         .leftJoin(agents, eq(costEvents.agentId, agents.id))
         .where(and(...conditions))
         .groupBy(costEvents.agentId, agents.name, agents.status)
-        .orderBy(desc(sql`coalesce(sum(${costEvents.costCents}), 0)::int`));
+        .orderBy(desc(sql`coalesce(sum(${costEvents.costUsd}), 0)::double precision`));
 
       const runConditions: ReturnType<typeof eq>[] = [eq(heartbeatRuns.companyId, companyId)];
       if (range?.from) runConditions.push(gte(heartbeatRuns.finishedAt, range.from));
@@ -183,13 +184,13 @@ export function costService(db: Db) {
       if (range?.from) conditions.push(gte(heartbeatRuns.finishedAt, range.from));
       if (range?.to) conditions.push(lte(heartbeatRuns.finishedAt, range.to));
 
-      const costCentsExpr = sql<number>`coalesce(sum(round(coalesce((${heartbeatRuns.usageJson} ->> 'costUsd')::numeric, 0) * 100)), 0)::int`;
+      const costUsdExpr = sql<number>`coalesce(sum(coalesce((${heartbeatRuns.usageJson} ->> 'costUsd')::double precision, 0)), 0)::double precision`;
 
       return db
         .select({
           projectId: runProjectLinks.projectId,
           projectName: projects.name,
-          costCents: costCentsExpr,
+          costUsd: costUsdExpr,
           inputTokens: sql<number>`coalesce(sum(coalesce((${heartbeatRuns.usageJson} ->> 'inputTokens')::int, 0)), 0)::int`,
           outputTokens: sql<number>`coalesce(sum(coalesce((${heartbeatRuns.usageJson} ->> 'outputTokens')::int, 0)), 0)::int`,
         })
@@ -198,7 +199,7 @@ export function costService(db: Db) {
         .innerJoin(projects, eq(runProjectLinks.projectId, projects.id))
         .where(and(...conditions))
         .groupBy(runProjectLinks.projectId, projects.name)
-        .orderBy(desc(costCentsExpr));
+        .orderBy(desc(costUsdExpr));
     },
 
     byProvider: async (companyId: string, range?: CostDateRange) => {
@@ -210,7 +211,7 @@ export function costService(db: Db) {
         .select({
           provider: costEvents.provider,
           model: sql<string | null>`nullif(${costEvents.model}, '')`,
-          costCents: sql<number>`coalesce(sum(${costEvents.costCents}), 0)::int`,
+          costUsd: sql<number>`coalesce(sum(${costEvents.costUsd}), 0)::double precision`,
           inputTokens: sql<number>`coalesce(sum(${costEvents.inputTokens}), 0)::int`,
           outputTokens: sql<number>`coalesce(sum(${costEvents.outputTokens}), 0)::int`,
           eventCount: sql<number>`count(*)::int`,
@@ -219,7 +220,7 @@ export function costService(db: Db) {
         .where(and(...conditions))
         .groupBy(costEvents.provider, costEvents.model)
         .orderBy(
-          desc(sql`coalesce(sum(${costEvents.costCents}), 0)::int`),
+          desc(sql`coalesce(sum(${costEvents.costUsd}), 0)::double precision`),
           costEvents.provider,
           costEvents.model,
         );

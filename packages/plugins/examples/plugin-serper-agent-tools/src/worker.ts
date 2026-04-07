@@ -1,7 +1,7 @@
 import { definePlugin, runWorker, type ToolResult } from "@paperclipai/plugin-sdk";
 import { PLUGIN_ID, TOOL_NAMES } from "./constants.js";
 import {
-  readConfiguredFlatCostCents,
+  readConfiguredFlatCostUsd,
   searchSerper,
   type SerperPluginConfig,
   type SerperSearchParams,
@@ -45,8 +45,8 @@ const plugin = definePlugin({
           fetchFn: ctx.http.fetch,
         });
 
-        const flatCostCents = readConfiguredFlatCostCents(config);
-        if (flatCostCents > 0) {
+        const flatCostUsd = readConfiguredFlatCostUsd(config);
+        if (flatCostUsd > 0) {
           await ctx.costs.report({
             companyId: runCtx.companyId,
             agentId: runCtx.agentId,
@@ -56,7 +56,7 @@ const plugin = definePlugin({
               (params as SerperSearchParams).type === "news"
                 ? "google/news"
                 : "google/search",
-            costCents: flatCostCents,
+            costUsd: flatCostUsd,
             inputTokens: 0,
             outputTokens: 0,
             occurredAt: new Date().toISOString(),

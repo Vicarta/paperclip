@@ -10,6 +10,10 @@ export function formatCents(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
+export function formatUsd(usd: number, digits = 2): string {
+  return `$${usd.toFixed(digits)}`;
+}
+
 export function formatDate(date: Date | string): string {
   return new Date(date).toLocaleDateString("en-US", {
     month: "short",

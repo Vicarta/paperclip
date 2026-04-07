@@ -487,6 +487,7 @@ export function startWorkerRpcHost(options: WorkerRpcHostOptions): WorkerRpcHost
             model: entry.model,
             inputTokens: entry.inputTokens,
             outputTokens: entry.outputTokens,
+            costUsd: entry.costUsd,
             costCents: entry.costCents,
             occurredAt: entry.occurredAt,
           });

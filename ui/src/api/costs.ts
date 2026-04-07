@@ -4,7 +4,7 @@ import { api } from "./client";
 export interface CostByProject {
   projectId: string | null;
   projectName: string | null;
-  costCents: number;
+  costUsd: number;
   inputTokens: number;
   outputTokens: number;
 }

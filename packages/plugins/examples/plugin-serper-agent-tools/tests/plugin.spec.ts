@@ -3,7 +3,7 @@ import { createTestHarness } from "@paperclipai/plugin-sdk/testing";
 import manifest from "../src/manifest.js";
 import plugin from "../src/worker.js";
 import { TOOL_NAMES } from "../src/constants.js";
-import { readConfiguredFlatCostCents, searchSerper } from "../src/serper-client.js";
+import { readConfiguredFlatCostUsd, searchSerper } from "../src/serper-client.js";
 
 vi.mock("../src/serper-client.js", async () => {
   const actual = await vi.importActual<typeof import("../src/serper-client.js")>(
@@ -77,16 +77,16 @@ describe("plugin-serper-agent-tools", () => {
         projectId: "project-1",
         provider: "serper.dev",
         model: "google/news",
-        costCents: 15,
+        costUsd: 0.15,
       }),
     ]);
   });
 
   it("keeps legacy flatCostCentsPerSearch configs readable", () => {
     expect(
-      readConfiguredFlatCostCents({
+      readConfiguredFlatCostUsd({
         flatCostCentsPerSearch: 15,
       }),
-    ).toBe(15);
+    ).toBe(0.15);
   });
 });
