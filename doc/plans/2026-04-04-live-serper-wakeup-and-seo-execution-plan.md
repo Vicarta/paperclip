@@ -255,23 +255,23 @@ Why this exists:
   - `paperclip.bright-data-agent-tools`
 
 Required work:
-- [ ] inspect the current registry state for `Exa` and `Bright Data` plugin rows:
+- [x] inspect the current registry state for `Exa` and `Bright Data` plugin rows:
   - package path;
   - status;
   - last error;
   - whether the rows predate the Docker/importer fixes.
-- [ ] inspect live logs for the exact activation failure for each plugin instead of relying only on the generic UI banner.
-- [ ] compare their package importer coverage with the now-fixed `Serper` and `DataForSEO` path:
+- [x] inspect live logs for the exact activation failure for each plugin instead of relying only on the generic UI banner.
+- [x] compare their package importer coverage with the now-fixed `Serper` and `DataForSEO` path:
   - `pnpm-lock.yaml`
   - `Dockerfile` deps-stage package copies
   - package build prerequisites
-- [ ] determine whether the correct recovery path is:
+- [x] determine whether the correct recovery path is:
   - `enable` on the existing plugin row;
   - reinstall from bundled example;
   - or uninstall + reinstall.
-- [ ] run the minimal safe recovery path for `Exa`.
-- [ ] run the minimal safe recovery path for `Bright Data`.
-- [ ] verify each plugin reaches `ready` and registers its tools in live runtime.
+- [x] run the minimal safe recovery path for `Exa`.
+- [x] run the minimal safe recovery path for `Bright Data`.
+- [x] verify each plugin reaches `ready` and registers its tools in live runtime.
 - [ ] verify the plugin cards in the UI no longer show the generic build-failure banner.
 
 Rules:
@@ -284,6 +284,18 @@ Exit criteria:
 - `Exa Agent Tools` is `ready` in live UI.
 - `Bright Data Agent Tools` is `ready` in live UI.
 - neither card shows `Activation failed: Command failed: pnpm build`.
+
+Current status:
+- registry and config rows were inspected directly in live DB;
+- both plugin packages now build successfully inside the live `paperclip-app-1` container;
+- no current code/importer defect was reproduced for either plugin;
+- the practical fix was recovery from stale `error` state:
+  - move both rows back to `ready`;
+  - restart `paperclip-app-1`;
+  - confirm activation logs and tool registration;
+- live runtime now shows:
+  - `paperclip.exa-agent-tools` -> `ready`, 3 tools registered;
+  - `paperclip.bright-data-agent-tools` -> `ready`, 7 tools registered.
 
 ### Phase 9: Repair Heartbeat Issue Closeout Protocol
 
