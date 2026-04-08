@@ -146,7 +146,9 @@ export function PluginManager() {
   const installedPlugins = plugins ?? [];
   const examples = examplesQuery.data ?? [];
   const installedByPackageName = new Map(installedPlugins.map((plugin) => [plugin.packageName, plugin]));
-  const examplePackageNames = new Set(examples.map((example) => example.packageName));
+  const examplePackageNames = new Set(
+    examples.filter((example) => example.tag === "example").map((example) => example.packageName)
+  );
   const errorSummaryByPluginId = useMemo(
     () =>
       new Map(
@@ -219,8 +221,7 @@ export function PluginManager() {
       <section className="space-y-3">
         <div className="flex items-center gap-2">
           <FlaskConical className="h-5 w-5 text-muted-foreground" />
-          <h2 className="text-base font-semibold">Available Plugins</h2>
-          <Badge variant="outline">Examples</Badge>
+          <h2 className="text-base font-semibold">Bundled Plugins</h2>
         </div>
 
         {examplesQuery.isLoading ? (
@@ -229,7 +230,7 @@ export function PluginManager() {
           <div className="text-sm text-destructive">Failed to load bundled examples.</div>
         ) : examples.length === 0 ? (
           <div className="rounded-md border border-dashed px-4 py-3 text-sm text-muted-foreground">
-            No bundled example plugins were found in this checkout.
+            No bundled plugins were found in this checkout.
           </div>
         ) : (
           <ul className="divide-y rounded-md border bg-card">
@@ -246,7 +247,7 @@ export function PluginManager() {
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="font-medium">{example.displayName}</span>
-                        <Badge variant="outline">Example</Badge>
+                        <Badge variant="outline">{example.tag === "example" ? "Example" : "Bundled"}</Badge>
                         {installedPlugin ? (
                           <Badge
                             variant={installedPlugin.status === "ready" ? "default" : "secondary"}
@@ -291,7 +292,7 @@ export function PluginManager() {
                             })
                           }
                         >
-                          {installPending ? "Installing..." : "Install Example"}
+                          {installPending ? "Installing..." : "Install"}
                         </Button>
                       )}
                     </div>

@@ -85,13 +85,13 @@ interface PluginInstallRequest {
   isLocalPath?: boolean;
 }
 
-interface AvailablePluginExample {
+interface AvailableBundledPlugin {
   packageName: string;
   pluginKey: string;
   displayName: string;
   description: string;
   localPath: string;
-  tag: "example";
+  tag: "example" | "bundled";
 }
 
 /** Response body for GET /api/plugins/:pluginId/health */
@@ -114,7 +114,7 @@ const UUID_REGEX =
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, "../../..");
 
-const BUNDLED_PLUGIN_EXAMPLES: AvailablePluginExample[] = [
+const BUNDLED_PLUGINS: AvailableBundledPlugin[] = [
   {
     packageName: "@paperclipai/plugin-hello-world-example",
     pluginKey: "paperclip.hello-world-example",
@@ -129,7 +129,7 @@ const BUNDLED_PLUGIN_EXAMPLES: AvailablePluginExample[] = [
     displayName: "File Browser",
     description: "Plugin that adds a Files link in project navigation plus a project detail file browser.",
     localPath: "packages/plugins/examples/plugin-file-browser-example",
-    tag: "example",
+    tag: "bundled",
   },
   {
     packageName: "@paperclipai/plugin-kitchen-sink-example",
@@ -145,7 +145,7 @@ const BUNDLED_PLUGIN_EXAMPLES: AvailablePluginExample[] = [
     displayName: "Bright Data Agent Tools",
     description: "Server-side Bright Data MCP connector for social and scraping tool access via Paperclip secrets.",
     localPath: "packages/plugins/examples/plugin-bright-data-agent-tools",
-    tag: "example",
+    tag: "bundled",
   },
   {
     packageName: "@paperclipai/plugin-serper-agent-tools",
@@ -153,7 +153,7 @@ const BUNDLED_PLUGIN_EXAMPLES: AvailablePluginExample[] = [
     displayName: "Serper Agent Tools",
     description: "Server-side Serper.dev connector for Google SERP retrieval with secret-backed settings.",
     localPath: "packages/plugins/examples/plugin-serper-agent-tools",
-    tag: "example",
+    tag: "bundled",
   },
   {
     packageName: "@paperclipai/plugin-dataforseo-agent-tools",
@@ -161,12 +161,12 @@ const BUNDLED_PLUGIN_EXAMPLES: AvailablePluginExample[] = [
     displayName: "DataForSEO Agent Tools",
     description: "Server-side DataForSEO connector for keyword demand retrieval with secret-backed credentials.",
     localPath: "packages/plugins/examples/plugin-dataforseo-agent-tools",
-    tag: "example",
+    tag: "bundled",
   },
 ];
 
-function listBundledPluginExamples(): AvailablePluginExample[] {
-  return BUNDLED_PLUGIN_EXAMPLES.flatMap((plugin) => {
+function listBundledPluginExamples(): AvailableBundledPlugin[] {
+  return BUNDLED_PLUGINS.flatMap((plugin) => {
     const absoluteLocalPath = path.resolve(REPO_ROOT, plugin.localPath);
     if (!existsSync(absoluteLocalPath)) return [];
     return [{ ...plugin, localPath: absoluteLocalPath }];

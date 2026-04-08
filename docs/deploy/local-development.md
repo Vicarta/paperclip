@@ -120,6 +120,7 @@ Current deployment facts for this environment:
 
 - The live Paperclip stack runs from `/home/paperclip/apps/paperclip/docker-compose.yml`.
 - The canonical server checkout is `/home/paperclip/apps/paperclip/paperclip-src`.
+- SSH access via the normal operator account does not have direct access to that tree; use `sudo bash -lc 'cd /home/paperclip/apps/paperclip/... && ...'` for checkout inspection, file sync, and `docker compose` actions.
 - The app container is `paperclip-app-1`.
 - The running Files plugin bundle is loaded from `/paperclip/plugins/plugin-file-browser-example/...` inside that container.
 
