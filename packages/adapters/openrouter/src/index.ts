@@ -39,4 +39,6 @@ Notes:
 - This adapter is stateless and executes via direct HTTPS calls to OpenRouter.
 - It does not require local OpenCode, Claude, Codex, or Gemini CLIs on the Paperclip host.
 - It is intended for prompt-based agents rather than local tool-using coding agents.
+- For issue-bound Paperclip runs, the adapter can execute an explicit issue protocol response
+  (issue document upsert + lifecycle patch) using the run JWT; it is still not a general local tool runtime.
 `;

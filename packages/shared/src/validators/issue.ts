@@ -107,5 +107,11 @@ export const upsertIssueDocumentSchema = z.object({
   baseRevisionId: z.string().uuid().nullable().optional(),
 });
 
+export const writeIssueArtifactFileSchema = z.object({
+  relativePath: z.string().trim().min(1).max(512),
+  body: z.string().max(2 * 1024 * 1024),
+});
+
 export type IssueDocumentFormat = z.infer<typeof issueDocumentFormatSchema>;
 export type UpsertIssueDocument = z.infer<typeof upsertIssueDocumentSchema>;
+export type WriteIssueArtifactFile = z.infer<typeof writeIssueArtifactFileSchema>;

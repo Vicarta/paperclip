@@ -102,6 +102,13 @@ function createApp() {
   return app;
 }
 
+async function waitForWakeupCall(maxSpins = 20) {
+  for (let spin = 0; spin < maxSpins; spin += 1) {
+    if (mockHeartbeatService.wakeup.mock.calls.length > 0) return;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+}
+
 describe("PATCH /issues/:id task assignment permissions", () => {
   beforeEach(() => {
     mockIssueService.getById.mockReset();
@@ -188,6 +195,38 @@ describe("PATCH /issues/:id task assignment permissions", () => {
     expect(mockIssueService.update).toHaveBeenCalledWith(
       ISSUE_ID,
       expect.objectContaining({ assigneeAgentId: TARGET_AGENT_ID }),
+    );
+  });
+
+  it("wakes assignee when status transitions from blocked to todo", async () => {
+    const existing = makeIssue({
+      status: "blocked",
+      assigneeAgentId: TARGET_AGENT_ID,
+    });
+    const updated = makeIssue({
+      status: "todo",
+      assigneeAgentId: TARGET_AGENT_ID,
+    });
+    mockIssueService.getById.mockResolvedValue(existing);
+    mockIssueService.update.mockResolvedValue(updated);
+
+    const app = createApp();
+    const res = await request(app)
+      .patch(`/api/issues/${ISSUE_ID}`)
+      .send({ status: "todo" });
+
+    expect(res.status).toBe(200);
+
+    await waitForWakeupCall();
+    expect(mockHeartbeatService.wakeup).toHaveBeenCalledWith(
+      TARGET_AGENT_ID,
+      expect.objectContaining({
+        reason: "issue_status_changed",
+        payload: expect.objectContaining({
+          issueId: ISSUE_ID,
+          mutation: "update",
+        }),
+      }),
     );
   });
 });

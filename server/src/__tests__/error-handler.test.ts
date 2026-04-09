@@ -50,4 +50,19 @@ describe("errorHandler", () => {
     expect(res.err).toBe(err);
     expect(res.__errorContext?.error?.message).toBe("db exploded");
   });
+
+  it("returns 413 for oversized JSON payloads", () => {
+    const req = makeReq();
+    const res = makeRes() as any;
+    const next = vi.fn() as unknown as NextFunction;
+    const err = Object.assign(new Error("request entity too large"), {
+      type: "entity.too.large",
+    });
+
+    errorHandler(err, req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(413);
+    expect(res.json).toHaveBeenCalledWith({ error: "Payload too large" });
+    expect(res.err).toBe(err);
+  });
 });

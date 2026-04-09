@@ -148,7 +148,7 @@ const openRouterDirectAdapter: ServerAdapterModule = {
   testEnvironment: openRouterDirectTestEnvironment,
   models: [],
   listModels: async (input) => listOpenRouterDirectModels(input?.config ?? {}),
-  supportsLocalAgentJwt: false,
+  supportsLocalAgentJwt: true,
   agentConfigurationDoc: openRouterDirectAgentConfigurationDoc,
 };
 

@@ -4,7 +4,9 @@ import type { AdapterExecutionContext, AdapterExecutionResult } from "@paperclip
 import {
   asNumber,
   asString,
+  buildPaperclipEnv,
   joinPromptSections,
+  parseJson,
   parseObject,
   redactEnvForLogs,
   renderTemplate,
@@ -17,6 +19,10 @@ import {
   resolveOpenRouterSettings,
   summarizeErrorPayload,
 } from "./shared.js";
+import {
+  buildOpenRouterIssueProtocolInstruction,
+  parseOpenRouterIssueProtocolIntent,
+} from "./paperclip-protocol.js";
 
 type OpenRouterResponse = {
   model?: unknown;
@@ -75,7 +81,7 @@ function readUsage(value: OpenRouterResponse["usage"]) {
 export async function execute(
   ctx: AdapterExecutionContext,
 ): Promise<AdapterExecutionResult> {
-  const { runId, agent, config, context, onLog, onMeta } = ctx;
+  const { runId, agent, config, context, onLog, onMeta, authToken } = ctx;
   const configRecord = parseObject(config);
   const settings = resolveOpenRouterSettings(configRecord);
   if (!settings.apiKey) {
@@ -109,17 +115,27 @@ export async function execute(
       ? renderTemplate(bootstrapPromptTemplate, templateData).trim()
       : "";
   const currentIssueContext = renderTextSection(context.paperclipCurrentIssueMarkdown);
+  const currentIssueId = asString(context.paperclipIssueId, "").trim() || null;
+  const currentIssueIdentifier = asString(context.paperclipIssueIdentifier, "").trim() || null;
   const humanFacingLanguageInstruction = renderTextSection(
     context.paperclipHumanFacingLanguageInstruction,
   );
   const sessionHandoffNote = renderTextSection(context.paperclipSessionHandoffMarkdown);
   const systemPrompt = joinPromptSections([instructionsPrefix, renderedBootstrapPrompt]);
+  const protocolInstruction =
+    currentIssueId && authToken
+      ? buildOpenRouterIssueProtocolInstruction({
+          issueIdentifier: currentIssueIdentifier,
+          issueId: currentIssueId,
+        })
+      : "";
   const userPrompt =
     joinPromptSections([
       currentIssueContext,
       humanFacingLanguageInstruction,
       sessionHandoffNote,
       renderedPrompt,
+      protocolInstruction,
     ]) || "Continue your assigned Paperclip work.";
 
   const promptMetrics = {
@@ -204,10 +220,148 @@ export async function execute(
     }
 
     const assistantText = extractAssistantText(payload);
-    if (assistantText) {
-      await onLog("stdout", `${assistantText}\n`);
-    } else {
+    if (!assistantText) {
       await onLog("stdout", "[paperclip] OpenRouter returned empty content.\n");
+    } else if (!currentIssueId || !authToken) {
+      await onLog("stdout", `${assistantText}\n`);
+    }
+
+    let protocolResult: Record<string, unknown> | null = null;
+    if (assistantText && currentIssueId && authToken) {
+      const intent = parseOpenRouterIssueProtocolIntent(assistantText);
+      if (!intent) {
+        return {
+          exitCode: 1,
+          signal: null,
+          timedOut: false,
+          errorCode: "protocol_parse_error",
+          errorMessage:
+            "OpenRouter agent must return a valid Paperclip issue JSON object for issue-bound runs.",
+          usage: readUsage(payload.usage),
+          provider: "openrouter",
+          model: asString(payload.model, model),
+          billingType: "api",
+          costUsd: extractCostUsd(payload),
+          resultJson: {
+            provider: "openrouter",
+            protocol: {
+              applied: false,
+              error: "protocol_parse_error",
+              rawPreview: assistantText.slice(0, 400),
+            },
+          },
+          summary: `OpenRouter ${model}`,
+          clearSession: true,
+        };
+      }
+
+      const apiUrl = buildPaperclipEnv({
+        id: agent.id,
+        companyId: agent.companyId,
+      }).PAPERCLIP_API_URL.trim();
+      if (!apiUrl) {
+        throw new Error("OpenRouter issue protocol requires an internal Paperclip API URL.");
+      }
+
+      const headers: Record<string, string> = {
+        Authorization: `Bearer ${authToken}`,
+        "Content-Type": "application/json",
+        "X-Paperclip-Run-Id": runId,
+      };
+
+      if (intent.document) {
+        const docResponse = await fetch(
+          `${apiUrl.replace(/\/+$/, "")}/api/issues/${encodeURIComponent(currentIssueId)}/documents/${encodeURIComponent(intent.document.key)}`,
+          {
+            method: "PUT",
+            headers,
+            body: JSON.stringify({
+              title: intent.document.title,
+              format: "markdown",
+              body: intent.document.body,
+              changeSummary: intent.document.changeSummary,
+            }),
+          },
+        );
+        const docText = await docResponse.text();
+        const docPayload = docText ? parseJson(docText) : null;
+        if (!docResponse.ok) {
+          throw new Error(
+            `Paperclip issue document upsert failed (${docResponse.status}): ${summarizeErrorPayload(docPayload) || docText || "unknown error"}`,
+          );
+        }
+      }
+
+      if (intent.artifact) {
+        const artifactResponse = await fetch(
+          `${apiUrl.replace(/\/+$/, "")}/api/issues/${encodeURIComponent(currentIssueId)}/artifacts/file`,
+          {
+            method: "PUT",
+            headers,
+            body: JSON.stringify({
+              relativePath: intent.artifact.relativePath,
+              body: intent.artifact.body,
+            }),
+          },
+        );
+        const artifactText = await artifactResponse.text();
+        const artifactPayload = artifactText ? parseJson(artifactText) : null;
+        if (!artifactResponse.ok) {
+          throw new Error(
+            `Paperclip issue artifact write failed (${artifactResponse.status}): ${summarizeErrorPayload(artifactPayload) || artifactText || "unknown error"}`,
+          );
+        }
+      }
+
+      if (intent.status || intent.comment) {
+        const patchResponse = await fetch(
+          `${apiUrl.replace(/\/+$/, "")}/api/issues/${encodeURIComponent(currentIssueId)}`,
+          {
+            method: "PATCH",
+            headers,
+            body: JSON.stringify({
+              ...(intent.status ? { status: intent.status } : {}),
+              ...(intent.comment ? { comment: intent.comment } : {}),
+            }),
+          },
+        );
+        const patchText = await patchResponse.text();
+        const patchPayload = patchText ? parseJson(patchText) : null;
+        if (!patchResponse.ok) {
+          throw new Error(
+            `Paperclip issue patch failed (${patchResponse.status}): ${summarizeErrorPayload(patchPayload) || patchText || "unknown error"}`,
+          );
+        }
+      }
+
+      await onLog(
+        "stdout",
+        `[paperclip] Applied issue protocol for ${currentIssueIdentifier ?? currentIssueId}:` +
+          `${intent.artifact ? ` artifact=${intent.artifact.relativePath}` : ""}` +
+          `${intent.document ? ` document=${intent.document.key}` : ""}` +
+          `${intent.status ? ` status=${intent.status}` : ""}\n`,
+      );
+
+      protocolResult = {
+        applied: true,
+        issueId: currentIssueId,
+        issueIdentifier: currentIssueIdentifier,
+        status: intent.status,
+        commentPreview: intent.comment ? intent.comment.slice(0, 240) : null,
+        document: intent.document
+          ? {
+              key: intent.document.key,
+              title: intent.document.title,
+              bodyChars: intent.document.body.length,
+            }
+          : null,
+        artifact: intent.artifact
+          ? {
+              relativePath: intent.artifact.relativePath,
+              bodyChars: intent.artifact.body.length,
+            }
+          : null,
+      };
     }
 
     return {
@@ -219,8 +373,17 @@ export async function execute(
       model: asString(payload.model, model),
       billingType: "api",
       costUsd: extractCostUsd(payload),
-      resultJson: payload,
-      summary: `OpenRouter ${model}`,
+      resultJson: protocolResult
+        ? {
+            provider: "openrouter",
+            model: asString(payload.model, model),
+            protocol: protocolResult,
+          }
+        : payload,
+      summary:
+        protocolResult && typeof protocolResult.commentPreview === "string"
+          ? protocolResult.commentPreview
+          : `OpenRouter ${model}`,
       clearSession: true,
     };
   } catch (err) {

@@ -480,7 +480,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
                   />
                 </Field>
                 <div className="rounded-md border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
-                  Prompt template is replayed on every heartbeat. Keep it compact and dynamic to avoid recurring token cost and cache churn.
+                  Prompt template is replayed on every heartbeat. Leave it blank unless you need small dynamic framing that is not already carried by AGENTS.md, the current issue, or repo instructions.
                 </div>
                 {showEditPromptStageWarning && (
                   <div className="rounded-md border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs text-red-100">
@@ -620,7 +620,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
                 />
               </Field>
               <div className="rounded-md border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
-                Prompt template is replayed on every heartbeat. Prefer small task framing and variables like <code>{"{{ context.* }}"}</code> or <code>{"{{ run.* }}"}</code>; avoid repeating stable instructions here.
+                Prompt template is replayed on every heartbeat. Leave it blank by default; use it only for small dynamic framing with variables like <code>{"{{ context.* }}"}</code> or <code>{"{{ run.* }}"}</code> when AGENTS.md and the issue are not enough.
               </div>
               {showCreatePromptStageWarning && (
                 <div className="rounded-md border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs text-red-100">

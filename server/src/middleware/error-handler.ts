@@ -36,6 +36,25 @@ export function errorHandler(
   res: Response,
   _next: NextFunction,
 ) {
+  if (
+    err &&
+    typeof err === "object" &&
+    "type" in err &&
+    (err as { type?: unknown }).type === "entity.too.large"
+  ) {
+    const rootError = err instanceof Error ? err : new Error(String(err));
+    attachErrorContext(
+      req,
+      res,
+      err instanceof Error
+        ? { message: err.message, stack: err.stack, name: err.name }
+        : { message: String(err), raw: err, stack: rootError.stack, name: rootError.name },
+      rootError,
+    );
+    res.status(413).json({ error: "Payload too large" });
+    return;
+  }
+
   if (err instanceof HttpError) {
     if (err.status >= 500) {
       attachErrorContext(

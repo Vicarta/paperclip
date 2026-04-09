@@ -69,6 +69,7 @@ export {
   issueDocumentFormatSchema,
   issueDocumentKeySchema,
   upsertIssueDocumentSchema,
+  writeIssueArtifactFileSchema,
   type CreateIssue,
   type CreateIssueLabel,
   type UpdateIssue,
@@ -79,6 +80,7 @@ export {
   type CreateIssueAttachmentMetadata,
   type IssueDocumentFormat,
   type UpsertIssueDocument,
+  type WriteIssueArtifactFile,
 } from "./issue.js";
 
 export {

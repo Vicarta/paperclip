@@ -93,6 +93,10 @@ describe("shouldResetTaskSessionForWake", () => {
     expect(shouldResetTaskSessionForWake({ wakeReason: "issue_assigned" })).toBe(true);
   });
 
+  it("resets session context on status-change wake", () => {
+    expect(shouldResetTaskSessionForWake({ wakeReason: "issue_status_changed" })).toBe(true);
+  });
+
   it("preserves session context on timer heartbeats", () => {
     expect(shouldResetTaskSessionForWake({ wakeSource: "timer" })).toBe(false);
   });

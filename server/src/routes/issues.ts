@@ -1,3 +1,5 @@
+import { promises as fs } from "node:fs";
+import path from "node:path";
 import { Router, type Request, type Response } from "express";
 import multer from "multer";
 import type { Db } from "@paperclipai/db";
@@ -11,6 +13,7 @@ import {
   issueDocumentKeySchema,
   upsertIssueDocumentSchema,
   updateIssueSchema,
+  writeIssueArtifactFileSchema,
 } from "@paperclipai/shared";
 import type { StorageService } from "../storage/types.js";
 import { validate } from "../middleware/validate.js";
@@ -30,9 +33,47 @@ import { forbidden, HttpError, unauthorized } from "../errors.js";
 import { assertCompanyAccess, getActorInfo } from "./authz.js";
 import { shouldWakeAssigneeOnCheckout } from "./issues-checkout-wakeup.js";
 import { shouldWakeParentOnChildStatusChange } from "./issues-parent-wakeup.js";
+import { shouldWakeAssigneeOnStatusChange } from "./issues-status-wakeup.js";
 import { isAllowedContentType, MAX_ATTACHMENT_BYTES } from "../attachment-types.js";
 
 const MAX_ISSUE_COMMENT_LIMIT = 500;
+
+function resolveIssueArtifactPath(workspaceRoot: string, relativePath: string) {
+  const trimmedRoot = workspaceRoot.trim();
+  const trimmedRelativePath = relativePath.trim();
+  if (!trimmedRoot || !trimmedRelativePath) {
+    throw new HttpError(400, "Workspace root and relative path are required");
+  }
+  if (!path.isAbsolute(trimmedRoot)) {
+    throw new HttpError(409, "Primary project workspace must use an absolute cwd");
+  }
+  if (path.isAbsolute(trimmedRelativePath)) {
+    throw new HttpError(400, "Artifact path must be relative to the project workspace");
+  }
+
+  const normalizedRelativePath = path.normalize(trimmedRelativePath);
+  if (
+    normalizedRelativePath === "." ||
+    normalizedRelativePath === ".." ||
+    normalizedRelativePath.startsWith(`..${path.sep}`) ||
+    normalizedRelativePath.includes(`${path.sep}..${path.sep}`) ||
+    normalizedRelativePath.endsWith(`${path.sep}..`)
+  ) {
+    throw new HttpError(400, "Artifact path must stay inside the project workspace");
+  }
+
+  const resolvedRoot = path.resolve(trimmedRoot);
+  const absolutePath = path.resolve(resolvedRoot, normalizedRelativePath);
+  if (absolutePath === resolvedRoot || !absolutePath.startsWith(`${resolvedRoot}${path.sep}`)) {
+    throw new HttpError(400, "Artifact path must target a file inside the project workspace");
+  }
+
+  return {
+    resolvedRoot,
+    normalizedRelativePath,
+    absolutePath,
+  };
+}
 
 export function issueRoutes(db: Db, storage: StorageService) {
   const router = Router();
@@ -479,6 +520,63 @@ export function issueRoutes(db: Db, storage: StorageService) {
     res.status(result.created ? 201 : 200).json(doc);
   });
 
+  router.put("/issues/:id/artifacts/file", validate(writeIssueArtifactFileSchema), async (req, res) => {
+    const id = req.params.id as string;
+    const issue = await svc.getById(id);
+    if (!issue) {
+      res.status(404).json({ error: "Issue not found" });
+      return;
+    }
+    assertCompanyAccess(req, issue.companyId);
+    if (!issue.projectId) {
+      res.status(409).json({ error: "Issue is not attached to a project workspace" });
+      return;
+    }
+
+    const project = await projectsSvc.getById(issue.projectId);
+    const workspace =
+      project?.primaryWorkspace?.cwd
+        ? project.primaryWorkspace
+        : (project?.workspaces ?? []).find((candidate) => candidate.cwd);
+    if (!project || !workspace?.cwd) {
+      res.status(409).json({ error: "Project workspace cwd is required for issue artifact files" });
+      return;
+    }
+
+    const { normalizedRelativePath, absolutePath } = resolveIssueArtifactPath(
+      workspace.cwd,
+      req.body.relativePath,
+    );
+
+    await fs.mkdir(path.dirname(absolutePath), { recursive: true });
+    await fs.writeFile(absolutePath, req.body.body, "utf8");
+
+    const actor = getActorInfo(req);
+    await logActivity(db, {
+      companyId: issue.companyId,
+      actorType: actor.actorType,
+      actorId: actor.actorId,
+      agentId: actor.agentId,
+      runId: actor.runId,
+      action: "issue.artifact_file_written",
+      entityType: "issue",
+      entityId: issue.id,
+      details: {
+        relativePath: normalizedRelativePath,
+        absolutePath,
+        bytes: Buffer.byteLength(req.body.body, "utf8"),
+        workspaceId: workspace.id,
+      },
+    });
+
+    res.status(201).json({
+      relativePath: normalizedRelativePath,
+      absolutePath,
+      bytes: Buffer.byteLength(req.body.body, "utf8"),
+      workspaceId: workspace.id,
+    });
+  });
+
   router.get("/issues/:id/documents/:key/revisions", async (req, res) => {
     const id = req.params.id as string;
     const issue = await svc.getById(id);
@@ -801,10 +899,14 @@ export function issueRoutes(db: Db, storage: StorageService) {
     }
 
     const assigneeChanged = assigneeWillChange;
-    const statusChangedFromBacklog =
-      existing.status === "backlog" &&
-      issue.status !== "backlog" &&
-      req.body.status !== undefined;
+    const statusChangedToRunnableState =
+      !assigneeChanged &&
+      issue.assigneeAgentId !== null &&
+      req.body.status !== undefined &&
+      shouldWakeAssigneeOnStatusChange({
+        previousStatus: existing.status,
+        currentStatus: issue.status,
+      });
     const statusChanged = existing.status !== issue.status;
 
     // Merge all wakeups from this update into one enqueue per agent to avoid duplicate runs.
@@ -823,7 +925,7 @@ export function issueRoutes(db: Db, storage: StorageService) {
         });
       }
 
-      if (!assigneeChanged && statusChangedFromBacklog && issue.assigneeAgentId) {
+      if (statusChangedToRunnableState && issue.assigneeAgentId) {
         wakeups.set(issue.assigneeAgentId, {
           source: "automation",
           triggerDetail: "system",

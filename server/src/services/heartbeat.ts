@@ -62,6 +62,8 @@ const MAX_PAPERCLIP_ISSUE_CONTEXT_CHARS = 16_000;
 const HEARTBEAT_MAX_CONCURRENT_RUNS_DEFAULT = 1;
 const HEARTBEAT_MAX_CONCURRENT_RUNS_MAX = 10;
 const DEFERRED_WAKE_CONTEXT_KEY = "_paperclipWakeContext";
+const ISSUE_TIMEOUT_RETRY_TIMEOUTS_SEC = [300, 900, 2700] as const;
+const ISSUE_TIMEOUT_RETRY_MAX_ATTEMPTS = ISSUE_TIMEOUT_RETRY_TIMEOUTS_SEC.length;
 const startLocksByAgent = new Map<string, Promise<void>>();
 const REPO_ONLY_CWD_SENTINEL = "/__paperclip_repo_only__";
 const SESSIONED_LOCAL_ADAPTERS = new Set([
@@ -172,6 +174,13 @@ interface ParsedIssueAssigneeAdapterOverrides {
   adapterConfig: Record<string, unknown> | null;
   useProjectWorkspace: boolean | null;
 }
+
+type IssueTimeoutRetryPolicy = {
+  issueId: string;
+  consecutiveTimeoutsBeforeRun: number;
+  attempt: number;
+  timeoutSec: number;
+};
 
 export type ResolvedWorkspaceForRun = {
   cwd: string;
@@ -435,7 +444,7 @@ export function shouldResetTaskSessionForWake(
   if (contextSnapshot?.forceFreshSession === true) return true;
 
   const wakeReason = readNonEmptyString(contextSnapshot?.wakeReason);
-  if (wakeReason === "issue_assigned") return true;
+  if (wakeReason === "issue_assigned" || wakeReason === "issue_status_changed") return true;
   return false;
 }
 
@@ -445,7 +454,9 @@ function describeSessionResetReason(
   if (contextSnapshot?.forceFreshSession === true) return "forceFreshSession was requested";
 
   const wakeReason = readNonEmptyString(contextSnapshot?.wakeReason);
-  if (wakeReason === "issue_assigned") return "wake reason is issue_assigned";
+  if (wakeReason === "issue_assigned" || wakeReason === "issue_status_changed") {
+    return `wake reason is ${wakeReason}`;
+  }
   return null;
 }
 
@@ -1599,6 +1610,135 @@ export function heartbeatService(db: Db) {
     });
   }
 
+  async function countConsecutiveIssueTimeouts(input: {
+    companyId: string;
+    agentId: string;
+    issueId: string;
+  }) {
+    const rows = await db
+      .select({
+        status: heartbeatRuns.status,
+      })
+      .from(heartbeatRuns)
+      .where(
+        and(
+          eq(heartbeatRuns.companyId, input.companyId),
+          eq(heartbeatRuns.agentId, input.agentId),
+          inArray(heartbeatRuns.status, ["timed_out", "succeeded", "failed", "cancelled"]),
+          sql`${heartbeatRuns.contextSnapshot} ->> 'issueId' = ${input.issueId}`,
+        ),
+      )
+      .orderBy(desc(heartbeatRuns.createdAt))
+      .limit(50);
+
+    let streak = 0;
+    for (const row of rows) {
+      if (row.status === "timed_out") {
+        streak += 1;
+        continue;
+      }
+      break;
+    }
+    return streak;
+  }
+
+  async function resolveIssueTimeoutRetryPolicy(input: {
+    companyId: string;
+    agentId: string;
+    issueId: string | null;
+    adapterType: string;
+  }): Promise<IssueTimeoutRetryPolicy | null> {
+    if (!input.issueId) return null;
+    if (input.adapterType !== "openrouter") return null;
+
+    const consecutiveTimeoutsBeforeRun = await countConsecutiveIssueTimeouts({
+      companyId: input.companyId,
+      agentId: input.agentId,
+      issueId: input.issueId,
+    });
+    const attempt = Math.min(consecutiveTimeoutsBeforeRun + 1, ISSUE_TIMEOUT_RETRY_MAX_ATTEMPTS);
+    const timeoutSec = ISSUE_TIMEOUT_RETRY_TIMEOUTS_SEC[attempt - 1]!;
+    return {
+      issueId: input.issueId,
+      consecutiveTimeoutsBeforeRun,
+      attempt,
+      timeoutSec,
+    };
+  }
+
+  async function handleIssueTimeoutRetryOutcome(input: {
+    run: typeof heartbeatRuns.$inferSelect;
+    agent: typeof agents.$inferSelect;
+    policy: IssueTimeoutRetryPolicy | null;
+    adapterResult: AdapterExecutionResult;
+  }) {
+    if (!input.policy) return;
+    if (!input.adapterResult.timedOut) return;
+
+    const currentAttempt = Math.min(
+      input.policy.consecutiveTimeoutsBeforeRun + 1,
+      ISSUE_TIMEOUT_RETRY_MAX_ATTEMPTS,
+    );
+    const attemptsRemaining = currentAttempt < ISSUE_TIMEOUT_RETRY_MAX_ATTEMPTS;
+    const issueId = input.policy.issueId;
+
+    if (attemptsRemaining) {
+      const nextAttempt = currentAttempt + 1;
+      const nextTimeoutSec = ISSUE_TIMEOUT_RETRY_TIMEOUTS_SEC[nextAttempt - 1]!;
+      await issuesSvc.addComment(
+        issueId,
+        [
+          "Timeout recovery: automatic retry scheduled.",
+          `- Previous attempt: ${currentAttempt}/${ISSUE_TIMEOUT_RETRY_MAX_ATTEMPTS} (${input.policy.timeoutSec}s)`,
+          `- Next attempt: ${nextAttempt}/${ISSUE_TIMEOUT_RETRY_MAX_ATTEMPTS} (${nextTimeoutSec}s)`,
+          `- Run: ${input.run.id}`,
+        ].join("\n"),
+        { agentId: input.agent.id },
+      );
+
+      await enqueueWakeup(input.agent.id, {
+        source: "automation",
+        triggerDetail: "system",
+        reason: "issue_timeout_retry",
+        payload: {
+          issueId,
+          mutation: "timeout_retry",
+          timeoutRetry: {
+            previousAttempt: currentAttempt,
+            nextAttempt,
+            maxAttempts: ISSUE_TIMEOUT_RETRY_MAX_ATTEMPTS,
+            previousTimeoutSec: input.policy.timeoutSec,
+            nextTimeoutSec,
+            previousRunId: input.run.id,
+          },
+        },
+        requestedByActorType: "system",
+        requestedByActorId: null,
+        contextSnapshot: {
+          issueId,
+          taskId: issueId,
+          source: "issue.timeout_retry",
+          wakeReason: "issue_timeout_retry",
+          timeoutRetryAttempt: nextAttempt,
+          timeoutRetryMaxAttempts: ISSUE_TIMEOUT_RETRY_MAX_ATTEMPTS,
+        },
+      });
+      return;
+    }
+
+    await issuesSvc.addComment(
+      issueId,
+      [
+        "Timeout recovery exhausted.",
+        `- Attempts: ${ISSUE_TIMEOUT_RETRY_MAX_ATTEMPTS}/${ISSUE_TIMEOUT_RETRY_MAX_ATTEMPTS}`,
+        `- Last timeout: ${input.policy.timeoutSec}s`,
+        `- Last run: ${input.run.id}`,
+        "- Human Decision Needed: manual intervention is required before another retry.",
+      ].join("\n"),
+      { agentId: input.agent.id },
+    );
+  }
+
   async function hasMeaningfulIssueCommentForRun(input: {
     issueId: string;
     agentId: string;
@@ -1815,6 +1955,18 @@ export function heartbeatService(db: Db) {
       agent.companyId,
       mergedConfig,
     );
+    const issueTimeoutRetryPolicy = await resolveIssueTimeoutRetryPolicy({
+      companyId: agent.companyId,
+      agentId: agent.id,
+      issueId,
+      adapterType: agent.adapterType,
+    });
+    const runConfig = issueTimeoutRetryPolicy
+      ? {
+          ...resolvedConfig,
+          timeoutSec: issueTimeoutRetryPolicy.timeoutSec,
+        }
+      : resolvedConfig;
     const wakeCommentId =
       readNonEmptyString(context.wakeCommentId) ?? readNonEmptyString(context.commentId);
     const issueRef = issueId
@@ -2072,6 +2224,12 @@ export function heartbeatService(db: Db) {
       for (const warning of runtimeWorkspaceWarnings) {
         await onLog("stderr", `[paperclip] ${warning}\n`);
       }
+      if (issueTimeoutRetryPolicy) {
+        await onLog(
+          "stderr",
+          `[paperclip] issue timeout policy: attempt ${issueTimeoutRetryPolicy.attempt}/${ISSUE_TIMEOUT_RETRY_MAX_ATTEMPTS}, timeoutSec=${issueTimeoutRetryPolicy.timeoutSec}\n`,
+        );
+      }
       const adapterEnv = Object.fromEntries(
         Object.entries(parseObject(resolvedConfig.env)).filter(
           (entry): entry is [string, string] => typeof entry[0] === "string" && typeof entry[1] === "string",
@@ -2154,7 +2312,7 @@ export function heartbeatService(db: Db) {
         runId: run.id,
         agent,
         runtime: runtimeForAdapter,
-        config: resolvedConfig,
+        config: runConfig,
         context,
         onLog,
         onMeta: onAdapterMeta,
@@ -2360,6 +2518,12 @@ export function heartbeatService(db: Db) {
           agent,
           status: outcome,
           adapterResult: finalAdapterResult,
+        });
+        await handleIssueTimeoutRetryOutcome({
+          run: finalizedRun,
+          agent,
+          policy: issueTimeoutRetryPolicy,
+          adapterResult,
         });
       }
 

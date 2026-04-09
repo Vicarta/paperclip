@@ -166,7 +166,7 @@ interface AgentBlueprint {
   adapterConfig: Record<string, any>;
   instructionsPath: string | null;  // Path to AGENTS.md or similar
   skills: SkillBundle[];
-  budgetMonthlyCents: number;
+  budgetMonthlyUsd: number;
   permissions: {
     canCreateAgents: boolean;
     canApproveHires: boolean;
