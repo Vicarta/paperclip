@@ -23,6 +23,7 @@ import {
   buildOpenRouterIssueProtocolInstruction,
   parseOpenRouterIssueProtocolIntent,
 } from "./paperclip-protocol.js";
+import { upsertIssueDocumentViaApi } from "./paperclip-issue-client.js";
 
 type OpenRouterResponse = {
   model?: unknown;
@@ -270,26 +271,16 @@ export async function execute(
       };
 
       if (intent.document) {
-        const docResponse = await fetch(
-          `${apiUrl.replace(/\/+$/, "")}/api/issues/${encodeURIComponent(currentIssueId)}/documents/${encodeURIComponent(intent.document.key)}`,
-          {
-            method: "PUT",
-            headers,
-            body: JSON.stringify({
-              title: intent.document.title,
-              format: "markdown",
-              body: intent.document.body,
-              changeSummary: intent.document.changeSummary,
-            }),
-          },
-        );
-        const docText = await docResponse.text();
-        const docPayload = docText ? parseJson(docText) : null;
-        if (!docResponse.ok) {
-          throw new Error(
-            `Paperclip issue document upsert failed (${docResponse.status}): ${summarizeErrorPayload(docPayload) || docText || "unknown error"}`,
-          );
-        }
+        await upsertIssueDocumentViaApi({
+          apiUrl,
+          authToken,
+          runId,
+          issueId: currentIssueId,
+          key: intent.document.key,
+          title: intent.document.title,
+          body: intent.document.body,
+          changeSummary: intent.document.changeSummary,
+        });
       }
 
       if (intent.artifact) {
