@@ -1,5 +1,21 @@
-import { createDb } from "@paperclipai/db";
 import { reconcileBrightDataCosts } from "../services/bright-data-cost-reconciler.js";
+
+type DbModule = typeof import("@paperclipai/db");
+
+let dbModulePromise: Promise<DbModule> | null = null;
+
+async function loadDbModule(): Promise<DbModule> {
+  if (!dbModulePromise) {
+    dbModulePromise = (async () => {
+      try {
+        return await import(new URL("../../../packages/db/dist/index.js", import.meta.url).href) as DbModule;
+      } catch {
+        return await import("@paperclipai/db") as DbModule;
+      }
+    })();
+  }
+  return await dbModulePromise;
+}
 
 type Options = {
   companyId: string | null;
@@ -87,6 +103,7 @@ export async function runBrightDataCostReconcilerCli(argv: string[]) {
     process.exit(1);
   }
 
+  const { createDb } = await loadDbModule();
   const db = createDb(dbUrl);
   const result = await reconcileBrightDataCosts(db, {
     companyId: options.companyId,

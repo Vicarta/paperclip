@@ -1,6 +1,5 @@
 import { and, eq } from "drizzle-orm";
 import type { Db } from "@paperclipai/db";
-import { pluginConfig, plugins } from "@paperclipai/db";
 import { notFound, unprocessable } from "../errors.js";
 import { costService } from "./costs.js";
 import { pluginStateStore } from "./plugin-state-store.js";
@@ -41,6 +40,23 @@ type BucketState = {
   lastSeenMilliCents: number;
   updatedAt: string;
 };
+
+type DbModule = typeof import("@paperclipai/db");
+
+let dbModulePromise: Promise<DbModule> | null = null;
+
+async function loadDbModule(): Promise<DbModule> {
+  if (!dbModulePromise) {
+    dbModulePromise = (async () => {
+      try {
+        return await import(new URL("../../../packages/db/dist/index.js", import.meta.url).href) as DbModule;
+      } catch {
+        return await import("@paperclipai/db") as DbModule;
+      }
+    })();
+  }
+  return await dbModulePromise;
+}
 
 export type BrightDataReconcileInput = {
   companyId: string;
@@ -171,6 +187,7 @@ export function normalizeBrightDataZoneCostBuckets(
 }
 
 async function resolveBrightDataToken(db: Db, companyId: string, pluginId: string) {
+  const { pluginConfig } = await loadDbModule();
   const configRow = await db
     .select({ configJson: pluginConfig.configJson })
     .from(pluginConfig)
@@ -235,6 +252,7 @@ export async function reconcileBrightDataCosts(
   input: BrightDataReconcileInput,
   deps: { fetchFn?: typeof fetch } = {},
 ): Promise<BrightDataReconcileSummary> {
+  const { plugins } = await loadDbModule();
   const fetchFn = deps.fetchFn ?? fetch;
   const now = input.now ?? new Date();
   if (input.apply && !input.agentId) {

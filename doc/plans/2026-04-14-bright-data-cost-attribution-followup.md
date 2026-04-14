@@ -132,11 +132,15 @@ The first implementation now exists as a server-side script:
 DATABASE_URL='postgres://…' pnpm costs:reconcile-bright-data --company-id <companyId> [--agent-id <agentId>] [--zone <zone>] [--apply]
 ```
 
-Production-safe compiled entry point after build/deploy:
+Preferred operator path in the current app image:
 
 ```sh
-node dist/cli/reconcile-bright-data-costs.js --company-id <companyId> [--agent-id <agentId>] [--zone <zone>] [--apply]
+pnpm --filter @paperclipai/server exec tsx src/cli/reconcile-bright-data-costs.ts --company-id <companyId> [--agent-id <agentId>] [--zone <zone>] [--apply]
 ```
+
+Deferred improvement:
+
+- `node dist/cli/reconcile-bright-data-costs.js ...` should become a valid standalone production path only after the broader `@paperclipai/db` runtime export cleanup is finished for server-side operator CLIs.
 
 Rules:
 
