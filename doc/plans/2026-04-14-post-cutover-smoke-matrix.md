@@ -172,6 +172,11 @@ This confirms the upstream-compatible plugin cost bridge is persisting external 
   response
 - Bright Data billing can therefore not be derived safely from the current
   dataset trigger response alone
+- follow-up live account-management probes also confirmed:
+  - `GET /zone/get_all_zones` works with the configured token
+  - `GET /zone/cost?zone=mcp_unlocker` returns aggregate monetary data
+  - the viable Bright Data path is therefore delayed zone-cost reconciliation,
+    not inline response-based billing
 
 ### Additional DataForSEO Heartbeat Traceability Smoke Completed
 

@@ -356,8 +356,11 @@ Operational consequence:
 - do not fabricate Bright Data `cost_events` from trigger responses
 - current plugin runtime may record successful tool execution, but it cannot
   derive exact `cost_cents` honestly from the response surface now available
-- exact Bright Data provider-cost capture requires a separate usage/accounting
-  integration, not a header-based shortcut
+- Bright Data account-management endpoints are reachable with the configured
+  token, and `zone/cost` returns aggregate cost data for the visible `mcp_*`
+  zones
+- exact Bright Data provider-cost capture therefore requires a separate delayed
+  usage/accounting integration, not a header-based shortcut
 
 - `heartbeat_run_id = null`
 - `billing_type = 'unknown'`
