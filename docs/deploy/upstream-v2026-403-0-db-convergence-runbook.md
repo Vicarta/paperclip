@@ -13,6 +13,11 @@ It is intentionally conservative:
 - no migration is considered safe until backup, probe, and rollback steps are documented
 - no legacy Vicarta schema is preserved automatically just because it already exists
 
+Critical finding:
+
+- upstream migration-history reconciliation is not enough on its own for the Vicarta fork
+- a one-time preflight schema bridge is required before `pnpm db:migrate`
+
 ## Scope
 
 This runbook covers the schema/data reconciliation needed for:
@@ -48,6 +53,7 @@ Accepted policy decisions:
 - legacy Vicarta USD-first storage is not preserved as canonical schema
 - `projects.human_facing_language` is not carried into the first convergence wave
 - `adapter_company_settings` may return only as a new post-`0048` extension if still required
+- extra Vicarta-only tables/columns may remain present during the bridge, but upstream core columns must exist under upstream names before migrations run
 
 ## Phase A. Read-Only Fact Collection
 
@@ -155,11 +161,42 @@ Hard stop:
 
 - if these probes reveal unexpected anomalies, pause and update the reconciliation worksheet before any migration script is written
 
-## Phase B. Convergence Migration Design
+## Phase B. Preflight Schema Bridge Design
 
 This phase produces code, not live actions.
 
-### B1. New migration numbering rule
+Before upstream migrations are applied, run the idempotent bridge script:
+
+- [preflight schema bridge SQL](/Users/savitsky/CodexProjects/paper-clip/local-paperclip/docs/deploy/sql/upstream-v2026-403-0-preflight-schema-bridge.sql)
+
+Bridge responsibilities:
+
+- restore `cost_events.cost_usd -> cost_cents`
+- restore `companies.budget_monthly_usd/spent_monthly_usd -> *_cents`
+- restore `agents.budget_monthly_usd/spent_monthly_usd -> *_cents`
+- restore `agent_runtime_state.total_cost_usd -> total_cost_cents`
+
+Bridge rules:
+
+- convert dollars back to cents with `round(value * 100.0)`
+- do not drop `human_facing_language`
+- do not drop `adapter_company_settings`
+- do not recreate retained extensions yet
+
+### B1. Why this bridge is required
+
+Without the bridge, upstream pending migrations can fail on the old Vicarta schema.
+
+Example:
+
+- old Vicarta schema after custom `0032` has `companies.budget_monthly_usd`
+- upstream `0032_pretty_doctor_octopus.sql` expects `companies.budget_monthly_cents`
+
+So the upstream migration engine cannot safely reconcile this by journal repair alone.
+
+## Phase C. Upstream Migration Application Design
+
+### C1. New migration numbering rule
 
 Any Vicarta-specific convergence migration must be created **after upstream `0048`**.
 
@@ -168,64 +205,71 @@ Do not:
 - reuse old `0030–0032` numbers
 - attempt to preserve old Vicarta migration journal ordering
 
-### B2. Required convergence changes
+### C2. Post-baseline convergence changes
 
-The migration implementation must explicitly cover:
+After the preflight bridge and upstream `0030-0048` complete, only these remaining convergence decisions should remain:
 
-1. `companies`
-   - convert `budget_monthly_usd` -> `budget_monthly_cents`
-   - convert `spent_monthly_usd` -> `spent_monthly_cents`
-2. `projects`
+1. `projects`
    - decide whether to ignore or drop legacy `human_facing_language`
-3. `cost_events`
-   - convert `cost_usd` -> `cost_cents`
-   - backfill `cached_input_tokens = 0`
-   - backfill `heartbeat_run_id = null` where no safe join exists
-   - backfill `biller` / `billing_type` with agreed legacy defaults
-4. `adapter_company_settings`
-   - recreate as a new extension table only if still required by the converged operator model
+2. `adapter_company_settings`
+   - decide whether it needs a new post-`0048` migration for fresh environments
+   - for in-place live upgrades, prefer preserving the existing table and validating compatibility first
 
-### B3. Legacy default policy
+### C3. Legacy default policy
 
-Unless a better source is proven:
+Legacy `cost_events` policy after upstream `0031_zippy_magma.sql`:
 
-- `cost_cents = round(cost_usd * 100)`
 - `cached_input_tokens = 0`
 - `heartbeat_run_id = null`
 - `billing_type = 'unknown'`
-- `biller = provider` only if that matches the agreed reporting semantics; otherwise use `'unknown'`
+- `biller = 'unknown'`
 
-This policy must be confirmed before the migration code is merged.
+These values are expected to be supplied by upstream defaults on existing rows once the bridge restores `cost_cents`.
 
-## Phase C. Staging Rehearsal
+## Phase D. Staging Rehearsal
 
 Staging rehearsal is mandatory.
 
-### C1. Prepare staging DB clone
+### D1. Prepare staging DB clone
 
 - clone live DB into an isolated staging database
 - verify the clone is restorable and writable
 - point `DATABASE_URL` at the staging clone
 
-### C2. Run backup again on staging
+### D2. Run backup again on staging
 
 ```sh
 DATABASE_URL='postgres://…' pnpm db:backup
 ```
 
-### C3. Run migration status
+### D3. Run migration status
 
 ```sh
 DATABASE_URL='postgres://…' pnpm --filter @paperclipai/db exec tsx src/migration-status.ts --json
 ```
 
-### C4. Apply migrations
+### D4. Apply preflight schema bridge
+
+```sh
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f docs/deploy/sql/upstream-v2026-403-0-preflight-schema-bridge.sql
+```
+
+Immediately verify the bridge:
+
+```sql
+SELECT budget_monthly_cents, spent_monthly_cents FROM companies LIMIT 5;
+SELECT budget_monthly_cents, spent_monthly_cents FROM agents LIMIT 5;
+SELECT cost_cents FROM cost_events LIMIT 5;
+SELECT total_cost_cents FROM agent_runtime_state LIMIT 5;
+```
+
+### D5. Apply migrations
 
 ```sh
 DATABASE_URL='postgres://…' pnpm db:migrate
 ```
 
-### C5. Re-run migration status
+### D6. Re-run migration status
 
 ```sh
 DATABASE_URL='postgres://…' pnpm --filter @paperclipai/db exec tsx src/migration-status.ts --json
@@ -235,7 +279,7 @@ Expected result:
 
 - status is `upToDate`
 
-### C6. Post-migration verification probes
+### D7. Post-migration verification probes
 
 Run:
 
@@ -271,7 +315,7 @@ If `adapter_company_settings` was recreated:
 SELECT COUNT(*) FROM adapter_company_settings;
 ```
 
-### C7. Application smoke on staging
+### D8. Application smoke on staging
 
 After staging DB migration, run app-level checks against the same staging database:
 
@@ -290,11 +334,11 @@ Then run targeted runtime smoke:
 - issue document create/update smoke
 - at least one manager lane and one issue-bound lane
 
-## Phase D. Live Migration
+## Phase E. Live Migration
 
 Live migration is allowed only if staging rehearsal succeeded end-to-end.
 
-### D1. Freeze window
+### E1. Freeze window
 
 Before touching live:
 
@@ -302,7 +346,7 @@ Before touching live:
 - pause non-essential agent execution
 - ensure no conflicting deploy is in progress
 
-### D2. Repeat live fact collection
+### E2. Repeat live fact collection
 
 Repeat all read-only probes from Phase A against live immediately before backup.
 
@@ -311,7 +355,7 @@ This confirms:
 - row counts did not materially shift since staging clone
 - no new anomaly appeared
 
-### D3. Live backup
+### E3. Live backup
 
 ```sh
 DATABASE_URL='postgres://…' pnpm db:backup
@@ -319,19 +363,25 @@ DATABASE_URL='postgres://…' pnpm db:backup
 
 Record the exact backup artifact.
 
-### D4. Apply migrations
+### E4. Apply preflight schema bridge
+
+```sh
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f docs/deploy/sql/upstream-v2026-403-0-preflight-schema-bridge.sql
+```
+
+### E5. Apply migrations
 
 ```sh
 DATABASE_URL='postgres://…' pnpm db:migrate
 ```
 
-### D5. Verify migration status
+### E6. Verify migration status
 
 ```sh
 DATABASE_URL='postgres://…' pnpm --filter @paperclipai/db exec tsx src/migration-status.ts --json
 ```
 
-### D6. Live smoke
+### E7. Live smoke
 
 Minimum required smoke:
 
@@ -347,6 +397,7 @@ Minimum required smoke:
 Rollback is required if any of the following happen:
 
 - migration command exits non-zero
+- preflight bridge leaves required upstream core columns missing or incorrectly typed
 - migration status is not `upToDate` afterward
 - post-migration probes show nulls in required upstream fields
 - app cannot boot against migrated schema

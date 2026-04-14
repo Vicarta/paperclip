@@ -43,6 +43,7 @@ Required approach:
 
 - treat upstream migration journal as canonical target lineage
 - handle Vicarta-only schema/data state through explicit reconciliation work
+- use a one-time preflight schema bridge to restore upstream core column names/types before `pnpm db:migrate`
 - create any new convergence-only migrations at the next safe number after the upstream target range
 
 ## Schema Delta Summary
@@ -132,6 +133,26 @@ Critical caution:
 
 - legacy cost rows must remain queryable after migration even if they cannot be enriched to full upstream fidelity
 
+## Migration-Engine Finding
+
+Upstream already contains migration-history reconciliation logic in `packages/db/src/client.ts`, but that logic only auto-repairs journal history when the pending migration SQL is already represented in the schema.
+
+That is not enough for the Vicarta fork.
+
+Why:
+
+- our old `0032_cost_events_usd.sql` renamed upstream core columns away from the names later upstream migrations expect
+- upstream `0032_pretty_doctor_octopus.sql` reads `budget_monthly_cents`
+- Vicarta live schema after the old USD migration instead exposes `budget_monthly_usd`
+
+So the first blocker is not journal divergence. The first blocker is schema incompatibility with upstream pending migrations.
+
+Accepted implication:
+
+- do not rely on `pnpm db:migrate` alone to bridge the Vicarta USD-first schema
+- run a preflight schema bridge first
+- only then let upstream `0030-0048` execute
+
 ### `adapter_company_settings`
 
 Vicarta old model includes:
@@ -177,15 +198,17 @@ Required approach:
    - `cost_events`
    - `adapter_company_settings`
 2. quantify row counts and nullability assumptions before writing any migration
-3. draft a convergence migration plan for:
-   - budget conversion
-   - cost event backfill
-   - adapter settings table recreation
-4. define a staging rehearsal procedure against a copy of the live database
+3. draft and rehearse a preflight schema bridge for:
+   - `cost_events.cost_usd -> cost_cents`
+   - `companies.*_usd -> *_cents`
+   - `agents.*_usd -> *_cents`
+   - `agent_runtime_state.total_cost_usd -> total_cost_cents`
+4. draft a post-`0048` convergence plan only for still-required retained extensions such as `adapter_company_settings`
+5. define a staging rehearsal procedure against a copy of the live database
 
 ## Blockers Before Live Migration
 
 - row-level understanding of current production data
-- agreed backfill semantics for legacy `cost_events`
+- agreed rounding/backfill semantics for restoring legacy USD-first columns to upstream cents columns
 - explicit decision on whether `adapter_company_settings` is recreated immediately in the convergence branch
 - tested rollback path for the DB migration itself
