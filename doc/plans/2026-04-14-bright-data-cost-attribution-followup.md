@@ -156,6 +156,27 @@ Current reconciliation model:
 - writes canonical Paperclip `cost_events` only when accumulated aggregate cost
   reaches at least 1 cent
 
+## Live Status On 2026-04-14
+
+The reconciler was run on the live AST deployment with:
+
+```sh
+pnpm --filter @paperclipai/server exec tsx src/cli/reconcile-bright-data-costs.ts --company-id c33f6b81-5ced-4270-9288-b46a32f6337a --agent-id b45dcb01-db0d-40c9-9bdf-d7c1d93e8c1d --include-current-day --apply
+```
+
+Observed result:
+
+- `plugin_state` baseline initialized successfully for `mcp_unlocker` and `mcp_browser`
+- `8` state records were written under namespace `bright-data-cost-reconciler`
+- `0` `brightdata.com` `cost_events` were emitted
+- current visible daily buckets on live still reconcile to `0` milli-cents for those zones, so the first apply acts only as a baseline/bootstrap step
+
+Operational meaning:
+
+- the reconciler is now live-usable
+- future non-zero Bright Data zone-cost deltas should accumulate from this baseline instead of double-counting historical usage
+- a later apply run is required only after new zone-cost usage appears
+
 ## Open Questions
 
 1. Is aggregate company-level Bright Data cost enough for now?

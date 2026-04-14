@@ -235,7 +235,7 @@ No additional core rollback or emergency compatibility patch is indicated from t
 The next layer of validation should stay focused and incremental, not return to infrastructure churn:
 
 1. `DataForSEO` heartbeat traceability is now confirmed on live runtime; keep this behavior covered in future cutover smoke
-2. `Bright Data` cost attribution is still not implemented; live probing confirms the dataset trigger response does not expose a usable per-request cost signal, so canonical `cost_events` now require a separate Bright Data usage/accounting integration rather than a response-header shortcut
+2. `Bright Data` deferred accounting path is now bootstrapped on live runtime: the reconciler completed its first `--apply`, initialized `plugin_state` baseline, and correctly emitted `0` `brightdata.com` cost events because the visible zone-cost buckets were still zero; future non-zero usage should now accumulate from that baseline instead of requiring another historical bootstrap
 3. move on to the next business-critical agent lane
 
 ## Recommended Operator Path For Business Smoke
