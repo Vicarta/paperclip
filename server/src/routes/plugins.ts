@@ -22,10 +22,10 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { Router } from "express";
-import type { Request } from "express";
-import { and, desc, eq, gte } from "drizzle-orm";
+import type { Request, Response } from "express";
+import { and, desc, eq, gte, or } from "drizzle-orm";
 import type { Db } from "@paperclipai/db";
-import { companies, pluginLogs, pluginWebhookDeliveries } from "@paperclipai/db";
+import { companies, issues as issuesTable, pluginLogs, pluginWebhookDeliveries } from "@paperclipai/db";
 import type {
   PluginStatus,
   PaperclipPluginManifestV1,
@@ -49,6 +49,7 @@ import type { ToolRunContext } from "@paperclipai/plugin-sdk";
 import { JsonRpcCallError, PLUGIN_RPC_ERROR_CODES } from "@paperclipai/plugin-sdk";
 import { assertBoard, assertCompanyAccess, getActorInfo } from "./authz.js";
 import { validateInstanceConfig } from "../services/plugin-config-validator.js";
+import { forbidden, unauthorized } from "../errors.js";
 
 /** UI slot declaration extracted from plugin manifest */
 type PluginUiSlotDeclaration = NonNullable<NonNullable<PaperclipPluginManifestV1["ui"]>["slots"]>[number];
@@ -255,6 +256,13 @@ interface PluginToolExecuteRequest {
   runContext: ToolRunContext;
 }
 
+interface AgentPluginToolExecuteRequest {
+  tool: string;
+  parameters?: unknown;
+  projectId?: string;
+  runContext?: Partial<ToolRunContext>;
+}
+
 /**
  * Create Express router for plugin management API.
  *
@@ -313,6 +321,74 @@ export function pluginRoutes(
     loader,
     workerManager: bridgeDeps?.workerManager ?? webhookDeps?.workerManager,
   });
+
+  function assertPluginToolAccess(req: Request) {
+    if (req.actor.type === "none") throw unauthorized();
+  }
+
+  function readTrimmedProjectId(
+    body?: AgentPluginToolExecuteRequest | PluginToolExecuteRequest,
+  ): string | null {
+    if (!body || typeof body !== "object") return null;
+
+    if ("projectId" in body && typeof body.projectId === "string") {
+      const projectId = body.projectId.trim();
+      if (projectId) return projectId;
+    }
+
+    if (
+      "runContext" in body &&
+      body.runContext &&
+      typeof body.runContext === "object" &&
+      typeof body.runContext.projectId === "string"
+    ) {
+      const projectId = body.runContext.projectId.trim();
+      if (projectId) return projectId;
+    }
+
+    return null;
+  }
+
+  async function resolveAgentToolRunContext(
+    req: Request,
+    body?: AgentPluginToolExecuteRequest | PluginToolExecuteRequest,
+  ): Promise<ToolRunContext> {
+    if (req.actor.type !== "agent" || !req.actor.agentId || !req.actor.companyId || !req.actor.runId) {
+      throw forbidden("Agent authentication with run context is required");
+    }
+
+    const currentIssue = await db
+      .select({
+        id: issuesTable.id,
+        projectId: issuesTable.projectId,
+      })
+      .from(issuesTable)
+      .where(
+        and(
+          eq(issuesTable.companyId, req.actor.companyId),
+          or(
+            eq(issuesTable.checkoutRunId, req.actor.runId),
+            eq(issuesTable.executionRunId, req.actor.runId),
+          ),
+        ),
+      )
+      .then((rows) => rows[0] ?? null);
+
+    const projectId = currentIssue?.projectId ?? readTrimmedProjectId(body);
+
+    if (!projectId) {
+      throw forbidden(
+        "Agent tool execution requires a projectId from the current issue context or request body",
+      );
+    }
+
+    return {
+      agentId: req.actor.agentId,
+      runId: req.actor.runId,
+      companyId: req.actor.companyId,
+      projectId,
+    };
+  }
 
   async function resolvePluginAuditCompanyIds(req: Request): Promise<string[]> {
     if (typeof (db as { select?: unknown }).select === "function") {
@@ -482,8 +558,8 @@ export function pluginRoutes(
    * Response: `AgentToolDescriptor[]`
    * Errors: 501 if tool dispatcher is not configured
    */
-  router.get("/plugins/tools", async (req, res) => {
-    assertBoard(req);
+  const listPluginToolsHandler = async (req: Request, res: Response) => {
+    assertPluginToolAccess(req);
 
     if (!toolDeps) {
       res.status(501).json({ error: "Plugin tool dispatch is not enabled" });
@@ -494,7 +570,10 @@ export function pluginRoutes(
     const filter = pluginId ? { pluginId } : undefined;
     const tools = toolDeps.toolDispatcher.listToolsForAgent(filter);
     res.json(tools);
-  });
+  };
+
+  router.get("/plugins/tools", listPluginToolsHandler);
+  router.get("/agents/me/plugin-tools", listPluginToolsHandler);
 
   /**
    * POST /api/plugins/tools/execute
@@ -516,8 +595,8 @@ export function pluginRoutes(
    * - 501 if tool dispatcher is not configured
    * - 502 if the plugin worker is unavailable or the RPC call fails
    */
-  router.post("/plugins/tools/execute", async (req, res) => {
-    assertBoard(req);
+  const executePluginToolHandler = async (req: Request, res: Response) => {
+    assertPluginToolAccess(req);
 
     if (!toolDeps) {
       res.status(501).json({ error: "Plugin tool dispatch is not enabled" });
@@ -538,19 +617,28 @@ export function pluginRoutes(
       return;
     }
 
-    if (!runContext || typeof runContext !== "object") {
-      res.status(400).json({ error: '"runContext" is required and must be an object' });
-      return;
-    }
+    const resolvedRunContext = req.actor.type === "agent"
+      ? await resolveAgentToolRunContext(req, body)
+      : (() => {
+          if (!runContext || typeof runContext !== "object") {
+            res.status(400).json({ error: '"runContext" is required and must be an object' });
+            return null;
+          }
 
-    if (!runContext.agentId || !runContext.runId || !runContext.companyId || !runContext.projectId) {
-      res.status(400).json({
-        error: '"runContext" must include agentId, runId, companyId, and projectId',
-      });
-      return;
-    }
+          if (!runContext.agentId || !runContext.runId || !runContext.companyId || !runContext.projectId) {
+            res.status(400).json({
+              error: '"runContext" must include agentId, runId, companyId, and projectId',
+            });
+            return null;
+          }
 
-    assertCompanyAccess(req, runContext.companyId);
+          assertCompanyAccess(req, runContext.companyId);
+          return runContext;
+        })();
+
+    if (!resolvedRunContext) return;
+
+    assertCompanyAccess(req, resolvedRunContext.companyId);
 
     // Verify the tool exists
     const registeredTool = toolDeps.toolDispatcher.getTool(tool);
@@ -563,7 +651,7 @@ export function pluginRoutes(
       const result = await toolDeps.toolDispatcher.executeTool(
         tool,
         parameters ?? {},
-        runContext,
+        resolvedRunContext,
       );
       res.json(result);
     } catch (err) {
@@ -576,7 +664,10 @@ export function pluginRoutes(
         res.status(500).json({ error: message });
       }
     }
-  });
+  };
+
+  router.post("/plugins/tools/execute", executePluginToolHandler);
+  router.post("/agents/me/plugin-tools/execute", executePluginToolHandler);
 
   /**
    * POST /api/plugins/install
