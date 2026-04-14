@@ -204,6 +204,37 @@ This confirms the upstream-compatible plugin cost bridge is persisting external 
   - `parameters.location_name = \"Ukraine\"`
   - `parameters.language_name = \"Ukrainian\"`
 
+### Additional Issue Lifecycle And Document Revision Smoke Completed
+
+- direct issue creation via the normal CLI/API path succeeded again after the
+  cutover fix:
+  - `AST-450`
+- root cause for the prior failure was confirmed and fixed:
+  - `companies.issue_counter` had drifted behind the real maximum
+    `issues.issue_number`
+  - issue creation now advances from the maximum of the company counter and the
+    current company issue rows, preventing duplicate identifiers after stale
+    counter states
+- live issue-document smoke completed on `AST-450`:
+  - `PUT /api/issues/AST-450/documents/plan`
+  - `GET /api/issues/AST-450/documents/plan/revisions`
+  - `POST /api/issues/AST-450/documents/plan/revisions/:revisionId/restore`
+- confirmed live revision sequence:
+  - initial create succeeded
+  - update with `baseRevisionId` produced the next revision
+  - restore produced a new revision and persisted the restored body as the new
+    latest document state
+- an API response inconsistency was also fixed during this smoke:
+  - `restoreIssueDocumentRevision(...)` had returned a payload that still
+    carried the stale internal `latestBody` field from the pre-restore state
+  - the response contract now matches the actual restored state and no longer
+    leaks stale `latestBody`
+- final live verification after the fix confirmed:
+  - restore response includes `body`
+  - restore response does **not** include `latestBody`
+  - follow-up `GET /documents/plan` returns the restored body and the expected
+    new revision number
+
 ### Root Cause Found During Bright Data Smoke
 
 - bundled plugin code had been updated with tool-level

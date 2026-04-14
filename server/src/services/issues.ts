@@ -1185,7 +1185,19 @@ export function issueService(db: Db) {
         }
         const [company] = await tx
           .update(companies)
-          .set({ issueCounter: sql`${companies.issueCounter} + 1` })
+          .set({
+            issueCounter: sql`greatest(
+              ${companies.issueCounter},
+              coalesce(
+                (
+                  select max(${issues.issueNumber})
+                  from ${issues}
+                  where ${issues.companyId} = ${companyId}
+                ),
+                0
+              )
+            ) + 1`,
+          })
           .where(eq(companies.id, companyId))
           .returning({ issueCounter: companies.issueCounter, issuePrefix: companies.issuePrefix });
 

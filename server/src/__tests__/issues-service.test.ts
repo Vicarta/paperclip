@@ -261,6 +261,44 @@ describeEmbeddedPostgres("issueService.list participantAgentId", () => {
     );
   });
 
+  it("creates the next free identifier when the company issue counter is stale", async () => {
+    const companyId = randomUUID();
+    const existingIssueId = randomUUID();
+
+    await db.insert(companies).values({
+      id: companyId,
+      name: "Paperclip",
+      issuePrefix: "AST",
+      issueCounter: 448,
+      requireBoardApprovalForNewAgents: false,
+    });
+
+    await db.insert(issues).values({
+      id: existingIssueId,
+      companyId,
+      issueNumber: 449,
+      identifier: "AST-449",
+      title: "Existing issue",
+      status: "todo",
+      priority: "medium",
+      createdByUserId: "user-1",
+    });
+
+    const created = await svc.create(companyId, {
+      title: "Follow-up issue",
+      createdByUserId: "user-2",
+    });
+
+    const [company] = await db
+      .select({ issueCounter: companies.issueCounter })
+      .from(companies)
+      .where(eq(companies.id, companyId));
+
+    expect(created.issueNumber).toBe(450);
+    expect(created.identifier).toBe("AST-450");
+    expect(company?.issueCounter).toBe(450);
+  });
+
   it("returns null instead of throwing for malformed non-uuid issue refs", async () => {
     await expect(svc.getById("not-a-uuid")).resolves.toBeNull();
   });
