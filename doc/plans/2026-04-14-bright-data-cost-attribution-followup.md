@@ -124,6 +124,28 @@ This allocation would be **derived accounting**, not provider-exact billing.
    - optionally `domains/req` if useful for diagnostics
 5. write aggregate `cost_events` only after fresh usage data is visible
 
+## Current Operator Entry Point
+
+The first implementation now exists as a server-side script:
+
+```sh
+DATABASE_URL='postgres://…' pnpm costs:reconcile-bright-data --company-id <companyId> [--agent-id <agentId>] [--zone <zone>] [--apply]
+```
+
+Rules:
+
+- dry-run is the default
+- `--agent-id` is required only with `--apply`
+- default zone selection uses the `mcp_*` subset
+- current-day `back_d0` is excluded unless `--include-current-day` is passed
+
+Current reconciliation model:
+
+- reads Bright Data aggregate zone buckets
+- keeps carry-over remainder below 1 cent in `plugin_state`
+- writes canonical Paperclip `cost_events` only when accumulated aggregate cost
+  reaches at least 1 cent
+
 ## Open Questions
 
 1. Is aggregate company-level Bright Data cost enough for now?
