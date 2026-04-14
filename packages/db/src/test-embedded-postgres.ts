@@ -104,6 +104,19 @@ export async function getEmbeddedPostgresTestSupport(): Promise<EmbeddedPostgres
 export async function startEmbeddedPostgresTestDatabase(
   tempDirPrefix: string,
 ): Promise<EmbeddedPostgresTestDatabase> {
+  return startEmbeddedPostgresTestDatabaseWithOptions(tempDirPrefix, { applyMigrations: true });
+}
+
+export async function startBlankEmbeddedPostgresTestDatabase(
+  tempDirPrefix: string,
+): Promise<EmbeddedPostgresTestDatabase> {
+  return startEmbeddedPostgresTestDatabaseWithOptions(tempDirPrefix, { applyMigrations: false });
+}
+
+async function startEmbeddedPostgresTestDatabaseWithOptions(
+  tempDirPrefix: string,
+  opts: { applyMigrations: boolean },
+): Promise<EmbeddedPostgresTestDatabase> {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), tempDirPrefix));
   const port = await getAvailablePort();
   const EmbeddedPostgres = await getEmbeddedPostgresCtor();
@@ -125,7 +138,9 @@ export async function startEmbeddedPostgresTestDatabase(
     const adminConnectionString = `postgres://paperclip:paperclip@127.0.0.1:${port}/postgres`;
     await ensurePostgresDatabase(adminConnectionString, "paperclip");
     const connectionString = `postgres://paperclip:paperclip@127.0.0.1:${port}/paperclip`;
-    await applyPendingMigrations(connectionString);
+    if (opts.applyMigrations) {
+      await applyPendingMigrations(connectionString);
+    }
 
     return {
       connectionString,

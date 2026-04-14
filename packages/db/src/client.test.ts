@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import fs from "node:fs";
+import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import postgres from "postgres";
 import {
@@ -8,6 +9,7 @@ import {
 } from "./client.js";
 import {
   getEmbeddedPostgresTestSupport,
+  startBlankEmbeddedPostgresTestDatabase,
   startEmbeddedPostgresTestDatabase,
 } from "./test-embedded-postgres.js";
 
@@ -21,12 +23,168 @@ async function createTempDatabase(): Promise<string> {
   return db.connectionString;
 }
 
+async function createBlankTempDatabase(): Promise<string> {
+  const db = await startBlankEmbeddedPostgresTestDatabase("paperclip-db-client-blank-");
+  cleanups.push(db.cleanup);
+  return db.connectionString;
+}
+
 async function migrationHash(migrationFile: string): Promise<string> {
   const content = await fs.promises.readFile(
     new URL(`./migrations/${migrationFile}`, import.meta.url),
     "utf8",
   );
   return createHash("sha256").update(content).digest("hex");
+}
+
+function splitMigrationStatements(content: string): string[] {
+  return content
+    .split("--> statement-breakpoint")
+    .map((statement) => statement.trim())
+    .filter((statement) => statement.length > 0);
+}
+
+async function readCurrentJournalEntries(): Promise<Array<{ fileName: string; folderMillis: number }>> {
+  const raw = await fs.promises.readFile(new URL("./migrations/meta/_journal.json", import.meta.url), "utf8");
+  const parsed = JSON.parse(raw) as {
+    entries?: Array<{ tag?: string; when?: number }>;
+  };
+  return (parsed.entries ?? [])
+    .map((entry) => {
+      if (typeof entry.tag !== "string" || typeof entry.when !== "number") return null;
+      return { fileName: `${entry.tag}.sql`, folderMillis: entry.when };
+    })
+    .filter((entry): entry is { fileName: string; folderMillis: number } => entry !== null);
+}
+
+async function applyMigrationWithHistory(
+  sql: ReturnType<typeof postgres>,
+  migrationFile: string,
+  migrationContent: string,
+  folderMillis: number,
+): Promise<void> {
+  const hash = createHash("sha256").update(migrationContent).digest("hex");
+  await sql.unsafe("BEGIN");
+  try {
+    for (const statement of splitMigrationStatements(migrationContent)) {
+      await sql.unsafe(statement);
+    }
+    await sql.unsafe(
+      `INSERT INTO "drizzle"."__drizzle_migrations" ("hash", "created_at") VALUES ($1, $2)`,
+      [hash, String(folderMillis)],
+    );
+    await sql.unsafe("COMMIT");
+  } catch (error) {
+    await sql.unsafe("ROLLBACK").catch(() => {});
+    throw error;
+  }
+}
+
+async function buildVicartaLegacyUsdSchema(connectionString: string): Promise<void> {
+  const sql = postgres(connectionString, { max: 1, onnotice: () => {} });
+  try {
+    await sql.unsafe(`CREATE SCHEMA IF NOT EXISTS "drizzle"`);
+    await sql.unsafe(
+      `CREATE TABLE IF NOT EXISTS "drizzle"."__drizzle_migrations" ("id" SERIAL PRIMARY KEY, "hash" text NOT NULL, "created_at" bigint)`,
+    );
+
+    const journalEntries = await readCurrentJournalEntries();
+    const cutoffFile = "0029_plugin_tables.sql";
+    for (const entry of journalEntries) {
+      if (entry.fileName > cutoffFile) break;
+      const content = await fs.promises.readFile(
+        new URL(`./migrations/${entry.fileName}`, import.meta.url),
+        "utf8",
+      );
+      await applyMigrationWithHistory(sql, entry.fileName, content, entry.folderMillis);
+    }
+
+    const legacyMigrations: Array<{ fileName: string; content: string; folderMillis: number }> = [
+      {
+        fileName: "0030_project_human_facing_language.sql",
+        content: `ALTER TABLE "projects" ADD COLUMN "human_facing_language" text;`,
+        folderMillis: 1774978636660,
+      },
+      {
+        fileName: "0031_adapter_company_settings.sql",
+        content: `CREATE TABLE "adapter_company_settings" (
+  "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+  "company_id" uuid NOT NULL,
+  "adapter_type" text NOT NULL,
+  "settings_json" jsonb DEFAULT '{}'::jsonb NOT NULL,
+  "last_error" text,
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+  "updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+ALTER TABLE "adapter_company_settings" ADD CONSTRAINT "adapter_company_settings_company_id_companies_id_fk" FOREIGN KEY ("company_id") REFERENCES "public"."companies"("id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+CREATE INDEX "adapter_company_settings_company_idx" ON "adapter_company_settings" USING btree ("company_id");
+--> statement-breakpoint
+CREATE INDEX "adapter_company_settings_adapter_type_idx" ON "adapter_company_settings" USING btree ("adapter_type");
+--> statement-breakpoint
+CREATE UNIQUE INDEX "adapter_company_settings_company_adapter_type_uq" ON "adapter_company_settings" USING btree ("company_id","adapter_type");`,
+        folderMillis: 1774978636661,
+      },
+      {
+        fileName: "0032_cost_events_usd.sql",
+        content: `ALTER TABLE "cost_events" RENAME COLUMN "cost_cents" TO "cost_usd";
+--> statement-breakpoint
+ALTER TABLE "cost_events"
+  ALTER COLUMN "cost_usd" TYPE double precision
+  USING ("cost_usd"::double precision / 100.0);
+--> statement-breakpoint
+ALTER TABLE "companies" RENAME COLUMN "budget_monthly_cents" TO "budget_monthly_usd";
+--> statement-breakpoint
+ALTER TABLE "companies" RENAME COLUMN "spent_monthly_cents" TO "spent_monthly_usd";
+--> statement-breakpoint
+ALTER TABLE "companies"
+  ALTER COLUMN "budget_monthly_usd" TYPE double precision
+  USING ("budget_monthly_usd"::double precision / 100.0);
+--> statement-breakpoint
+ALTER TABLE "companies"
+  ALTER COLUMN "spent_monthly_usd" TYPE double precision
+  USING ("spent_monthly_usd"::double precision / 100.0);
+--> statement-breakpoint
+ALTER TABLE "agents" RENAME COLUMN "budget_monthly_cents" TO "budget_monthly_usd";
+--> statement-breakpoint
+ALTER TABLE "agents" RENAME COLUMN "spent_monthly_cents" TO "spent_monthly_usd";
+--> statement-breakpoint
+ALTER TABLE "agents"
+  ALTER COLUMN "budget_monthly_usd" TYPE double precision
+  USING ("budget_monthly_usd"::double precision / 100.0);
+--> statement-breakpoint
+ALTER TABLE "agents"
+  ALTER COLUMN "spent_monthly_usd" TYPE double precision
+  USING ("spent_monthly_usd"::double precision / 100.0);
+--> statement-breakpoint
+ALTER TABLE "agent_runtime_state" RENAME COLUMN "total_cost_cents" TO "total_cost_usd";
+--> statement-breakpoint
+ALTER TABLE "agent_runtime_state"
+  ALTER COLUMN "total_cost_usd" TYPE double precision
+  USING ("total_cost_usd"::double precision / 100.0);`,
+        folderMillis: 1774978636662,
+      },
+    ];
+
+    for (const entry of legacyMigrations) {
+      await applyMigrationWithHistory(sql, entry.fileName, entry.content, entry.folderMillis);
+    }
+  } finally {
+    await sql.end();
+  }
+}
+
+async function applySqlFile(connectionString: string, absoluteFilePath: string): Promise<void> {
+  const sql = postgres(connectionString, { max: 1, onnotice: () => {} });
+  try {
+    const content = await fs.promises.readFile(absoluteFilePath, "utf8");
+    for (const statement of splitMigrationStatements(content)) {
+      await sql.unsafe(statement);
+    }
+  } finally {
+    await sql.end();
+  }
 }
 
 afterEach(async () => {
@@ -43,6 +201,66 @@ if (!embeddedPostgresSupport.supported) {
 }
 
 describeEmbeddedPostgres("applyPendingMigrations", () => {
+  it(
+    "requires the preflight bridge for a legacy Vicarta USD-first schema and then converges successfully",
+    async () => {
+      const withoutBridgeConnection = await createBlankTempDatabase();
+      await buildVicartaLegacyUsdSchema(withoutBridgeConnection);
+
+      const pendingState = await inspectMigrations(withoutBridgeConnection);
+      expect(pendingState).toMatchObject({
+        status: "needsMigrations",
+        pendingMigrations: expect.arrayContaining(["0030_rich_magneto.sql", "0031_zippy_magma.sql", "0032_pretty_doctor_octopus.sql"]),
+        reason: "pending-migrations",
+      });
+
+      await expect(applyPendingMigrations(withoutBridgeConnection)).rejects.toThrow();
+
+      const withBridgeConnection = await createBlankTempDatabase();
+      await buildVicartaLegacyUsdSchema(withBridgeConnection);
+
+      const bridgePath = path.resolve(
+        process.cwd(),
+        "../../docs/deploy/sql/upstream-v2026-403-0-preflight-schema-bridge.sql",
+      );
+      await applySqlFile(withBridgeConnection, bridgePath);
+
+      const sql = postgres(withBridgeConnection, { max: 1, onnotice: () => {} });
+      try {
+        const bridgeColumns = await sql.unsafe<{ table_name: string; column_name: string }[]>(
+          `
+            SELECT table_name, column_name
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND (
+                (table_name = 'companies' AND column_name IN ('budget_monthly_cents', 'spent_monthly_cents'))
+                OR (table_name = 'agents' AND column_name IN ('budget_monthly_cents', 'spent_monthly_cents'))
+                OR (table_name = 'cost_events' AND column_name = 'cost_cents')
+                OR (table_name = 'agent_runtime_state' AND column_name = 'total_cost_cents')
+              )
+            ORDER BY table_name, column_name
+          `,
+        );
+        expect(bridgeColumns).toEqual([
+          { table_name: "agent_runtime_state", column_name: "total_cost_cents" },
+          { table_name: "agents", column_name: "budget_monthly_cents" },
+          { table_name: "agents", column_name: "spent_monthly_cents" },
+          { table_name: "companies", column_name: "budget_monthly_cents" },
+          { table_name: "companies", column_name: "spent_monthly_cents" },
+          { table_name: "cost_events", column_name: "cost_cents" },
+        ]);
+      } finally {
+        await sql.end();
+      }
+
+      await applyPendingMigrations(withBridgeConnection);
+
+      const finalState = await inspectMigrations(withBridgeConnection);
+      expect(finalState.status).toBe("upToDate");
+    },
+    40_000,
+  );
+
   it(
     "applies an inserted earlier migration without replaying later legacy migrations",
     async () => {
