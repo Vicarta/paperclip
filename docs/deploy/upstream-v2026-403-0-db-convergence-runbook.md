@@ -269,9 +269,10 @@ the live AST deployment:
 3. apply the preflight schema bridge
 4. run upstream `pnpm db:migrate` on the converged image
 5. normalize bundled provider-plugin `package_path` values
-6. recreate the app container on the new image
-7. verify `/api/health`
-8. verify plugin activation in logs
+6. refresh `plugins.manifest_json` from bundled on-disk manifests when plugin manifests changed in the deployed image
+7. recreate the app container on the new image
+8. verify `/api/health`
+9. verify plugin activation in logs
 
 This sequence is now the preferred cutover order for the `v2026.403.0` wave.
 
@@ -296,6 +297,29 @@ Reason:
   activation
 - live and compose-based smoke both succeeded only after canonical path
   normalization
+
+### Bundled plugin manifest snapshot refresh
+
+`plugin-loader` activates installed plugins from the persisted
+`plugins.manifest_json` snapshot, not directly from `dist/manifest.js`.
+
+Operational consequence:
+
+- if a deployment changes a bundled plugin manifest without reinstalling or
+  explicitly refreshing the DB snapshot, runtime registry behavior can lag
+  behind the code now present in the image
+- this was observed in live post-cutover smoke for
+  `paperclip.bright-data-agent-tools`, where the code bundle contained
+  `executionTimeoutMs = 180000` for long-running tools but the DB snapshot
+  still lacked that field, so runtime registration kept the old 30000ms host
+  timeout behavior
+
+Required operator step when bundled plugin manifests change:
+
+1. export the bundled manifest from the running image
+2. update the corresponding `plugins.manifest_json` row
+3. restart the app so plugin activation re-registers tools from the refreshed
+   snapshot
 - `heartbeat_run_id = null`
 - `billing_type = 'unknown'`
 - `biller = 'unknown'`

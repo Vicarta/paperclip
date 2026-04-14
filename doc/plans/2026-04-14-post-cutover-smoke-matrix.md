@@ -127,9 +127,36 @@ This confirms the upstream-compatible plugin cost bridge is persisting external 
   - completion comment
   - final `done` transition
 
-### Not Yet Fully Exercised
+### Additional Bright Data Smoke Completed
 
-- fresh live Bright Data tool invocation after cutover
+- `AST-448` rerun completed as `done` on the upgraded live runtime
+- live Bright Data smoke confirmed:
+  - `paperclip.bright-data-agent-tools:list-tools`
+  - `paperclip.bright-data-agent-tools:resolve-instagram-account-post-set`
+- resolver no longer failed at the old host-side `30000ms` timeout barrier
+- resulting smoke comment reported:
+  - `visible=58`
+  - `canonical=55`
+  - `final=55`
+  - `isComplete=false`
+- smoke scope verdict:
+  - runtime blocker cleared
+  - resolver completed
+
+### Root Cause Found During Bright Data Smoke
+
+- bundled plugin code had been updated with tool-level
+  `executionTimeoutMs = 180000`
+- runtime still registered the old manifest snapshot from
+  `plugins.manifest_json`
+- because `plugin-loader` activates installed plugins from the DB snapshot,
+  not directly from `dist/manifest.js`, the new timeout field was absent in
+  live registry state until the manifest snapshot was refreshed
+
+### Remaining Follow-Up
+
+- codify bundled plugin manifest snapshot refresh in future deploy automation so
+  package changes and DB plugin metadata cannot drift again
 
 ## Operational Conclusion
 
@@ -139,8 +166,8 @@ No additional core rollback or emergency compatibility patch is indicated from t
 
 The next layer of validation should stay focused and incremental, not return to infrastructure churn:
 
-1. run a safe live smoke that explicitly exercises `Bright Data`
-2. verify plugin-originated cost events and heartbeat traceability on that exact path
+1. codify manifest snapshot refresh into deploy automation or operator tooling
+2. verify plugin-originated cost events and heartbeat traceability on the Bright Data path
 3. move on to the next business-critical agent lane
 
 ## Recommended Operator Path For Business Smoke
