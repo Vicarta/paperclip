@@ -93,7 +93,13 @@ Use `psql` against the direct connection:
 psql "$DATABASE_URL"
 ```
 
-Run:
+Preferred operator shortcut:
+
+```sh
+psql "$DATABASE_URL" -f docs/deploy/sql/upstream-v2026-403-0-fact-probes.sql
+```
+
+Equivalent manual probes:
 
 ```sql
 SELECT COUNT(*) AS companies_count FROM companies;
@@ -256,11 +262,8 @@ psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f docs/deploy/sql/upstream-v2026-403-0-
 
 Immediately verify the bridge:
 
-```sql
-SELECT budget_monthly_cents, spent_monthly_cents FROM companies LIMIT 5;
-SELECT budget_monthly_cents, spent_monthly_cents FROM agents LIMIT 5;
-SELECT cost_cents FROM cost_events LIMIT 5;
-SELECT total_cost_cents FROM agent_runtime_state LIMIT 5;
+```sh
+psql "$DATABASE_URL" -f docs/deploy/sql/upstream-v2026-403-0-post-bridge-verification.sql
 ```
 
 ### D5. Apply migrations
