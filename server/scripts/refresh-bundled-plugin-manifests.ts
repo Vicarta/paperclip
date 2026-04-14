@@ -1,22 +1,14 @@
 import { existsSync } from "node:fs";
-import { readFile } from "node:fs/promises";
-import path from "node:path";
-import { pathToFileURL } from "node:url";
 import { isDeepStrictEqual } from "node:util";
 import { eq } from "drizzle-orm";
 import { createDb } from "../../packages/db/src/index.ts";
 import { plugins } from "../../packages/db/src/schema/plugins.ts";
+import { loadManifestFromPackage } from "../src/services/bundled-plugin-manifest.ts";
 
 type Options = {
   apply: boolean;
   pluginKey: string | null;
   strict: boolean;
-};
-
-type PluginManifest = Record<string, unknown> & {
-  id: string;
-  version: string;
-  apiVersion: number;
 };
 
 function parseArgs(argv: string[]): Options {
@@ -59,68 +51,6 @@ function parseArgs(argv: string[]): Options {
   return opts;
 }
 
-async function readPackageJson(packagePath: string): Promise<Record<string, unknown> | null> {
-  const pkgPath = path.join(packagePath, "package.json");
-  if (!existsSync(pkgPath)) return null;
-  return JSON.parse(await readFile(pkgPath, "utf8")) as Record<string, unknown>;
-}
-
-function resolveManifestPath(packagePath: string, pkgJson: Record<string, unknown>): string | null {
-  const paperclipPlugin = pkgJson.paperclipPlugin;
-  if (
-    paperclipPlugin &&
-    typeof paperclipPlugin === "object" &&
-    !Array.isArray(paperclipPlugin)
-  ) {
-    const manifestRelPath = (paperclipPlugin as Record<string, unknown>).manifest;
-    if (typeof manifestRelPath === "string" && manifestRelPath.trim().length > 0) {
-      return path.resolve(packagePath, manifestRelPath);
-    }
-  }
-
-  const distManifest = path.join(packagePath, "dist", "manifest.js");
-  if (existsSync(distManifest)) return distManifest;
-
-  const rootManifest = path.join(packagePath, "manifest.js");
-  if (existsSync(rootManifest)) return rootManifest;
-
-  return null;
-}
-
-function assertPluginManifest(input: unknown, packagePath: string): PluginManifest {
-  if (!input || typeof input !== "object" || Array.isArray(input)) {
-    throw new Error(`Invalid plugin manifest for package at ${packagePath}: expected object`);
-  }
-
-  const record = input as Record<string, unknown>;
-  if (typeof record.id !== "string" || record.id.trim().length === 0) {
-    throw new Error(`Invalid plugin manifest for package at ${packagePath}: missing string "id"`);
-  }
-  if (typeof record.version !== "string" || record.version.trim().length === 0) {
-    throw new Error(`Invalid plugin manifest for package at ${packagePath}: missing string "version"`);
-  }
-  if (typeof record.apiVersion !== "number" || !Number.isFinite(record.apiVersion)) {
-    throw new Error(`Invalid plugin manifest for package at ${packagePath}: missing numeric "apiVersion"`);
-  }
-
-  return record as PluginManifest;
-}
-
-async function loadManifestFromPackage(packagePath: string): Promise<PluginManifest> {
-  const pkgJson = await readPackageJson(packagePath);
-  if (!pkgJson) {
-    throw new Error(`Missing package.json at ${packagePath}`);
-  }
-
-  const manifestPath = resolveManifestPath(packagePath, pkgJson);
-  if (!manifestPath || !existsSync(manifestPath)) {
-    throw new Error(`No plugin manifest found for package at ${packagePath}`);
-  }
-
-  const mod = await import(pathToFileURL(manifestPath).href) as Record<string, unknown>;
-  return assertPluginManifest(mod.default ?? mod, packagePath);
-}
-
 async function main() {
   const opts = parseArgs(process.argv.slice(2));
   const dbUrl = process.env.DATABASE_URL?.trim();
@@ -155,7 +85,7 @@ async function main() {
     }
 
     const loadedManifest = await loadManifestFromPackage(packagePath);
-    const storedManifest = plugin.manifestJson as PluginManifest;
+    const storedManifest = plugin.manifestJson;
     if (isDeepStrictEqual(storedManifest, loadedManifest)) {
       console.log(`ok   ${plugin.pluginKey}: manifest_json already matches bundled manifest`);
       continue;

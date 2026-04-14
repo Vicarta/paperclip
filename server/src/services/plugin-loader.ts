@@ -42,6 +42,7 @@ import { logger } from "../middleware/logger.js";
 import { pluginManifestValidator } from "./plugin-manifest-validator.js";
 import { pluginCapabilityValidator } from "./plugin-capability-validator.js";
 import { pluginRegistryService } from "./plugin-registry.js";
+import { syncBundledPluginManifestIfNeeded } from "./bundled-plugin-manifest.js";
 import type { PluginWorkerManager, WorkerStartOptions, WorkerToHostHandlers } from "./plugin-worker-manager.js";
 import type { PluginEventBus } from "./plugin-event-bus.js";
 import type { PluginJobScheduler } from "./plugin-job-scheduler.js";
@@ -1658,9 +1659,26 @@ export function pluginLoader(
    * `error` in the database when activation fails.
    */
   async function activatePlugin(plugin: PluginRecord): Promise<PluginLoadResult> {
-    const manifest = plugin.manifestJson;
-    const pluginId = plugin.id;
-    const pluginKey = plugin.pluginKey;
+    let effectivePlugin = plugin;
+    if (plugin.packagePath) {
+      try {
+        effectivePlugin = await syncBundledPluginManifestIfNeeded(plugin, registry);
+      } catch (err) {
+        log.warn(
+          {
+            pluginId: plugin.id,
+            pluginKey: plugin.pluginKey,
+            packagePath: plugin.packagePath,
+            err: err instanceof Error ? err.message : String(err),
+          },
+          "plugin-loader: failed to refresh bundled manifest snapshot, continuing with stored manifest",
+        );
+      }
+    }
+
+    const manifest = effectivePlugin.manifestJson;
+    const pluginId = effectivePlugin.id;
+    const pluginKey = effectivePlugin.pluginKey;
 
     const registered: PluginLoadResult["registered"] = {
       worker: false,
@@ -1828,13 +1846,13 @@ export function pluginLoader(
         {
           pluginId,
           pluginKey,
-          version: plugin.version,
+          version: effectivePlugin.version,
           registered,
         },
         "plugin-loader: plugin activated successfully",
       );
 
-      return { plugin, success: true, registered };
+      return { plugin: effectivePlugin, success: true, registered };
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
 

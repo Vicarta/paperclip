@@ -303,6 +303,13 @@ Reason:
 `plugin-loader` activates installed plugins from the persisted
 `plugins.manifest_json` snapshot, not directly from `dist/manifest.js`.
 
+Current protection model:
+
+1. runtime activation now attempts to auto-sync bundled plugin manifests
+   before activation for plugins that have a local `package_path`
+2. the refresh command below remains the explicit operator fallback and the
+   preferred preflight step during deploy/cutover work
+
 Operational consequence:
 
 - if a deployment changes a bundled plugin manifest without reinstalling or
@@ -314,7 +321,8 @@ Operational consequence:
   still lacked that field, so runtime registration kept the old 30000ms host
   timeout behavior
 
-Required operator step when bundled plugin manifests change:
+Required operator fallback when bundled plugin manifests change and a manual
+refresh is still needed:
 
 1. export the bundled manifest from the running image
 2. update the corresponding `plugins.manifest_json` row

@@ -68,7 +68,7 @@ const plugin = definePlugin({
             projectId: runCtx.projectId,
             issueId: null,
             goalId: null,
-            heartbeatRunId: null,
+            heartbeatRunId: runCtx.runId,
             billingCode: TOOL_NAMES.googleAdsSearchVolume,
             provider: DATAFORSEO_COST_PROVIDER,
             biller: DATAFORSEO_COST_PROVIDER,

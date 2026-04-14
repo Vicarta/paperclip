@@ -46,6 +46,7 @@ describe("plugin-dataforseo-agent-tools", () => {
       companyId: "company-dataforseo",
       projectId: "11111111-1111-1111-1111-111111111111",
       agentId: "22222222-2222-2222-2222-222222222222",
+      runId: "33333333-3333-3333-3333-333333333333",
     });
 
     expect(fetchGoogleAdsSearchVolumeMock).toHaveBeenCalledWith(
@@ -67,6 +68,7 @@ describe("plugin-dataforseo-agent-tools", () => {
       companyId: "company-dataforseo",
       projectId: "11111111-1111-1111-1111-111111111111",
       agentId: "22222222-2222-2222-2222-222222222222",
+      heartbeatRunId: "33333333-3333-3333-3333-333333333333",
       provider: "dataforseo.com",
       biller: "dataforseo.com",
       billingType: "metered_api",

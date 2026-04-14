@@ -153,6 +153,13 @@ This confirms the upstream-compatible plugin cost bridge is persisting external 
   not directly from `dist/manifest.js`, the new timeout field was absent in
   live registry state until the manifest snapshot was refreshed
 
+### Hardening Applied After Bright Data Smoke
+
+- `plugin-loader` now auto-syncs bundled plugin manifests for plugins with a
+  local `package_path` before activation
+- `pnpm plugins:refresh-bundled-manifests` remains the operator fallback and
+  deploy-time preflight when we want an explicit dry-run/apply step
+
 ### Remaining Follow-Up
 
 - codify bundled plugin manifest snapshot refresh in future deploy automation so
@@ -166,8 +173,8 @@ No additional core rollback or emergency compatibility patch is indicated from t
 
 The next layer of validation should stay focused and incremental, not return to infrastructure churn:
 
-1. codify manifest snapshot refresh into deploy automation or operator tooling
-2. verify plugin-originated cost events and heartbeat traceability on the Bright Data path
+1. `DataForSEO` plugin-originated cost events must carry `heartbeatRunId = runCtx.runId` so feedback/cost views can attribute them to a concrete run
+2. `Bright Data` cost attribution is still not implemented; current plugin code does not emit canonical `cost_events` because it has no integrated provider-cost extraction path yet
 3. move on to the next business-critical agent lane
 
 ## Recommended Operator Path For Business Smoke
