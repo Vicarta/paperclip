@@ -92,11 +92,20 @@ Observed canonical provider cost events for OpenRouter:
 Observed canonical provider cost events for DataForSEO:
 
 - `provider = dataforseo.com`
-- `model = keywords_data/google_ads/search_volume/live`
 - `cost_cents = 8`
 - rows present in upstream `cost_events`
 
-This confirms the upstream-compatible plugin cost bridge is persisting external provider costs without reintroducing the old forked reporting API.
+Post-cutover validation now confirms two states:
+
+- legacy pre-fix rows still exist with `heartbeat_run_id = null`
+- new post-fix rows now persist with `heartbeat_run_id = <live heartbeat run id>`
+
+Confirmed live example after cutover:
+
+- `heartbeat_run_id = f3e79b5e-92cc-4ca8-8cf7-d6e632319f71`
+- `project_id = db6ccac5-25c7-46b0-a49f-7c614dfe7973`
+
+This confirms the upstream-compatible plugin cost bridge is persisting external provider costs without reintroducing the old forked reporting API, and that `DataForSEO` traceability now attaches costs to the originating heartbeat run.
 
 ## Smoke Verdict
 
@@ -143,6 +152,53 @@ This confirms the upstream-compatible plugin cost bridge is persisting external 
   - runtime blocker cleared
   - resolver completed
 
+### Additional Bright Data Billing Probe Completed
+
+- live direct REST probe against Bright Data dataset trigger completed from the
+  upgraded runtime
+- request path used:
+  - `POST https://api.brightdata.com/datasets/v3/trigger`
+  - `dataset_id = gd_l1vikfch901nx3by4`
+  - `discover_by = user_name`
+- response status was `200`
+- response headers only included transport/content metadata:
+  - `content-type`
+  - `content-length`
+  - `date`
+  - `etag`
+  - `server`
+  - `vary`
+- no billing, credits, usage, or cost headers were present in the live
+  response
+- Bright Data billing can therefore not be derived safely from the current
+  dataset trigger response alone
+
+### Additional DataForSEO Heartbeat Traceability Smoke Completed
+
+- `AST-449` completed as `done` on the upgraded live runtime
+- live issue-backed smoke artifact written to:
+  - `/astrogen/work/53-seo-semantic-core/active/smoke-post-cutover-dataforseo-heartbeat-runid-money-ua-2026-04-14.md`
+- live completion comment confirmed:
+  - tool used: `paperclip.dataforseo-agent-tools:google-ads-search-volume`
+  - keyword used: `фінансова натальна карта`
+  - blocker remains: `none`
+- canonical `cost_events` verification after the run confirmed fresh rows with:
+  - `provider = dataforseo.com`
+  - `model = google_ads_search_volume`
+  - `cost_cents = 8`
+  - `heartbeat_run_id = f3e79b5e-92cc-4ca8-8cf7-d6e632319f71`
+
+### Practical Route Contract Note From AST-449
+
+- `POST /api/agents/me/plugin-tools/execute` expects `parameters`, not `arguments` or `params`
+- for agent-authenticated calls outside the normal issue checkout flow, pass `projectId` explicitly if the current issue lookup does not resolve from `execution_run_id`
+- the successful live recovery call used:
+  - `tool = paperclip.dataforseo-agent-tools:google-ads-search-volume`
+  - `projectId = db6ccac5-25c7-46b0-a49f-7c614dfe7973`
+  - `parameters.keywords = [\"фінансова натальна карта\"]`
+  - `parameters.location_name = \"Ukraine\"`
+  - `parameters.language_name = \"Ukrainian\"`
+
 ### Root Cause Found During Bright Data Smoke
 
 - bundled plugin code had been updated with tool-level
@@ -173,8 +229,8 @@ No additional core rollback or emergency compatibility patch is indicated from t
 
 The next layer of validation should stay focused and incremental, not return to infrastructure churn:
 
-1. `DataForSEO` plugin-originated cost events must carry `heartbeatRunId = runCtx.runId` so feedback/cost views can attribute them to a concrete run
-2. `Bright Data` cost attribution is still not implemented; current plugin code does not emit canonical `cost_events` because it has no integrated provider-cost extraction path yet
+1. `DataForSEO` heartbeat traceability is now confirmed on live runtime; keep this behavior covered in future cutover smoke
+2. `Bright Data` cost attribution is still not implemented; live probing confirms the dataset trigger response does not expose a usable per-request cost signal, so canonical `cost_events` now require a separate Bright Data usage/accounting integration rather than a response-header shortcut
 3. move on to the next business-critical agent lane
 
 ## Recommended Operator Path For Business Smoke

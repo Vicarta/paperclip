@@ -338,6 +338,27 @@ DATABASE_URL='postgres://…' pnpm plugins:refresh-bundled-manifests --apply
 
 Use dry-run first. `--apply` should be run before restarting the app container
 when a deploy changed bundled plugin manifests.
+
+### Bright Data cost attribution status
+
+Bright Data runtime behavior was verified after cutover with a direct live
+dataset-trigger probe from the app container.
+
+Observed response facts:
+
+- `POST https://api.brightdata.com/datasets/v3/trigger` returned `200`
+- response headers exposed only transport/content metadata such as
+  `content-type`, `content-length`, `date`, `etag`, `server`, and `vary`
+- no billing, credits, usage, or cost headers were present
+
+Operational consequence:
+
+- do not fabricate Bright Data `cost_events` from trigger responses
+- current plugin runtime may record successful tool execution, but it cannot
+  derive exact `cost_cents` honestly from the response surface now available
+- exact Bright Data provider-cost capture requires a separate usage/accounting
+  integration, not a header-based shortcut
+
 - `heartbeat_run_id = null`
 - `billing_type = 'unknown'`
 - `biller = 'unknown'`
