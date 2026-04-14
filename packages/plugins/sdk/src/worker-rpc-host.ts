@@ -474,6 +474,29 @@ export function startWorkerRpcHost(options: WorkerRpcHostOptions): WorkerRpcHost
         },
       },
 
+      costs: {
+        async createEvent(input) {
+          return callHost("costs.createEvent", {
+            companyId: input.companyId,
+            agentId: input.agentId,
+            issueId: input.issueId,
+            projectId: input.projectId,
+            goalId: input.goalId,
+            heartbeatRunId: input.heartbeatRunId,
+            billingCode: input.billingCode,
+            provider: input.provider,
+            biller: input.biller,
+            billingType: input.billingType,
+            model: input.model,
+            inputTokens: input.inputTokens,
+            cachedInputTokens: input.cachedInputTokens,
+            outputTokens: input.outputTokens,
+            costCents: input.costCents,
+            occurredAt: input.occurredAt,
+          });
+        },
+      },
+
       state: {
         async get(input: ScopeKey): Promise<unknown> {
           return callHost("state.get", {

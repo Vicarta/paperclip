@@ -37,6 +37,9 @@ Before running any DB-changing action:
 3. The DB reconciliation worksheet must be up to date.
 4. A staging database cloned from live must be available.
 5. Direct database access for migrations must use a direct Postgres connection, not a pooled connection.
+6. For the current AST deployment, the canonical live DB access path is server-local docker exec, not an assumed separately handed `DATABASE_URL`:
+   - `ssh paperclip@ubuntu-oc.tailbd4e1c.ts.net`
+   - `sudo docker exec -i paperclip-db-1 psql -U paperclip -d paperclip ...`
 
 Reference docs:
 
@@ -54,6 +57,12 @@ Accepted policy decisions:
 - `projects.human_facing_language` is not carried into the first convergence wave
 - `adapter_company_settings` may return only as a new post-`0048` extension if still required
 - extra Vicarta-only tables/columns may remain present during the bridge, but upstream core columns must exist under upstream names before migrations run
+
+Operational note from live probes:
+
+- the current AST deployment has exactly one `openrouter` agent and its `adapter_config` does **not** contain `OPENROUTER_API_KEY`
+- that key currently lives only in `adapter_company_settings.settings_json`
+- therefore convergence must preserve a runtime path that can still materialize company-level OpenRouter settings for that agent, even if the old settings UI/routes are not brought back in the first wave
 
 ## Phase A. Read-Only Fact Collection
 
@@ -85,6 +94,20 @@ Record:
 
 Do not proceed unless backup completed successfully.
 
+Fallback for the current AST deployment if the JS backup path fails (for example with `Invalid string length` on large live tables):
+
+```sh
+ssh paperclip@ubuntu-oc.tailbd4e1c.ts.net
+sudo sh -lc 'ts=$(date +%Y%m%d-%H%M%S); out=/home/paperclip/archive/paperclip-live-pre-convergence-$ts.dump; docker exec paperclip-db-1 pg_dump -U paperclip -d paperclip -Fc > "$out" && stat -c "%n %s bytes" "$out"'
+```
+
+Use this fallback artifact as the rollback anchor and record:
+
+- backup file path
+- file size
+- timestamp
+- reason the standard `pnpm db:backup` path was bypassed
+
 ### A3. Record table-level fact probes
 
 Use `psql` against the direct connection:
@@ -97,6 +120,14 @@ Preferred operator shortcut:
 
 ```sh
 psql "$DATABASE_URL" -f docs/deploy/sql/upstream-v2026-403-0-fact-probes.sql
+```
+
+Current AST deployment shortcut:
+
+```sh
+ssh paperclip@ubuntu-oc.tailbd4e1c.ts.net
+sudo docker exec -i paperclip-db-1 psql -U paperclip -d paperclip \
+  -f /home/paperclip/paperclip/docs/deploy/sql/upstream-v2026-403-0-fact-probes.sql
 ```
 
 Equivalent manual probes:
@@ -219,13 +250,52 @@ After the preflight bridge and upstream `0030-0048` complete, only these remaini
    - decide whether to ignore or drop legacy `human_facing_language`
 2. `adapter_company_settings`
    - decide whether it needs a new post-`0048` migration for fresh environments
-   - for in-place live upgrades, prefer preserving the existing table and validating compatibility first
+   - for in-place live upgrades, preserve the existing table until the OpenRouter runtime path is verified
+   - do not drop or ignore the live `openrouter` row before the replacement config-loading path is proven in staging
 
 ### C3. Legacy default policy
 
 Legacy `cost_events` policy after upstream `0031_zippy_magma.sql`:
 
 - `cached_input_tokens = 0`
+
+## Proven Execution Sequence
+
+The following exact order was validated first on a rehearsal clone and then on
+the live AST deployment:
+
+1. create a fresh `pg_dump -Fc` backup
+2. stop the running app container
+3. apply the preflight schema bridge
+4. run upstream `pnpm db:migrate` on the converged image
+5. normalize bundled provider-plugin `package_path` values
+6. recreate the app container on the new image
+7. verify `/api/health`
+8. verify plugin activation in logs
+
+This sequence is now the preferred cutover order for the `v2026.403.0` wave.
+
+### Bundled provider-plugin normalization
+
+For the current Astrogen deployment, provider plugins are bundled in the app
+image under:
+
+- `/app/packages/plugins/plugin-exa-agent-tools`
+- `/app/packages/plugins/plugin-serper-agent-tools`
+- `/app/packages/plugins/plugin-dataforseo-agent-tools`
+- `/app/packages/plugins/plugin-bright-data-agent-tools`
+
+After DB convergence, normalize `plugins.package_path` to those canonical paths
+before starting the live app if the rows still point to legacy
+`packages/plugins/examples/*` paths.
+
+Reason:
+
+- symlinked `examples/*` paths are enough for build-time compatibility
+- they are not reliable as persisted `package_path` values for runtime worker
+  activation
+- live and compose-based smoke both succeeded only after canonical path
+  normalization
 - `heartbeat_run_id = null`
 - `billing_type = 'unknown'`
 - `biller = 'unknown'`

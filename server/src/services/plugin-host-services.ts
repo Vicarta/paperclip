@@ -614,6 +614,54 @@ export function buildHostServices(
       },
     },
 
+    costs: {
+      async createEvent(params) {
+        const companyId = ensureCompanyId(params.companyId);
+        await ensurePluginAvailableForCompany(companyId);
+
+        const event = await costs.createEvent(companyId, {
+          agentId: params.agentId,
+          issueId: params.issueId ?? null,
+          projectId: params.projectId ?? null,
+          goalId: params.goalId ?? null,
+          heartbeatRunId: params.heartbeatRunId ?? null,
+          billingCode: params.billingCode ?? null,
+          provider: params.provider,
+          biller: params.biller,
+          billingType: params.billingType as any,
+          model: params.model,
+          inputTokens: params.inputTokens ?? 0,
+          cachedInputTokens: params.cachedInputTokens ?? 0,
+          outputTokens: params.outputTokens ?? 0,
+          costCents: params.costCents,
+          occurredAt: new Date(params.occurredAt),
+        });
+
+        await logActivity(db, {
+          companyId,
+          actorType: "system",
+          actorId: pluginId,
+          action: "cost.reported",
+          entityType: "cost_event",
+          entityId: event.id,
+          details: {
+            source: "plugin_host_bridge",
+            provider: event.provider,
+            biller: event.biller,
+            model: event.model,
+            costCents: event.costCents,
+          },
+        });
+
+        return {
+          ...event,
+          billingType: event.billingType as any,
+          occurredAt: event.occurredAt.toISOString(),
+          createdAt: event.createdAt.toISOString(),
+        };
+      },
+    },
+
     metrics: {
       async write(params) {
         const safeName = truncStr(String(params.name ?? ""), MAX_METRIC_NAME_LENGTH);

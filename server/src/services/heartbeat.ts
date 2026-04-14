@@ -29,6 +29,8 @@ import { trackAgentFirstHeartbeat } from "@paperclipai/shared/telemetry";
 import { getTelemetryClient } from "../telemetry.js";
 import { companySkillService } from "./company-skills.js";
 import { budgetService, type BudgetEnforcementScope } from "./budgets.js";
+import { adapterCompanySettingsService } from "./adapter-company-settings.js";
+import { mergeAdapterConfigs } from "./adapter-config-merge.js";
 import { secretService } from "./secrets.js";
 import { resolveDefaultAgentWorkspaceDir, resolveManagedProjectWorkspaceDir } from "../home-paths.js";
 import { summarizeHeartbeatRunResultJson } from "./heartbeat-run-summary.js";
@@ -889,6 +891,7 @@ export function heartbeatService(db: Db) {
   const runLogStore = getRunLogStore();
   const secretsSvc = secretService(db);
   const companySkills = companySkillService(db);
+  const adapterSettingsSvc = adapterCompanySettingsService(db);
   const issuesSvc = issueService(db);
   const executionWorkspacesSvc = executionWorkspaceService(db);
   const workspaceOperationsSvc = workspaceOperationService(db);
@@ -2152,6 +2155,11 @@ export function heartbeatService(db: Db) {
       (explicitResumeSessionDisplayId ? { sessionId: explicitResumeSessionDisplayId } : null) ??
       normalizeSessionParams(sessionCodec.deserialize(taskSessionForRun?.sessionParamsJson ?? null));
     const config = parseObject(agent.adapterConfig);
+    const companyAdapterSettings = await adapterSettingsSvc.get(agent.companyId, agent.adapterType);
+    const inheritedAdapterConfig = mergeAdapterConfigs(
+      parseObject(companyAdapterSettings?.settingsJson),
+      config,
+    );
     const requestedExecutionWorkspaceMode = resolveExecutionWorkspaceMode({
       projectPolicy: projectExecutionWorkspacePolicy,
       issueSettings: issueExecutionWorkspaceSettings,
@@ -2190,9 +2198,9 @@ export function heartbeatService(db: Db) {
         ? persistedExecutionWorkspaceMode
         : requestedExecutionWorkspaceMode;
     const workspaceManagedConfig = shouldReuseExisting
-      ? { ...config }
+      ? { ...inheritedAdapterConfig }
       : buildExecutionWorkspaceAdapterConfig({
-          agentConfig: config,
+          agentConfig: inheritedAdapterConfig,
           projectPolicy: projectExecutionWorkspacePolicy,
           issueSettings: issueExecutionWorkspaceSettings,
           mode: requestedExecutionWorkspaceMode,

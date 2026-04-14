@@ -63,6 +63,7 @@ const OPERATION_CAPABILITIES: Record<string, readonly PluginCapability[]> = {
   "costs.get": ["costs.read"],
 
   // Data write operations
+  "costs.createEvent": ["costs.write"],
   "issues.create": ["issues.create"],
   "issues.update": ["issues.update"],
   "issue.comments.create": ["issue.comments.create"],

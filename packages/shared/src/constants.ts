@@ -24,6 +24,7 @@ export type AgentStatus = (typeof AGENT_STATUSES)[number];
 export const AGENT_ADAPTER_TYPES = [
   "process",
   "http",
+  "openrouter",
   "claude_local",
   "codex_local",
   "gemini_local",
@@ -438,6 +439,7 @@ export const PLUGIN_CAPABILITIES = [
   "activity.read",
   "costs.read",
   // Data Write
+  "costs.write",
   "issues.create",
   "issues.update",
   "issue.comments.create",

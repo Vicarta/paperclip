@@ -70,6 +70,25 @@ export interface TestHarness {
   simulateSessionEvent(sessionId: string, event: Omit<AgentSessionEvent, "sessionId">): void;
   logs: TestHarnessLogEntry[];
   activity: Array<{ message: string; entityType?: string; entityId?: string; metadata?: Record<string, unknown> }>;
+  costs: Array<{
+    companyId: string;
+    agentId: string;
+    issueId: string | null;
+    projectId: string | null;
+    goalId: string | null;
+    heartbeatRunId: string | null;
+    billingCode: string | null;
+    provider: string;
+    biller: string;
+    billingType: string;
+    model: string;
+    inputTokens: number;
+    cachedInputTokens: number;
+    outputTokens: number;
+    costCents: number;
+    occurredAt: string;
+    createdAt: string;
+  }>;
   metrics: Array<{ name: string; value: number; tags?: Record<string, string> }>;
   telemetry: Array<{ eventName: string; dimensions?: Record<string, string | number | boolean> }>;
 }
@@ -132,6 +151,7 @@ export function createTestHarness(options: TestHarnessOptions): TestHarness {
 
   const logs: TestHarnessLogEntry[] = [];
   const activity: TestHarness["activity"] = [];
+  const costs: TestHarness["costs"] = [];
   const metrics: TestHarness["metrics"] = [];
   const telemetry: TestHarness["telemetry"] = [];
 
@@ -211,6 +231,34 @@ export function createTestHarness(options: TestHarnessOptions): TestHarness {
       async log(entry) {
         requireCapability(manifest, capabilitySet, "activity.log.write");
         activity.push(entry);
+      },
+    },
+    costs: {
+      async createEvent(input) {
+        requireCapability(manifest, capabilitySet, "costs.write");
+        const now = new Date().toISOString();
+        const record = {
+          id: randomUUID(),
+          companyId: input.companyId,
+          agentId: input.agentId,
+          issueId: input.issueId ?? null,
+          projectId: input.projectId ?? null,
+          goalId: input.goalId ?? null,
+          heartbeatRunId: input.heartbeatRunId ?? null,
+          billingCode: input.billingCode ?? null,
+          provider: input.provider,
+          biller: input.biller ?? input.provider,
+          billingType: input.billingType ?? "unknown",
+          model: input.model,
+          inputTokens: input.inputTokens ?? 0,
+          cachedInputTokens: input.cachedInputTokens ?? 0,
+          outputTokens: input.outputTokens ?? 0,
+          costCents: input.costCents,
+          occurredAt: input.occurredAt,
+          createdAt: now,
+        };
+        costs.push(record);
+        return record;
       },
     },
     state: {
@@ -736,6 +784,7 @@ export function createTestHarness(options: TestHarnessOptions): TestHarness {
     },
     logs,
     activity,
+    costs,
     metrics,
     telemetry,
   };

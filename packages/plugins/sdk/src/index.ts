@@ -166,6 +166,9 @@ export type {
   PluginSecretsClient,
   PluginActivityClient,
   PluginActivityLogEntry,
+  PluginCostsClient,
+  PluginCostEventInput,
+  PluginCostEventRecord,
   PluginStateClient,
   PluginEntitiesClient,
   PluginProjectsClient,
@@ -205,6 +208,8 @@ export type {
   IssueComment,
   Agent,
   Goal,
+  CostEvent,
+  CreateCostEvent,
 } from "./types.js";
 
 // Manifest and constant types re-exported from @paperclipai/shared

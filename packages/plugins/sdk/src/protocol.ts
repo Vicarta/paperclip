@@ -29,6 +29,7 @@ import type {
   IssueDocumentSummary,
   Agent,
   Goal,
+  BillingType,
 } from "@paperclipai/shared";
 export type { PluginLauncherRenderContextSnapshot } from "@paperclipai/shared";
 
@@ -511,6 +512,48 @@ export interface WorkerToHostMethods {
       metadata?: Record<string, unknown>;
     },
     result: void,
+  ];
+
+  // Costs
+  "costs.createEvent": [
+    params: {
+      companyId: string;
+      agentId: string;
+      issueId?: string | null;
+      projectId?: string | null;
+      goalId?: string | null;
+      heartbeatRunId?: string | null;
+      billingCode?: string | null;
+      provider: string;
+      biller?: string;
+      billingType?: BillingType;
+      model: string;
+      inputTokens?: number;
+      cachedInputTokens?: number;
+      outputTokens?: number;
+      costCents: number;
+      occurredAt: string;
+    },
+    result: {
+      id: string;
+      companyId: string;
+      agentId: string;
+      issueId: string | null;
+      projectId: string | null;
+      goalId: string | null;
+      heartbeatRunId: string | null;
+      billingCode: string | null;
+      provider: string;
+      biller: string;
+      billingType: BillingType;
+      model: string;
+      inputTokens: number;
+      cachedInputTokens: number;
+      outputTokens: number;
+      costCents: number;
+      occurredAt: string;
+      createdAt: string;
+    },
   ];
 
   // Metrics

@@ -23,6 +23,8 @@ import type {
   IssueDocumentSummary,
   Agent,
   Goal,
+  CostEvent,
+  CreateCostEvent,
 } from "@paperclipai/shared";
 
 // ---------------------------------------------------------------------------
@@ -67,6 +69,8 @@ export type {
   IssueDocumentSummary,
   Agent,
   Goal,
+  CostEvent,
+  CreateCostEvent,
 } from "@paperclipai/shared";
 
 // ---------------------------------------------------------------------------
@@ -491,6 +495,31 @@ export interface PluginActivityClient {
    * @param entry - The activity log entry to write
    */
   log(entry: PluginActivityLogEntry): Promise<void>;
+}
+
+export interface PluginCostEventInput extends CreateCostEvent {
+  /** UUID of the company this cost event belongs to. */
+  companyId: string;
+}
+
+export interface PluginCostEventRecord extends Omit<CostEvent, "occurredAt" | "createdAt"> {
+  occurredAt: string;
+  createdAt: string;
+}
+
+/**
+ * `ctx.costs` — write plugin-originated cost ledger rows.
+ *
+ * Requires `costs.write` capability.
+ */
+export interface PluginCostsClient {
+  /**
+   * Write a request-scoped cost event to the canonical Paperclip cost ledger.
+   *
+   * The host is responsible for enforcing company/agent ownership, updating
+   * budget counters, and writing audit activity.
+   */
+  createEvent(input: PluginCostEventInput): Promise<PluginCostEventRecord>;
 }
 
 /**
@@ -1141,6 +1170,9 @@ export interface PluginContext {
 
   /** Write activity log entries. Requires `activity.log.write`. */
   activity: PluginActivityClient;
+
+  /** Write canonical cost ledger rows. Requires `costs.write`. */
+  costs: PluginCostsClient;
 
   /** Read and write scoped plugin state. Requires `plugin.state.read` / `plugin.state.write`. */
   state: PluginStateClient;
