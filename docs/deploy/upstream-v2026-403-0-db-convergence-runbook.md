@@ -320,6 +320,16 @@ Required operator step when bundled plugin manifests change:
 2. update the corresponding `plugins.manifest_json` row
 3. restart the app so plugin activation re-registers tools from the refreshed
    snapshot
+
+Preferred automation path:
+
+```sh
+DATABASE_URL='postgres://…' pnpm plugins:refresh-bundled-manifests
+DATABASE_URL='postgres://…' pnpm plugins:refresh-bundled-manifests --apply
+```
+
+Use dry-run first. `--apply` should be run before restarting the app container
+when a deploy changed bundled plugin manifests.
 - `heartbeat_run_id = null`
 - `billing_type = 'unknown'`
 - `biller = 'unknown'`
