@@ -73,6 +73,8 @@ export interface PluginToolDeclaration {
   description: string;
   /** JSON Schema describing the tool's input parameters. */
   parametersSchema: JsonSchema;
+  /** Optional host-side RPC timeout for tool execution, in milliseconds. */
+  executionTimeoutMs?: number;
 }
 
 /**

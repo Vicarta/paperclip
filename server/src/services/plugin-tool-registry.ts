@@ -67,6 +67,8 @@ export interface RegisteredTool {
   description: string;
   /** JSON Schema describing the tool's input parameters. */
   parametersSchema: Record<string, unknown>;
+  /** Optional host-side RPC timeout override for tool execution. */
+  executionTimeoutMs?: number;
 }
 
 /**
@@ -265,6 +267,7 @@ export function createPluginToolRegistry(
       displayName: decl.displayName,
       description: decl.description,
       parametersSchema: decl.parametersSchema,
+      executionTimeoutMs: decl.executionTimeoutMs,
     };
 
     byNamespace.set(namespacedName, entry);
@@ -422,7 +425,12 @@ export function createPluginToolRegistry(
         runContext,
       };
 
-      const result = await workerManager.call(dbId, "executeTool", rpcParams);
+      const result = await workerManager.call(
+        dbId,
+        "executeTool",
+        rpcParams,
+        tool.executionTimeoutMs,
+      );
 
       log.debug(
         {
