@@ -217,6 +217,15 @@ The first-wave contract stays intentionally narrow:
 - delivery mode = `attach_file`
 - source artifact = matching issue attachment
 
+Article-image delivery rule:
+
+- generated blog images must be delivered through the same document attachment
+  path (`sendDocument`) rather than `sendPhoto`
+- reason: Telegram photo delivery compresses/re-encodes images, while document
+  delivery preserves the generated asset for review and later publication use
+- article-image contracts should select image attachments with
+  `contentTypePrefix: "image/"` when a Stage 65 image bundle is included
+
 ## Outstanding Follow-Up
 
 - decide whether to keep the trigger path fire-and-forget only or add explicit
