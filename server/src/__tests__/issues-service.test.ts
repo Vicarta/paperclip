@@ -10,7 +10,9 @@ import {
   instanceSettings,
   issueComments,
   issueInboxArchives,
+  issueLabels,
   issues,
+  labels,
   projectWorkspaces,
   projects,
 } from "@paperclipai/db";
@@ -895,5 +897,82 @@ describeEmbeddedPostgres("issueService.create workspace inheritance", () => {
     expect(followUp.executionWorkspaceSettings).toEqual({
       mode: "operator_branch",
     });
+  });
+
+  it("syncs Human Decision Needed label with blocked lifecycle transitions", async () => {
+    const companyId = randomUUID();
+    const agentId = randomUUID();
+
+    await db.insert(companies).values({
+      id: companyId,
+      name: "Paperclip",
+      issuePrefix: `T${companyId.replace(/-/g, "").slice(0, 6).toUpperCase()}`,
+      requireBoardApprovalForNewAgents: false,
+    });
+
+    await db.insert(agents).values({
+      id: agentId,
+      companyId,
+      name: "Writer",
+      role: "engineer",
+      status: "active",
+      adapterType: "codex_local",
+      adapterConfig: {},
+      runtimeConfig: {},
+      permissions: {},
+    });
+
+    const customLabel = await db
+      .insert(labels)
+      .values({
+        companyId,
+        name: "Editorial",
+        color: "#2563EB",
+      })
+      .returning()
+      .then((rows) => rows[0]!);
+
+    const labelNamesForIssue = async (issueId: string) => {
+      const rows = await db
+        .select({ name: labels.name })
+        .from(issueLabels)
+        .innerJoin(labels, eq(issueLabels.labelId, labels.id))
+        .where(eq(issueLabels.issueId, issueId));
+      return rows.map((row) => row.name).sort();
+    };
+
+    const blocked = await svc.create(companyId, {
+      title: "Needs owner answer",
+      status: "blocked",
+      createdByUserId: "user-1",
+    });
+
+    expect(await labelNamesForIssue(blocked.id)).toEqual(["Human Decision Needed"]);
+
+    await svc.update(blocked.id, {
+      status: "blocked",
+      labelIds: [customLabel.id],
+    });
+
+    expect(await labelNamesForIssue(blocked.id)).toEqual(["Editorial", "Human Decision Needed"]);
+
+    await svc.update(blocked.id, { status: "todo" });
+
+    expect(await labelNamesForIssue(blocked.id)).toEqual(["Editorial"]);
+
+    await svc.update(blocked.id, { status: "blocked" });
+    await svc.update(blocked.id, { status: "blocked" });
+
+    const relabeled = await labelNamesForIssue(blocked.id);
+    expect(relabeled.filter((name) => name === "Human Decision Needed")).toHaveLength(1);
+
+    const checkedOut = await svc.checkout(blocked.id, agentId, ["blocked"], null);
+
+    expect(checkedOut.status).toBe("in_progress");
+    expect(await labelNamesForIssue(blocked.id)).toEqual(["Editorial"]);
+
+    await svc.release(blocked.id, agentId, null);
+
+    expect(await labelNamesForIssue(blocked.id)).toEqual(["Editorial"]);
   });
 });

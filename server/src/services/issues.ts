@@ -36,6 +36,8 @@ import { getDefaultCompanyGoal } from "./goals.js";
 
 const ALL_ISSUE_STATUSES = ["backlog", "todo", "in_progress", "in_review", "blocked", "done", "cancelled"];
 const MAX_ISSUE_COMMENT_PAGE_LIMIT = 500;
+const HUMAN_DECISION_NEEDED_LABEL_NAME = "Human Decision Needed";
+const HUMAN_DECISION_NEEDED_LABEL_COLOR = "#F59E0B";
 
 function assertTransition(from: string, to: string) {
   if (from === to) return;
@@ -675,6 +677,56 @@ export function issueService(db: Db) {
     );
   }
 
+  async function ensureHumanDecisionLabel(companyId: string, dbOrTx: any = db): Promise<IssueLabelRow> {
+    const existing = await dbOrTx
+      .select()
+      .from(labels)
+      .where(and(eq(labels.companyId, companyId), eq(labels.name, HUMAN_DECISION_NEEDED_LABEL_NAME)))
+      .then((rows: IssueLabelRow[]) => rows[0] ?? null);
+    if (existing) return existing;
+
+    await dbOrTx
+      .insert(labels)
+      .values({
+        companyId,
+        name: HUMAN_DECISION_NEEDED_LABEL_NAME,
+        color: HUMAN_DECISION_NEEDED_LABEL_COLOR,
+      })
+      .onConflictDoNothing();
+
+    const created = await dbOrTx
+      .select()
+      .from(labels)
+      .where(and(eq(labels.companyId, companyId), eq(labels.name, HUMAN_DECISION_NEEDED_LABEL_NAME)))
+      .then((rows: IssueLabelRow[]) => rows[0] ?? null);
+    if (!created) throw conflict("Unable to ensure Human Decision Needed label");
+    return created;
+  }
+
+  async function syncHumanDecisionLabel(
+    issueId: string,
+    companyId: string,
+    effectiveStatus: string,
+    dbOrTx: any = db,
+  ) {
+    const label = await ensureHumanDecisionLabel(companyId, dbOrTx);
+    if (effectiveStatus === "blocked") {
+      await dbOrTx
+        .insert(issueLabels)
+        .values({
+          issueId,
+          companyId,
+          labelId: label.id,
+        })
+        .onConflictDoNothing();
+      return;
+    }
+
+    await dbOrTx
+      .delete(issueLabels)
+      .where(and(eq(issueLabels.issueId, issueId), eq(issueLabels.labelId, label.id)));
+  }
+
   async function isTerminalOrMissingHeartbeatRun(runId: string) {
     const run = await db
       .select({ status: heartbeatRuns.status })
@@ -1235,6 +1287,7 @@ export function issueService(db: Db) {
         if (inputLabelIds) {
           await syncIssueLabels(issue.id, companyId, inputLabelIds, tx);
         }
+        await syncHumanDecisionLabel(issue.id, companyId, issue.status, tx);
         const [enriched] = await withIssueLabels(tx, [issue]);
         return enriched;
       });
@@ -1340,6 +1393,7 @@ export function issueService(db: Db) {
         if (nextLabelIds !== undefined) {
           await syncIssueLabels(updated.id, existing.companyId, nextLabelIds, tx);
         }
+        await syncHumanDecisionLabel(updated.id, existing.companyId, updated.status, tx);
         const [enriched] = await withIssueLabels(tx, [updated]);
         return enriched;
       });
@@ -1421,6 +1475,7 @@ export function issueService(db: Db) {
         .then((rows) => rows[0] ?? null);
 
       if (updated) {
+        await syncHumanDecisionLabel(updated.id, updated.companyId, updated.status);
         const [enriched] = await withIssueLabels(db, [updated]);
         return enriched;
       }
@@ -1599,6 +1654,7 @@ export function issueService(db: Db) {
         .returning()
         .then((rows) => rows[0] ?? null);
       if (!updated) return null;
+      await syncHumanDecisionLabel(updated.id, updated.companyId, updated.status);
       const [enriched] = await withIssueLabels(db, [updated]);
       return enriched;
     },
