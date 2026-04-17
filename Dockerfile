@@ -2,7 +2,7 @@ FROM node:lts-trixie-slim AS base
 ARG USER_UID=1000
 ARG USER_GID=1000
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends ca-certificates gosu curl git wget ripgrep python3 \
+  && apt-get install -y --no-install-recommends ca-certificates gosu curl git wget ripgrep python3 procps \
   && mkdir -p -m 755 /etc/apt/keyrings \
   && wget -nv -O/etc/apt/keyrings/githubcli-archive-keyring.gpg https://cli.github.com/packages/githubcli-archive-keyring.gpg \
   && echo "6084d5d7bd8e288441e0e94fc6275570895da18e6751f70f057485dc2d1a811b  /etc/apt/keyrings/githubcli-archive-keyring.gpg" | sha256sum -c - \
@@ -40,6 +40,7 @@ COPY packages/plugins/create-paperclip-plugin/package.json packages/plugins/crea
 COPY packages/plugins/plugin-bright-data-agent-tools/package.json packages/plugins/plugin-bright-data-agent-tools/
 COPY packages/plugins/plugin-dataforseo-agent-tools/package.json packages/plugins/plugin-dataforseo-agent-tools/
 COPY packages/plugins/plugin-exa-agent-tools/package.json packages/plugins/plugin-exa-agent-tools/
+COPY packages/plugins/plugin-seo-performance-loop/package.json packages/plugins/plugin-seo-performance-loop/
 COPY packages/plugins/plugin-serper-agent-tools/package.json packages/plugins/plugin-serper-agent-tools/
 COPY packages/plugins/examples/plugin-authoring-smoke-example/package.json packages/plugins/examples/plugin-authoring-smoke-example/
 COPY packages/plugins/examples/plugin-file-browser-example/package.json packages/plugins/examples/plugin-file-browser-example/
@@ -93,4 +94,4 @@ VOLUME ["/paperclip"]
 EXPOSE 3100
 
 ENTRYPOINT ["docker-entrypoint.sh"]
-CMD ["node", "--import", "./server/node_modules/tsx/dist/loader.mjs", "server/dist/index.js"]
+CMD ["node", "--max-old-space-size=7168", "--import", "./server/node_modules/tsx/dist/loader.mjs", "server/dist/index.js"]

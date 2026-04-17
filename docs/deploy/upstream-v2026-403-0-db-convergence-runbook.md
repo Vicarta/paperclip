@@ -276,6 +276,43 @@ the live AST deployment:
 
 This sequence is now the preferred cutover order for the `v2026.403.0` wave.
 
+### Post-cutover AST storage stabilization
+
+After the live cutover, inspect the effective backup cadence inside the running
+instance config before leaving the deployment window.
+
+Observed AST-specific finding:
+
+- automatic SQL backups had been left on an effective cadence of roughly
+  `intervalMinutes = 60` with `retentionDays = 30`
+- the result was `216` full SQL dumps and `paperclip_paperclip_data = 56.11G`
+
+Current AST operating baseline after cleanup:
+
+- keep roughly one backup per day
+- preserve the most recent cutover snapshots separately when still needed
+- set:
+  - `database.backup.intervalMinutes = 1440`
+  - `database.backup.retentionDays = 7`
+
+Reason:
+
+- the live volume pressure came primarily from backup retention, not from
+  current runtime state
+- future cutovers should verify backup cadence immediately after health checks,
+  not only after disk pressure becomes visible
+
+### Diagnostic packages in production image
+
+The production image now intentionally includes `procps`.
+
+Reason:
+
+- operator debugging on live containers occasionally needs `ps` for quick
+  process inspection
+- relying on ad-hoc package installs inside the running container is fragile
+  and not reproducible across deploys
+
 ### Bundled provider-plugin normalization
 
 For the current Astrogen deployment, provider plugins are bundled in the app

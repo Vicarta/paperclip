@@ -139,6 +139,8 @@ This confirms the upstream-compatible plugin cost bridge is persisting external 
 ### Additional Bright Data Smoke Completed
 
 - `AST-448` rerun completed as `done` on the upgraded live runtime
+- earlier blocked smoke lane `AST-447` was later cancelled as superseded by
+  `AST-448`, so it no longer remains as an open post-cutover blocker
 - live Bright Data smoke confirmed:
   - `paperclip.bright-data-agent-tools:list-tools`
   - `paperclip.bright-data-agent-tools:resolve-instagram-account-post-set`
@@ -257,6 +259,88 @@ This confirms the upstream-compatible plugin cost bridge is persisting external 
 - codify bundled plugin manifest snapshot refresh in future deploy automation so
   package changes and DB plugin metadata cannot drift again
 
+### Additional Operator Wakeup Smoke Completed On 2026-04-14
+
+- a fresh agent API key was minted through the normal `agent local-cli` path for
+  the live `CEO` agent
+- two concurrent manual CLI invocations of:
+  - `pnpm paperclipai heartbeat run --agent-id b45dcb01-db0d-40c9-9bdf-d7c1d93e8c1d`
+  were launched against the upgraded live runtime
+- both invocations resolved to the same live run id:
+  - `ffd587ee-8ef7-42d6-8b6e-55e441084276`
+- this confirms the post-cutover `followExistingIfRunning` path is coalescing
+  duplicate operator wakeups instead of creating a second queued run tail
+- the shared run completed with final status:
+  - `succeeded`
+
+### Additional Volume And Diagnostics Hardening Completed On 2026-04-15
+
+- live `paperclip_paperclip_data` had grown to `56.11G`
+- direct inspection showed the dominant consumer was the automatic SQL backup
+  directory under:
+  - `/var/lib/docker/volumes/paperclip_paperclip_data/_data/instances/default/data/backups`
+- the live AST deployment had accumulated `216` SQL dump files because backup
+  cadence and retention were still effectively set to:
+  - `intervalMinutes = 60`
+  - `retentionDays = 30`
+- operational cleanup removed `198` stale dumps and kept a narrow retention set:
+  - one backup per day
+  - plus the two fresh cutover snapshots from `2026-04-14`
+- resulting live state after cleanup:
+  - `paperclip_paperclip_data = 6.97G`
+  - backup directory size ≈ `5.1G`
+- live config was then hardened to:
+  - `database.backup.intervalMinutes = 1440`
+  - `database.backup.retentionDays = 7`
+- the production image now also includes `procps`, so standard process
+  diagnostics such as `ps` are available inside `paperclip-app-1`
+- live verification after rebuild confirmed:
+  - `/usr/bin/ps`
+  - `ps -eo pid,comm` executes successfully inside the running app container
+
+### Additional Writer Runtime Smoke Completed On 2026-04-14
+
+- the final writer-runtime smoke tail is now closed:
+  - `AST-451`
+  - `AST-452`
+  - `AST-453`
+- all three issues completed through the normal issue-backed execution path
+  after the post-cutover runtime fixes
+- confirmed live outcomes:
+  - issue comment wakeup created a fresh writer heartbeat run
+  - the run received populated issue context fields:
+    - `paperclipIssueId`
+    - `paperclipIssueIdentifier`
+    - `paperclipCurrentIssueMarkdown`
+  - the assigned writer run created the expected minimal `draft` issue document
+  - the assigned writer run added a completion comment
+  - the assigned writer run applied normal issue protocol and closed the issue as
+    `done`
+- representative completed runs:
+  - `AST-453` -> run `54820b15-ba2e-475c-a44d-53e24afdd0e9`
+  - `AST-452` -> run `b357636f-e734-4b41-8e46-f8f510dc826f`
+  - `AST-451` -> run `0119b0c8-9f15-4216-81e8-2f2593f3ffe8`
+
+### Root Cause Found During Writer Runtime Smoke
+
+- issue-bound OpenRouter runs were not receiving a normalized current-issue
+  payload in adapter-visible runtime context
+- the writer run therefore started with effectively empty current-issue content
+  even though the wakeup was tied to a concrete Paperclip issue
+- this caused false-positive execution where the run could succeed mechanically
+  without actually following the intended issue-backed draft/comment/closeout
+  contract
+
+### Hardening Applied After Writer Runtime Smoke
+
+- heartbeat runtime context now injects normalized issue-bound fields for the
+  current task:
+  - `paperclipIssueId`
+  - `paperclipIssueIdentifier`
+  - `paperclipCurrentIssueMarkdown`
+- the new helper path is covered by local server tests and validated by the
+  live `AST-451/452/453` smoke sequence
+
 ## Operational Conclusion
 
 The cutover is production-viable.
@@ -267,7 +351,7 @@ The next layer of validation should stay focused and incremental, not return to 
 
 1. `DataForSEO` heartbeat traceability is now confirmed on live runtime; keep this behavior covered in future cutover smoke
 2. `Bright Data` deferred accounting path is now bootstrapped on live runtime: the reconciler completed its first `--apply`, initialized `plugin_state` baseline, and correctly emitted `0` `brightdata.com` cost events because the visible zone-cost buckets were still zero; future non-zero usage should now accumulate from that baseline instead of requiring another historical bootstrap
-3. move on to the next business-critical agent lane
+3. the writer issue-backed runtime smoke tail is now closed; remaining follow-up work is no longer a business-critical cutover blocker and should be treated as normal post-cutover stabilization or product-domain backlog
 
 ## Recommended Operator Path For Business Smoke
 

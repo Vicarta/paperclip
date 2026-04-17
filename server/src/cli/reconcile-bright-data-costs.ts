@@ -105,16 +105,20 @@ export async function runBrightDataCostReconcilerCli(argv: string[]) {
 
   const { createDb } = await loadDbModule();
   const db = createDb(dbUrl);
-  const result = await reconcileBrightDataCosts(db, {
-    companyId: options.companyId,
-    agentId: options.agentId ?? undefined,
-    zoneNames: options.zones,
-    includeAllZones: options.includeAllZones,
-    includeCurrentDay: options.includeCurrentDay,
-    apply: options.apply,
-  });
+  try {
+    const result = await reconcileBrightDataCosts(db, {
+      companyId: options.companyId,
+      agentId: options.agentId ?? undefined,
+      zoneNames: options.zones,
+      includeAllZones: options.includeAllZones,
+      includeCurrentDay: options.includeCurrentDay,
+      apply: options.apply,
+    });
 
-  console.log(JSON.stringify(result, null, 2));
+    console.log(JSON.stringify(result, null, 2));
+  } finally {
+    await db.$client.end({ timeout: 5 });
+  }
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

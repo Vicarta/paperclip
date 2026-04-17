@@ -177,6 +177,37 @@ Operational meaning:
 - future non-zero Bright Data zone-cost deltas should accumulate from this baseline instead of double-counting historical usage
 - a later apply run is required only after new zone-cost usage appears
 
+## Automated 30-Minute Reconciliation
+
+Live AST now runs the reconciler automatically via host `systemd`, without any
+LLM involvement in the execution path.
+
+Current live units:
+
+- service: `paperclip-bright-data-reconcile.service`
+- timer: `paperclip-bright-data-reconcile.timer`
+
+Schedule:
+
+- first run after boot: `OnBootSec=10min`
+- recurring cadence: `OnUnitActiveSec=30min`
+- missed runs are replayable via `Persistent=true`
+
+Exec path:
+
+- host script: `/usr/local/bin/paperclip-bright-data-reconcile`
+- runtime command inside `paperclip-app-1`:
+
+```sh
+cd /app && pnpm --filter @paperclipai/server exec tsx src/cli/reconcile-bright-data-costs.ts --company-id c33f6b81-5ced-4270-9288-b46a32f6337a --agent-id b45dcb01-db0d-40c9-9bdf-d7c1d93e8c1d --include-current-day --apply
+```
+
+Hardening applied for automation:
+
+- the CLI now closes its Postgres client explicitly after printing the result
+- this prevents the oneshot `systemd` service from remaining active after the
+  reconciliation logic already finished
+
 ## Open Questions
 
 1. Is aggregate company-level Bright Data cost enough for now?
