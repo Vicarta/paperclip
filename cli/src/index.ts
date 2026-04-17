@@ -118,6 +118,7 @@ heartbeat
   .command("run")
   .description("Run one agent heartbeat and stream live logs")
   .requiredOption("-a, --agent-id <agentId>", "Agent ID to invoke")
+  .option("--issue-id <issueId>", "Bind the heartbeat invocation to a specific issue")
   .option("-c, --config <path>", "Path to config file")
   .option("-d, --data-dir <path>", DATA_DIR_OPTION_HELP)
   .option("--context <path>", "Path to CLI context file")

@@ -7,6 +7,7 @@ import {
   companies,
   createDb,
   executionWorkspaces,
+  heartbeatRuns,
   instanceSettings,
   issueComments,
   issueInboxArchives,
@@ -974,5 +975,91 @@ describeEmbeddedPostgres("issueService.create workspace inheritance", () => {
     await svc.release(blocked.id, agentId, null);
 
     expect(await labelNamesForIssue(blocked.id)).toEqual(["Editorial"]);
+  });
+});
+
+describeEmbeddedPostgres("issueService.assertCheckoutOwner", () => {
+  let db!: ReturnType<typeof createDb>;
+  let svc!: ReturnType<typeof issueService>;
+  let tempDb: Awaited<ReturnType<typeof startEmbeddedPostgresTestDatabase>> | null = null;
+
+  beforeAll(async () => {
+    tempDb = await startEmbeddedPostgresTestDatabase("paperclip-issues-checkout-owner-");
+    db = createDb(tempDb.connectionString);
+    svc = issueService(db);
+  }, 20_000);
+
+  afterEach(async () => {
+    await db.delete(issueComments);
+    await db.delete(issueInboxArchives);
+    await db.delete(activityLog);
+    await db.delete(issues);
+    await db.delete(heartbeatRuns);
+    await db.delete(executionWorkspaces);
+    await db.delete(projectWorkspaces);
+    await db.delete(projects);
+    await db.delete(agents);
+    await db.delete(instanceSettings);
+    await db.delete(companies);
+  });
+
+  afterAll(async () => {
+    await tempDb?.cleanup();
+  });
+
+  it("adopts a missing checkout lock when the actor run already owns execution", async () => {
+    const companyId = randomUUID();
+    const agentId = randomUUID();
+    const issueId = randomUUID();
+    const runId = randomUUID();
+
+    await db.insert(companies).values({
+      id: companyId,
+      name: "Paperclip",
+      issuePrefix: `T${companyId.replace(/-/g, "").slice(0, 6).toUpperCase()}`,
+      requireBoardApprovalForNewAgents: false,
+    });
+
+    await db.insert(agents).values({
+      id: agentId,
+      companyId,
+      name: "Writer",
+      role: "engineer",
+      status: "active",
+      adapterType: "codex_local",
+      adapterConfig: {},
+      runtimeConfig: {},
+      permissions: {},
+    });
+
+    await db.insert(heartbeatRuns).values({
+      id: runId,
+      companyId,
+      agentId,
+      invocationSource: "assignment",
+      status: "running",
+      contextSnapshot: { issueId },
+    });
+
+    await db.insert(issues).values({
+      id: issueId,
+      companyId,
+      title: "Execution-owned issue",
+      status: "in_progress",
+      priority: "medium",
+      assigneeAgentId: agentId,
+      checkoutRunId: null,
+      executionRunId: runId,
+    });
+
+    const ownership = await svc.assertCheckoutOwner(issueId, agentId, runId);
+
+    expect(ownership.checkoutRunId).toBe(runId);
+    expect(ownership.executionRunId).toBe(runId);
+    expect(ownership.adoptedFromRunId).toBeNull();
+
+    const persisted = await db.select().from(issues).where(eq(issues.id, issueId)).then((rows) => rows[0] ?? null);
+    expect(persisted?.checkoutRunId).toBe(runId);
+    expect(persisted?.executionRunId).toBe(runId);
   });
 });

@@ -1,6 +1,13 @@
 import { setTimeout as delay } from "node:timers/promises";
 import pc from "picocolors";
-import type { Agent, HeartbeatRun, HeartbeatRunEvent, HeartbeatRunStatus } from "@paperclipai/shared";
+import type {
+  Agent,
+  AgentWakeupResponse,
+  AgentWakeupSkipped,
+  HeartbeatRun,
+  HeartbeatRunEvent,
+  HeartbeatRunStatus,
+} from "@paperclipai/shared";
 import { getCLIAdapter } from "../adapters/index.js";
 import { resolveCommandContext } from "./client/common.js";
 
@@ -11,7 +18,6 @@ const POLL_INTERVAL_MS = 200;
 
 type HeartbeatSource = (typeof HEARTBEAT_SOURCES)[number];
 type HeartbeatTrigger = (typeof HEARTBEAT_TRIGGERS)[number];
-type InvokedHeartbeat = HeartbeatRun | { status: "skipped" };
 interface HeartbeatRunEventRecord extends HeartbeatRunEvent {
   type?: string | null;
 }
@@ -21,6 +27,7 @@ interface HeartbeatRunOptions {
   context?: string;
   profile?: string;
   agentId: string;
+  issueId?: string;
   apiBase?: string;
   apiKey?: string;
   source: string;
@@ -82,27 +89,30 @@ export async function heartbeatRun(opts: HeartbeatRunOptions): Promise<void> {
     return;
   }
 
-  const invokeRes = await api.post<InvokedHeartbeat>(
+  const invokeRes = await api.post<AgentWakeupResponse>(
     `/api/agents/${opts.agentId}/wakeup`,
     {
       source: source,
       triggerDetail: triggerDetail,
+      followExistingIfRunning: true,
+      payload:
+        typeof opts.issueId === "string" && opts.issueId.trim().length > 0
+          ? { issueId: opts.issueId.trim() }
+          : null,
     },
   );
   if (!invokeRes) {
     console.error(pc.red("Failed to invoke heartbeat"));
     return;
   }
-  if ((invokeRes as { status?: string }).status === "skipped") {
-    console.log(pc.yellow("Heartbeat invocation was skipped"));
+  const resolvedWakeup = resolveWakeupTrackingTarget(invokeRes);
+  if (!resolvedWakeup.runId) {
+    console.log(pc.yellow(resolvedWakeup.message ?? "Heartbeat invocation was skipped"));
     return;
   }
+  console.log(pc.cyan(resolvedWakeup.message));
 
-  const run = invokeRes as HeartbeatRun;
-  console.log(pc.cyan(`Invoked heartbeat run ${run.id} for agent ${agent.name} (${agent.id})`));
-
-  const runId = run.id;
-  let activeRunId: string | null = null;
+  let activeRunId: string | null = resolvedWakeup.runId;
   let lastEventSeq = 0;
   let logOffset = 0;
   let stdoutJsonBuffer = "";
@@ -176,7 +186,7 @@ export async function heartbeatRun(opts: HeartbeatRunOptions): Promise<void> {
 
   const handleEvent = (event: HeartbeatRunEventRecord) => {
     const payload = normalizePayload(event.payload);
-    if (event.runId !== runId) return;
+    if (event.runId !== activeRunId) return;
     const eventType = typeof event.eventType === "string"
       ? event.eventType
       : typeof event.type === "string"
@@ -204,7 +214,6 @@ export async function heartbeatRun(opts: HeartbeatRunOptions): Promise<void> {
     lastEventSeq = Math.max(lastEventSeq, event.seq ?? 0);
   };
 
-  activeRunId = runId;
   let finalStatus: string | null = null;
   let finalError: string | null = null;
   let finalRun: HeartbeatRun | null = null;
@@ -216,21 +225,37 @@ export async function heartbeatRun(opts: HeartbeatRunOptions): Promise<void> {
   }
 
   while (true) {
-      const events = await api.get<HeartbeatRunEvent[]>(
-        `/api/heartbeat-runs/${activeRunId}/events?afterSeq=${lastEventSeq}&limit=100`,
-      );
+    const events = await api.get<HeartbeatRunEvent[]>(
+      `/api/heartbeat-runs/${activeRunId}/events?afterSeq=${lastEventSeq}&limit=100`,
+    );
     for (const event of Array.isArray(events) ? (events as HeartbeatRunEventRecord[]) : []) {
       handleEvent(event);
     }
 
-      const runList = (await api.get<(HeartbeatRun | null)[]>(
-        `/api/companies/${agent.companyId}/heartbeat-runs?agentId=${agent.id}`,
-      )) || [];
-      const currentRun = runList.find((r) => r && r.id === activeRunId) ?? null;
+    const runList = (await api.get<(HeartbeatRun | null)[]>(
+      `/api/companies/${agent.companyId}/heartbeat-runs?agentId=${agent.id}`,
+    )) || [];
+    let currentRun = runList.find((r) => r && r.id === activeRunId) ?? null;
 
     if (!currentRun) {
       console.error(pc.red("Heartbeat run disappeared"));
       break;
+    }
+
+    const redirectedRun = resolveTrackedRunRedirect(activeRunId, runList);
+    if (redirectedRun && redirectedRun.id !== activeRunId) {
+      console.log(
+        pc.yellow(
+          `Switching heartbeat watch from queued run ${activeRunId} to active run ${redirectedRun.id} (${redirectedRun.invocationSource}).`,
+        ),
+      );
+      activeRunId = redirectedRun.id;
+      currentRun = redirectedRun;
+      lastEventSeq = 0;
+      logOffset = 0;
+      finalStatus = null;
+      finalError = null;
+      finalRun = null;
     }
 
     const currentStatus = currentRun.status as HeartbeatRunStatus | undefined;
@@ -325,6 +350,51 @@ export async function heartbeatRun(opts: HeartbeatRunOptions): Promise<void> {
 
 function normalizePayload(payload: unknown): Record<string, unknown> {
   return typeof payload === "object" && payload !== null ? (payload as Record<string, unknown>) : {};
+}
+
+function isWakeupSkipped(value: AgentWakeupResponse): value is AgentWakeupSkipped {
+  return value.status === "skipped";
+}
+
+interface ResolvedWakeupTarget {
+  runId: string | null;
+  message: string;
+}
+
+export function resolveWakeupTrackingTarget(response: AgentWakeupResponse): ResolvedWakeupTarget {
+  if (!isWakeupSkipped(response)) {
+    return {
+      runId: response.id,
+      message: `Invoked heartbeat run ${response.id} for agent execution`,
+    };
+  }
+
+  if (response.executionRunId) {
+    return {
+      runId: response.executionRunId,
+      message:
+        response.message ??
+        `Wakeup was deferred; following active execution run ${response.executionRunId}.`,
+    };
+  }
+
+  return {
+    runId: null,
+    message: response.message ?? "Heartbeat invocation was skipped",
+  };
+}
+
+export function resolveTrackedRunRedirect(
+  activeRunId: string,
+  runList: ReadonlyArray<HeartbeatRun | null | undefined>,
+): HeartbeatRun | null {
+  const runs = runList.filter((run): run is HeartbeatRun => Boolean(run));
+  const currentRun = runs.find((run) => run.id === activeRunId);
+  if (!currentRun || currentRun.status !== "queued") return null;
+
+  const runningRuns = runs.filter((run) => run.status === "running" && run.id !== activeRunId);
+  if (runningRuns.length !== 1) return null;
+  return runningRuns[0] ?? null;
 }
 
 function safeParseLogLine(line: string): { stream: "stdout" | "stderr" | "system"; chunk: string } | null {

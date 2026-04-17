@@ -1569,6 +1569,7 @@ export function issueService(db: Db) {
           status: issues.status,
           assigneeAgentId: issues.assigneeAgentId,
           checkoutRunId: issues.checkoutRunId,
+          executionRunId: issues.executionRunId,
         })
         .from(issues)
         .where(eq(issues.id, id))
@@ -1582,6 +1583,46 @@ export function issueService(db: Db) {
         sameRunLock(current.checkoutRunId, actorRunId)
       ) {
         return { ...current, adoptedFromRunId: null as string | null };
+      }
+
+      if (
+        actorRunId &&
+        current.status === "in_progress" &&
+        current.assigneeAgentId === actorAgentId &&
+        current.checkoutRunId == null &&
+        current.executionRunId === actorRunId
+      ) {
+        const adopted = await db
+          .update(issues)
+          .set({
+            checkoutRunId: actorRunId,
+            executionLockedAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .where(
+            and(
+              eq(issues.id, id),
+              eq(issues.status, "in_progress"),
+              eq(issues.assigneeAgentId, actorAgentId),
+              isNull(issues.checkoutRunId),
+              eq(issues.executionRunId, actorRunId),
+            ),
+          )
+          .returning({
+            id: issues.id,
+            status: issues.status,
+            assigneeAgentId: issues.assigneeAgentId,
+            checkoutRunId: issues.checkoutRunId,
+            executionRunId: issues.executionRunId,
+          })
+          .then((rows) => rows[0] ?? null);
+
+        if (adopted) {
+          return {
+            ...adopted,
+            adoptedFromRunId: null as string | null,
+          };
+        }
       }
 
       if (

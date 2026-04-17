@@ -3301,6 +3301,8 @@ function RunDetail({ run: initialRun, agentRouteId, adapterType }: { run: Heartb
 /* ---- Log Viewer ---- */
 
 function LogViewer({ run, adapterType }: { run: HeartbeatRun; adapterType: string }) {
+  const LOG_POLL_INTERVAL_MS = 5000;
+  const LOG_READ_LIMIT_BYTES = 64_000;
   const [events, setEvents] = useState<HeartbeatRunEvent[]>([]);
   const [logLines, setLogLines] = useState<Array<{ ts: string; stream: "stdout" | "stderr" | "system"; chunk: string }>>([]);
   const [loading, setLoading] = useState(true);
@@ -3322,7 +3324,7 @@ function LogViewer({ run, adapterType }: { run: HeartbeatRun; adapterType: strin
   const { data: workspaceOperations = [] } = useQuery({
     queryKey: queryKeys.runWorkspaceOperations(run.id),
     queryFn: () => heartbeatsApi.workspaceOperations(run.id),
-    refetchInterval: isLive ? 2000 : false,
+    refetchInterval: isLive ? LOG_POLL_INTERVAL_MS : false,
   });
 
   function isRunLogUnavailable(err: unknown): boolean {
@@ -3473,15 +3475,15 @@ function LogViewer({ run, adapterType }: { run: HeartbeatRun; adapterType: strin
     setLogLoading(true);
     const firstLimit =
       typeof run.logBytes === "number" && run.logBytes > 0
-        ? Math.min(Math.max(run.logBytes + 1024, 256_000), 2_000_000)
-        : 256_000;
+        ? Math.min(Math.max(run.logBytes + 1024, LOG_READ_LIMIT_BYTES), 512_000)
+        : LOG_READ_LIMIT_BYTES;
 
     const load = async () => {
       try {
         let offset = 0;
         let first = true;
         while (!cancelled) {
-          const result = await heartbeatsApi.log(run.id, offset, first ? firstLimit : 256_000);
+          const result = await heartbeatsApi.log(run.id, offset, first ? firstLimit : LOG_READ_LIMIT_BYTES);
           if (cancelled) break;
           appendLogContent(result.content, result.nextOffset === undefined);
           const next = result.nextOffset ?? offset + result.content.length;
@@ -3522,16 +3524,16 @@ function LogViewer({ run, adapterType }: { run: HeartbeatRun; adapterType: strin
       } catch {
         // ignore polling errors
       }
-    }, 2000);
+    }, LOG_POLL_INTERVAL_MS);
     return () => clearInterval(interval);
-  }, [run.id, isLive, isStreamingConnected, events]);
+  }, [run.id, isLive, isStreamingConnected, events, LOG_POLL_INTERVAL_MS]);
 
   // Poll shell log for running runs
   useEffect(() => {
     if (!isLive || isStreamingConnected) return;
     const interval = setInterval(async () => {
       try {
-        const result = await heartbeatsApi.log(run.id, logOffset, 256_000);
+        const result = await heartbeatsApi.log(run.id, logOffset, LOG_READ_LIMIT_BYTES);
         if (result.content) {
           appendLogContent(result.content, result.nextOffset === undefined);
         }
@@ -3544,9 +3546,9 @@ function LogViewer({ run, adapterType }: { run: HeartbeatRun; adapterType: strin
         if (isRunLogUnavailable(err)) return;
         // ignore polling errors
       }
-    }, 2000);
+    }, LOG_POLL_INTERVAL_MS);
     return () => clearInterval(interval);
-  }, [run.id, isLive, isStreamingConnected, logOffset]);
+  }, [run.id, isLive, isStreamingConnected, logOffset, LOG_POLL_INTERVAL_MS, LOG_READ_LIMIT_BYTES]);
 
   // Stream live updates from websocket (primary path for running runs).
   useEffect(() => {

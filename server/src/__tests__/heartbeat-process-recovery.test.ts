@@ -285,4 +285,37 @@ describeEmbeddedPostgres("heartbeat orphaned process recovery", () => {
       agentRole: "engineer",
     });
   });
+
+  it("coalesces manual follow-existing wakeups into the active running run", async () => {
+    const { agentId, runId } = await seedRunFixture({
+      agentStatus: "running",
+      includeIssue: false,
+    });
+    const heartbeat = heartbeatService(db);
+
+    const observed = await heartbeat.wakeup(agentId, {
+      source: "on_demand",
+      triggerDetail: "manual",
+      followExistingIfRunning: true,
+      requestedByActorType: "user",
+      requestedByActorId: "board-user",
+    });
+
+    expect(observed?.id).toBe(runId);
+
+    const runs = await db
+      .select()
+      .from(heartbeatRuns)
+      .where(eq(heartbeatRuns.agentId, agentId));
+    expect(runs).toHaveLength(1);
+
+    const wakeups = await db
+      .select()
+      .from(agentWakeupRequests)
+      .where(eq(agentWakeupRequests.agentId, agentId));
+    expect(wakeups).toHaveLength(2);
+    const coalescedWakeup = wakeups.find((row) => row.runId === runId && row.status === "coalesced");
+    expect(coalescedWakeup?.reason).toBe("follow_existing_running_run");
+    expect(coalescedWakeup?.finishedAt).not.toBeNull();
+  });
 });

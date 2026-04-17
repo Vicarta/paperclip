@@ -34,6 +34,7 @@ import { mergeAdapterConfigs } from "./adapter-config-merge.js";
 import { secretService } from "./secrets.js";
 import { resolveDefaultAgentWorkspaceDir, resolveManagedProjectWorkspaceDir } from "../home-paths.js";
 import { summarizeHeartbeatRunResultJson } from "./heartbeat-run-summary.js";
+import { buildHeartbeatPromptIssueMarkdown } from "./heartbeat-issue-context.js";
 import {
   buildWorkspaceReadyComment,
   cleanupExecutionWorkspaceArtifacts,
@@ -295,6 +296,7 @@ interface WakeupOptions {
   reason?: string | null;
   payload?: Record<string, unknown> | null;
   idempotencyKey?: string | null;
+  followExistingIfRunning?: boolean;
   requestedByActorType?: "user" | "agent" | "system";
   requestedByActorId?: string | null;
   contextSnapshot?: Record<string, unknown>;
@@ -2101,6 +2103,9 @@ export function heartbeatService(db: Db) {
             id: issues.id,
             identifier: issues.identifier,
             title: issues.title,
+            description: issues.description,
+            status: issues.status,
+            priority: issues.priority,
             projectId: issues.projectId,
             projectWorkspaceId: issues.projectWorkspaceId,
             executionWorkspaceId: issues.executionWorkspaceId,
@@ -2182,6 +2187,15 @@ export function heartbeatService(db: Db) {
           executionWorkspacePreference: issueContext.executionWorkspacePreference,
         }
       : null;
+    if (issueContext) {
+      context.paperclipIssueId = issueContext.id;
+      context.paperclipIssueIdentifier = issueContext.identifier ?? issueContext.id;
+      context.paperclipCurrentIssueMarkdown = buildHeartbeatPromptIssueMarkdown(issueContext);
+    } else {
+      delete context.paperclipIssueId;
+      delete context.paperclipIssueIdentifier;
+      delete context.paperclipCurrentIssueMarkdown;
+    }
     const existingExecutionWorkspace =
       issueRef?.executionWorkspaceId ? await executionWorkspacesSvc.getById(issueRef.executionWorkspaceId) : null;
     const shouldReuseExisting =
@@ -3520,6 +3534,28 @@ export function heartbeatService(db: Db) {
       .from(heartbeatRuns)
       .where(and(eq(heartbeatRuns.agentId, agentId), inArray(heartbeatRuns.status, ["queued", "running"])))
       .orderBy(desc(heartbeatRuns.createdAt));
+
+    if (opts.followExistingIfRunning === true) {
+      const runningRun = activeRuns.find((candidate) => candidate.status === "running") ?? null;
+      if (runningRun) {
+        await db.insert(agentWakeupRequests).values({
+          companyId: agent.companyId,
+          agentId,
+          source,
+          triggerDetail,
+          reason: reason ?? "follow_existing_running_run",
+          payload,
+          status: "coalesced",
+          coalescedCount: 1,
+          requestedByActorType: opts.requestedByActorType ?? null,
+          requestedByActorId: opts.requestedByActorId ?? null,
+          idempotencyKey: opts.idempotencyKey ?? null,
+          runId: runningRun.id,
+          finishedAt: new Date(),
+        });
+        return runningRun;
+      }
+    }
 
     const sameScopeQueuedRun = activeRuns.find(
       (candidate) => candidate.status === "queued" && isSameTaskScope(runTaskKey(candidate), taskKey),

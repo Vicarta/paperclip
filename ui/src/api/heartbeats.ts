@@ -39,13 +39,13 @@ export const heartbeatsApi = {
     api.get<HeartbeatRunEvent[]>(
       `/heartbeat-runs/${runId}/events?afterSeq=${encodeURIComponent(String(afterSeq))}&limit=${encodeURIComponent(String(limit))}`,
     ),
-  log: (runId: string, offset = 0, limitBytes = 256000) =>
+  log: (runId: string, offset = 0, limitBytes = 64_000) =>
     api.get<{ runId: string; store: string; logRef: string; content: string; nextOffset?: number }>(
       `/heartbeat-runs/${runId}/log?offset=${encodeURIComponent(String(offset))}&limitBytes=${encodeURIComponent(String(limitBytes))}`,
     ),
   workspaceOperations: (runId: string) =>
     api.get<WorkspaceOperation[]>(`/heartbeat-runs/${runId}/workspace-operations`),
-  workspaceOperationLog: (operationId: string, offset = 0, limitBytes = 256000) =>
+  workspaceOperationLog: (operationId: string, offset = 0, limitBytes = 64_000) =>
     api.get<{ operationId: string; store: string; logRef: string; content: string; nextOffset?: number }>(
       `/workspace-operations/${operationId}/log?offset=${encodeURIComponent(String(offset))}&limitBytes=${encodeURIComponent(String(limitBytes))}`,
     ),

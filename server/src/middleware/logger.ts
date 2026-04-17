@@ -26,6 +26,17 @@ const sharedOpts = {
   singleLine: true,
 };
 
+function isNoisySuccessRoute(url: string) {
+  return (
+    /\/heartbeat-runs\/[^/]+\/log(?:\?|$)/.test(url) ||
+    /\/workspace-operations\/[^/]+\/log(?:\?|$)/.test(url) ||
+    /\/companies\/[^/]+\/live-runs(?:\?|$)/.test(url) ||
+    /\/companies\/[^/]+\/dashboard(?:\?|$)/.test(url) ||
+    /\/companies\/[^/]+\/sidebar-badges(?:\?|$)/.test(url) ||
+    /\/companies\/[^/]+\/agents(?:\?|$)/.test(url)
+  );
+}
+
 export const logger = pino({
   level: "debug",
 }, pino.transport({
@@ -46,6 +57,8 @@ export const logger = pino({
 export const httpLogger = pinoHttp({
   logger,
   customLogLevel(_req, res, err) {
+    const url = _req.url ?? "";
+    if (!err && res.statusCode < 400 && isNoisySuccessRoute(url)) return "silent";
     if (err || res.statusCode >= 500) return "error";
     if (res.statusCode >= 400) return "warn";
     return "info";

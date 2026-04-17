@@ -12,8 +12,6 @@ import { Identity } from "./Identity";
 import { RunTranscriptView } from "./transcript/RunTranscriptView";
 import { useLiveRunTranscripts } from "./transcript/useLiveRunTranscripts";
 
-const MIN_DASHBOARD_RUNS = 4;
-
 function isRunActive(run: LiveRunForIssue): boolean {
   return run.status === "queued" || run.status === "running";
 }
@@ -25,7 +23,8 @@ interface ActiveAgentsPanelProps {
 export function ActiveAgentsPanel({ companyId }: ActiveAgentsPanelProps) {
   const { data: liveRuns } = useQuery({
     queryKey: [...queryKeys.liveRuns(companyId), "dashboard"],
-    queryFn: () => heartbeatsApi.liveRunsForCompany(companyId, MIN_DASHBOARD_RUNS),
+    queryFn: () => heartbeatsApi.liveRunsForCompany(companyId),
+    refetchInterval: 10_000,
   });
 
   const runs = liveRuns ?? [];

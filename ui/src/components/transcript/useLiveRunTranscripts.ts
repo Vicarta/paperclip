@@ -6,8 +6,8 @@ import { heartbeatsApi, type LiveRunForIssue } from "../../api/heartbeats";
 import { buildTranscript, getUIAdapter, type RunLogChunk, type TranscriptEntry } from "../../adapters";
 import { queryKeys } from "../../lib/queryKeys";
 
-const LOG_POLL_INTERVAL_MS = 2000;
-const LOG_READ_LIMIT_BYTES = 256_000;
+const LOG_POLL_INTERVAL_MS = 5000;
+const LOG_READ_LIMIT_BYTES = 64_000;
 
 interface UseLiveRunTranscriptsOptions {
   runs: LiveRunForIssue[];
@@ -78,9 +78,17 @@ export function useLiveRunTranscripts({
     () => new Set(runs.filter((run) => !isTerminalStatus(run.status)).map((run) => run.id)),
     [runs],
   );
+  const activeRuns = useMemo(
+    () => runs.filter((run) => !isTerminalStatus(run.status)),
+    [runs],
+  );
   const runIdsKey = useMemo(
     () => runs.map((run) => run.id).sort((a, b) => a.localeCompare(b)).join(","),
     [runs],
+  );
+  const activeRunIdsKey = useMemo(
+    () => activeRuns.map((run) => run.id).sort((a, b) => a.localeCompare(b)).join(","),
+    [activeRuns],
   );
 
   const appendChunks = (runId: string, chunks: Array<RunLogChunk & { dedupeKey: string }>) => {
@@ -156,20 +164,50 @@ export function useLiveRunTranscripts({
       }
     };
 
-    const readAll = async () => {
-      await Promise.all(runs.map((run) => readRunLog(run)));
+    void Promise.all(runs.map((run) => readRunLog(run)));
+
+    return () => {
+      cancelled = true;
+    };
+  }, [runIdsKey, runs]);
+
+  useEffect(() => {
+    if (activeRuns.length === 0) return;
+
+    let cancelled = false;
+
+    const pollActiveLogs = async () => {
+      await Promise.all(activeRuns.map(async (run) => {
+        if (cancelled) return;
+        const offset = logOffsetByRunRef.current.get(run.id) ?? 0;
+        try {
+          const result = await heartbeatsApi.log(run.id, offset, LOG_READ_LIMIT_BYTES);
+          if (cancelled) return;
+
+          appendChunks(run.id, parsePersistedLogContent(run.id, result.content, pendingLogRowsByRunRef.current));
+
+          if (result.nextOffset !== undefined) {
+            logOffsetByRunRef.current.set(run.id, result.nextOffset);
+            return;
+          }
+          if (result.content.length > 0) {
+            logOffsetByRunRef.current.set(run.id, offset + result.content.length);
+          }
+        } catch {
+          // Ignore log read errors while output is initializing.
+        }
+      }));
     };
 
-    void readAll();
     const interval = window.setInterval(() => {
-      void readAll();
+      void pollActiveLogs();
     }, LOG_POLL_INTERVAL_MS);
 
     return () => {
       cancelled = true;
       window.clearInterval(interval);
     };
-  }, [runIdsKey, runs]);
+  }, [activeRunIdsKey, activeRuns]);
 
   useEffect(() => {
     if (!companyId || activeRunIds.size === 0) return;

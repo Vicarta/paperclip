@@ -104,6 +104,12 @@ export function agentRoutes(db: Db) {
     };
   }
 
+  function parseLogWindow(value: unknown, fallback = 64_000) {
+    const parsed = Number(value ?? fallback);
+    if (!Number.isFinite(parsed)) return fallback;
+    return Math.max(1_024, Math.min(64_000, Math.trunc(parsed)));
+  }
+
   function canCreateAgents(agent: { role: string; permissions: Record<string, unknown> | null | undefined }) {
     if (!agent.permissions || typeof agent.permissions !== "object") return false;
     return Boolean((agent.permissions as Record<string, unknown>).canCreateAgents);
@@ -2068,6 +2074,7 @@ export function agentRoutes(db: Db) {
       reason: req.body.reason ?? null,
       payload: req.body.payload ?? null,
       idempotencyKey: req.body.idempotencyKey ?? null,
+      followExistingIfRunning: req.body.followExistingIfRunning === true,
       requestedByActorType: req.actor.type === "agent" ? "agent" : "user",
       requestedByActorId: req.actor.type === "agent" ? req.actor.agentId ?? null : req.actor.userId ?? null,
       contextSnapshot: {
@@ -2307,10 +2314,10 @@ export function agentRoutes(db: Db) {
     assertCompanyAccess(req, run.companyId);
 
     const offset = Number(req.query.offset ?? 0);
-    const limitBytes = Number(req.query.limitBytes ?? 256000);
+    const limitBytes = parseLogWindow(req.query.limitBytes);
     const result = await heartbeat.readLog(runId, {
       offset: Number.isFinite(offset) ? offset : 0,
-      limitBytes: Number.isFinite(limitBytes) ? limitBytes : 256000,
+      limitBytes,
     });
 
     res.json(result);
@@ -2341,10 +2348,10 @@ export function agentRoutes(db: Db) {
     assertCompanyAccess(req, operation.companyId);
 
     const offset = Number(req.query.offset ?? 0);
-    const limitBytes = Number(req.query.limitBytes ?? 256000);
+    const limitBytes = parseLogWindow(req.query.limitBytes);
     const result = await workspaceOperations.readLog(operationId, {
       offset: Number.isFinite(offset) ? offset : 0,
-      limitBytes: Number.isFinite(limitBytes) ? limitBytes : 256000,
+      limitBytes,
     });
 
     res.json(result);
