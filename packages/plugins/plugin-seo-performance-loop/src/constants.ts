@@ -1,0 +1,52 @@
+export const PLUGIN_ID = "paperclip.seo-performance-loop";
+export const PLUGIN_VERSION = "0.1.0";
+
+export const SLOT_IDS = {
+  settingsPage: "seo-performance-loop-settings-page",
+  dashboardWidget: "seo-performance-loop-dashboard-widget",
+} as const;
+
+export const EXPORT_NAMES = {
+  settingsPage: "SeoPerformanceSettingsPage",
+  dashboardWidget: "SeoPerformanceDashboardWidget",
+} as const;
+
+export const JOB_KEYS = {
+  collectWeeklySearchTelemetry: "collect-weekly-search-telemetry",
+  evaluateWeeklySeoDecisions: "evaluate-weekly-seo-decisions",
+} as const;
+
+export const TOOL_NAMES = {
+  publishedArticleUpsert: "seo-published-article-upsert",
+  publishedArticleGet: "seo-published-article-get",
+  telemetryIngestionRecord: "seo-telemetry-ingestion-record",
+  telemetryIngestionGet: "seo-telemetry-ingestion-get",
+  telemetrySnapshotRecord: "seo-telemetry-snapshot-record",
+  searchTelemetryGet: "seo-search-telemetry-get",
+  performanceDecisionGet: "seo-performance-decision-get",
+  followupIssueOpen: "seo-followup-issue-open",
+} as const;
+
+export const DEFAULT_POLICY = {
+  stableWindowWeeks: 2,
+  noisyWindowWeeks: 2,
+  declineWindowWeeks: 2,
+  stablePositionDeltaThreshold: 1,
+  declinePositionDeltaThreshold: 3,
+  stableClickDeltaPct: 5,
+  declineClickDeltaPct: -15,
+  stableImpressionDeltaPct: 5,
+  declineImpressionDeltaPct: -15,
+} as const;
+
+export const DEFAULT_CONFIG = {
+  googleSearchConsoleCredentialSecretRef: "",
+  googleSearchConsolePropertyUrl: "",
+  defaultRankProvider: "paperclip-connected-provider",
+  defaultRankGeo: "ua",
+  defaultRankLanguage: "uk",
+  weeklyCollectionEnabled: true,
+  weeklyCollectionDay: "MO",
+  weeklyCollectionHourUtc: 3,
+  ...DEFAULT_POLICY,
+} as const;
