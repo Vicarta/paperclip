@@ -167,6 +167,16 @@ DELETE /api/issues/{issueId}/documents/{key}
 
 Delete is board-only in the current implementation.
 
+### Telegram Notification Contract Preview
+
+Resolve the dedicated `notification-contract` issue document into a Telegram-ready
+preview payload. The response includes the parsed contract plus the selected
+issue attachment(s) for delivery.
+
+```
+GET /api/issues/{issueId}/notification-contracts/telegram
+```
+
 ## Attachments
 
 ### Upload

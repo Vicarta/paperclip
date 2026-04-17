@@ -152,6 +152,20 @@ export {
   type UpsertIssueDocument,
   type RestoreIssueDocumentRevision,
 } from "./issue.js";
+export {
+  ISSUE_NOTIFICATION_CONTRACT_KEY,
+  issueNotificationChannelSchema,
+  issueNotificationTriggerSchema,
+  issueNotificationDeliveryModeSchema,
+  issueNotificationAttachmentSourceSchema,
+  issueNotificationRecipientTargetSchema,
+  issueNotificationAttachmentSelectorSchema,
+  issueNotificationRecipientSchema,
+  issueNotificationContractSchema,
+  type IssueNotificationAttachmentSelector,
+  type IssueNotificationRecipient,
+  type IssueNotificationContract,
+} from "./notification-contract.js";
 
 export {
   createIssueWorkProductSchema,

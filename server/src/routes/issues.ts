@@ -46,6 +46,8 @@ import { assertCompanyAccess, getActorInfo } from "./authz.js";
 import { shouldWakeAssigneeOnCheckout } from "./issues-checkout-wakeup.js";
 import { isAllowedContentType, MAX_ATTACHMENT_BYTES } from "../attachment-types.js";
 import { queueIssueAssignmentWakeup } from "../services/issue-assignment-wakeup.js";
+import { issueNotificationContractService } from "../services/issue-notification-contracts.js";
+import { issueTelegramNotificationService } from "../services/issue-telegram-notifications.js";
 
 const MAX_ISSUE_COMMENT_LIMIT = 500;
 const updateIssueRouteSchema = updateIssueSchema.extend({
@@ -79,6 +81,8 @@ export function issueRoutes(
   const executionWorkspacesSvc = executionWorkspaceService(db);
   const workProductsSvc = workProductService(db);
   const documentsSvc = documentService(db);
+  const issueNotificationContractsSvc = issueNotificationContractService(db);
+  const issueTelegramNotifications = issueTelegramNotificationService(db, storage);
   const routinesSvc = routineService(db);
   const feedbackExportService = opts?.feedbackExportService;
   const upload = multer({
@@ -626,6 +630,29 @@ export function issueRoutes(
     }
     const revisions = await documentsSvc.listIssueDocumentRevisions(issue.id, keyParsed.data);
     res.json(revisions);
+  });
+
+  router.get("/issues/:id/notification-contracts/telegram", async (req, res) => {
+    const id = req.params.id as string;
+    const issue = await svc.getById(id);
+    if (!issue) {
+      res.status(404).json({ error: "Issue not found" });
+      return;
+    }
+    assertCompanyAccess(req, issue.companyId);
+
+    try {
+      const resolved = await issueNotificationContractsSvc.getForIssue(issue.id);
+      if (!resolved) {
+        res.status(404).json({ error: "Notification contract not found" });
+        return;
+      }
+      res.json(resolved);
+    } catch (error) {
+      res.status(422).json({
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
   });
 
   router.post(
@@ -1201,6 +1228,14 @@ export function issueRoutes(
           trackAgentTaskCompleted(tc, { agentRole: actorAgent.role });
         }
       }
+      void issueTelegramNotifications.sendIssueDoneNotification(issue.id, {
+        actorType: actor.actorType,
+        actorId: actor.actorId,
+        agentId: actor.agentId,
+        runId: actor.runId,
+      }).catch((err) => {
+        logger.warn({ err, issueId: issue.id }, "failed to send issue-done telegram notification");
+      });
     }
 
     let comment = null;
