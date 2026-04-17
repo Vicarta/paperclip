@@ -23,7 +23,8 @@ import {
   buildOpenRouterIssueProtocolInstruction,
   parseOpenRouterIssueProtocolIntent,
 } from "./paperclip-protocol.js";
-import { upsertIssueDocumentViaApi } from "./paperclip-issue-client.js";
+import { uploadIssueArtifactViaApi, upsertIssueDocumentViaApi } from "./paperclip-issue-client.js";
+import { persistIssueArtifactToWorkspace } from "./paperclip-workspace-artifact.js";
 
 type OpenRouterResponse = {
   model?: unknown;
@@ -284,24 +285,23 @@ export async function execute(
       }
 
       if (intent.artifact) {
-        const artifactResponse = await fetch(
-          `${apiUrl.replace(/\/+$/, "")}/api/issues/${encodeURIComponent(currentIssueId)}/artifacts/file`,
-          {
-            method: "PUT",
-            headers,
-            body: JSON.stringify({
-              relativePath: intent.artifact.relativePath,
-              body: intent.artifact.body,
-            }),
-          },
-        );
-        const artifactText = await artifactResponse.text();
-        const artifactPayload = artifactText ? parseJson(artifactText) : null;
-        if (!artifactResponse.ok) {
-          throw new Error(
-            `Paperclip issue artifact write failed (${artifactResponse.status}): ${summarizeErrorPayload(artifactPayload) || artifactText || "unknown error"}`,
-          );
-        }
+        const workspaceRoot =
+          asString(parseObject(context.paperclipWorkspace).cwd, "").trim() ||
+          asString(parseObject(Array.isArray(context.paperclipWorkspaces) ? context.paperclipWorkspaces[0] : null).cwd, "").trim();
+        await persistIssueArtifactToWorkspace({
+          workspaceRoot,
+          relativePath: intent.artifact.relativePath,
+          body: intent.artifact.body,
+        });
+        await uploadIssueArtifactViaApi({
+          apiUrl,
+          authToken,
+          runId,
+          companyId: agent.companyId,
+          issueId: currentIssueId,
+          relativePath: intent.artifact.relativePath,
+          body: intent.artifact.body,
+        });
       }
 
       if (intent.status || intent.comment) {

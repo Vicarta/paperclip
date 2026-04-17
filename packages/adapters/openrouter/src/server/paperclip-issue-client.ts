@@ -99,3 +99,54 @@ export async function upsertIssueDocumentViaApi(input: UpsertIssueDocumentInput)
 
   await putWithBaseRevision(existing?.latestRevisionId ?? null, true);
 }
+
+type UploadIssueArtifactInput = {
+  apiUrl: string;
+  authToken: string;
+  runId: string;
+  companyId: string;
+  issueId: string;
+  relativePath: string;
+  body: string;
+};
+
+function guessArtifactContentType(relativePath: string) {
+  const normalized = relativePath.trim().toLowerCase();
+  if (normalized.endsWith(".html")) return "text/html";
+  if (normalized.endsWith(".json")) return "application/json";
+  if (normalized.endsWith(".txt")) return "text/plain";
+  return "text/markdown";
+}
+
+function artifactFilename(relativePath: string) {
+  const trimmed = relativePath.trim();
+  if (!trimmed) return "artifact.md";
+  const segments = trimmed.split(/[\\/]+/).filter(Boolean);
+  return segments.at(-1) ?? "artifact.md";
+}
+
+export async function uploadIssueArtifactViaApi(input: UploadIssueArtifactInput): Promise<void> {
+  const url =
+    `${trimApiUrl(input.apiUrl)}/api/companies/${encodeURIComponent(input.companyId)}` +
+    `/issues/${encodeURIComponent(input.issueId)}/attachments`;
+  const formData = new FormData();
+  formData.set("file", new File([input.body], artifactFilename(input.relativePath), {
+    type: guessArtifactContentType(input.relativePath),
+  }));
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${input.authToken}`,
+      "X-Paperclip-Run-Id": input.runId,
+    },
+    body: formData,
+  });
+  const responseText = await response.text();
+  const payload = responseText ? parseJson(responseText) : null;
+  if (!response.ok) {
+    throw new Error(
+      `Paperclip issue artifact upload failed (${response.status}): ${summarizeErrorPayload(payload) || responseText || "unknown error"}`,
+    );
+  }
+}
