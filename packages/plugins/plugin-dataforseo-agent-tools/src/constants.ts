@@ -10,6 +10,7 @@ export const EXPORT_NAMES = {
 } as const;
 
 export const TOOL_NAMES = {
+  googleAdsKeywordsForKeywords: "google-ads-keywords-for-keywords",
   googleAdsSearchVolume: "google-ads-search-volume",
 } as const;
 
@@ -17,4 +18,7 @@ export const DEFAULT_DATAFORSEO_API_BASE_URL = "https://api.dataforseo.com";
 
 export const DATAFORSEO_COST_PROVIDER = "dataforseo.com";
 export const DATAFORSEO_COST_BILLING_TYPE = "metered_api";
-export const DATAFORSEO_COST_MODEL = "google_ads_search_volume";
+export const DATAFORSEO_COST_MODELS = {
+  googleAdsKeywordsForKeywords: "google_ads_keywords_for_keywords",
+  googleAdsSearchVolume: "google_ads_search_volume",
+} as const;

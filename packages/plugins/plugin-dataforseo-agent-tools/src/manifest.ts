@@ -67,6 +67,42 @@ const manifest: PaperclipPluginManifestV1 = {
   },
   tools: [
     {
+      name: TOOL_NAMES.googleAdsKeywordsForKeywords,
+      displayName: "DataForSEO Google Ads Keywords For Keywords",
+      description:
+        "Expand seed keywords into Google Ads keyword ideas with search volume, CPC, and competition.",
+      parametersSchema: {
+        type: "object",
+        properties: {
+          keywords: {
+            type: "array",
+            items: { type: "string" },
+            minItems: 1,
+            maxItems: 20,
+          },
+          location_name: { type: "string" },
+          language_name: { type: "string" },
+          location_code: { type: "number" },
+          language_code: { type: "string" },
+          search_partners: { type: "boolean" },
+          sort_by: {
+            type: "string",
+            enum: [
+              "relevance",
+              "search_volume",
+              "competition_index",
+              "low_top_of_page_bid",
+              "high_top_of_page_bid",
+            ],
+          },
+          include_adult_keywords: { type: "boolean" },
+          date_from: { type: "string" },
+          date_to: { type: "string" },
+        },
+        required: ["keywords"],
+      },
+    },
+    {
       name: TOOL_NAMES.googleAdsSearchVolume,
       displayName: "DataForSEO Google Ads Search Volume",
       description:

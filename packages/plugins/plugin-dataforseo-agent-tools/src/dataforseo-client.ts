@@ -15,6 +15,24 @@ export type DataForSeoSearchVolumeParams = {
   search_partners?: boolean;
 };
 
+export type DataForSeoKeywordsForKeywordsParams = {
+  keywords: string[];
+  location_name?: string;
+  language_name?: string;
+  location_code?: number;
+  language_code?: string;
+  search_partners?: boolean;
+  sort_by?:
+    | "relevance"
+    | "search_volume"
+    | "competition_index"
+    | "low_top_of_page_bid"
+    | "high_top_of_page_bid";
+  include_adult_keywords?: boolean;
+  date_from?: string;
+  date_to?: string;
+};
+
 type DataForSeoKeywordResult = {
   keyword?: string;
   location_code?: number;
@@ -95,10 +113,10 @@ async function resolveCredentials(input: {
   };
 }
 
-function buildEndpoint(baseUrl: string) {
+function buildEndpoint(baseUrl: string, path: string) {
   const url = new URL(baseUrl);
   const pathname = (url.pathname || "/").replace(/\/+$/, "");
-  url.pathname = `${pathname}/v3/keywords_data/google_ads/search_volume/live`;
+  url.pathname = `${pathname}${path}`;
   return url.toString();
 }
 
@@ -124,6 +142,44 @@ function buildTask(params: DataForSeoSearchVolumeParams) {
       : {}),
     ...(typeof params.search_partners === "boolean"
       ? { search_partners: params.search_partners }
+      : {}),
+  };
+}
+
+function buildKeywordsForKeywordsTask(params: DataForSeoKeywordsForKeywordsParams) {
+  const keywords = normalizeKeywordList(params.keywords).slice(0, 20);
+  if (keywords.length === 0) {
+    throw new Error("At least one keyword is required");
+  }
+
+  return {
+    keywords,
+    ...(typeof params.location_name === "string" && params.location_name.trim().length > 0
+      ? { location_name: params.location_name.trim() }
+      : {}),
+    ...(typeof params.language_name === "string" && params.language_name.trim().length > 0
+      ? { language_name: params.language_name.trim() }
+      : {}),
+    ...(typeof params.location_code === "number" && Number.isFinite(params.location_code)
+      ? { location_code: params.location_code }
+      : {}),
+    ...(typeof params.language_code === "string" && params.language_code.trim().length > 0
+      ? { language_code: params.language_code.trim() }
+      : {}),
+    ...(typeof params.search_partners === "boolean"
+      ? { search_partners: params.search_partners }
+      : {}),
+    ...(typeof params.sort_by === "string" && params.sort_by.trim().length > 0
+      ? { sort_by: params.sort_by.trim() }
+      : {}),
+    ...(typeof params.include_adult_keywords === "boolean"
+      ? { include_adult_keywords: params.include_adult_keywords }
+      : {}),
+    ...(typeof params.date_from === "string" && params.date_from.trim().length > 0
+      ? { date_from: params.date_from.trim() }
+      : {}),
+    ...(typeof params.date_to === "string" && params.date_to.trim().length > 0
+      ? { date_to: params.date_to.trim() }
       : {}),
   };
 }
@@ -174,6 +230,49 @@ function summarizeResults(payload: DataForSeoResponse, params: DataForSeoSearchV
   return lines.join("\n");
 }
 
+function summarizeKeywordIdeas(
+  payload: DataForSeoResponse,
+  params: DataForSeoKeywordsForKeywordsParams,
+) {
+  const task = payload.tasks?.[0];
+  const rows = task?.result ?? [];
+  const location =
+    readNonEmptyString(params.location_name) ??
+    (typeof params.location_code === "number" ? `code:${params.location_code}` : "unspecified");
+  const language =
+    readNonEmptyString(params.language_name) ??
+    readNonEmptyString(params.language_code) ??
+    "unspecified";
+
+  const lines: string[] = [];
+  lines.push("DataForSEO Google Ads keyword ideas");
+  lines.push(`Seed keywords requested: ${normalizeKeywordList(params.keywords).length}`);
+  lines.push(`Location: ${location}`);
+  lines.push(`Language: ${language}`);
+  lines.push(`Rows returned: ${rows.length}`);
+
+  if (rows.length === 0) {
+    lines.push("No keyword idea rows returned.");
+    return lines.join("\n");
+  }
+
+  lines.push("Top keyword idea rows:");
+  for (const row of rows.slice(0, 20)) {
+    const keyword = readNonEmptyString(row.keyword) ?? "(unknown keyword)";
+    const volume =
+      typeof row.search_volume === "number" && Number.isFinite(row.search_volume)
+        ? row.search_volume
+        : "n/a";
+    const competition = readNonEmptyString(row.competition) ?? "n/a";
+    const cpc = formatCurrency(row.cpc);
+    lines.push(
+      `- ${keyword} | volume: ${volume} | competition: ${competition} | cpc: ${cpc}`,
+    );
+  }
+
+  return lines.join("\n");
+}
+
 function readTaskCostUsd(payload: DataForSeoResponse) {
   const taskCost = (payload.tasks ?? []).reduce((sum, task) => {
     const cost = typeof task.cost === "number" && Number.isFinite(task.cost) ? task.cost : 0;
@@ -192,7 +291,10 @@ export async function fetchGoogleAdsSearchVolume(input: {
   const credentials = await resolveCredentials(input);
   const baseUrl = normalizeBaseUrl(input.config.dataforseoApiBaseUrl);
   const fetchFn = input.fetchFn ?? fetch;
-  const endpoint = buildEndpoint(baseUrl);
+  const endpoint = buildEndpoint(
+    baseUrl,
+    "/v3/keywords_data/google_ads/search_volume/live",
+  );
   const task = buildTask(input.params);
 
   const authToken = Buffer.from(
@@ -241,6 +343,72 @@ export async function fetchGoogleAdsSearchVolume(input: {
 
   return {
     content: summarizeResults(payload, input.params),
+    data: payload,
+    actualCostUsd: readTaskCostUsd(payload),
+  };
+}
+
+export async function fetchGoogleAdsKeywordsForKeywords(input: {
+  params: DataForSeoKeywordsForKeywordsParams;
+  config: DataForSeoPluginConfig;
+  resolveSecret: (secretRef: string) => Promise<string>;
+  fetchFn?: (url: string, init?: RequestInit) => Promise<Response>;
+}) {
+  const credentials = await resolveCredentials(input);
+  const baseUrl = normalizeBaseUrl(input.config.dataforseoApiBaseUrl);
+  const fetchFn = input.fetchFn ?? fetch;
+  const endpoint = buildEndpoint(
+    baseUrl,
+    "/v3/keywords_data/google_ads/keywords_for_keywords/live",
+  );
+  const task = buildKeywordsForKeywordsTask(input.params);
+
+  const authToken = Buffer.from(
+    `${credentials.login}:${credentials.password}`,
+    "utf8",
+  ).toString("base64");
+
+  const response = await fetchFn(endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Basic ${authToken}`,
+    },
+    body: JSON.stringify([task]),
+  });
+
+  const rawText = await response.text();
+  let payload: DataForSeoResponse | null = null;
+  try {
+    payload = JSON.parse(rawText) as DataForSeoResponse;
+  } catch {
+    payload = null;
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      `DataForSEO request failed (${response.status}): ${
+        payload ? JSON.stringify(payload) : rawText
+      }`,
+    );
+  }
+
+  if (!payload) {
+    throw new Error("DataForSEO returned a non-JSON response");
+  }
+
+  const statusCode =
+    typeof payload.status_code === "number" ? payload.status_code : undefined;
+  if (statusCode && statusCode >= 30000) {
+    throw new Error(
+      `DataForSEO returned error ${statusCode}: ${
+        payload.status_message ?? "Unknown error"
+      }`,
+    );
+  }
+
+  return {
+    content: summarizeKeywordIdeas(payload, input.params),
     data: payload,
     actualCostUsd: readTaskCostUsd(payload),
   };
