@@ -1,5 +1,5 @@
 export const PLUGIN_ID = "paperclip.bright-data-agent-tools";
-export const PLUGIN_VERSION = "0.3.0";
+export const PLUGIN_VERSION = "0.3.1";
 
 export const SLOT_IDS = {
   settingsPage: "bright-data-agent-tools-settings-page",

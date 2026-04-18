@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   downloadBrightDataSnapshot,
   getBrightDataSnapshotProgress,
+  resolveInstagramAccountPostSet,
   runBrightDataDatasetRequest,
   triggerBrightDataDatasetRequest,
   type BrightDataPluginConfig,
@@ -140,5 +141,36 @@ describe("bright-data async dataset client", () => {
     expect(result.data.status).toBe("ready");
     expect(result.data.itemCount).toBe(1);
     expect(result.data.snapshot).toEqual([{ id: 1 }]);
+  });
+
+  it("caps profile-url Instagram post discovery unless explicitly allowed", async () => {
+    const fetchMock = vi.mocked(fetch);
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse({ snapshot_id: "profile_snapshot" }))
+      .mockResolvedValueOnce(jsonResponse({ status: "ready" }))
+      .mockResolvedValueOnce(jsonResponse([{ username: "large.account", posts_count: 500, posts: [] }]))
+      .mockResolvedValueOnce(jsonResponse({ snapshot_id: "posts_snapshot" }))
+      .mockResolvedValueOnce(jsonResponse({ status: "ready" }))
+      .mockResolvedValueOnce(jsonResponse([]));
+
+    const result = await resolveInstagramAccountPostSet({
+      params: {
+        handleOrUrl: "https://www.instagram.com/large.account/",
+        pollIntervalMs: 1,
+        maxWaitMs: 5000,
+      },
+      config,
+      resolveSecret,
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(6);
+    const supplementalBody = (fetchMock.mock.calls[3] as [URL | string, RequestInit])[1].body;
+    expect(supplementalBody).toBe(JSON.stringify([{ url: "https://www.instagram.com/large.account/", num_of_posts: 180 }]));
+    expect(result.content).toContain("Coverage was capped at 180 posts");
+    expect(result.data).toMatchObject({
+      visiblePostCount: 500,
+      requestedPostLimit: 180,
+      coverageLimited: true,
+    });
   });
 });

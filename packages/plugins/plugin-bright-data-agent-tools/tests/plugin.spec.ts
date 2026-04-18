@@ -249,4 +249,36 @@ describe("plugin-bright-data-agent-tools", () => {
     );
     expect(result.content).toContain("@astrogen.com.ua");
   });
+
+  it("reuses cached Instagram account post-set results by default", async () => {
+    const harness = createTestHarness({
+      manifest,
+      config: { brightDataTokenSecretRef: "secret-1" },
+    });
+    await plugin.definition.setup(harness.ctx);
+
+    resolveInstagramAccountPostSetMock.mockResolvedValueOnce({
+      content: "Resolved Instagram account post set for @astrogen.com.ua.",
+      data: {
+        handle: "astrogen.com.ua",
+        profileUrl: "https://www.instagram.com/astrogen.com.ua/",
+        canonicalUrlCount: 49,
+        finalDetailedCount: 49,
+        isComplete: true,
+      },
+    });
+
+    const params = {
+      handleOrUrl: "https://www.instagram.com/astrogen.com.ua/",
+      expectedPostCount: 49,
+    };
+
+    const first = await harness.executeTool(TOOL_NAMES.resolveInstagramAccountPostSet, params);
+    const second = await harness.executeTool(TOOL_NAMES.resolveInstagramAccountPostSet, params);
+
+    expect(resolveInstagramAccountPostSetMock).toHaveBeenCalledTimes(1);
+    expect(first.data).toMatchObject({ cache: { hit: false } });
+    expect(second.content).toContain("Reused cached Bright Data Instagram account post set");
+    expect(second.data).toMatchObject({ cache: { hit: true } });
+  });
 });

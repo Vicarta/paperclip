@@ -21,6 +21,8 @@ const manifest: PaperclipPluginManifestV1 = {
     "http.outbound",
     "secrets.read-ref",
     "agent.tools.register",
+    "plugin.state.read",
+    "plugin.state.write",
     "instance.settings.register",
   ],
   entrypoints: {
@@ -187,8 +189,12 @@ const manifest: PaperclipPluginManifestV1 = {
         properties: {
           handleOrUrl: { type: "string" },
           expectedPostCount: { type: "number" },
+          maxPosts: { type: "number" },
+          allowLargeAccount: { type: "boolean" },
           maxWaitMs: { type: "number" },
           pollIntervalMs: { type: "number" },
+          forceRefresh: { type: "boolean" },
+          cacheTtlHours: { type: "number" },
         },
         required: ["handleOrUrl"],
       },

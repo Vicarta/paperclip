@@ -4,6 +4,7 @@ import {
   downloadBrightDataSnapshot,
   getBrightDataSnapshotProgress,
   listBrightDataTools,
+  normalizeInstagramHandle,
   resolveInstagramAccountPostSet,
   runBrightDataDatasetRequest,
   triggerBrightDataDatasetRequest,
@@ -18,6 +19,62 @@ async function getConfig(ctx: Parameters<NonNullable<Parameters<typeof definePlu
 function readString(record: Record<string, unknown>, key: string) {
   const value = record[key];
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : "";
+}
+
+function readNumber(record: Record<string, unknown>, key: string) {
+  const value = record[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function readBoolean(record: Record<string, unknown>, key: string) {
+  const value = record[key];
+  return typeof value === "boolean" ? value : undefined;
+}
+
+function readCacheTtlHours(record: Record<string, unknown>) {
+  const value = readNumber(record, "cacheTtlHours");
+  if (value === undefined) return 24;
+  return Math.max(0, value);
+}
+
+function buildInstagramCacheKey(input: {
+  handle: string;
+  expectedPostCount?: number;
+  maxPosts?: number;
+  allowLargeAccount?: boolean;
+}) {
+  return [
+    "instagram-account-post-set",
+    input.handle,
+    `expected=${input.expectedPostCount ?? "any"}`,
+    `max=${input.maxPosts ?? 180}`,
+    `large=${input.allowLargeAccount === true ? "1" : "0"}`,
+  ].join(":");
+}
+
+type CachedInstagramPostSet = {
+  storedAt: string;
+  expiresAt: string;
+  result: {
+    content: string;
+    data: Record<string, unknown>;
+  };
+};
+
+function isCachedInstagramPostSet(value: unknown): value is CachedInstagramPostSet {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const record = value as Record<string, unknown>;
+  const result = record.result;
+  return (
+    typeof record.storedAt === "string" &&
+    typeof record.expiresAt === "string" &&
+    !!result &&
+    typeof result === "object" &&
+    !Array.isArray(result) &&
+    typeof (result as Record<string, unknown>).content === "string" &&
+    !!(result as Record<string, unknown>).data &&
+    typeof (result as Record<string, unknown>).data === "object"
+  );
 }
 
 const plugin = definePlugin({
@@ -270,8 +327,12 @@ const plugin = definePlugin({
           properties: {
             handleOrUrl: { type: "string" },
             expectedPostCount: { type: "number" },
+            maxPosts: { type: "number" },
+            allowLargeAccount: { type: "boolean" },
             maxWaitMs: { type: "number" },
             pollIntervalMs: { type: "number" },
+            forceRefresh: { type: "boolean" },
+            cacheTtlHours: { type: "number" },
           },
           required: ["handleOrUrl"],
         },
@@ -280,17 +341,93 @@ const plugin = definePlugin({
         try {
           const config = await getConfig(ctx);
           const record = params as Record<string, unknown>;
+          const handleOrUrl = readString(record, "handleOrUrl");
+          const handle = normalizeInstagramHandle(handleOrUrl);
+          if (!handle) return { error: "handleOrUrl is required" };
+
+          const expectedPostCount = readNumber(record, "expectedPostCount");
+          const maxPosts = readNumber(record, "maxPosts");
+          const allowLargeAccount = readBoolean(record, "allowLargeAccount") === true;
+          const forceRefresh = readBoolean(record, "forceRefresh") === true;
+          const cacheTtlHours = readCacheTtlHours(record);
+          const cacheKey = buildInstagramCacheKey({
+            handle,
+            expectedPostCount,
+            maxPosts,
+            allowLargeAccount,
+          });
+
+          if (!forceRefresh && cacheTtlHours > 0) {
+            const cached = await ctx.state.get({
+              scopeKind: "instance",
+              namespace: "instagram-account-post-set",
+              stateKey: cacheKey,
+            });
+            if (isCachedInstagramPostSet(cached) && Date.parse(cached.expiresAt) > Date.now()) {
+              return {
+                content: [
+                  `Reused cached Bright Data Instagram account post set for @${handle}.`,
+                  `Cache key: ${cacheKey}.`,
+                  `Cached at: ${cached.storedAt}.`,
+                  `Expires at: ${cached.expiresAt}.`,
+                  "",
+                  cached.result.content,
+                ].join("\n"),
+                data: {
+                  ...cached.result.data,
+                  cache: {
+                    hit: true,
+                    key: cacheKey,
+                    storedAt: cached.storedAt,
+                    expiresAt: cached.expiresAt,
+                    ttlHours: cacheTtlHours,
+                  },
+                },
+              };
+            }
+          }
+
           const result = await resolveInstagramAccountPostSet({
             params: {
-              handleOrUrl: readString(record, "handleOrUrl"),
-              expectedPostCount: record.expectedPostCount as number | undefined,
-              maxWaitMs: record.maxWaitMs as number | undefined,
-              pollIntervalMs: record.pollIntervalMs as number | undefined,
+              handleOrUrl,
+              expectedPostCount,
+              maxPosts,
+              allowLargeAccount,
+              maxWaitMs: readNumber(record, "maxWaitMs"),
+              pollIntervalMs: readNumber(record, "pollIntervalMs"),
             },
             config,
             resolveSecret: (secretRef) => ctx.secrets.resolve(secretRef),
           });
-          return { content: result.content, data: result.data };
+          const now = new Date();
+          const expiresAt = new Date(now.getTime() + cacheTtlHours * 60 * 60 * 1000);
+          if (cacheTtlHours > 0) {
+            await ctx.state.set(
+              {
+                scopeKind: "instance",
+                namespace: "instagram-account-post-set",
+                stateKey: cacheKey,
+              },
+              {
+                storedAt: now.toISOString(),
+                expiresAt: expiresAt.toISOString(),
+                result,
+              } satisfies CachedInstagramPostSet,
+            );
+          }
+          return {
+            content: result.content,
+            data: {
+              ...result.data,
+              cache: {
+                hit: false,
+                key: cacheKey,
+                storedAt: cacheTtlHours > 0 ? now.toISOString() : null,
+                expiresAt: cacheTtlHours > 0 ? expiresAt.toISOString() : null,
+                ttlHours: cacheTtlHours,
+              },
+            },
+          };
         } catch (error) {
           return { error: error instanceof Error ? error.message : String(error) };
         }

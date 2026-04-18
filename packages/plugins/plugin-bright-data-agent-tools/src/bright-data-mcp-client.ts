@@ -41,8 +41,12 @@ type BrightDataRunDatasetParams = BrightDataDatasetTriggerParams & {
 type BrightDataResolveInstagramAccountPostSetParams = {
   handleOrUrl: string;
   expectedPostCount?: number;
+  maxPosts?: number;
+  allowLargeAccount?: boolean;
   maxWaitMs?: number;
   pollIntervalMs?: number;
+  forceRefresh?: boolean;
+  cacheTtlHours?: number;
 };
 
 type SnapshotProgressPayload = {
@@ -442,7 +446,7 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function normalizeInstagramHandle(value: string) {
+export function normalizeInstagramHandle(value: string) {
   const trimmed = value.trim();
   if (!trimmed) return "";
 
@@ -605,11 +609,19 @@ export async function resolveInstagramAccountPostSet(input: {
     normalizeNumber(profile.posts_count) ??
     normalizeNumber(input.params.expectedPostCount) ??
     undefined;
+  const maxPosts = Math.max(1, Math.floor(normalizeNumber(input.params.maxPosts) ?? 180));
+  const allowLargeAccount = input.params.allowLargeAccount === true;
+  const effectivePostLimit =
+    visiblePostCount === undefined
+      ? maxPosts
+      : allowLargeAccount
+        ? visiblePostCount
+        : Math.min(visiblePostCount, maxPosts);
+  const coverageLimited =
+    visiblePostCount !== undefined && !allowLargeAccount && visiblePostCount > effectivePostLimit;
 
   const supplementalInput: Record<string, unknown> = { url: profileUrl };
-  if (visiblePostCount !== undefined) {
-    supplementalInput.num_of_posts = visiblePostCount;
-  }
+  supplementalInput.num_of_posts = effectivePostLimit;
 
   const supplementalRun = await runBrightDataDatasetRequest({
     params: {
@@ -706,12 +718,17 @@ export async function resolveInstagramAccountPostSet(input: {
       `Canonical URLs: ${canonicalUrls.length}.`,
       `Detailed records: ${finalDetailedItems.length}.`,
       `Missing URLs after enrichment: ${canonicalUrls.length - finalDetailedItems.length}.`,
+      coverageLimited ? `Coverage was capped at ${effectivePostLimit} posts; visible profile count is ${visiblePostCount}.` : null,
       isComplete ? "Coverage is complete for the canonical URL set." : "Coverage is incomplete.",
-    ].join("\n"),
+    ].filter((line): line is string => Boolean(line)).join("\n"),
     data: {
       handle,
       profileUrl,
       visiblePostCount: visiblePostCount ?? null,
+      requestedPostLimit: effectivePostLimit,
+      maxPosts,
+      allowLargeAccount,
+      coverageLimited,
       embeddedPostCount: embeddedUrls.size,
       ownerCandidateCount: ownerUrls.size,
       canonicalUrlCount: canonicalUrls.length,
