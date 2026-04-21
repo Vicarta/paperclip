@@ -96,17 +96,20 @@ function buildCaption(
   issue: Pick<{ identifier: string | null; title: string; status: string; id: string }, "identifier" | "title" | "status" | "id">,
   publicUrl: string | null,
 ): string {
-  const parts = [
-    `${issue.identifier ?? issue.id} completed`,
-    issue.title,
-    `Status: ${issue.status}`,
-  ];
+  const title = truncateForTelegramLine(issue.title, 180);
+  const parts = [`✅ Готово: ${title}`];
   if (publicUrl) {
     const trimmed = publicUrl.replace(/\/+$/, "");
-    parts.push(`${trimmed}/issues/${issue.id}`);
+    parts.push(`Відкрити задачу: ${trimmed}/issues/${issue.id}`);
   }
   const caption = parts.join("\n");
   return caption.length > 1024 ? caption.slice(0, 1021) + "..." : caption;
+}
+
+function truncateForTelegramLine(value: string, maxLength: number): string {
+  const normalized = value.replace(/\s+/g, " ").trim();
+  if (normalized.length <= maxLength) return normalized;
+  return `${normalized.slice(0, maxLength - 1).trimEnd()}…`;
 }
 
 async function streamToBuffer(stream: NodeJS.ReadableStream): Promise<Buffer> {
