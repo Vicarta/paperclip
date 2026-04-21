@@ -156,7 +156,9 @@ describeEmbeddedPostgres("issueTelegramNotificationService", () => {
       resolveTelegramBotToken: vi.fn().mockResolvedValue("telegram-token"),
     });
 
-    const result = await svc.sendIssueDoneNotification(issueId);
+    const result = await svc.sendIssueDoneNotification(issueId, {
+      completionSummary: "Статтю підготовлено й надіслано в Telegram.",
+    });
 
     expect(result).toEqual({
       status: "sent",
@@ -174,7 +176,9 @@ describeEmbeddedPostgres("issueTelegramNotificationService", () => {
 
     const form = init.body as FormData;
     expect(form.get("chat_id")).toBe("-5154906793");
-    expect(form.get("caption")).toContain("✅ Готово: AST-456 — задачу завершено. Деталі можна подивитися в Paperclip.");
+    expect(form.get("caption")).toContain("✅ Готово: AST-456");
+    expect(form.get("caption")).toContain("Задача: Налаштування Telegram-повідомлень");
+    expect(form.get("caption")).toContain("Суть: Статтю підготовлено й надіслано в Telegram.");
     expect(form.get("caption")).toContain(`Відкрити задачу: https://paperclip.example.test/issues/${issueId}`);
     const document = form.get("document");
     expect(document).toBeInstanceOf(File);
@@ -323,7 +327,9 @@ describeEmbeddedPostgres("issueTelegramNotificationService", () => {
       resolveTelegramBotToken: vi.fn().mockResolvedValue("telegram-token"),
     });
 
-    const result = await svc.sendIssueDoneNotification(issueId);
+    const result = await svc.sendIssueDoneNotification(issueId, {
+      completionSummary: "Пакет статті підготовлено у Markdown та HTML.",
+    });
 
     expect(result).toEqual({
       status: "sent",
@@ -336,7 +342,9 @@ describeEmbeddedPostgres("issueTelegramNotificationService", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
     const firstForm = fetchMock.mock.calls[0]?.[1]?.body as FormData;
     const secondForm = fetchMock.mock.calls[1]?.[1]?.body as FormData;
-    expect(firstForm.get("caption")).toContain("✅ Готово: AST-457 — задачу завершено. Деталі можна подивитися в Paperclip.");
+    expect(firstForm.get("caption")).toContain("✅ Готово: AST-457");
+    expect(firstForm.get("caption")).toContain("Задача: Налаштування Telegram-повідомлень");
+    expect(firstForm.get("caption")).toContain("Суть: Пакет статті підготовлено у Markdown та HTML.");
     expect(firstForm.get("caption")).toContain(`Відкрити задачу: https://paperclip.example.test/issues/${issueId}`);
     expect(secondForm.get("caption")).toBeNull();
   });

@@ -47,6 +47,10 @@ export interface IssueTelegramNotificationDeps {
   resolveTelegramBotToken?: (companyId: string, secretRef: string) => Promise<string>;
 }
 
+type IssueDoneNotificationActor = Partial<Pick<LogActivityInput, "actorType" | "actorId" | "agentId" | "runId">> & {
+  completionSummary?: string | null;
+};
+
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   return value as Record<string, unknown>;
@@ -95,10 +99,12 @@ function resolveChatId(
 function buildCaption(
   issue: Pick<{ identifier: string | null; title: string; status: string; id: string }, "identifier" | "title" | "status" | "id">,
   publicUrl: string | null,
+  completionSummary?: string | null,
 ): string {
   const identifier = issue.identifier ?? issue.id;
-  const summary = summarizeIssueTitleForTelegram(issue.title);
-  const parts = [`✅ Готово: ${identifier} — ${summary}`];
+  const title = summarizeIssueTitleForTelegram(issue.title);
+  const summary = summarizeCompletionForTelegram(completionSummary, issue.title);
+  const parts = [`✅ Готово: ${identifier}`, `Задача: ${title}`, `Суть: ${summary}`];
   if (publicUrl) {
     const trimmed = publicUrl.replace(/\/+$/, "");
     parts.push(`Відкрити задачу: ${trimmed}/issues/${issue.id}`);
@@ -115,7 +121,7 @@ function truncateForTelegramLine(value: string, maxLength: number): string {
 
 function summarizeIssueTitleForTelegram(title: string): string {
   const normalized = title.replace(/\s+/g, " ").trim();
-  if (!normalized) return "задачу завершено.";
+  if (!normalized) return "Без назви";
 
   const cyrillicMatches = normalized.match(/[А-Яа-яІіЇїЄєҐґ]/g)?.length ?? 0;
   const letterMatches = normalized.match(/\p{L}/gu)?.length ?? 0;
@@ -129,7 +135,37 @@ function summarizeIssueTitleForTelegram(title: string): string {
     return truncateForTelegramLine(normalized, 180);
   }
 
-  return "задачу завершено. Деталі можна подивитися в Paperclip.";
+  if (/telegram|notification/i.test(normalized)) return "Налаштування Telegram-повідомлень";
+  if (/release|delta|runtime|deploy|sync/i.test(normalized)) return "Технічне оновлення Paperclip";
+  if (/agent|heartbeat/i.test(normalized)) return "Налаштування роботи агентів";
+
+  return truncateForTelegramLine(normalized, 180);
+}
+
+function summarizeCompletionForTelegram(summary: string | null | undefined, title: string): string {
+  const normalized = normalizeTelegramSummary(summary);
+  if (normalized) return truncateForTelegramLine(normalized, 180);
+
+  if (/telegram|notification/i.test(title)) return "Оновлено формат повідомлень у Telegram.";
+  if (/release|delta|runtime|deploy|sync/i.test(title)) return "Оновлення застосовано і перевірено.";
+  if (/agent|heartbeat/i.test(title)) return "Налаштування агентів оновлено.";
+
+  return "Задачу завершено.";
+}
+
+function normalizeTelegramSummary(value: string | null | undefined): string | null {
+  const normalized = String(value ?? "")
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/^#+\s*/gm, "")
+    .replace(/^\s*[-*]\s+/gm, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!normalized) return null;
+
+  const firstSentence = normalized.match(/^(.+?[.!?])(?:\s|$)/u)?.[1]?.trim();
+  return firstSentence || normalized;
 }
 
 async function streamToBuffer(stream: NodeJS.ReadableStream): Promise<Buffer> {
@@ -202,7 +238,7 @@ export function issueTelegramNotificationService(
 
   async function sendIssueDoneNotification(
     issueId: string,
-    actor?: Pick<LogActivityInput, "actorType" | "actorId" | "agentId" | "runId">,
+    actor?: IssueDoneNotificationActor,
   ): Promise<IssueTelegramNotificationResult> {
     const issue = await issuesSvc.getById(issueId);
     if (!issue) return { status: "skipped", reason: "issue_not_found" };
@@ -229,7 +265,7 @@ export function issueTelegramNotificationService(
 
     const token = await resolveTelegramBotToken(issue.companyId, config.telegramBotTokenRef);
     const topicId = resolved.contract.recipient?.topicId ?? null;
-    const caption = buildCaption(issue, config.paperclipPublicUrl);
+    const caption = buildCaption(issue, config.paperclipPublicUrl, actor?.completionSummary);
     const messageIds: Array<number | null> = [];
 
     for (const [index, attachment] of resolved.attachments.entries()) {

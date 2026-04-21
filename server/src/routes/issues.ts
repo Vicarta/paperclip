@@ -1213,7 +1213,7 @@ export function issueRoutes(
       details: {
         ...updateFields,
         identifier: issue.identifier,
-        ...(commentBody ? { source: "comment" } : {}),
+        ...(commentBody ? { source: "comment", comment: commentBody } : {}),
         ...(reopened ? { reopened: true, reopenedFrom: reopenFromStatus } : {}),
         ...(interruptedRunId ? { interruptedRunId } : {}),
         _previous: hasFieldChanges ? previous : undefined,
@@ -1233,6 +1233,7 @@ export function issueRoutes(
         actorId: actor.actorId,
         agentId: actor.agentId,
         runId: actor.runId,
+        completionSummary: commentBody,
       }).catch((err) => {
         logger.warn({ err, issueId: issue.id }, "failed to send issue-done telegram notification");
       });
