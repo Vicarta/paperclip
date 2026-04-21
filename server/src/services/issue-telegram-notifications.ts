@@ -96,8 +96,9 @@ function buildCaption(
   issue: Pick<{ identifier: string | null; title: string; status: string; id: string }, "identifier" | "title" | "status" | "id">,
   publicUrl: string | null,
 ): string {
-  const title = truncateForTelegramLine(issue.title, 180);
-  const parts = [`✅ Готово: ${title}`];
+  const identifier = issue.identifier ?? issue.id;
+  const summary = summarizeIssueTitleForTelegram(issue.title);
+  const parts = [`✅ Готово: ${identifier} — ${summary}`];
   if (publicUrl) {
     const trimmed = publicUrl.replace(/\/+$/, "");
     parts.push(`Відкрити задачу: ${trimmed}/issues/${issue.id}`);
@@ -110,6 +111,25 @@ function truncateForTelegramLine(value: string, maxLength: number): string {
   const normalized = value.replace(/\s+/g, " ").trim();
   if (normalized.length <= maxLength) return normalized;
   return `${normalized.slice(0, maxLength - 1).trimEnd()}…`;
+}
+
+function summarizeIssueTitleForTelegram(title: string): string {
+  const normalized = title.replace(/\s+/g, " ").trim();
+  if (!normalized) return "задачу завершено.";
+
+  const cyrillicMatches = normalized.match(/[А-Яа-яІіЇїЄєҐґ]/g)?.length ?? 0;
+  const letterMatches = normalized.match(/\p{L}/gu)?.length ?? 0;
+  const cyrillicRatio = letterMatches > 0 ? cyrillicMatches / letterMatches : 0;
+  const looksTechnical =
+    /(?:release|delta|check|runtime|notification|paperclip|agent|heartbeat|plugin|sync|writeback|rollback|deploy)/i.test(
+      normalized,
+    ) || /[+/]|::|->|=>|`/.test(normalized);
+
+  if (cyrillicRatio >= 0.55 && !looksTechnical) {
+    return truncateForTelegramLine(normalized, 180);
+  }
+
+  return "задачу завершено. Деталі можна подивитися в Paperclip.";
 }
 
 async function streamToBuffer(stream: NodeJS.ReadableStream): Promise<Buffer> {
