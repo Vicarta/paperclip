@@ -241,8 +241,17 @@ const heartbeatRunListColumns = {
   wakeupRequestId: heartbeatRuns.wakeupRequestId,
   exitCode: heartbeatRuns.exitCode,
   signal: heartbeatRuns.signal,
-  usageJson: heartbeatRuns.usageJson,
-  resultJson: heartbeatRuns.resultJson,
+  usageJson: sql<Record<string, unknown> | null>`NULL`.as("usageJson"),
+  resultJson: sql<Record<string, unknown> | null>`
+    CASE
+      WHEN ${heartbeatRuns.resultJson} IS NULL THEN NULL
+      WHEN coalesce(${heartbeatRuns.resultJson}->>'summary', ${heartbeatRuns.resultJson}->>'result') IS NULL THEN NULL
+      ELSE jsonb_build_object(
+        'summary',
+        left(coalesce(${heartbeatRuns.resultJson}->>'summary', ${heartbeatRuns.resultJson}->>'result'), 700)
+      )
+    END
+  `.as("resultJson"),
   sessionIdBefore: heartbeatRuns.sessionIdBefore,
   sessionIdAfter: heartbeatRuns.sessionIdAfter,
   logStore: heartbeatRuns.logStore,
@@ -258,7 +267,22 @@ const heartbeatRunListColumns = {
   processStartedAt: heartbeatRuns.processStartedAt,
   retryOfRunId: heartbeatRuns.retryOfRunId,
   processLossRetryCount: heartbeatRuns.processLossRetryCount,
-  contextSnapshot: heartbeatRuns.contextSnapshot,
+  contextSnapshot: sql<Record<string, unknown> | null>`
+    CASE
+      WHEN ${heartbeatRuns.contextSnapshot} IS NULL THEN NULL
+      ELSE nullif(
+        jsonb_strip_nulls(
+          jsonb_build_object(
+            'issueId', ${heartbeatRuns.contextSnapshot}->>'issueId',
+            'taskId', ${heartbeatRuns.contextSnapshot}->>'taskId',
+            'taskKey', ${heartbeatRuns.contextSnapshot}->>'taskKey',
+            'projectId', ${heartbeatRuns.contextSnapshot}->>'projectId'
+          )
+        ),
+        '{}'::jsonb
+      )
+    END
+  `.as("contextSnapshot"),
   createdAt: heartbeatRuns.createdAt,
   updatedAt: heartbeatRuns.updatedAt,
 } as const;
@@ -3871,11 +3895,7 @@ export function heartbeatService(db: Db) {
         )
         .orderBy(desc(heartbeatRuns.createdAt));
 
-      const rows = limit ? await query.limit(limit) : await query;
-      return rows.map((row) => ({
-        ...row,
-        resultJson: summarizeHeartbeatRunResultJson(row.resultJson),
-      }));
+      return limit ? await query.limit(limit) : await query;
     },
 
     getRun,

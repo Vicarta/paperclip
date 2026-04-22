@@ -14,6 +14,7 @@ import {
   isUuidLike,
   resetAgentSessionSchema,
   testAdapterEnvironmentSchema,
+  DEFAULT_HEARTBEAT_RUN_LIST_LIMIT,
   type AgentSkillSnapshot,
   type InstanceSchedulerHeartbeatAgent,
   upsertAgentInstructionsFileSchema,
@@ -108,6 +109,13 @@ export function agentRoutes(db: Db) {
     const parsed = Number(value ?? fallback);
     if (!Number.isFinite(parsed)) return fallback;
     return Math.max(1_024, Math.min(64_000, Math.trunc(parsed)));
+  }
+
+  function parseHeartbeatRunListLimit(value: unknown) {
+    if (value === undefined || value === null || value === "") return DEFAULT_HEARTBEAT_RUN_LIST_LIMIT;
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) return DEFAULT_HEARTBEAT_RUN_LIST_LIMIT;
+    return Math.max(1, Math.min(1000, Math.trunc(parsed)));
   }
 
   function canCreateAgents(agent: { role: string; permissions: Record<string, unknown> | null | undefined }) {
@@ -2189,8 +2197,7 @@ export function agentRoutes(db: Db) {
     const companyId = req.params.companyId as string;
     assertCompanyAccess(req, companyId);
     const agentId = req.query.agentId as string | undefined;
-    const limitParam = req.query.limit as string | undefined;
-    const limit = limitParam ? Math.max(1, Math.min(1000, parseInt(limitParam, 10) || 200)) : undefined;
+    const limit = parseHeartbeatRunListLimit(req.query.limit);
     const runs = await heartbeat.list(companyId, agentId, limit);
     res.json(runs);
   });
