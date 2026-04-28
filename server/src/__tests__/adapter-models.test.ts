@@ -28,6 +28,7 @@ describe("adapter model listing", () => {
     const models = await listAdapterModels("codex_local");
 
     expect(models).toEqual(codexFallbackModels);
+    expect(models.some((model) => model.id === "gpt-5.5")).toBe(true);
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
@@ -49,6 +50,7 @@ describe("adapter model listing", () => {
     expect(fetchSpy).toHaveBeenCalledTimes(1);
     expect(first).toEqual(second);
     expect(first.some((model) => model.id === "gpt-5-pro")).toBe(true);
+    expect(first.some((model) => model.id === "gpt-5.5")).toBe(true);
     expect(first.some((model) => model.id === "codex-mini-latest")).toBe(true);
   });
 
