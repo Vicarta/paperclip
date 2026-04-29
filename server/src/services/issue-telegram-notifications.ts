@@ -1,6 +1,6 @@
 import { eq, and, desc } from "drizzle-orm";
 import type { Db } from "@paperclipai/db";
-import { pluginConfig, plugins } from "@paperclipai/db";
+import { companies, pluginConfig, plugins } from "@paperclipai/db";
 import type { StorageService } from "../storage/types.js";
 import { issueService } from "./issues.js";
 import { issueNotificationContractService } from "./issue-notification-contracts.js";
@@ -99,15 +99,23 @@ function resolveChatId(
 function buildCaption(
   issue: Pick<{ identifier: string | null; title: string; status: string; id: string }, "identifier" | "title" | "status" | "id">,
   publicUrl: string | null,
+  company: { name: string; issuePrefix: string } | null,
   completionSummary?: string | null,
 ): string {
   const identifier = issue.identifier ?? issue.id;
   const title = summarizeIssueTitleForTelegram(issue.title);
   const summary = summarizeCompletionForTelegram(completionSummary, issue.title);
-  const parts = [`✅ Готово: ${identifier}`, `Задача: ${title}`, `Суть: ${summary}`];
+  const parts = [`✅ Готово: ${identifier}`];
+  if (company?.name) {
+    parts.push(`Компанія: ${company.name}`);
+  }
+  parts.push(`Задача: ${title}`, `Що зроблено: ${summary}`);
   if (publicUrl) {
     const trimmed = publicUrl.replace(/\/+$/, "");
-    parts.push(`Відкрити задачу: ${trimmed}/issues/${issue.id}`);
+    const issuePath = issue.identifier && company?.issuePrefix
+      ? `/${company.issuePrefix}/issues/${issue.identifier}`
+      : `/issues/${issue.id}`;
+    parts.push(`Відкрити в Paperclip: ${trimmed}${issuePath}`);
   }
   const caption = parts.join("\n");
   return caption.length > 1024 ? caption.slice(0, 1021) + "..." : caption;
@@ -144,13 +152,72 @@ function summarizeIssueTitleForTelegram(title: string): string {
 
 function summarizeCompletionForTelegram(summary: string | null | undefined, title: string): string {
   const normalized = normalizeTelegramSummary(summary);
-  if (normalized) return truncateForTelegramLine(normalized, 180);
+  const simple = simplifyCompletionSummaryForHuman(normalized, title);
+  if (simple) return truncateForTelegramLine(simple, 360);
 
   if (/telegram|notification/i.test(title)) return "Оновлено формат повідомлень у Telegram.";
   if (/release|delta|runtime|deploy|sync/i.test(title)) return "Оновлення застосовано і перевірено.";
   if (/agent|heartbeat/i.test(title)) return "Налаштування агентів оновлено.";
 
   return "Задачу завершено.";
+}
+
+function textStats(value: string) {
+  const cyrillicMatches = value.match(/[А-Яа-яІіЇїЄєҐґ]/g)?.length ?? 0;
+  const latinMatches = value.match(/[A-Za-z]/g)?.length ?? 0;
+  const letterMatches = value.match(/\p{L}/gu)?.length ?? 0;
+  return {
+    cyrillicRatio: letterMatches > 0 ? cyrillicMatches / letterMatches : 0,
+    latinRatio: letterMatches > 0 ? latinMatches / letterMatches : 0,
+  };
+}
+
+function simplifyCompletionSummaryForHuman(summary: string | null, title: string): string | null {
+  if (!summary) return null;
+
+  const withoutStatusPrefix = summary
+    .replace(/^(?:update|updated|done|completed|implemented|finished|closed|closing|summary|result)\s*[:—-]?\s*/i, "")
+    .trim();
+  if (!withoutStatusPrefix) return null;
+
+  const stats = textStats(withoutStatusPrefix);
+  const looksTechnical =
+    /(?:schema|handoff|runtime|deploy|plugin|adapter|api|mcp|json|metadata|writeback|rollback|sync|provider|canonical)/i.test(
+      withoutStatusPrefix,
+    ) || /[`{}[\]|]|->|=>|::/.test(withoutStatusPrefix);
+
+  if (stats.cyrillicRatio >= 0.45 && !looksTechnical) {
+    return withoutStatusPrefix;
+  }
+
+  if (
+    /interim|proxy|attribution|ecommerce|product-level|reporting/i.test(withoutStatusPrefix) &&
+    /attribution|ecommerce|product/i.test(withoutStatusPrefix)
+  ) {
+    return "Зафіксовано тимчасове правило для звітів по продуктах: поки точна прив'язка покупок до конкретного продукту ще не готова, агенти мають оцінювати результати обережно і не робити хибних висновків.";
+  }
+
+  if (/telegram|notification/i.test(withoutStatusPrefix)) {
+    return "Оновлено Telegram-повідомлення: тепер вони мають бути зрозумілішими для людини, а деталі можна подивитися в Paperclip.";
+  }
+
+  if (/search console|gsc|analytics|query|queries|ctr|impression/i.test(withoutStatusPrefix)) {
+    return "Оновлено роботу з пошуковою статистикою: агенти зможуть брати дані з Google Search Console для аналізу сторінок і запитів.";
+  }
+
+  if (/agent|heartbeat|routine|inbox|paperclip/i.test(withoutStatusPrefix)) {
+    return "Оновлено налаштування роботи агентів у Paperclip, щоб вони коректніше виконували задачі та не плутали робочі процеси.";
+  }
+
+  if (/agent|heartbeat/i.test(title)) {
+    return "Задачу по налаштуванню агентів завершено. Технічні деталі залишені в Paperclip, а тут показана тільки суть.";
+  }
+
+  if (stats.latinRatio > 0.45 || looksTechnical) {
+    return "Задачу завершено. Це технічне оновлення; деталі можна відкрити в Paperclip.";
+  }
+
+  return withoutStatusPrefix;
 }
 
 function normalizeTelegramSummary(value: string | null | undefined): string | null {
@@ -236,6 +303,14 @@ export function issueTelegramNotificationService(
     return parseTelegramPluginConfig(row?.configJson ?? null);
   }
 
+  async function getIssueCompany(companyId: string): Promise<{ name: string; issuePrefix: string } | null> {
+    return await db
+      .select({ name: companies.name, issuePrefix: companies.issuePrefix })
+      .from(companies)
+      .where(eq(companies.id, companyId))
+      .then((rows) => rows[0] ?? null);
+  }
+
   async function sendIssueDoneNotification(
     issueId: string,
     actor?: IssueDoneNotificationActor,
@@ -265,7 +340,8 @@ export function issueTelegramNotificationService(
 
     const token = await resolveTelegramBotToken(issue.companyId, config.telegramBotTokenRef);
     const topicId = resolved.contract.recipient?.topicId ?? null;
-    const caption = buildCaption(issue, config.paperclipPublicUrl, actor?.completionSummary);
+    const company = await getIssueCompany(issue.companyId);
+    const caption = buildCaption(issue, config.paperclipPublicUrl, company, actor?.completionSummary);
     const messageIds: Array<number | null> = [];
 
     for (const [index, attachment] of resolved.attachments.entries()) {

@@ -177,6 +177,12 @@ issue attachment(s) for delivery.
 GET /api/issues/{issueId}/notification-contracts/telegram
 ```
 
+Completion messages sent to Telegram are human-facing, not agent-facing. They
+must include the issue identifier and company name, use the configured human
+language where possible, and summarize technical completion notes in plain
+language. Detailed reasoning, logs, and implementation context belong in the
+Paperclip issue, with Telegram linking back to the issue.
+
 ## Attachments
 
 ### Upload

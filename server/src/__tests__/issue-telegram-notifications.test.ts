@@ -177,9 +177,10 @@ describeEmbeddedPostgres("issueTelegramNotificationService", () => {
     const form = init.body as FormData;
     expect(form.get("chat_id")).toBe("-5154906793");
     expect(form.get("caption")).toContain("✅ Готово: AST-456");
+    expect(form.get("caption")).toContain("Компанія: Astrogen");
     expect(form.get("caption")).toContain("Задача: Налаштування Telegram-повідомлень");
-    expect(form.get("caption")).toContain("Суть: Статтю підготовлено й надіслано в Telegram.");
-    expect(form.get("caption")).toContain(`Відкрити задачу: https://paperclip.example.test/issues/${issueId}`);
+    expect(form.get("caption")).toContain("Що зроблено: Статтю підготовлено й надіслано в Telegram.");
+    expect(form.get("caption")).toContain("Відкрити в Paperclip: https://paperclip.example.test/AST/issues/AST-456");
     const document = form.get("document");
     expect(document).toBeInstanceOf(File);
     expect((document as File).name).toBe("money-article-final.md");
@@ -343,10 +344,133 @@ describeEmbeddedPostgres("issueTelegramNotificationService", () => {
     const firstForm = fetchMock.mock.calls[0]?.[1]?.body as FormData;
     const secondForm = fetchMock.mock.calls[1]?.[1]?.body as FormData;
     expect(firstForm.get("caption")).toContain("✅ Готово: AST-457");
+    expect(firstForm.get("caption")).toContain("Компанія: Astrogen");
     expect(firstForm.get("caption")).toContain("Задача: Налаштування Telegram-повідомлень");
-    expect(firstForm.get("caption")).toContain("Суть: Пакет статті підготовлено у Markdown та HTML.");
-    expect(firstForm.get("caption")).toContain(`Відкрити задачу: https://paperclip.example.test/issues/${issueId}`);
+    expect(firstForm.get("caption")).toContain("Що зроблено: Пакет статті підготовлено у Markdown та HTML.");
+    expect(firstForm.get("caption")).toContain("Відкрити в Paperclip: https://paperclip.example.test/AST/issues/AST-457");
     expect(secondForm.get("caption")).toBeNull();
+  });
+
+  it("humanizes technical English completion summaries and includes the company", async () => {
+    const companyId = randomUUID();
+    const issueId = randomUUID();
+    const pluginId = randomUUID();
+
+    await db.insert(companies).values({
+      id: companyId,
+      name: "DiskInternals",
+      issuePrefix: "DIS",
+      requireBoardApprovalForNewAgents: false,
+    });
+
+    await db.insert(issues).values({
+      id: issueId,
+      companyId,
+      title: "Agent setup",
+      status: "done",
+      priority: "medium",
+      createdByUserId: "user-1",
+      issueNumber: 28,
+      identifier: "DIS-28",
+    });
+
+    await documentsSvc.upsertIssueDocument({
+      issueId,
+      key: "notification-contract",
+      title: "Telegram delivery",
+      format: "markdown",
+      body: `
+\`\`\`json notification-contract
+{
+  "enabled": true,
+  "channel": "telegram",
+  "trigger": "issue_done",
+  "recipient": { "target": "default_chat" },
+  "delivery": {
+    "mode": "attach_file",
+    "artifact": {
+      "source": "issue_attachment",
+      "filenameIncludes": "summary"
+    }
+  }
+}
+\`\`\`
+`,
+      authorAgentId: null,
+    });
+
+    const attachment = await issuesSvc.createAttachment({
+      issueId,
+      provider: "local_fs",
+      objectKey: `${companyId}/issues/${issueId}/summary.md`,
+      contentType: "text/markdown",
+      byteSize: 9,
+      sha256: "d".repeat(64),
+      originalFilename: "summary.md",
+      createdByUserId: "user-1",
+    });
+
+    await db.insert(plugins).values({
+      id: pluginId,
+      pluginKey: "paperclip-plugin-telegram",
+      packageName: "paperclip-plugin-telegram",
+      version: "0.3.0",
+      apiVersion: 1,
+      manifestJson: {},
+      status: "ready",
+    });
+    await db.insert(pluginConfig).values({
+      pluginId,
+      configJson: {
+        telegramBotTokenRef: "telegram-secret",
+        defaultChatId: "-5154906793",
+        paperclipPublicUrl: "https://paperclip.example.test",
+      },
+    });
+
+    const storage: StorageService = {
+      provider: "local_fs",
+      putFile: vi.fn(),
+      getObject: vi.fn().mockResolvedValue({
+        stream: Readable.from(["# summary"]),
+        contentType: "text/markdown",
+        contentLength: 9,
+      }),
+      headObject: vi.fn(),
+      deleteObject: vi.fn(),
+    };
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: vi.fn().mockResolvedValue({
+        ok: true,
+        result: { message_id: 9901 },
+      }),
+    });
+
+    const svc = issueTelegramNotificationService(db, storage, {
+      fetchImpl: fetchMock as unknown as typeof fetch,
+      resolveTelegramBotToken: vi.fn().mockResolvedValue("telegram-token"),
+    });
+
+    await svc.sendIssueDoneNotification(issueId, {
+      completionSummary:
+        "Update Defined the interim proxy attribution policy for product-level reporting until ecommerce product attribution is reliable.",
+    });
+
+    expect(storage.getObject).toHaveBeenCalledWith(companyId, attachment.objectKey);
+    const form = fetchMock.mock.calls[0]?.[1]?.body as FormData;
+    const caption = String(form.get("caption"));
+    expect(caption).toContain("✅ Готово: DIS-28");
+    expect(caption).toContain("Компанія: DiskInternals");
+    expect(caption).toContain("Задача: Налаштування роботи агентів");
+    expect(caption).toContain(
+      "Що зроблено: Зафіксовано тимчасове правило для звітів по продуктах",
+    );
+    expect(caption).toContain("Відкрити в Paperclip: https://paperclip.example.test/DIS/issues/DIS-28");
+    expect(caption).not.toContain("interim proxy attribution policy");
+    expect(caption).not.toContain("ecommerce product attribution");
   });
 
   it("skips delivery when no notification contract exists", async () => {
