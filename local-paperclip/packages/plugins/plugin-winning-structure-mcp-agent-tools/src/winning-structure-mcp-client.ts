@@ -84,16 +84,28 @@ function normalizeArguments(args: unknown): Record<string, unknown> {
 function assertAllowedClientKey(input: {
   args: Record<string, unknown>;
   allowedClientKeys: ReadonlySet<string>;
+  requireClientKey: boolean;
 }) {
   if (input.allowedClientKeys.size === 0) return;
 
-  const clientKey = readNonEmptyString(input.args.client_key);
+  const payload = isRecord(input.args.payload) ? input.args.payload : null;
+  const clientKey = readNonEmptyString(input.args.client_key)
+    ?? readNonEmptyString(payload?.client_key);
+  if (!input.requireClientKey && !clientKey) return;
   if (!clientKey) {
     throw new Error("Winning Structure MCP client_key is required by plugin allowlist");
   }
   if (!input.allowedClientKeys.has(clientKey)) {
     throw new Error(`Winning Structure MCP client_key is not allowed: ${clientKey}`);
   }
+}
+
+function shouldWrapPayload(toolName: WinningStructureMcpToolName) {
+  return (MCP_TOOL_NAMES as readonly string[]).includes(toolName);
+}
+
+function requiresClientKey(toolName: WinningStructureMcpToolName) {
+  return toolName === "validate_task_input" || toolName === "start_winning_structure_run";
 }
 
 export function prepareWinningStructureMcpArguments(input: {
@@ -103,11 +115,15 @@ export function prepareWinningStructureMcpArguments(input: {
 }) {
   assertAllowedTool(input.toolName);
   const args = normalizeArguments(input.args);
+  const mcpArgs = shouldWrapPayload(input.toolName) && !isRecord(args.payload)
+    ? { payload: args }
+    : args;
   assertAllowedClientKey({
-    args,
+    args: mcpArgs,
     allowedClientKeys: input.allowedClientKeys ?? new Set<string>(),
+    requireClientKey: requiresClientKey(input.toolName),
   });
-  return args;
+  return mcpArgs;
 }
 
 function flattenToolContent(content: unknown[] | undefined) {

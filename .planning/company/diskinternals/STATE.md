@@ -12,7 +12,7 @@ See: .planning/PROJECT.md (updated 2026-04-29)
 Phase: 2 of 8 (Data Contracts And Attribution)
 Plan: 0 of 3 in current phase
 Status: In progress
-Last activity: 2026-04-29 - Paperclip project, issues, specialist agents, approvals, phase documents, and manager routines created
+Last activity: 2026-04-29 - Winning Structure MCP plugin deployed to live Paperclip and smoke-tested through Paperclip tools
 
 Progress: [###-------] 28%
 
@@ -57,19 +57,19 @@ Recent decisions affecting current work:
 ### Pending Todos
 
 - `DIS-48` created by Paperclip manager flow: canonical DiskInternals company and product reference layer.
-- Phase 9 Winning Structure MCP adapter MVP is implemented locally as a bundled Paperclip plugin; live smoke waits for endpoint/auth/test input.
+- Phase 9 Winning Structure MCP adapter is deployed live, configured with encrypted token secret, and smoke-tested through Paperclip plugin tools.
 
 ### Roadmap Evolution
 
 - Phase 9 added: Winning Structure MCP Adapter.
-- Phase 9 implementation completed locally on 2026-04-29; Docker build now includes the plugin.
+- Phase 9 implementation completed locally and live on 2026-04-29; Docker build now includes the plugin and live registry has the tools enabled.
 
 ### Blockers/Concerns
 
 - BigQuery operational access is deferred.
 - Linux Writer is upcoming, so product/URL/event mapping may start with placeholder fields.
 - DiskInternals website repository/access is not present in this workspace, so real website PR creation depends on later workspace configuration.
-- Winning Structure MCP live test needs endpoint URL, auth mode/token secret, exposed tool names, and one test task input.
+- Winning Structure MCP smoke returned `human_review_required: true` with low confidence for the sample `convert vhd to vmdk` run, so downstream automation must keep human/editorial review before using the recommendation.
 
 ## Session Continuity
 

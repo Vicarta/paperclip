@@ -77,6 +77,41 @@ describe("plugin-winning-structure-mcp-agent-tools", () => {
     expect(result.content).toBe("valid");
   });
 
+  it("wraps v1 task payloads for MCP tools that require a payload argument", () => {
+    const task = {
+      company_id: "opaque-company",
+      project_id: "opaque-project",
+      client_key: "diskinternals-us",
+      task: {
+        page_mode: "existing",
+        target_url: "https://www.diskinternals.com/vmfs-recovery/convert-vhd-to-vmdk/",
+        primary_keyword: "convert vhd to vmdk",
+      },
+      market: {
+        geo: "US",
+        search_language: "en",
+        output_language: "en",
+        primary_device: "desktop",
+      },
+    };
+
+    expect(
+      prepareWinningStructureMcpArguments({
+        toolName: "validate_task_input",
+        args: task,
+        allowedClientKeys: new Set(["diskinternals-us"]),
+      }),
+    ).toEqual({ payload: task });
+
+    expect(
+      prepareWinningStructureMcpArguments({
+        toolName: "start_winning_structure_run",
+        args: { payload: task },
+        allowedClientKeys: new Set(["diskinternals-us"]),
+      }),
+    ).toEqual({ payload: task });
+  });
+
   it("registers async lifecycle wrapper tools", async () => {
     const harness = createTestHarness({ manifest });
     await plugin.definition.setup(harness.ctx);
@@ -128,7 +163,7 @@ describe("plugin-winning-structure-mcp-agent-tools", () => {
         args: { client_key: "diskinternals-us" },
         allowedClientKeys: new Set(["diskinternals-us"]),
       }),
-    ).toEqual({ client_key: "diskinternals-us" });
+    ).toEqual({ payload: { client_key: "diskinternals-us" } });
 
     expect(() =>
       prepareWinningStructureMcpArguments({
@@ -137,6 +172,14 @@ describe("plugin-winning-structure-mcp-agent-tools", () => {
         allowedClientKeys: new Set(["diskinternals-us"]),
       }),
     ).toThrow(/client_key is not allowed/);
+
+    expect(
+      prepareWinningStructureMcpArguments({
+        toolName: "get_run_status",
+        args: { run_id: "wsrun_1" },
+        allowedClientKeys: new Set(["diskinternals-us"]),
+      }),
+    ).toEqual({ payload: { run_id: "wsrun_1" } });
   });
 
   it("normalizes structured MCP results for agent-readable output", () => {

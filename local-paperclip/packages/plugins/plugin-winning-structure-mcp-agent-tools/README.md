@@ -36,6 +36,10 @@ The plugin exposes the v1 async lifecycle:
 - `get-run-status` -> MCP `get_run_status`
 - `get-run-result` -> MCP `get_run_result`
 
+Agents pass the v1 input object directly. If the MCP server schema expects a
+top-level `payload` argument, the adapter wraps calls as `{ payload: ... }`
+internally. Calls that already include `payload` are passed through unchanged.
+
 ## Configuration
 
 Plugin config fields:
@@ -59,6 +63,10 @@ Authorization.
 - Agents cannot pass or override the endpoint URL or bearer token.
 - Tool calls are limited to the four v1 MCP tools.
 - Optional `client_key` allowlist is enforced before the request reaches MCP.
+- The `client_key` allowlist is mandatory for task creation/validation tools
+  when configured. Status/result reads may omit `client_key` only when the MCP
+  server accepts a run-id-only read; if the server requires namespace keys,
+  agents should pass `company_id`, `project_id`, `client_key`, and `run_id`.
 - Private-network endpoints may need an explicit Paperclip host allowlist entry
   before live deployment, because the host blocks private/reserved plugin fetch
   targets by default.
