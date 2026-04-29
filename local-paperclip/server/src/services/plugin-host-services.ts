@@ -51,13 +51,14 @@ const ALLOWED_PROTOCOLS = new Set(["http:", "https:"]);
 const TELEMETRY_EVENT_NAME_REGEX = /^[a-z0-9][a-z0-9_-]*$/;
 
 const SEARCH_CONSOLE_MCP_PLUGIN_KEY = "paperclip.search-console-mcp-agent-tools";
+const WINNING_STRUCTURE_MCP_PLUGIN_KEY = "paperclip.winning-structure-mcp-agent-tools";
 
 /**
  * Narrow private-network exception for trusted server-side connector plugins.
  *
  * The default plugin HTTP bridge blocks private/reserved IPs to prevent SSRF.
- * The Search Console MCP adapter is intentionally a backend-only proxy to a
- * private Tailscale endpoint; agents cannot edit its endpoint/token config.
+ * These MCP adapters are intentionally backend-only proxies to private Tailscale
+ * endpoints; agents cannot edit endpoint/token config.
  * Keep this allowlist exact by plugin key and host:port.
  */
 const PRIVATE_HTTP_FETCH_TARGETS_BY_PLUGIN_KEY: ReadonlyMap<string, ReadonlySet<string>> =
@@ -67,6 +68,13 @@ const PRIVATE_HTTP_FETCH_TARGETS_BY_PLUGIN_KEY: ReadonlyMap<string, ReadonlySet<
       new Set([
         "100.98.5.50:3002",
         "172.21.0.1:3002",
+      ]),
+    ],
+    [
+      WINNING_STRUCTURE_MCP_PLUGIN_KEY,
+      new Set([
+        "100.98.5.50:8000",
+        "172.21.0.1:8000",
       ]),
     ],
   ]);

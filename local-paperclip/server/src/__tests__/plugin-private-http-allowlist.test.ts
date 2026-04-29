@@ -48,4 +48,27 @@ describe("plugin private HTTP allowlist", () => {
       ),
     ).toBe(true);
   });
+
+  it("allows only the Winning Structure MCP plugin to use its exact private endpoint", () => {
+    expect(
+      allowed(
+        "paperclip.winning-structure-mcp-agent-tools",
+        "http://100.98.5.50:8000/mcp",
+      ),
+    ).toBe(true);
+
+    expect(
+      allowed(
+        "paperclip.search-console-mcp-agent-tools",
+        "http://100.98.5.50:8000/mcp",
+      ),
+    ).toBe(false);
+
+    expect(
+      allowed(
+        "paperclip.winning-structure-mcp-agent-tools",
+        "http://100.98.5.50:8001/mcp",
+      ),
+    ).toBe(false);
+  });
 });
