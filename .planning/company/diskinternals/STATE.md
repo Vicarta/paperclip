@@ -72,7 +72,7 @@ Recent decisions affecting current work:
 - Linux Writer is upcoming, so product/URL/event mapping may start with placeholder fields.
 - DiskInternals website repository/access is not present in this workspace, so real website PR creation depends on later workspace configuration.
 - Winning Structure MCP smoke returned `human_review_required: true` with low confidence for the sample `convert vhd to vmdk` run, so downstream automation must keep human/editorial review before using the recommendation.
-- Semantic Core MCP live server does not currently expose a dedicated `get_review_queue` tool; review candidates are available in import artifacts, and a dedicated queue endpoint is an MCP-side follow-up.
+- Semantic Core MCP live server now exposes a dedicated `get_review_queue` tool; Paperclip wrapper smoke returned 200 with a valid paginated queue response.
 
 ## Session Continuity
 

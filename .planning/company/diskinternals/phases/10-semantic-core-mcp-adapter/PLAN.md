@@ -39,4 +39,4 @@ Create a Paperclip plugin that lets agents use the private Semantic Core MCP ser
 ## Follow-Ups
 
 - Native SQL tables for durable operational SEO state remain a separate data-model phase.
-- Live Semantic Core MCP currently does not expose `get_review_queue`; review candidates are available through import artifacts, while a dedicated queue tool requires MCP-side support.
+- Live Semantic Core MCP now exposes `get_review_queue`; Paperclip wrapper smoke returned 200 with a valid paginated queue response.

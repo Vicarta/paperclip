@@ -19,7 +19,7 @@ The plugin does not generate semantic cores itself. It keeps endpoint credential
 - `run-layer-and-wait`
 - `get-job-status`
 - `prepare-paperclip-import`
-- `get-review-queue` (wrapper reserved for MCP deployments that expose `get_review_queue`; current live server returns review candidates through import artifacts)
+- `get-review-queue`
 - `submit-review-decisions`
 - `smoke-test`
 
