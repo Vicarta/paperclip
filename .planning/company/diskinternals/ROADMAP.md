@@ -21,6 +21,7 @@ The roadmap is phase-based, not day-based. Execution can run automatically throu
 - [ ] **Phase 6: Automated Operating Routines** - Configure recurring growth operations without idle specialist budget burn.
 - [ ] **Phase 7: BigQuery Transition And Portfolio Expansion** - Prepare BigQuery-first marts and expand beyond the pilot when data is ready.
 - [ ] **Phase 8: Guided Selector, Localization, And Assistant Readiness** - Stage selector, localization, and AI assistant work behind guardrails.
+- [x] **Phase 9: Winning Structure MCP Adapter** - Add the Paperclip adapter for SERP-based Winning Structure recommendations.
 
 ## Phase Details
 
@@ -155,6 +156,21 @@ Plans:
 - [ ] 08-02: Signal-gated localization operating plan
 - [ ] 08-03: AI assistant readiness checklist and deferred launch guardrails
 
+### Phase 9: Winning Structure MCP Adapter
+**Goal**: Paperclip agents can call the Winning Structure MCP server through a server-side adapter that keeps endpoint credentials private and returns recommendation/provenance artifacts for review.
+**Depends on**: Phase 2
+**Requirements**: DATA-01, PR-01, QA-01
+**Success Criteria**:
+  1. A bundled Paperclip plugin exposes `validate_task_input`, `start_winning_structure_run`, `get_run_status`, and `get_run_result` through agent tools.
+  2. MCP endpoint and bearer token are stored only in plugin config/secrets, not in prompts, code, or UI output.
+  3. The plugin preserves v1 contract fields including opaque namespace keys, idempotency/input hash, cache policy, cost, artifacts, and cache summary.
+  4. Unit tests cover tool allowlisting, secret resolution, and MCP result normalization.
+  5. Live smoke is ready to run once endpoint/auth/test input are provided.
+**Plans**: 1 plan
+
+Plans:
+- [ ] 09-01: Winning Structure MCP plugin adapter MVP
+
 ## Progress
 
 **Execution Order:**
@@ -170,3 +186,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8.
 | 6. Automated Operating Routines | 3/3 | Complete | 2026-04-29 |
 | 7. BigQuery Transition And Portfolio Expansion | 0/3 | Not started | - |
 | 8. Guided Selector, Localization, And Assistant Readiness | 0/3 | Not started | - |
+| 9. Winning Structure MCP Adapter | 1/1 | Implemented, waiting live smoke inputs | 2026-04-29 |

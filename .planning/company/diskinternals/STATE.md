@@ -57,12 +57,19 @@ Recent decisions affecting current work:
 ### Pending Todos
 
 - `DIS-48` created by Paperclip manager flow: canonical DiskInternals company and product reference layer.
+- Phase 9 Winning Structure MCP adapter MVP is implemented locally as a bundled Paperclip plugin; live smoke waits for endpoint/auth/test input.
+
+### Roadmap Evolution
+
+- Phase 9 added: Winning Structure MCP Adapter.
+- Phase 9 implementation completed locally on 2026-04-29; Docker build now includes the plugin.
 
 ### Blockers/Concerns
 
 - BigQuery operational access is deferred.
 - Linux Writer is upcoming, so product/URL/event mapping may start with placeholder fields.
 - DiskInternals website repository/access is not present in this workspace, so real website PR creation depends on later workspace configuration.
+- Winning Structure MCP live test needs endpoint URL, auth mode/token secret, exposed tool names, and one test task input.
 
 ## Session Continuity
 
