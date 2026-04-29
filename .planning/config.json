@@ -1,0 +1,27 @@
+{
+  "mode": "multi-company-router",
+  "root_policy": "Do not store client-specific GSD state in the root .planning directory.",
+  "scopes": {
+    "agency-core": {
+      "path": ".planning/agency-core",
+      "purpose": "Reusable agency templates, shared agent contracts, shared Paperclip/plugin architecture, and cross-client operating model."
+    },
+    "astrogen": {
+      "path": ".planning/company/astrogen",
+      "paperclip_company_id": "c33f6b81-5ced-4270-9288-b46a32f6337a",
+      "paperclip_issue_prefix": "AST",
+      "purpose": "Astrogen-specific SEO/content/product planning."
+    },
+    "diskinternals": {
+      "path": ".planning/company/diskinternals",
+      "paperclip_company_id": "969d66ff-d77e-4dbf-8759-1a17c2bb17c2",
+      "paperclip_issue_prefix": "DIS",
+      "purpose": "DiskInternals-specific SEO/growth/Paperclip planning."
+    }
+  },
+  "active_scope": null,
+  "notes": {
+    "git_tracking": "Top-level /Users/savitsky/CodexProjects/paper-clip is not a git repository; the Paperclip code repository is nested at local-paperclip/.git.",
+    "operator_rule": "If a chat starts client work, state the target scope before changing planning files."
+  }
+}

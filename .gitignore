@@ -1,0 +1,26 @@
+.DS_Store
+
+# Local runtime/cache artifacts
+.tmp/
+.playwright-cli/
+.screenshots/
+output/
+todo
+
+# Dependencies and build outputs anywhere in the workspace
+node_modules/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+
+# Local secrets and env files. Keep *.env.example tracked.
+.env
+.env.*
+!.env.example
+
+# Local editor/runtime noise
+.idea/
+.vscode/
+*.log
+

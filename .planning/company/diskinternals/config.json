@@ -1,0 +1,18 @@
+{
+  "mode": "interactive",
+  "depth": "comprehensive",
+  "parallelization": true,
+  "commit_docs": false,
+  "model_profile": "balanced",
+  "workflow": {
+    "research": true,
+    "plan_check": true,
+    "verifier": true,
+    "auto_advance": false
+  },
+  "notes": {
+    "reason_commit_docs_false": "Top-level /Users/savitsky/CodexProjects/paper-clip is not a git repository; the Paperclip code repository is nested at local-paperclip/.git. Planning docs are local until the operator chooses a tracking location.",
+    "paperclip_company_id": "969d66ff-d77e-4dbf-8759-1a17c2bb17c2",
+    "paperclip_issue_prefix": "DIS"
+  }
+}

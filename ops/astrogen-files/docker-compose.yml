@@ -1,0 +1,20 @@
+services:
+  filebrowser:
+    image: filebrowser/filebrowser:v2.62.1
+    restart: unless-stopped
+    user: "1002:1002"
+    command:
+      - --address
+      - 0.0.0.0
+      - --port
+      - "80"
+      - --database
+      - /database/filebrowser.db
+      - --root
+      - /srv
+    ports:
+      - "127.0.0.1:${ASTROGEN_FILES_HOST_PORT:-8088}:80"
+    volumes:
+      - /home/paperclip/astrogen:/srv
+      - ./database:/database
+      - ./config:/config
