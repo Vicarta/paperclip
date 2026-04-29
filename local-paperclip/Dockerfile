@@ -43,6 +43,7 @@ COPY packages/plugins/plugin-exa-agent-tools/package.json packages/plugins/plugi
 COPY packages/plugins/plugin-seo-performance-loop/package.json packages/plugins/plugin-seo-performance-loop/
 COPY packages/plugins/plugin-serper-agent-tools/package.json packages/plugins/plugin-serper-agent-tools/
 COPY packages/plugins/plugin-search-console-mcp-agent-tools/package.json packages/plugins/plugin-search-console-mcp-agent-tools/
+COPY packages/plugins/plugin-semantic-core-mcp-agent-tools/package.json packages/plugins/plugin-semantic-core-mcp-agent-tools/
 COPY packages/plugins/plugin-winning-structure-mcp-agent-tools/package.json packages/plugins/plugin-winning-structure-mcp-agent-tools/
 COPY packages/plugins/examples/plugin-authoring-smoke-example/package.json packages/plugins/examples/plugin-authoring-smoke-example/
 COPY packages/plugins/examples/plugin-file-browser-example/package.json packages/plugins/examples/plugin-file-browser-example/
@@ -64,6 +65,7 @@ RUN pnpm --filter @paperclipai/plugin-serper-agent-tools build
 RUN pnpm --filter @paperclipai/plugin-dataforseo-agent-tools build
 RUN pnpm --filter @paperclipai/plugin-bright-data-agent-tools build
 RUN pnpm --filter @paperclipai/plugin-search-console-mcp-agent-tools build
+RUN pnpm --filter @paperclipai/plugin-semantic-core-mcp-agent-tools build
 RUN pnpm --filter @paperclipai/plugin-winning-structure-mcp-agent-tools build
 RUN pnpm --filter @paperclipai/server build
 RUN test -f server/dist/index.js || (echo "ERROR: server build output missing" && exit 1)

@@ -22,6 +22,7 @@ The roadmap is phase-based, not day-based. Execution can run automatically throu
 - [ ] **Phase 7: BigQuery Transition And Portfolio Expansion** - Prepare BigQuery-first marts and expand beyond the pilot when data is ready.
 - [ ] **Phase 8: Guided Selector, Localization, And Assistant Readiness** - Stage selector, localization, and AI assistant work behind guardrails.
 - [x] **Phase 9: Winning Structure MCP Adapter** - Add the Paperclip adapter for SERP-based Winning Structure recommendations.
+- [x] **Phase 10: Semantic Core MCP Adapter** - Add the Paperclip adapter for semantic-core generation runs and Paperclip import validation.
 
 ## Phase Details
 
@@ -158,6 +159,20 @@ Plans:
 
 ### Phase 9: Winning Structure MCP Adapter
 **Goal**: Paperclip agents can call the Winning Structure MCP server through a server-side adapter that keeps endpoint credentials private and returns recommendation/provenance artifacts for review.
+
+### Phase 10: Semantic Core MCP Adapter
+**Goal**: Paperclip agents can call the Semantic Core MCP server through a server-side adapter that keeps endpoint credentials private, orchestrates semantic layers, validates `paperclip_import.v1`, and stores operational import state for follow-up SEO work.
+**Depends on**: Phase 9
+**Requirements**: SEO-MCP-01, SEO-MCP-02, SEO-MCP-03, SEO-MCP-04
+**Success Criteria**:
+  1. MCP endpoint and bearer token are configured only in backend plugin settings/secrets.
+  2. Agents can register projects, run semantic layers, poll jobs, and prepare Paperclip import payloads.
+  3. Import payloads are rejected unless `schema_version = paperclip_import.v1` and required artifact arrays exist.
+  4. Cost telemetry and run/job/import IDs are preserved in plugin-owned operational state.
+**Plans**: 1 plan
+
+Plans:
+- [ ] 10-01: Semantic Core MCP plugin, validation, smoke test, and private endpoint allowlist
 **Depends on**: Phase 2
 **Requirements**: DATA-01, PR-01, QA-01
 **Success Criteria**:

@@ -71,4 +71,27 @@ describe("plugin private HTTP allowlist", () => {
       ),
     ).toBe(false);
   });
+
+  it("allows only the Semantic Core MCP plugin to use its exact private endpoint", () => {
+    expect(
+      allowed(
+        "paperclip.semantic-core-mcp-agent-tools",
+        "http://100.98.5.50:8001/mcp",
+      ),
+    ).toBe(true);
+
+    expect(
+      allowed(
+        "paperclip.winning-structure-mcp-agent-tools",
+        "http://100.98.5.50:8001/mcp",
+      ),
+    ).toBe(false);
+
+    expect(
+      allowed(
+        "paperclip.semantic-core-mcp-agent-tools",
+        "http://100.98.5.50:8000/mcp",
+      ),
+    ).toBe(false);
+  });
 });

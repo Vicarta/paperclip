@@ -12,7 +12,7 @@ See: .planning/PROJECT.md (updated 2026-04-29)
 Phase: 2 of 8 (Data Contracts And Attribution)
 Plan: 0 of 3 in current phase
 Status: In progress
-Last activity: 2026-04-29 - Winning Structure MCP plugin deployed to live Paperclip and smoke-tested through Paperclip tools
+Last activity: 2026-04-29 - Semantic Core MCP adapter implemented, deployed live, and smoke-tested through Paperclip plugin dispatcher
 
 Progress: [###-------] 28%
 
@@ -58,11 +58,13 @@ Recent decisions affecting current work:
 
 - `DIS-48` created by Paperclip manager flow: canonical DiskInternals company and product reference layer.
 - Phase 9 Winning Structure MCP adapter is deployed live, configured with encrypted token secret, and smoke-tested through Paperclip plugin tools.
+- Phase 10 Semantic Core MCP adapter is deployed live, configured with encrypted token secret, and smoke-tested through Paperclip plugin tools.
 
 ### Roadmap Evolution
 
 - Phase 9 added: Winning Structure MCP Adapter.
 - Phase 9 implementation completed locally and live on 2026-04-29; Docker build now includes the plugin and live registry has the tools enabled.
+- Phase 10 added and completed: Semantic Core MCP Adapter. It bridges Paperclip to the private semantic-core MCP server, validates `paperclip_import.v1`, and stores import candidates in plugin state/entities until native SEO semantic tables are implemented.
 
 ### Blockers/Concerns
 
@@ -70,6 +72,7 @@ Recent decisions affecting current work:
 - Linux Writer is upcoming, so product/URL/event mapping may start with placeholder fields.
 - DiskInternals website repository/access is not present in this workspace, so real website PR creation depends on later workspace configuration.
 - Winning Structure MCP smoke returned `human_review_required: true` with low confidence for the sample `convert vhd to vmdk` run, so downstream automation must keep human/editorial review before using the recommendation.
+- Semantic Core MCP live server does not currently expose a dedicated `get_review_queue` tool; review candidates are available in import artifacts, and a dedicated queue endpoint is an MCP-side follow-up.
 
 ## Session Continuity
 
