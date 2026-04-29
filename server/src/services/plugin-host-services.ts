@@ -50,6 +50,42 @@ const DNS_LOOKUP_TIMEOUT_MS = 5_000;
 const ALLOWED_PROTOCOLS = new Set(["http:", "https:"]);
 const TELEMETRY_EVENT_NAME_REGEX = /^[a-z0-9][a-z0-9_-]*$/;
 
+const SEARCH_CONSOLE_MCP_PLUGIN_KEY = "paperclip.search-console-mcp-agent-tools";
+
+/**
+ * Narrow private-network exception for trusted server-side connector plugins.
+ *
+ * The default plugin HTTP bridge blocks private/reserved IPs to prevent SSRF.
+ * The Search Console MCP adapter is intentionally a backend-only proxy to a
+ * private Tailscale endpoint; agents cannot edit its endpoint/token config.
+ * Keep this allowlist exact by plugin key and host:port.
+ */
+const PRIVATE_HTTP_FETCH_TARGETS_BY_PLUGIN_KEY: ReadonlyMap<string, ReadonlySet<string>> =
+  new Map([
+    [
+      SEARCH_CONSOLE_MCP_PLUGIN_KEY,
+      new Set([
+        "100.98.5.50:3002",
+        "172.21.0.1:3002",
+      ]),
+    ],
+  ]);
+
+function endpointKeyForUrl(parsed: URL, hostname: string) {
+  const port = parsed.port || (parsed.protocol === "https:" ? "443" : "80");
+  return `${hostname.toLowerCase()}:${port}`;
+}
+
+export function isPrivatePluginFetchTargetAllowed(input: {
+  pluginKey: string;
+  parsedUrl: URL;
+  hostname: string;
+}) {
+  const allowedTargets = PRIVATE_HTTP_FETCH_TARGETS_BY_PLUGIN_KEY.get(input.pluginKey);
+  if (!allowedTargets) return false;
+  return allowedTargets.has(endpointKeyForUrl(input.parsedUrl, input.hostname));
+}
+
 /**
  * Check if an IP address is in a private/reserved range (RFC 1918, loopback,
  * link-local, etc.) that plugins should never be able to reach.
@@ -108,7 +144,10 @@ interface ValidatedFetchTarget {
   useTls: boolean;
 }
 
-async function validateAndResolveFetchUrl(urlString: string): Promise<ValidatedFetchTarget> {
+async function validateAndResolveFetchUrl(
+  urlString: string,
+  opts?: { pluginKey?: string },
+): Promise<ValidatedFetchTarget> {
   let parsed: URL;
   try {
     parsed = new URL(urlString);
@@ -149,6 +188,26 @@ async function validateAndResolveFetchUrl(urlString: string): Promise<ValidatedF
     // to both private and public addresses.
     const safeResults = results.filter((entry) => !isPrivateIP(entry.address));
     if (safeResults.length === 0) {
+      if (
+        opts?.pluginKey &&
+        isPrivatePluginFetchTargetAllowed({
+          pluginKey: opts.pluginKey,
+          parsedUrl: parsed,
+          hostname: originalHostname,
+        })
+      ) {
+        const resolved = results[0]!;
+        return {
+          parsedUrl: parsed,
+          resolvedAddress: resolved.address,
+          hostHeader,
+          tlsServername: parsed.protocol === "https:" && isIP(originalHostname) === 0
+            ? originalHostname
+            : undefined,
+          useTls: parsed.protocol === "https:",
+        };
+      }
+
       throw new Error(
         `All resolved IPs for ${originalHostname} are in private/reserved ranges`,
       );
@@ -578,7 +637,7 @@ export function buildHostServices(
       async fetch(params) {
         // SSRF protection: validate protocol whitelist + block private IPs.
         // Resolve once, then connect directly to that IP to prevent DNS rebinding.
-        const target = await validateAndResolveFetchUrl(params.url);
+        const target = await validateAndResolveFetchUrl(params.url, { pluginKey });
 
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), PLUGIN_FETCH_TIMEOUT_MS);

@@ -46,6 +46,24 @@ Plugin config fields:
 - `allowedSiteUrl`: Search Console site allowlist.
 - `requestTimeoutMs`: timeout for one MCP connect/call cycle.
 
+## Live Docker Networking Note
+
+On the live Paperclip host, the MCP endpoint is bound to the host Tailscale address `100.98.5.50:3002`. The Paperclip app runs inside Docker, so the container cannot reliably connect to the host's Tailscale address directly.
+
+The live instance uses a narrow host-side bridge proxy:
+
+```text
+Paperclip app container -> http://172.21.0.1:3002/mcp -> 100.98.5.50:3002
+```
+
+Operational constraints:
+
+- The proxy binds only to Docker bridge gateway `172.21.0.1:3002`.
+- UFW allows only `172.21.0.0/16 -> 172.21.0.1:3002/tcp`.
+- The backend SSRF guard remains enabled for all plugins by default.
+- `paperclip.search-console-mcp-agent-tools` has a hardcoded allowlist for exactly `100.98.5.50:3002` and `172.21.0.1:3002`.
+- Do not add broader private-network access without a new explicit review.
+
 Local plaintext token location for manual setup only:
 
 ```text
