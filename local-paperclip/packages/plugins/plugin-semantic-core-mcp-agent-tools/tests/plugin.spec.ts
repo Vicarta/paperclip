@@ -9,6 +9,7 @@ import {
   prepareSemanticCoreMcpArguments,
   runLayerAndWait,
   runSemanticCoreSmoke,
+  validateKeywordVolumeContract,
   validatePaperclipImportPayload,
 } from "../src/semantic-core-mcp-client.js";
 
@@ -80,6 +81,26 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
     expect(callSemanticCoreMcpToolMock).toHaveBeenCalledWith(
       expect.objectContaining({ toolName: "get_paperclip_import_schema" }),
     );
+
+    const expectedWrappers = [
+      [TOOL_NAMES.validateProject, "validate_project"],
+      [TOOL_NAMES.listRuns, "list_runs"],
+      [TOOL_NAMES.getKeywords, "get_keywords"],
+      [TOOL_NAMES.getClusters, "get_clusters"],
+      [TOOL_NAMES.getSerpSegments, "get_serp_segments"],
+      [TOOL_NAMES.getRunCosts, "get_run_costs"],
+    ] as const;
+    for (const [toolName, mcpToolName] of expectedWrappers) {
+      callSemanticCoreMcpToolMock.mockResolvedValueOnce({
+        content: "{}",
+        data: { structuredContent: {}, content: [] },
+        isError: false,
+      });
+      await harness.executeTool(toolName, { run_id: "run_1" }, toolRunCtx);
+      expect(callSemanticCoreMcpToolMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({ toolName: mcpToolName }),
+      );
+    }
   });
 
   it("allows only configured semantic layers", () => {
@@ -480,6 +501,44 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
       serpSegmentCount: 1,
       costEventCount: 1,
     });
+  });
+
+  it("requires geo and global volume fields on get_keywords rows", () => {
+    expect(
+      validateKeywordVolumeContract({
+        keywords: [
+          {
+            keyword_text: "vmfs recovery mac",
+            search_volume: 49500,
+            geo_search_volume: 49500,
+            global_search_volume: 9781,
+            global_search_volume_status: "known",
+            global_search_volume_source: "dataforseo_clickstream_global_search_volume",
+            global_search_volume_country_distribution: [],
+          },
+        ],
+      }),
+    ).toEqual({
+      keywordCount: 1,
+      requiredFields: [
+        "geo_search_volume",
+        "global_search_volume",
+        "global_search_volume_status",
+        "global_search_volume_source",
+        "global_search_volume_country_distribution",
+      ],
+    });
+
+    expect(() =>
+      validateKeywordVolumeContract({
+        keywords: [
+          {
+            keyword_text: "vmfs recovery mac",
+            search_volume: 49500,
+          },
+        ],
+      }),
+    ).toThrow(/missing geo_search_volume/);
   });
 
   it("validates fenced JSON import payload responses", async () => {

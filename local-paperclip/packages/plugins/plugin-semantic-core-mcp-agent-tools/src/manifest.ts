@@ -118,6 +118,12 @@ const manifest: PaperclipPluginManifestV1 = {
       parametersSchema: looseObjectSchema,
     },
     {
+      name: TOOL_NAMES.validateProject,
+      displayName: "Semantic Core Validate Project",
+      description: "Call Semantic Core MCP `validate_project`.",
+      parametersSchema: looseObjectSchema,
+    },
+    {
       name: TOOL_NAMES.runLayer,
       displayName: "Semantic Core Run Layer",
       description: "Call Semantic Core MCP `run_layer`.",
@@ -133,6 +139,30 @@ const manifest: PaperclipPluginManifestV1 = {
       name: TOOL_NAMES.getJobStatus,
       displayName: "Semantic Core Get Job Status",
       description: "Call Semantic Core MCP `get_job_status`.",
+      parametersSchema: looseObjectSchema,
+    },
+    {
+      name: TOOL_NAMES.listRuns,
+      displayName: "Semantic Core List Runs",
+      description: "Call Semantic Core MCP `list_runs`.",
+      parametersSchema: looseObjectSchema,
+    },
+    {
+      name: TOOL_NAMES.getKeywords,
+      displayName: "Semantic Core Get Keywords",
+      description: "Call Semantic Core MCP `get_keywords`.",
+      parametersSchema: looseObjectSchema,
+    },
+    {
+      name: TOOL_NAMES.getClusters,
+      displayName: "Semantic Core Get Clusters",
+      description: "Call Semantic Core MCP `get_clusters`.",
+      parametersSchema: looseObjectSchema,
+    },
+    {
+      name: TOOL_NAMES.getSerpSegments,
+      displayName: "Semantic Core Get SERP Segments",
+      description: "Call Semantic Core MCP `get_serp_segments`.",
       parametersSchema: looseObjectSchema,
     },
     {
@@ -155,10 +185,16 @@ const manifest: PaperclipPluginManifestV1 = {
       parametersSchema: looseObjectSchema,
     },
     {
+      name: TOOL_NAMES.getRunCosts,
+      displayName: "Semantic Core Get Run Costs",
+      description: "Call Semantic Core MCP `get_run_costs`.",
+      parametersSchema: looseObjectSchema,
+    },
+    {
       name: TOOL_NAMES.smokeTest,
       displayName: "Semantic Core Smoke Test",
       description:
-        "Run schema/register_project/mock layer/job/import validation smoke through the configured MCP server.",
+        "Run schema/register_project/validate_project/mock layer/get_keywords/import validation smoke through the configured MCP server.",
       parametersSchema: looseObjectSchema,
     },
   ],

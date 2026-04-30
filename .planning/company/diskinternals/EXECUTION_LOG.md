@@ -2,6 +2,23 @@
 
 ## 2026-04-30
 
+Implemented updated Semantic Core MCP volume/import contract.
+
+Paperclip changes:
+- Updated the Semantic Core plugin bridge allowlist and wrappers to match the current MCP tool list: `validate_project`, `list_runs`, `get_keywords`, `get_clusters`, `get_serp_segments`, and `get_run_costs` are now exposed alongside the existing project/run/import/review tools.
+- Updated the plugin smoke flow to call `get_paperclip_import_schema`, `register_project`, `validate_project`, mock `run_layer`, `get_keywords`, and `prepare_paperclip_import`.
+- Added keyword-volume contract validation so `get_keywords` rows must expose `geo_search_volume`, `global_search_volume`, `global_search_volume_status`, `global_search_volume_source`, and `global_search_volume_country_distribution`.
+- Updated live `SEO Semantic Core Strategist` instructions with the full MCP flow and the volume rule: `search_volume` is a legacy alias for `geo_search_volume`, not global demand; `global_search_volume` is native worldwide demand; null/zero volume is not a reject reason.
+- Rebuilt and restarted the live Paperclip app; verified `/api/health` and confirmed `paperclip.semantic-core-mcp-agent-tools` now registers 16 tools in the live plugin registry.
+- Returned [DIS-71](/DIS/issues/DIS-71) from `blocked` to `todo` and woke `SEO Semantic Core Strategist`; run `7d68b727-9ffc-49c2-bb6a-0ae57227c01a` started with [DIS-71](/DIS/issues/DIS-71) execution context.
+
+Verification:
+- `pnpm --filter @paperclipai/plugin-semantic-core-mcp-agent-tools test` passed.
+- `pnpm --filter @paperclipai/plugin-semantic-core-mcp-agent-tools typecheck` passed.
+- `pnpm --filter @paperclipai/plugin-semantic-core-mcp-agent-tools build` passed.
+- Live app image build/restart completed; first health probe hit startup reset, retry returned `ok`.
+- Direct live plugin execution with a static agent key was not possible outside a heartbeat run because `/api/agents/me/plugin-tools/execute` requires agent authentication with heartbeat run context; registry discovery was verified live.
+
 Updated Semantic Core worldwide-demand contract.
 
 Paperclip changes:

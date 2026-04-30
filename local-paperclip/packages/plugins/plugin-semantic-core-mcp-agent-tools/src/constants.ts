@@ -24,11 +24,17 @@ export type SemanticLayer = (typeof SEMANTIC_LAYERS)[number];
 export const MCP_TOOL_NAMES = [
   "get_paperclip_import_schema",
   "register_project",
+  "validate_project",
   "run_layer",
   "get_job_status",
+  "list_runs",
+  "get_keywords",
+  "get_clusters",
+  "get_serp_segments",
   "prepare_paperclip_import",
   "get_review_queue",
   "submit_review_decisions",
+  "get_run_costs",
 ] as const;
 
 export type SemanticCoreMcpToolName = (typeof MCP_TOOL_NAMES)[number];
@@ -37,12 +43,18 @@ export const TOOL_NAMES = {
   listTools: "list-tools",
   getPaperclipImportSchema: "get-paperclip-import-schema",
   registerProject: "register-project",
+  validateProject: "validate-project",
   runLayer: "run-layer",
   runLayerAndWait: "run-layer-and-wait",
   getJobStatus: "get-job-status",
+  listRuns: "list-runs",
+  getKeywords: "get-keywords",
+  getClusters: "get-clusters",
+  getSerpSegments: "get-serp-segments",
   preparePaperclipImport: "prepare-paperclip-import",
   getReviewQueue: "get-review-queue",
   submitReviewDecisions: "submit-review-decisions",
+  getRunCosts: "get-run-costs",
   smokeTest: "smoke-test",
 } as const;
 
@@ -50,6 +62,7 @@ export const ENTITY_TYPES = {
   projectRegistration: "semantic-core-project-registration",
   layerRun: "semantic-core-layer-run",
   importCandidate: "semantic-core-import-candidate",
+  runCost: "semantic-core-run-cost",
   reviewDecisionBatch: "semantic-core-review-decision-batch",
   smokeTest: "semantic-core-smoke-test",
 } as const;

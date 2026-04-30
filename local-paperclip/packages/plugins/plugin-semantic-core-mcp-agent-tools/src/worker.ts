@@ -44,6 +44,12 @@ const wrapperToolMap: Array<{
     description: "Register semantic-core project inputs with the MCP server.",
   },
   {
+    paperclipToolName: TOOL_NAMES.validateProject,
+    mcpToolName: "validate_project",
+    displayName: "Semantic Core Validate Project",
+    description: "Validate registered semantic-core project inputs.",
+  },
+  {
     paperclipToolName: TOOL_NAMES.runLayer,
     mcpToolName: "run_layer",
     displayName: "Semantic Core Run Layer",
@@ -54,6 +60,30 @@ const wrapperToolMap: Array<{
     mcpToolName: "get_job_status",
     displayName: "Semantic Core Get Job Status",
     description: "Poll a Semantic Core MCP async job.",
+  },
+  {
+    paperclipToolName: TOOL_NAMES.listRuns,
+    mcpToolName: "list_runs",
+    displayName: "Semantic Core List Runs",
+    description: "List Semantic Core runs for a project.",
+  },
+  {
+    paperclipToolName: TOOL_NAMES.getKeywords,
+    mcpToolName: "get_keywords",
+    displayName: "Semantic Core Get Keywords",
+    description: "Fetch accepted/review/parked/rejected keyword rows for a run.",
+  },
+  {
+    paperclipToolName: TOOL_NAMES.getClusters,
+    mcpToolName: "get_clusters",
+    displayName: "Semantic Core Get Clusters",
+    description: "Fetch keyword clusters for a run.",
+  },
+  {
+    paperclipToolName: TOOL_NAMES.getSerpSegments,
+    mcpToolName: "get_serp_segments",
+    displayName: "Semantic Core Get SERP Segments",
+    description: "Fetch SERP segmentation rows for a run.",
   },
   {
     paperclipToolName: TOOL_NAMES.preparePaperclipImport,
@@ -72,6 +102,12 @@ const wrapperToolMap: Array<{
     mcpToolName: "submit_review_decisions",
     displayName: "Semantic Core Submit Review Decisions",
     description: "Send Paperclip human/agent review decisions back to Semantic Core MCP.",
+  },
+  {
+    paperclipToolName: TOOL_NAMES.getRunCosts,
+    mcpToolName: "get_run_costs",
+    displayName: "Semantic Core Get Run Costs",
+    description: "Fetch provider/runtime cost metadata for a run.",
   },
 ];
 
@@ -331,6 +367,19 @@ const plugin = definePlugin({
             });
           }
 
+          if (tool.mcpToolName === "get_run_costs" && isRecord(params)) {
+            const runId = readString(params.run_id) ?? "unknown-run";
+            await storeEntity({
+              ctx,
+              runCtx,
+              entityType: ENTITY_TYPES.runCost,
+              externalId: `${runId}:${Date.now()}`,
+              title: `Semantic Core run costs ${runId}`,
+              status: "fetched",
+              data: { runId, request: params, result: result.data },
+            });
+          }
+
           return result;
         },
       );
@@ -387,6 +436,9 @@ const plugin = definePlugin({
         const validation: Record<string, unknown> = isRecord(data.validation)
           ? data.validation
           : {};
+        const keywordVolumeContract: Record<string, unknown> = isRecord(data.keywordVolumeContract)
+          ? data.keywordVolumeContract
+          : {};
         const run: Record<string, unknown> =
           isRecord(data.run) && isRecord(data.run.data) ? data.run.data : {};
         await storeEntity({
@@ -400,6 +452,7 @@ const plugin = definePlugin({
             projectId: readString(data.project_id),
             runId: readString(run.run_id),
             validation,
+            keywordVolumeContract,
           },
         });
         return resultAsToolResult(result);

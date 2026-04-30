@@ -59,6 +59,11 @@ export type PaperclipImportValidation = {
   costEventCount: number;
 };
 
+export type KeywordVolumeContractValidation = {
+  keywordCount: number;
+  requiredFields: string[];
+};
+
 function readNonEmptyString(value: unknown) {
   return typeof value === "string" && value.trim().length > 0
     ? value.trim()
@@ -553,6 +558,14 @@ function readArray(value: unknown) {
   return Array.isArray(value) ? value : null;
 }
 
+const KEYWORD_VOLUME_CONTRACT_FIELDS = [
+  "geo_search_volume",
+  "global_search_volume",
+  "global_search_volume_status",
+  "global_search_volume_source",
+  "global_search_volume_country_distribution",
+] as const;
+
 const IMPORT_PAYLOAD_WRAPPER_KEYS = [
   "payload",
   "result",
@@ -656,6 +669,88 @@ export function validatePaperclipImportPayload(payload: unknown): PaperclipImpor
     clusterCount: clusters.length,
     serpSegmentCount: serpSegments.length,
     costEventCount: costEvents.length,
+  };
+}
+
+const KEYWORD_ARRAY_KEYS = [
+  "keywords",
+  "items",
+  "accepted_keywords",
+  "review_keywords",
+  "parked_keywords",
+  "rejected_keywords",
+  "accepted",
+  "review",
+  "parked",
+  "rejected",
+] as const;
+
+function collectKeywordItems(value: unknown, depth = 0): Record<string, unknown>[] {
+  if (depth > 5) return [];
+  if (typeof value === "string") {
+    return collectKeywordItems(parseJsonText(value), depth + 1);
+  }
+  if (Array.isArray(value)) {
+    return value.filter(isRecord);
+  }
+  if (!isRecord(value)) return [];
+
+  const collected: Record<string, unknown>[] = [];
+  for (const key of KEYWORD_ARRAY_KEYS) {
+    const candidate = value[key];
+    if (Array.isArray(candidate)) {
+      collected.push(...candidate.filter(isRecord));
+    }
+  }
+  const artifacts = isRecord(value.artifacts) ? value.artifacts : null;
+  if (artifacts) {
+    collected.push(...collectKeywordItems(artifacts, depth + 1));
+  }
+  for (const key of IMPORT_PAYLOAD_WRAPPER_KEYS) {
+    collected.push(...collectKeywordItems(value[key], depth + 1));
+  }
+  return collected;
+}
+
+export function extractKeywordItems(result: NormalizedMcpToolResult | unknown) {
+  if (
+    isRecord(result)
+    && isRecord(result.data)
+    && Object.prototype.hasOwnProperty.call(result.data, "structuredContent")
+  ) {
+    const fromStructured = collectKeywordItems(result.data.structuredContent);
+    if (fromStructured.length > 0) return fromStructured;
+    const fromContent = collectKeywordItems(result.content);
+    if (fromContent.length > 0) return fromContent;
+    return collectKeywordItems(result.data.content);
+  }
+
+  return collectKeywordItems(result);
+}
+
+export function validateKeywordVolumeContract(keywords: unknown): KeywordVolumeContractValidation {
+  const items = Array.isArray(keywords) ? keywords.filter(isRecord) : extractKeywordItems(keywords);
+  if (items.length === 0) {
+    throw new Error("Semantic Core get_keywords returned no keyword items");
+  }
+
+  for (const [index, keyword] of items.entries()) {
+    for (const field of KEYWORD_VOLUME_CONTRACT_FIELDS) {
+      if (!Object.prototype.hasOwnProperty.call(keyword, field)) {
+        throw new Error(`Semantic Core keyword ${index} is missing ${field}`);
+      }
+    }
+    const distribution = keyword.global_search_volume_country_distribution;
+    if (distribution != null && !Array.isArray(distribution)) {
+      throw new Error(
+        `Semantic Core keyword ${index} global_search_volume_country_distribution must be an array when present`,
+      );
+    }
+  }
+
+  return {
+    keywordCount: items.length,
+    requiredFields: [...KEYWORD_VOLUME_CONTRACT_FIELDS],
   };
 }
 
@@ -963,6 +1058,14 @@ export async function runSemanticCoreSmoke(input: {
     fetchFn: input.fetchFn,
   });
 
+  await callSemanticCoreMcpTool({
+    toolName: "validate_project",
+    args: { project_id: projectId },
+    config: input.config,
+    resolveSecret: input.resolveSecret,
+    fetchFn: input.fetchFn,
+  });
+
   const run = await runLayerAndWait({
     args: {
       project_id: projectId,
@@ -978,6 +1081,15 @@ export async function runSemanticCoreSmoke(input: {
   if (!runId) {
     throw new Error("Semantic Core smoke did not receive run_id from completed job");
   }
+
+  const keywordsResult = await callSemanticCoreMcpTool({
+    toolName: "get_keywords",
+    args: { project_id: projectId, run_id: runId },
+    config: input.config,
+    resolveSecret: input.resolveSecret,
+    fetchFn: input.fetchFn,
+  });
+  const keywordVolumeContract = validateKeywordVolumeContract(keywordsResult);
 
   const importResult = await callSemanticCoreMcpTool({
     toolName: "prepare_paperclip_import",
@@ -998,6 +1110,8 @@ export async function runSemanticCoreSmoke(input: {
         run_id: runId,
         schema_version: validation.schemaVersion,
         accepted_keyword_count: validation.acceptedKeywordCount,
+        get_keywords_count: keywordVolumeContract.keywordCount,
+        keyword_volume_contract: "ok",
         cluster_count: validation.clusterCount,
         serp_segment_count: validation.serpSegmentCount,
         cost_event_count: validation.costEventCount,
@@ -1008,6 +1122,8 @@ export async function runSemanticCoreSmoke(input: {
     data: {
       project_id: projectId,
       run,
+      keywords_result: keywordsResult,
+      keywordVolumeContract,
       import_payload: importPayload,
       validation,
     },
