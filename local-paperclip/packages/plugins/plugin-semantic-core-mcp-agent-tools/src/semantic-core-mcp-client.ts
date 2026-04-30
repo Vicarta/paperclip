@@ -177,6 +177,180 @@ function toolRequiresPayload(toolName: SemanticCoreMcpToolName) {
     || toolName === "submit_review_decisions";
 }
 
+const LEGACY_PROJECT_CONFIG_KEYS = new Set([
+  "brand",
+  "business_rules",
+  "geo_targets",
+  "language_code",
+  "language_name",
+  "language_targets",
+  "location_code",
+  "location_name",
+  "market_matrix",
+  "product_scope",
+  "route_scope",
+  "site_mode",
+  "target_domain",
+]);
+
+function readFirstString(values: unknown[]): string | null {
+  for (const value of values) {
+    const direct = readNonEmptyString(value);
+    if (direct) return direct;
+    if (Array.isArray(value)) {
+      const nested: string | null = readFirstString(value);
+      if (nested) return nested;
+    }
+  }
+  return null;
+}
+
+function readFirstNumber(values: unknown[]): number | null {
+  for (const value of values) {
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+    if (typeof value === "string") {
+      const parsed = Number(value.trim());
+      if (Number.isFinite(parsed)) return parsed;
+    }
+    if (Array.isArray(value)) {
+      const nested: number | null = readFirstNumber(value);
+      if (nested != null) return nested;
+    }
+  }
+  return null;
+}
+
+function countryCodeFromLocationName(locationName: string | null) {
+  if (!locationName) return undefined;
+  const normalized = locationName.toLowerCase();
+  if (normalized === "united states" || normalized === "usa" || normalized === "us") return "US";
+  if (normalized === "ukraine") return "UA";
+  if (normalized === "united kingdom" || normalized === "uk") return "GB";
+  if (normalized === "germany") return "DE";
+  if (normalized === "france") return "FR";
+  if (normalized === "mexico") return "MX";
+  if (normalized === "china") return "CN";
+  return undefined;
+}
+
+function normalizeLocaleMatrix(config: Record<string, unknown>) {
+  if (Array.isArray(config.locale_matrix) && config.locale_matrix.length > 0) {
+    return config.locale_matrix;
+  }
+
+  const marketMatrix = Array.isArray(config.market_matrix) ? config.market_matrix : [];
+  const localeRows = marketMatrix
+    .filter(isRecord)
+    .map((row) => {
+      const languageCode = readFirstString([row.language_code, row.language, config.language_code])
+        ?? "en";
+      const locationName = readFirstString([row.location_name, row.geo, row.country, config.location_name])
+        ?? "United States";
+      const countryCode = readNonEmptyString(row.country_code)
+        ?? countryCodeFromLocationName(locationName);
+      return {
+        language_code: languageCode,
+        ...(readNonEmptyString(row.language_name) ? { language_name: readNonEmptyString(row.language_name) } : {}),
+        location_code: readFirstNumber([row.location_code, config.location_code]) ?? 2840,
+        location_name: locationName,
+        ...(countryCode ? { country_code: countryCode } : {}),
+        device_context: readNonEmptyString(row.device_context) ?? "desktop",
+        device_priority: readNonEmptyString(row.device_priority) ?? "desktop",
+      };
+    });
+  if (localeRows.length > 0) return localeRows;
+
+  const languageCode = readFirstString([config.language_code, config.language_targets]) ?? "en";
+  const locationName = readFirstString([config.location_name, config.geo_targets]) ?? "United States";
+  const countryCode = countryCodeFromLocationName(locationName);
+  return [
+    {
+      language_code: languageCode,
+      location_code: readFirstNumber([config.location_code]) ?? 2840,
+      location_name: locationName,
+      ...(countryCode ? { country_code: countryCode } : {}),
+      device_context: "desktop",
+      device_priority: "desktop",
+    },
+  ];
+}
+
+function normalizeSections(config: Record<string, unknown>) {
+  if (Array.isArray(config.sections) && config.sections.length > 0) return config.sections;
+  const siteMode = readNonEmptyString(config.site_mode);
+  return [
+    {
+      section_id: siteMode === "blog" ? "blog" : "commercial",
+      allowed_owner_types: siteMode === "blog" ? ["blog"] : ["commercial", "blog"],
+      allowed_page_types: siteMode === "blog"
+        ? ["blog_article"]
+        : ["landing_page", "product_page", "guide"],
+      forbidden_topics: [],
+    },
+  ];
+}
+
+function normalizeOwnerRules(config: Record<string, unknown>) {
+  if (isRecord(config.owner_rules)) return config.owner_rules;
+  const businessRules = isRecord(config.business_rules) ? config.business_rules : {};
+  return {
+    informational: readNonEmptyString(businessRules.informational) ?? "blog",
+    commercial: readNonEmptyString(businessRules.commercial) ?? "commercial",
+    transactional: readNonEmptyString(businessRules.transactional) ?? "commercial",
+    navigational: readNonEmptyString(businessRules.navigational) ?? "brand",
+  };
+}
+
+function fallbackSiteId(projectId: unknown, domain: string) {
+  const explicit = readNonEmptyString(projectId);
+  if (explicit) return explicit;
+  const normalized = domain
+    .replace(/^https?:\/\//, "")
+    .replace(/[^a-z0-9]+/gi, "-")
+    .replace(/^-|-$/g, "")
+    .toLowerCase();
+  return normalized || "paperclip-semantic-core";
+}
+
+function normalizeProjectConfig(value: unknown, projectId: unknown) {
+  if (!isRecord(value)) return value;
+
+  const base = Object.fromEntries(
+    Object.entries(value).filter(([key]) => !LEGACY_PROJECT_CONFIG_KEYS.has(key)),
+  );
+  const domain = readNonEmptyString(value.domain)
+    ?? readNonEmptyString(value.target_domain)
+    ?? readNonEmptyString(value.site_domain)
+    ?? "example.com";
+
+  return {
+    ...base,
+    site_id: readNonEmptyString(value.site_id) ?? fallbackSiteId(projectId, domain),
+    domain,
+    locale_matrix: normalizeLocaleMatrix(value),
+    sections: normalizeSections(value),
+    owner_rules: normalizeOwnerRules(value),
+    thresholds: isRecord(value.thresholds)
+      ? value.thresholds
+      : {
+          intent_probability_min: 0.5,
+          serp_official_vendor_dominance: 0.8,
+        },
+    intent_rules: isRecord(value.intent_rules)
+      ? value.intent_rules
+      : {
+          ambiguous_secondary_delta: 0.15,
+        },
+    title_meta_policy: isRecord(value.title_meta_policy)
+      ? value.title_meta_policy
+      : {
+          title_length_range: [45, 70],
+          description_length_range: [120, 160],
+          examples_are_editorial_only: true,
+        },
+  };
+}
+
 function normalizeRegisterProjectPayload(payload: Record<string, unknown>) {
   const existingInputs = isRecord(payload.inputs) ? payload.inputs : null;
   if (existingInputs) {
@@ -184,6 +358,7 @@ function normalizeRegisterProjectPayload(payload: Record<string, unknown>) {
       ...payload,
       inputs: {
         ...existingInputs,
+        project_config: normalizeProjectConfig(existingInputs.project_config, payload.project_id),
         seed_catalog: normalizeSeedCatalog(existingInputs.seed_catalog),
       },
     };
@@ -197,7 +372,7 @@ function normalizeRegisterProjectPayload(payload: Record<string, unknown>) {
   return {
     project_id: payload.project_id,
     inputs: {
-      project_config: payload.project_config,
+      project_config: normalizeProjectConfig(payload.project_config, payload.project_id),
       seed_catalog: normalizeSeedCatalog(payload.seed_catalog),
       existing_pages: payload.existing_pages,
       audience_summary: payload.audience_summary ?? null,

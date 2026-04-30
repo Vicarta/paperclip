@@ -127,7 +127,16 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
       payload: {
         project_id: "diskinternals-us",
         inputs: {
-          project_config: { client_key: "diskinternals-us" },
+          project_config: expect.objectContaining({
+            client_key: "diskinternals-us",
+            site_id: "diskinternals-us",
+            domain: "example.com",
+            locale_matrix: expect.any(Array),
+            sections: expect.any(Array),
+            owner_rules: expect.any(Object),
+            thresholds: expect.any(Object),
+            title_meta_policy: expect.any(Object),
+          }),
           seed_catalog: undefined,
           existing_pages: undefined,
           audience_summary: null,
@@ -165,7 +174,16 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
       payload: {
         project_id: "paperclip-smoke",
         inputs: {
-          project_config: { site_domain: "example.com" },
+          project_config: expect.objectContaining({
+            site_domain: "example.com",
+            site_id: "paperclip-smoke",
+            domain: "example.com",
+            locale_matrix: expect.any(Array),
+            sections: expect.any(Array),
+            owner_rules: expect.any(Object),
+            thresholds: expect.any(Object),
+            title_meta_policy: expect.any(Object),
+          }),
           seed_catalog: { seeds: [] },
           existing_pages: [],
         },
@@ -188,7 +206,16 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
       payload: {
         project_id: "paperclip-smoke",
         inputs: {
-          project_config: { site_domain: "example.com" },
+          project_config: expect.objectContaining({
+            site_domain: "example.com",
+            site_id: "paperclip-smoke",
+            domain: "example.com",
+            locale_matrix: expect.any(Array),
+            sections: expect.any(Array),
+            owner_rules: expect.any(Object),
+            thresholds: expect.any(Object),
+            title_meta_policy: expect.any(Object),
+          }),
           seed_catalog: { seeds: [{ seed: "натальна карта" }] },
           existing_pages: [],
           audience_summary: null,
@@ -196,6 +223,102 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
         },
       },
     });
+  });
+
+  it("translates legacy agent project_config fields to the current Semantic Core contract", () => {
+    const result = prepareSemanticCoreMcpArguments({
+      toolName: "register_project",
+      args: {
+        project_id: "diskinternals-dis-58-vmfs-vmdk-mac-us-en",
+        project_config: {
+          brand: "DiskInternals",
+          target_domain: "diskinternals.com",
+          site_mode: "commercial",
+          product_scope: "VMFS/VMDK recovery for Mac users",
+          route_scope: "future Mac route",
+          geo_targets: ["United States"],
+          language_code: "en",
+          language_name: "English",
+          language_targets: ["English"],
+          location_code: 2840,
+          location_name: "United States",
+          market_matrix: [
+            {
+              language_code: "en",
+              language_name: "English",
+              location_code: 2840,
+              location_name: "United States",
+              country_code: "US",
+            },
+          ],
+          business_rules: {
+            informational: "blog",
+            commercial: "commercial",
+          },
+        },
+        seed_catalog: [],
+        existing_pages: [],
+      },
+    });
+
+    expect(result).toEqual({
+      payload: {
+        project_id: "diskinternals-dis-58-vmfs-vmdk-mac-us-en",
+        inputs: {
+          project_config: {
+            site_id: "diskinternals-dis-58-vmfs-vmdk-mac-us-en",
+            domain: "diskinternals.com",
+            locale_matrix: [
+              {
+                language_code: "en",
+                language_name: "English",
+                location_code: 2840,
+                location_name: "United States",
+                country_code: "US",
+                device_context: "desktop",
+                device_priority: "desktop",
+              },
+            ],
+            sections: [
+              {
+                section_id: "commercial",
+                allowed_owner_types: ["commercial", "blog"],
+                allowed_page_types: ["landing_page", "product_page", "guide"],
+                forbidden_topics: [],
+              },
+            ],
+            owner_rules: {
+              informational: "blog",
+              commercial: "commercial",
+              transactional: "commercial",
+              navigational: "brand",
+            },
+            thresholds: {
+              intent_probability_min: 0.5,
+              serp_official_vendor_dominance: 0.8,
+            },
+            intent_rules: {
+              ambiguous_secondary_delta: 0.15,
+            },
+            title_meta_policy: {
+              title_length_range: [45, 70],
+              description_length_range: [120, 160],
+              examples_are_editorial_only: true,
+            },
+          },
+          seed_catalog: { seeds: [] },
+          existing_pages: [],
+          audience_summary: null,
+          gsc_refinement_input: null,
+        },
+      },
+    });
+    const projectConfig = (result as { payload: { inputs: { project_config: Record<string, unknown> } } })
+      .payload.inputs.project_config;
+    expect(projectConfig).not.toHaveProperty("target_domain");
+    expect(projectConfig).not.toHaveProperty("geo_targets");
+    expect(projectConfig).not.toHaveProperty("business_rules");
+    expect(projectConfig).not.toHaveProperty("market_matrix");
   });
 
   it("validates paperclip_import.v1 before storing import candidate", async () => {

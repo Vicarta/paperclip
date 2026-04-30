@@ -85,6 +85,19 @@ Local deliverables updated:
 - `PAPERCLIP_GUARDRAILS.md`
 - `AGENT_OPERATING_MODEL.md`
 
+Fixed Semantic Core MCP config-contract mismatch identified after [DIS-55](/DIS/issues/DIS-55).
+
+Code changes:
+- Added adapter-side normalization for legacy agent-facing `project_config` fields before `register_project` calls are sent to the Semantic Core MCP server.
+- Translates old fields such as `target_domain`, `geo_targets`, `language_code`, `location_code`, `market_matrix`, `site_mode`, and `business_rules` into the current MCP contract: `site_id`, `domain`, `locale_matrix`, `sections`, `owner_rules`, `thresholds`, `intent_rules`, and `title_meta_policy`.
+- Added regression coverage for the exact DiskInternals legacy config shape that previously produced `invalid_config`.
+- Documented that keyword demand is exposed as `search_volume`.
+
+Verification:
+- `pnpm --filter @paperclipai/plugin-semantic-core-mcp-agent-tools test` passed.
+- `pnpm --filter @paperclipai/plugin-semantic-core-mcp-agent-tools typecheck` passed.
+- `pnpm --filter @paperclipai/plugin-semantic-core-mcp-agent-tools build` passed.
+
 ## 2026-04-29
 
 Executed initial DiskInternals Growth OS setup.

@@ -4,6 +4,23 @@ Thin Paperclip adapter for a private Semantic Core MCP endpoint.
 
 The plugin does not generate semantic cores itself. It keeps endpoint credentials on the backend, calls the MCP server, validates `paperclip_import.v1`, and stores operational import candidates in plugin-owned Paperclip state/entities for downstream SEO agents.
 
+## Project Config Compatibility
+
+The MCP server expects the current project config contract:
+
+- `site_id`
+- `domain`
+- `locale_matrix`
+- `sections`
+- `owner_rules`
+- `thresholds`
+- `intent_rules`
+- `title_meta_policy`
+
+For agent compatibility, `register-project` also accepts older Paperclip brief fields such as `target_domain`, `geo_targets`, `language_code`, `location_code`, `market_matrix`, `site_mode`, and `business_rules`. The adapter translates those fields before sending the payload to MCP so live runs do not fail config validation on stale agent-facing schema names.
+
+Keyword demand values returned in import payloads use `search_volume`.
+
 ## Security
 
 - Do not store the bearer token in source, prompts, UI text, logs, or docs.
