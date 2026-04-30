@@ -316,17 +316,61 @@ function readArray(value: unknown) {
   return Array.isArray(value) ? value : null;
 }
 
+const IMPORT_PAYLOAD_WRAPPER_KEYS = [
+  "payload",
+  "result",
+  "data",
+  "structuredContent",
+  "import_payload",
+  "importPayload",
+  "paperclip_import",
+  "paperclipImport",
+] as const;
+
+function normalizeImportPayloadShape(payload: Record<string, unknown>) {
+  if (
+    payload.schema_version === undefined
+    && typeof payload.schemaVersion === "string"
+  ) {
+    return {
+      ...payload,
+      schema_version: payload.schemaVersion,
+    };
+  }
+  return payload;
+}
+
+function findPaperclipImportPayload(value: unknown, depth = 0): Record<string, unknown> | null {
+  if (!isRecord(value) || depth > 4) return null;
+
+  const normalized = normalizeImportPayloadShape(value);
+  if (
+    normalized.schema_version === PAPERCLIP_IMPORT_SCHEMA_VERSION
+    || isRecord(normalized.artifacts)
+  ) {
+    return normalized;
+  }
+
+  for (const key of IMPORT_PAYLOAD_WRAPPER_KEYS) {
+    const nested = findPaperclipImportPayload(normalized[key], depth + 1);
+    if (nested) return nested;
+  }
+
+  return null;
+}
+
 export function validatePaperclipImportPayload(payload: unknown): PaperclipImportValidation {
-  if (!isRecord(payload)) {
+  const importPayload = findPaperclipImportPayload(payload);
+  if (!importPayload) {
     throw new Error("Semantic Core import payload must be an object");
   }
-  if (payload.schema_version !== PAPERCLIP_IMPORT_SCHEMA_VERSION) {
+  if (importPayload.schema_version !== PAPERCLIP_IMPORT_SCHEMA_VERSION) {
     throw new Error(
       `Semantic Core import payload schema_version must be ${PAPERCLIP_IMPORT_SCHEMA_VERSION}`,
     );
   }
 
-  const artifacts = readNestedRecord(payload, "artifacts");
+  const artifacts = readNestedRecord(importPayload, "artifacts");
   if (!artifacts) {
     throw new Error("Semantic Core import payload artifacts object is required");
   }
@@ -334,7 +378,7 @@ export function validatePaperclipImportPayload(payload: unknown): PaperclipImpor
   const acceptedKeywords = readArray(artifacts.accepted_keywords);
   const clusters = readArray(artifacts.clusters);
   const serpSegments = readArray(artifacts.serp_segments);
-  const cost = readNestedRecord(payload, "cost");
+  const cost = readNestedRecord(importPayload, "cost");
   const costEvents = cost ? readArray(cost.events) : null;
 
   if (!acceptedKeywords) {

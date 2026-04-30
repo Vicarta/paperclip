@@ -3,7 +3,7 @@
 Example Paperclip plugin that demonstrates:
 
 - **projectSidebarItem** — An optional "Files" link under each project in the sidebar that opens the project detail with this plugin’s tab selected. This is controlled by plugin settings and defaults to off.
-- **detailTab** (entityType project) — A project detail tab with a workspace-path selector, a desktop two-column layout (file tree left, editor right), and a mobile one-panel flow with a back button from editor to file tree, including save support.
+- **detailTab** (entityType project/issue) — A project detail tab with a workspace-path selector, a desktop two-column layout (file tree left, editor right), and a mobile one-panel flow with a back button from editor to file tree, including save support. On issue pages, the tab uses the issue's project context.
 
 This is a repo-local example plugin for development. It should not be assumed to ship in a generic production build unless it is explicitly included.
 
@@ -30,7 +30,7 @@ This is a repo-local example plugin for development. It should not be assumed to
 
 - **getData `workspaces`** — `ctx.projects.listWorkspaces(projectId, companyId)` (ordered, primary first).
 - **getData `fileList`** — `{ projectId, workspaceId, directoryPath? }` → list directory entries for the workspace root or a subdirectory (Node `fs`).
-- **getData `fileContent`** — `{ projectId, workspaceId, filePath }` → read file content using workspace-relative paths (Node `fs`).
+- **getData `fileContent`** — `{ projectId, workspaceId, filePath }` → read file content using workspace-relative paths, or absolute paths that resolve inside the selected workspace root (Node `fs`).
 - **performAction `writeFile`** — `{ projectId, workspaceId, filePath, content }` → write the current editor buffer back to disk.
 
 ## Local Install (Dev)
@@ -57,6 +57,6 @@ pnpm paperclipai plugin uninstall paperclip-file-browser-example --force
 
 ## Structure
 
-- `src/manifest.ts` — manifest with `projectSidebarItem` and `detailTab` (entityTypes `["project"]`).
+- `src/manifest.ts` — manifest with `projectSidebarItem` and `detailTab` (entityTypes `["project", "issue"]`).
 - `src/worker.ts` — data handlers for workspaces, file list, file content.
 - `src/ui/index.tsx` — `FilesLink` (sidebar) and `FilesTab` (workspace path selector + two-panel file tree/editor).

@@ -19,7 +19,11 @@ function sanitizeWorkspacePath(pathValue: string): string {
 
 function resolveWorkspace(workspacePath: string, requestedPath?: string): string | null {
   const root = path.resolve(workspacePath);
-  const resolved = requestedPath ? path.resolve(root, requestedPath) : root;
+  const resolved = requestedPath
+    ? path.isAbsolute(requestedPath)
+      ? path.resolve(requestedPath)
+      : path.resolve(root, requestedPath)
+    : root;
   const relative = path.relative(root, resolved);
   if (relative.startsWith("..") || path.isAbsolute(relative)) {
     return null;
@@ -38,6 +42,7 @@ const FILE_PATH_REGEX = /(?:^|[\s(`"'])([^\s,;)}`"'>\]]*\/[^\s,;)}`"'>\]]+|[.\/~
 
 /** Common file extensions to recognise path-like tokens as actual file references. */
 const FILE_EXTENSION_REGEX = /\.[a-zA-Z0-9]{1,10}$/;
+const WEB_URL_PATTERN = /^https?:\/\//i;
 
 /**
  * Tokens that look like paths but are almost certainly URL route segments
@@ -52,6 +57,9 @@ function extractFilePaths(body: string): string[] {
     // Strip trailing punctuation that isn't part of a path
     const cleaned = raw.replace(/[.:,;!?)]+$/, "");
     if (cleaned.length <= 1) continue;
+    // URLs are already independently clickable in comments; do not route them
+    // into the local file browser as pseudo file paths.
+    if (WEB_URL_PATTERN.test(cleaned)) continue;
     // Must have a file extension (e.g. .ts, .json, .md)
     if (!FILE_EXTENSION_REGEX.test(cleaned)) continue;
     // Skip things that look like URL routes

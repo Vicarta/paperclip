@@ -148,6 +148,20 @@ function isLikelyPath(pathValue: string): boolean {
   return PathLikePattern.test(trimmed) || WindowsDrivePathPattern.test(trimmed);
 }
 
+function normalizePathForCompare(pathValue: string): string {
+  const trimmed = pathValue.trim().replace(/\\/g, "/").replace(/\/+$/, "");
+  return trimmed || "/";
+}
+
+function isPathInsideWorkspace(filePath: string, workspacePath: string): boolean {
+  const normalizedFile = normalizePathForCompare(filePath);
+  const normalizedWorkspace = normalizePathForCompare(workspacePath);
+  if (!normalizedFile || !normalizedWorkspace || normalizedWorkspace === "/") {
+    return false;
+  }
+  return normalizedFile === normalizedWorkspace || normalizedFile.startsWith(`${normalizedWorkspace}/`);
+}
+
 function workspaceLabel(workspace: Workspace): string {
   const pathLabel = workspace.path.trim();
   const nameLabel = workspace.name.trim();
@@ -405,7 +419,7 @@ export function FilesLink({ context }: PluginProjectSidebarItemProps) {
  */
 export function FilesTab({ context }: PluginDetailTabProps) {
   const companyId = context.companyId;
-  const projectId = context.entityId;
+  const projectId = context.entityType === "project" ? context.entityId : context.projectId;
   const isMobile = useIsMobile();
   const isDarkMode = useIsDarkMode();
   const panesRef = useRef<HTMLDivElement | null>(null);
@@ -427,7 +441,7 @@ export function FilesTab({ context }: PluginDetailTabProps) {
   );
 
   const fileListParams = useMemo(
-    () => (selectedWorkspace ? { projectId, companyId, workspaceId: selectedWorkspace.id } : {}),
+    () => (selectedWorkspace && projectId ? { projectId, companyId, workspaceId: selectedWorkspace.id } : {}),
     [companyId, projectId, selectedWorkspace],
   );
   const { data: fileListData, loading: fileListLoading } = usePluginData<{ entries: FileEntry[] }>(
@@ -442,6 +456,14 @@ export function FilesTab({ context }: PluginDetailTabProps) {
     return new URLSearchParams(window.location.search).get("file") || null;
   });
   const lastConsumedFileRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!urlFilePath) return;
+    const matchingWorkspace = workspaces.find((workspace) => isPathInsideWorkspace(urlFilePath, workspace.path));
+    if (matchingWorkspace && matchingWorkspace.id !== workspaceId) {
+      setWorkspaceId(matchingWorkspace.id);
+    }
+  }, [urlFilePath, workspaceId, workspaceSelectKey, workspaces]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -471,7 +493,7 @@ export function FilesTab({ context }: PluginDetailTabProps) {
 
   const fileContentParams = useMemo(
     () =>
-      selectedPath && selectedWorkspace
+      selectedPath && selectedWorkspace && projectId
         ? { projectId, companyId, workspaceId: selectedWorkspace.id, filePath: selectedPath }
         : null,
     [companyId, projectId, selectedWorkspace, selectedPath],
@@ -543,7 +565,7 @@ export function FilesTab({ context }: PluginDetailTabProps) {
   }, [selectedWorkspace, selectedPath, isDirty, isSaving]);
 
   async function handleSave() {
-    if (!selectedWorkspace || !selectedPath || !viewRef.current) {
+    if (!projectId || !selectedWorkspace || !selectedPath || !viewRef.current) {
       return;
     }
     const content = viewRef.current.state.doc.toString();
@@ -571,6 +593,11 @@ export function FilesTab({ context }: PluginDetailTabProps) {
 
   return (
     <div className="space-y-4">
+      {!projectId ? (
+        <div className="rounded-lg border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
+          This issue is not attached to a project, so project files cannot be opened here.
+        </div>
+      ) : null}
       <div className="rounded-lg border border-border bg-card p-4">
         <label className="text-sm font-medium text-muted-foreground">Workspace</label>
         <select
@@ -609,7 +636,7 @@ export function FilesTab({ context }: PluginDetailTabProps) {
             File Tree
           </div>
           <div className="min-h-0 flex-1 overflow-auto p-2">
-            {selectedWorkspace ? (
+            {selectedWorkspace && projectId ? (
               fileListLoading ? (
                 <p className="px-2 py-3 text-sm text-muted-foreground">Loading files...</p>
               ) : entries.length > 0 ? (
@@ -658,7 +685,7 @@ export function FilesTab({ context }: PluginDetailTabProps) {
               <button
                 type="button"
                 className="rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
-                disabled={!selectedWorkspace || !selectedPath || !isDirty || isSaving}
+                disabled={!projectId || !selectedWorkspace || !selectedPath || !isDirty || isSaving}
                 onClick={() => void handleSave()}
               >
                 {isSaving ? "Saving..." : "Save"}
@@ -746,16 +773,27 @@ export function CommentFileLinks({ context }: PluginCommentAnnotationProps) {
       <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Files:</span>
       {data.links.map((link) => {
         const href = buildFileBrowserHref(prefix, projectId, link);
+        const canOpen = href !== "#";
         return (
-          <a
-            key={link}
-            href={href}
-            onClick={(e) => navigateToFileBrowser(href, e)}
-            className="inline-flex items-center rounded-md border border-border bg-accent/30 px-1.5 py-0.5 text-xs font-mono text-primary hover:bg-accent/60 hover:underline transition-colors"
-            title={`Open ${link} in file browser`}
-          >
-            {link}
-          </a>
+          canOpen ? (
+            <a
+              key={link}
+              href={href}
+              onClick={(e) => navigateToFileBrowser(href, e)}
+              className="inline-flex items-center rounded-md border border-border bg-accent/30 px-1.5 py-0.5 text-xs font-mono text-primary hover:bg-accent/60 hover:underline transition-colors"
+              title={`Open ${link} in file browser`}
+            >
+              {link}
+            </a>
+          ) : (
+            <span
+              key={link}
+              className="inline-flex cursor-not-allowed items-center rounded-md border border-border bg-muted/40 px-1.5 py-0.5 text-xs font-mono text-muted-foreground"
+              title="Attach this issue to a project with a workspace to open this file"
+            >
+              {link}
+            </span>
+          )
         );
       })}
     </div>
@@ -797,17 +835,28 @@ export function CommentOpenFiles({ context }: PluginCommentContextMenuItemProps)
       </div>
       {data.links.map((link) => {
         const href = buildFileBrowserHref(prefix, projectId, link);
+        const canOpen = href !== "#";
         const fileName = link.split("/").pop() ?? link;
         return (
-          <a
-            key={link}
-            href={href}
-            onClick={(e) => navigateToFileBrowser(href, e)}
-            className="flex w-full items-center gap-2 rounded px-2 py-1 text-xs text-foreground hover:bg-accent transition-colors"
-            title={`Open ${link} in file browser`}
-          >
-            <span className="truncate font-mono">{fileName}</span>
-          </a>
+          canOpen ? (
+            <a
+              key={link}
+              href={href}
+              onClick={(e) => navigateToFileBrowser(href, e)}
+              className="flex w-full items-center gap-2 rounded px-2 py-1 text-xs text-foreground hover:bg-accent transition-colors"
+              title={`Open ${link} in file browser`}
+            >
+              <span className="truncate font-mono">{fileName}</span>
+            </a>
+          ) : (
+            <span
+              key={link}
+              className="flex w-full cursor-not-allowed items-center gap-2 rounded px-2 py-1 text-xs text-muted-foreground"
+              title="Attach this issue to a project with a workspace to open this file"
+            >
+              <span className="truncate font-mono">{fileName}</span>
+            </span>
+          )
         );
       })}
     </div>

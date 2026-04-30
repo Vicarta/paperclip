@@ -6,6 +6,7 @@
 |---------|-------|----------|---------|
 | CMO Growth Backlog Review | CMO | Monday 09:00 Europe/Kiev | Convert data and priorities into backlog |
 | CTO Data QA And Attribution Review | CTO | Monday 10:00 Europe/Kiev | Check MCP contracts, tracking, attribution, BigQuery readiness |
+| CTO Stale Human Decision Blocker Audit | CTO | 09:20, 13:20, 17:20, 21:20 Europe/Kiev | Detect resolved owner decisions that did not unblock source issues |
 | CEO Growth Impact Review | CEO | Friday 16:00 Europe/Kiev | Review impact, blockers, approvals, and next priorities |
 
 ## Budget Rule
@@ -41,6 +42,19 @@ Outputs:
 - attribution fix tasks;
 - BigQuery readiness notes;
 - blockers for CMO.
+
+## CTO Stale Human Decision Blocker Audit
+
+Inputs:
+- blocked DiskInternals issues with `Human Decision Needed`;
+- linked owner-decision child cards;
+- recent source-issue comments and handoff comments.
+
+Outputs:
+- source issues returned to `todo` when a sufficient owner answer already exists;
+- assignee mentions so the workflow resumes;
+- handoff defects recorded for HIA/manager follow-up;
+- unresolved decision requests left blocked with clear links.
 
 ## CEO Growth Impact Review
 

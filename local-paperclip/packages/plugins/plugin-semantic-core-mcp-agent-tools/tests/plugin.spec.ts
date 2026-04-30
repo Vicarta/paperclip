@@ -256,6 +256,35 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
     ).toThrow(/schema_version/);
   });
 
+  it("validates import payloads returned inside MCP wrapper objects", () => {
+    const validation = validatePaperclipImportPayload({
+      result: {
+        data: {
+          structuredContent: {
+            schemaVersion: "paperclip_import.v1",
+            run_id: "run_1",
+            artifacts: {
+              accepted_keywords: [{ keyword_text: "vmfs reader mac" }],
+              clusters: [{ cluster_id: "cluster_1" }],
+              serp_segments: [{ serp_segment_id: "serp_1" }],
+            },
+            cost: {
+              events: [{ cost_cents: 1 }],
+            },
+          },
+        },
+      },
+    });
+
+    expect(validation).toEqual({
+      schemaVersion: "paperclip_import.v1",
+      acceptedKeywordCount: 1,
+      clusterCount: 1,
+      serpSegmentCount: 1,
+      costEventCount: 1,
+    });
+  });
+
   it("stores completed run-layer-and-wait results", async () => {
     const harness = createTestHarness({ manifest });
     await plugin.definition.setup(harness.ctx);

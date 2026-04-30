@@ -61,7 +61,7 @@ const manifest: PaperclipPluginManifestV1 = {
         id: FILES_TAB_SLOT_ID,
         displayName: "Files",
         exportName: "FilesTab",
-        entityTypes: ["project"],
+        entityTypes: ["project", "issue"],
         order: 10,
       },
       {
