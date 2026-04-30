@@ -30,6 +30,14 @@
 - `AST-SEO-03`: Content planning should preserve topical authority: start focused, build pillar-cluster depth, then expand.
 - `AST-SEO-04`: SEO monitoring should combine GSC, rank position, SERP competitor analysis, and content refresh decisions.
 
+## Growth Strategy
+
+- `AST-GROWTH-01`: New or changed products/routes that may affect acquisition, conversion, lead capture, monetization, offer architecture, or positioning require Stage 15 Strategic Opportunity Brief after accepted Product Discovery.
+- `AST-GROWTH-02`: Free tools, free entry routes, quizzes, tests, calculators, and horoscope-like acquisition routes must explicitly evaluate lead-magnet, entry-product, upsell-bridge, segmentation, trust-building, and lifecycle-capture potential.
+- `AST-GROWTH-03`: Stage 15 outputs are strategy recommendations only; downstream execution requires explicit human approval.
+- `AST-GROWTH-04`: Strategic briefs must separate observed product facts, strategic inference, hypotheses, risks, and human decision requests.
+- `AST-GROWTH-05`: Stage 15 artifacts, issue comments, plan documents, decision packets, and handoff summaries must use the resolved human-facing output language by default; for Astrogen Ukraine this is Ukrainian unless explicitly overridden.
+
 ## Integrations
 
 - `AST-INT-01`: MCP/GSC/Semantic Core tokens must remain server-side secrets.

@@ -8,4 +8,9 @@ Use this scope for reusable agency-level assets only:
 - cross-client governance, budget, and isolation rules;
 - reusable onboarding checklists for new client companies.
 
+## Current Reusable Contracts
+
+- `agents/MKT_GROWTH_STRATEGY_ARCHITECT.md` - MKT specialist for growth strategy options after product discovery.
+- `processes/15_STRATEGIC_OPPORTUNITY_BRIEF.md` - Stage 15 process between Product Discovery and downstream execution.
+
 Do not put Astrogen- or DiskInternals-specific execution state here.

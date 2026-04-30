@@ -26,3 +26,25 @@
 
 - Do not assume a plugin tested in DiskInternals is enabled or correctly configured for Astrogen.
 - Do not copy DiskInternals project IDs, agent IDs, budgets, or task references into Astrogen operations.
+
+## Key Agents
+
+| Agent | Agent ID | Reports To | Purpose |
+|---|---|---|---|
+| Chief Marketing Officer | `b3b833ea-86f5-43b6-9773-64ad6fc3ddb5` | CEO | Manager for marketing/product/SEO/content workflows. |
+| MKT Growth Strategy Architect | `60580dc2-44b7-4dae-8467-2acb7d32c721` | CMO | Stage 15 owner for strategic opportunity briefs after product discovery and before downstream execution. |
+
+## Live Contract Files
+
+| Contract | Live Path |
+|---|---|
+| Growth Strategy Architect agent instructions | `/home/paperclip/astrogen/agents/growth-strategy-architect/AGENTS.md` |
+| Stage 15 Strategic Opportunity Brief process | `/home/paperclip/astrogen/docs/process/15-strategic-opportunity-brief.md` |
+| CMO routing rule | `/home/paperclip/astrogen/agents/cmo/AGENTS.md` |
+
+## Validation Issues
+
+| Issue | Result |
+|---|---|
+| `AST-689` | CMO plan-only test for `https://astrogen.com.ua/free-horoscope`; CMO planned Stage 10 Product Discovery -> Stage 15 Strategic Opportunity Brief -> human strategy approval; no child issues were created. |
+| `AST-690` | Direct `MKT Growth Strategy Architect` smoke test for `/free-horoscope`; produced a speculative Ukrainian Stage 15 brief, preserved missing-discovery caveat, and created no child issues. |

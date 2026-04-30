@@ -12,8 +12,9 @@ This roadmap keeps Astrogen work separate from other client companies while reus
 - [ ] **Phase 4: Semantic Core And Content Planning** - Build Ukrainian-only semantic core process for products and broader target-audience topics.
 - [ ] **Phase 5: SEO Monitoring Loop** - Connect GSC/rank/SERP monitoring, article registry, thresholds, and Senior SEO Agent decision logic.
 - [ ] **Phase 6: Human Interaction And Telegram Quality** - Keep Telegram/HIA messages short, Ukrainian, human-readable, and action-oriented.
-- [ ] **Phase 7: Publication And CMS Integration** - Pause until CMS selection is clear, then add publication adapter and content deployment workflow.
+- [ ] **Phase 7: Strategic Growth Review Layer** - Use Product Discovery outputs to generate human-reviewable growth strategy options before execution on new/free products and routes.
+- [ ] **Phase 8: Publication And CMS Integration** - Pause until CMS selection is clear, then add publication adapter and content deployment workflow.
 
 ## Current Next Step
 
-Phase 1 should be completed first: verify Astrogen company setup in Paperclip, active agents, installed plugins, and current open `AST-*` work before starting new generation or monitoring runs.
+Continue Phase 7 for real `/free-horoscope` work only after the requester authorizes execution beyond the current plan-only test.

@@ -13,7 +13,7 @@ See: `.planning/company/astrogen/README.md`
 
 Phase: Astrogen growth/content operating system hardening
 Status: Active
-Last activity: 2026-04-29 - Context switched back from DiskInternals to Astrogen; company-specific GSD state restored.
+Last activity: 2026-05-01 - Added MKT Growth Strategy Architect, Stage 15 Strategic Opportunity Brief contract, and CMO route-planning test for `/free-horoscope`.
 
 ## Current Focus
 
@@ -29,6 +29,7 @@ Last activity: 2026-04-29 - Context switched back from DiskInternals to Astrogen
 - Google Search Console MCP integration for Astrogen site data.
 - SEO monitoring and article performance loop planning.
 - Paperclip Telegram/HIA communication quality for human-facing Ukrainian updates.
+- Stage 15 strategic opportunity review for new/changed products and routes before downstream execution.
 
 ## Guardrails
 
@@ -36,6 +37,7 @@ Last activity: 2026-04-29 - Context switched back from DiskInternals to Astrogen
 - Do not reuse DiskInternals live agents, project IDs, budgets, or client config for Astrogen work.
 - Do not store MCP/GSC tokens in source, prompts, docs, or planning files.
 - Human-facing messages for Astrogen should be Ukrainian, simple, and understandable for a non-technical human.
+- New/free routes that may affect acquisition, conversion, lead capture, monetization, offer architecture, or positioning should not jump directly from Product Discovery into execution; run Stage 15 Strategic Opportunity Brief and require human approval first.
 
 ## Pending Todos
 
