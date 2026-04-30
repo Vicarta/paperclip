@@ -184,7 +184,7 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
             thresholds: expect.any(Object),
             title_meta_policy: expect.any(Object),
           }),
-          seed_catalog: { seeds: [] },
+          seed_catalog: { products: [] },
           existing_pages: [],
         },
       },
@@ -216,10 +216,55 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
             thresholds: expect.any(Object),
             title_meta_policy: expect.any(Object),
           }),
-          seed_catalog: { seeds: [{ seed: "натальна карта" }] },
+          seed_catalog: {
+            products: [
+              {
+                product_id: "seed-1",
+                name: "натальна карта",
+                variants: ["натальна карта"],
+              },
+            ],
+          },
           existing_pages: [],
           audience_summary: null,
           gsc_refinement_input: null,
+        },
+      },
+    });
+  });
+
+  it("normalizes agent-facing seed catalog aliases to MCP product seeds", () => {
+    expect(
+      prepareSemanticCoreMcpArguments({
+        toolName: "register_project",
+        args: {
+          project_id: "diskinternals-vmfs-mac",
+          project_config: { site_domain: "diskinternals.com" },
+          seed_catalog: {
+            keywords: [
+              "vmfs recovery mac",
+              { keyword: "vmdk recovery mac", variants: ["recover vmdk on mac"] },
+            ],
+          },
+        },
+      }),
+    ).toMatchObject({
+      payload: {
+        inputs: {
+          seed_catalog: {
+            products: [
+              {
+                product_id: "vmfs-recovery-mac",
+                name: "vmfs recovery mac",
+                variants: ["vmfs recovery mac"],
+              },
+              {
+                product_id: "vmdk-recovery-mac",
+                name: "vmdk recovery mac",
+                variants: ["recover vmdk on mac"],
+              },
+            ],
+          },
         },
       },
     });
@@ -306,7 +351,7 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
               examples_are_editorial_only: true,
             },
           },
-          seed_catalog: { seeds: [] },
+          seed_catalog: { products: [] },
           existing_pages: [],
           audience_summary: null,
           gsc_refinement_input: null,
@@ -406,6 +451,57 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
       serpSegmentCount: 1,
       costEventCount: 1,
     });
+  });
+
+  it("validates import payloads returned as stringified JSON inside MCP wrapper objects", () => {
+    const importPayload = {
+      schema_version: "paperclip_import.v1",
+      run_id: "run_1",
+      artifacts: {
+        accepted_keywords: [{ keyword_text: "vmfs recovery mac" }],
+        clusters: [{ cluster_id: "cluster_1" }],
+        serp_segments: [{ serp_segment_id: "serp_1" }],
+      },
+      cost: {
+        events: [{ cost_cents: 1 }],
+      },
+    };
+
+    const validation = validatePaperclipImportPayload({
+      result: {
+        paperclip_import_json: JSON.stringify(importPayload),
+      },
+    });
+
+    expect(validation).toEqual({
+      schemaVersion: "paperclip_import.v1",
+      acceptedKeywordCount: 1,
+      clusterCount: 1,
+      serpSegmentCount: 1,
+      costEventCount: 1,
+    });
+  });
+
+  it("validates fenced JSON import payload responses", async () => {
+    const harness = createTestHarness({ manifest });
+    await plugin.definition.setup(harness.ctx);
+
+    callSemanticCoreMcpToolMock.mockResolvedValueOnce({
+      content: "```json\n{\"schema_version\":\"paperclip_import.v1\",\"run_id\":\"run_1\",\"artifacts\":{\"accepted_keywords\":[],\"clusters\":[],\"serp_segments\":[]},\"cost\":{\"events\":[]}}\n```",
+      data: {
+        structuredContent: null,
+        content: [],
+      },
+      isError: false,
+    });
+
+    const result = await harness.executeTool(
+      TOOL_NAMES.preparePaperclipImport,
+      { run_id: "run_1" },
+      toolRunCtx,
+    );
+
+    expect(result.content).toContain("\"status\": \"validated\"");
   });
 
   it("stores completed run-layer-and-wait results", async () => {

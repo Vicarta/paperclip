@@ -2,6 +2,23 @@
 
 ## 2026-04-30
 
+Updated Semantic Core worldwide-demand contract.
+
+Paperclip changes:
+- Updated live `SEO Semantic Core Strategist` instructions with a native worldwide demand rule for the Semantic Core MCP/plugin.
+- Required future Stage 53 semantic-core generation to use native worldwide demand when exposed by the provider, instead of `location omitted`, `global proxy`, or `world/global proxy` substitutes.
+- Required keyword-level and cluster-level output to separate `US search_volume` from `Worldwide search_volume`, with raw MCP field mapping documented when the raw field name differs.
+- Required all four Semantic Core MCP layers for VMFS/VMDK Mac semantic-core generation: `core_product_intent`, `adjacent_use_case_intent`, `audience_need_intent`, and `audience_interest_intent`.
+- Created [DIS-71](/DIS/issues/DIS-71) as a Stage 53 rerun under [DIS-55](/DIS/issues/DIS-55) for VMFS/VMDK Mac semantic core with native worldwide demand and all layers.
+- Confirmed [DIS-71](/DIS/issues/DIS-71) was moved to `todo` and picked up by `SEO Semantic Core Strategist` in run `01351b60-f51d-4a76-a938-276db8b585d1`.
+- Fixed and deployed the Semantic Core plugin bridge after [DIS-71](/DIS/issues/DIS-71) exposed live MCP contract gaps:
+  - `prepare-paperclip-import` now accepts wrapped, stringified, and fenced `paperclip_import.v1` payloads.
+  - Agent-facing `seed_catalog` aliases (`seeds`, `keywords`, `items`, and arrays) now normalize to the MCP-valid `products` shape.
+- Updated live `SEO Semantic Core Strategist` instructions so production live layers use `run-layer-and-wait`, or `run-layer` only with `async_job: true` plus polling; `async_job: false` is prohibited for live multi-layer Stage 53 runs.
+- Verified semantic-core plugin tests, typecheck, and build locally; rebuilt and restarted the live Paperclip app; verified `/api/health` and `paperclip.semantic-core-mcp-agent-tools` activation.
+- Unblocked and rewoke [DIS-71](/DIS/issues/DIS-71); rerun `be291a32-75cb-4d8d-a21d-07aec495c2a9` started on the deployed bridge fix.
+- Confirmed the [DIS-71](/DIS/issues/DIS-71) rerun now reaches route-seeded, validated imports for all four required layers. It remains `blocked` because the raw accepted keyword rows still expose `global_search_volume: null` and no alternate native-worldwide demand field; this is now isolated to MCP/runtime worldwide-demand output rather than Paperclip plugin bridge or route-seeding normalization.
+
 Added global human-decision unblock governance.
 
 Paperclip changes:

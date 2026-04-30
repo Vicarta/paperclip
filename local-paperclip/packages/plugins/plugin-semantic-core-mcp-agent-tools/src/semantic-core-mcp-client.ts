@@ -382,8 +382,64 @@ function normalizeRegisterProjectPayload(payload: Record<string, unknown>) {
 }
 
 function normalizeSeedCatalog(value: unknown) {
-  if (Array.isArray(value)) return { seeds: value };
-  return value;
+  if (isRecord(value) && Array.isArray(value.products)) return value;
+
+  const seedItems = Array.isArray(value)
+    ? value
+    : isRecord(value)
+      ? Array.isArray(value.seeds)
+        ? value.seeds
+        : Array.isArray(value.keywords)
+          ? value.keywords
+          : Array.isArray(value.items)
+            ? value.items
+            : null
+      : null;
+
+  if (!seedItems) return value;
+
+  return {
+    products: seedItems
+      .map((item, index) => normalizeSeedProduct(item, index))
+      .filter((item): item is NonNullable<ReturnType<typeof normalizeSeedProduct>> => Boolean(item)),
+  };
+}
+
+function normalizeSeedProduct(value: unknown, index: number) {
+  const rawName = readSeedText(value);
+  if (!rawName) return null;
+  const variants = readSeedVariants(value, rawName);
+  return {
+    product_id: seedProductId(rawName, index),
+    name: rawName,
+    variants,
+  };
+}
+
+function readSeedText(value: unknown) {
+  if (typeof value === "string") return readNonEmptyString(value);
+  if (!isRecord(value)) return null;
+  return readNonEmptyString(value.name)
+    ?? readNonEmptyString(value.seed)
+    ?? readNonEmptyString(value.keyword)
+    ?? readNonEmptyString(value.query)
+    ?? readNonEmptyString(value.text);
+}
+
+function readSeedVariants(value: unknown, fallback: string) {
+  if (!isRecord(value) || !Array.isArray(value.variants)) return [fallback];
+  const variants = value.variants
+    .map((entry) => readNonEmptyString(entry))
+    .filter((entry): entry is string => Boolean(entry));
+  return variants.length > 0 ? variants : [fallback];
+}
+
+function seedProductId(value: string, index: number) {
+  const slug = value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+  return slug || `seed-${index + 1}`;
 }
 
 export function prepareSemanticCoreMcpArguments(input: {
@@ -467,17 +523,23 @@ export function normalizeSemanticCoreToolResult(result: McpCallToolResult): Norm
 
 function parseJsonText(text: string) {
   const trimmed = text.trim();
-  if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) return null;
+  const fenced = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+  const candidate = fenced?.[1]?.trim() ?? trimmed;
+  if (!candidate.startsWith("{") && !candidate.startsWith("[")) return null;
   try {
-    return JSON.parse(trimmed) as unknown;
+    return JSON.parse(candidate) as unknown;
   } catch {
     return null;
   }
 }
 
 export function extractResultObject(result: NormalizedMcpToolResult): Record<string, unknown> {
-  if (isRecord(result.data.structuredContent)) return result.data.structuredContent;
+  if (isRecord(result.data.structuredContent)) {
+    return findPaperclipImportPayload(result.data.structuredContent) ?? result.data.structuredContent;
+  }
   const parsed = parseJsonText(result.content);
+  const importPayload = findPaperclipImportPayload(parsed);
+  if (importPayload) return importPayload;
   if (isRecord(parsed)) return parsed;
   return {};
 }
@@ -500,6 +562,11 @@ const IMPORT_PAYLOAD_WRAPPER_KEYS = [
   "importPayload",
   "paperclip_import",
   "paperclipImport",
+  "paperclip_import_json",
+  "paperclipImportJson",
+  "import_payload_json",
+  "importPayloadJson",
+  "json",
 ] as const;
 
 function normalizeImportPayloadShape(payload: Record<string, unknown>) {
@@ -516,7 +583,21 @@ function normalizeImportPayloadShape(payload: Record<string, unknown>) {
 }
 
 function findPaperclipImportPayload(value: unknown, depth = 0): Record<string, unknown> | null {
-  if (!isRecord(value) || depth > 4) return null;
+  if (depth > 4) return null;
+
+  if (typeof value === "string") {
+    return findPaperclipImportPayload(parseJsonText(value), depth + 1);
+  }
+
+  if (Array.isArray(value)) {
+    for (const entry of value) {
+      const nested = findPaperclipImportPayload(entry, depth + 1);
+      if (nested) return nested;
+    }
+    return null;
+  }
+
+  if (!isRecord(value)) return null;
 
   const normalized = normalizeImportPayloadShape(value);
   if (

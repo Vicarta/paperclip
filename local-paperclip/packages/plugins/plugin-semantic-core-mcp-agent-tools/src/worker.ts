@@ -208,22 +208,15 @@ async function handlePrepareImport(input: {
   args: unknown;
   runCtx: ToolRunContext;
 }) {
-  const result = await callMcpTool({
-    ctx: input.ctx,
+  const config = await getConfig(input.ctx);
+  const result = await callSemanticCoreMcpTool({
     toolName: "prepare_paperclip_import",
     args: input.args,
+    config,
+    resolveSecret: (secretRef) => input.ctx.secrets.resolve(secretRef),
+    fetchFn: input.ctx.http.fetch as typeof fetch,
   });
-  const normalized = {
-    isError: false,
-    content: result.content ?? "",
-    data: isRecord(result.data)
-      ? {
-          structuredContent: result.data.structuredContent,
-          content: Array.isArray(result.data.content) ? result.data.content : [],
-        }
-      : { structuredContent: null, content: [] },
-  };
-  const importPayload = extractResultObject(normalized);
+  const importPayload = extractResultObject(result);
   const validation = validatePaperclipImportPayload(importPayload);
   const runId = readString(importPayload.run_id)
     ?? (isRecord(input.args) ? readString(input.args.run_id) : null)
@@ -264,7 +257,7 @@ async function handlePrepareImport(input: {
       2,
     ),
     data: {
-      ...(isRecord(result.data) ? result.data : {}),
+      ...result.data,
       validation,
       importPayload,
     },
