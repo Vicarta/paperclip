@@ -119,6 +119,26 @@ Verification:
 - `pnpm exec vitest run src/__tests__/issue-telegram-notifications.test.ts` passed.
 - `pnpm --filter @paperclipai/server typecheck` passed.
 
+Fixed Telegram plugin issue.updated completion forwarding for DiskInternals.
+
+Root cause:
+- `DIS-63` was sent by the installed `paperclip-plugin-telegram` issue.updated event forwarder, not by the server-side `issueTelegramNotificationService`.
+- The installed plugin bundle still used the older `Суть` field and passed raw agent comments such as `Done Completed...` through to Telegram.
+
+Live operational fix:
+- Patched the installed plugin bundle under `/paperclip/.paperclip/plugins/node_modules/paperclip-plugin-telegram/dist/`.
+- `formatIssueDone` now includes `Компанія`, `Проєкт`, `Задача`, and `Що зроблено`.
+- The plugin now enriches issue-done events with company and project context before formatting.
+- Added human-readable Ukrainian summaries for stale human-decision blocker audits and review-lane acceptance summaries.
+- Recorded the operational override in `ops/paperclip/telegram-plugin-issue-done-hotfix.md`.
+
+Verification:
+- Smoke-tested `formatIssueDone` locally against the `DIS-63` completion comment.
+- Deployed the patched plugin bundle to the live Paperclip container volume.
+- Restarted `paperclip-app-1`.
+- Verified `/api/health` returns `ok`.
+- Verified the Telegram plugin activates successfully after restart.
+
 ## 2026-04-29
 
 Executed initial DiskInternals Growth OS setup.
