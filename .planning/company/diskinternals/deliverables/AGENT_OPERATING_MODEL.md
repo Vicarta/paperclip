@@ -47,6 +47,19 @@ Expected semantic-core tool chain:
 
 Support tools may include `paperclip.dataforseo-agent-tools:*`, `paperclip.serper-agent-tools:google-search`, and `paperclip.exa-agent-tools:*`, but these do not replace the semantic-core generator for Stage 53 output.
 
+## Semantic-Core Sequential Handoff Contract
+
+CMO owns the parent manager lane for semantic-core work.
+
+Required sequence:
+- after Stage 53 semantic-core generation completes, CMO must create a Stage 54 validation issue for `SEO Semantic Core Validator` before ending the heartbeat;
+- the Stage 54 issue must link the Stage 53 artifact and keep the parent issue manager-owned;
+- if validation is `accepted`, CMO records the manager acceptance decision before opening downstream page, blog, or production-prioritization work;
+- if validation is `returned for revision`, CMO creates a bounded revision issue for `SEO Semantic Core Strategist` immediately, preserving the validator checklist;
+- if validation is `blocked pending clarification`, CMO moves the parent to `blocked` and names the missing decision or tooling blocker.
+
+A child handoff comment that recommends the next action is not enough when the parent owner is the manager responsible for creating that next action.
+
 ## Human Decision Resume Contract
 
 When a manager creates or routes an owner-decision request through `OPS Human Interaction Agent`, the request must include a concrete post-answer unblock action.

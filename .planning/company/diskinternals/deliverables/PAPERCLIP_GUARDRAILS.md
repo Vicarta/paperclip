@@ -50,6 +50,14 @@
 - The child agent must not close or reassign the parent unless the parent explicitly granted that authority.
 - This rule exists to prevent completed specialist work from leaving the manager-owned parent issue idle.
 
+## Manager Sequential Handoff Guardrail
+
+- For manager-owned workflows with required QA stages, a handoff comment is not sufficient when the next action is deterministic.
+- Semantic-core sequence is explicit: Stage 53 output -> Stage 54 validation -> manager decision -> revision or downstream use.
+- CMO must create the Stage 54 validation issue after Stage 53 completes if it does not already exist.
+- CMO must create a bounded revision issue immediately when Stage 54 returns `returned for revision`.
+- Parent issues must not remain idle between deterministic specialist stages.
+
 ## Paperclip Plugin Discovery Guardrail
 
 - Agents must discover Paperclip plugin tools through the live Paperclip agent endpoint `GET /api/agents/me/plugin-tools`.
