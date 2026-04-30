@@ -98,6 +98,16 @@ Verification:
 - `pnpm --filter @paperclipai/plugin-semantic-core-mcp-agent-tools typecheck` passed.
 - `pnpm --filter @paperclipai/plugin-semantic-core-mcp-agent-tools build` passed.
 
+Live Paperclip follow-up:
+- Deployed the adapter fix to the live server and restarted `paperclip-app-1`.
+- Verified `/api/health` returns `ok`.
+- Verified the live plugin registry lists `paperclip.semantic-core-mcp-agent-tools:*`.
+- Ran a disposable legacy-config `register-project` plus minimal `live` `run-layer-and-wait` through the Paperclip plugin API without `invalid_config`.
+- Reopened [DIS-55](/DIS/issues/DIS-55) as `in_progress` because the previous final qualitative-only disposition was based on a live run that had not reached enrichment.
+- Created [DIS-61](/DIS/issues/DIS-61), assigned to `SEO Semantic Core Strategist`, to rerun Stage 53 live after the config-contract fix.
+- Updated live `SEO Semantic Core Strategist` instructions with the current MCP config contract and the `search_volume` demand-field rule.
+- Updated live `CMO` instructions so `invalid_config` cannot be accepted as demand-provider evidence and `search_volume` is required in review.
+
 ## 2026-04-29
 
 Executed initial DiskInternals Growth OS setup.
