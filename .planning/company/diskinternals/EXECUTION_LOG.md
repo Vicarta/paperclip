@@ -11,11 +11,21 @@ Paperclip changes:
 - Updated live `SEO Semantic Core Strategist` instructions with the full MCP flow and the volume rule: `search_volume` is a legacy alias for `geo_search_volume`, not global demand; `global_search_volume` is native worldwide demand; null/zero volume is not a reject reason.
 - Rebuilt and restarted the live Paperclip app; verified `/api/health` and confirmed `paperclip.semantic-core-mcp-agent-tools` now registers 16 tools in the live plugin registry.
 - Returned [DIS-71](/DIS/issues/DIS-71) from `blocked` to `todo` and woke `SEO Semantic Core Strategist`; run `7d68b727-9ffc-49c2-bb6a-0ae57227c01a` started with [DIS-71](/DIS/issues/DIS-71) execution context.
+- Observed the rerun use the correct Paperclip plugin registry and all four Semantic Core layers, but live `run-layer-and-wait` initially hit MCP HTTP 500s through the legacy `{ payload: ... }` run-layer wrapper.
+- Added and deployed a compatibility fallback in the Semantic Core bridge: if a payload-wrapped `run_layer` call throws, the bridge retries once with direct MCP args (`project_id`, `layer`, `mode`, `async_job`).
+- The first [DIS-71](/DIS/issues/DIS-71) run was interrupted by deploy and retried automatically as run `f8d2f274-c6f5-4372-9ff7-6cab835be178`; the retry succeeded.
+- [DIS-71](/DIS/issues/DIS-71) completed with artifact `/companies/diskinternals/work/53-seo-semantic-core/active/semantic-core-2026-04-30-dis-71-vmfs-vmdk-mac-us-global-live-rerun.md`.
+- Confirmed the artifact has all four live layers, validated `mode: live` imports, `US geo_search_volume`, and native `Worldwide global_search_volume`.
+- The accepted boundary is explicit: [DIS-71](/DIS/issues/DIS-71) is canonical for narrow live native-worldwide evidence, while [DIS-69](/DIS/issues/DIS-69) / [DIS-70](/DIS/issues/DIS-70) remain canonical for full semantic-universe breadth and route architecture.
+- [DIS-76](/DIS/issues/DIS-76) was created by CMO as the mandatory Stage 54 validation for [DIS-71](/DIS/issues/DIS-71); it completed `accepted` with artifact `/companies/diskinternals/work/54-seo-semantic-core-validation/active/validation-2026-04-30-dis-76-vmfs-vmdk-mac-native-worldwide-live-rerun.md`.
+- Cancelled duplicate [DIS-77](/DIS/issues/DIS-77), which was created manually while [DIS-76](/DIS/issues/DIS-76) was already in progress.
+- CMO recorded the final manager decision on [DIS-55](/DIS/issues/DIS-55): `accepted`, with the downstream rule that [DIS-71](/DIS/issues/DIS-71) must not be used alone for Stage 56 volume-ranked planning or demand-priority math.
 
 Verification:
 - `pnpm --filter @paperclipai/plugin-semantic-core-mcp-agent-tools test` passed.
 - `pnpm --filter @paperclipai/plugin-semantic-core-mcp-agent-tools typecheck` passed.
 - `pnpm --filter @paperclipai/plugin-semantic-core-mcp-agent-tools build` passed.
+- After the compatibility fallback: `pnpm --filter @paperclipai/plugin-semantic-core-mcp-agent-tools test` passed, `typecheck` passed, and `build` passed.
 - Live app image build/restart completed; first health probe hit startup reset, retry returned `ok`.
 - Direct live plugin execution with a static agent key was not possible outside a heartbeat run because `/api/agents/me/plugin-tools/execute` requires agent authentication with heartbeat run context; registry discovery was verified live.
 

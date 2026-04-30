@@ -342,7 +342,10 @@ const plugin = definePlugin({
           });
 
           if (tool.mcpToolName === "register_project" && isRecord(params)) {
-            const projectId = readString(params.project_id) ?? "unknown-project";
+            const payload = isRecord(params.payload) ? params.payload : {};
+            const projectId = readString(params.project_id)
+              ?? readString(payload.project_id)
+              ?? "unknown-project";
             await storeEntity({
               ctx,
               runCtx,

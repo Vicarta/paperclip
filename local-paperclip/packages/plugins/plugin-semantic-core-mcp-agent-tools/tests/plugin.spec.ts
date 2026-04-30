@@ -7,6 +7,7 @@ import {
   callSemanticCoreMcpTool,
   listSemanticCoreMcpTools,
   prepareSemanticCoreMcpArguments,
+  prepareSemanticCoreMcpFallbackArguments,
   runLayerAndWait,
   runSemanticCoreSmoke,
   validateKeywordVolumeContract,
@@ -131,6 +132,39 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
         },
       }),
     ).toThrow(/layer must be one of/);
+  });
+
+  it("can fall back from legacy payload-wrapped run_layer args to direct MCP args", () => {
+    const prepared = prepareSemanticCoreMcpArguments({
+      toolName: "run_layer",
+      args: {
+        payload: {
+          project_id: "diskinternals-us",
+          layer: "core_product_intent",
+          mode: "live",
+        },
+      },
+    });
+
+    expect(prepared).toEqual({
+      payload: {
+        project_id: "diskinternals-us",
+        layer: "core_product_intent",
+        mode: "live",
+      },
+      async_job: true,
+    });
+    expect(
+      prepareSemanticCoreMcpFallbackArguments({
+        toolName: "run_layer",
+        preparedArgs: prepared as Record<string, unknown>,
+      }),
+    ).toEqual({
+      project_id: "diskinternals-us",
+      layer: "core_product_intent",
+      mode: "live",
+      async_job: true,
+    });
   });
 
   it("enforces optional project and client allowlists", () => {

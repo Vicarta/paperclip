@@ -182,6 +182,28 @@ function toolRequiresPayload(toolName: SemanticCoreMcpToolName) {
     || toolName === "submit_review_decisions";
 }
 
+export function prepareSemanticCoreMcpFallbackArguments(input: {
+  toolName: SemanticCoreMcpToolName;
+  preparedArgs: Record<string, unknown>;
+}) {
+  if (!isRecord(input.preparedArgs.payload)) return null;
+
+  if (input.toolName === "run_layer") {
+    return {
+      ...input.preparedArgs.payload,
+      async_job: typeof input.preparedArgs.async_job === "boolean"
+        ? input.preparedArgs.async_job
+        : true,
+    };
+  }
+
+  if (input.toolName === "register_project" || input.toolName === "submit_review_decisions") {
+    return { ...input.preparedArgs.payload };
+  }
+
+  return null;
+}
+
 const LEGACY_PROJECT_CONFIG_KEYS = new Set([
   "brand",
   "business_rules",
@@ -847,6 +869,7 @@ export async function callSemanticCoreMcpTool(input: {
   fetchFn?: FetchLike;
 }) {
   assertAllowedTool(input.toolName);
+  const toolName = input.toolName;
   return await withClient({
     config: input.config,
     resolveSecret: input.resolveSecret,
@@ -857,12 +880,25 @@ export async function callSemanticCoreMcpTool(input: {
         args: input.args,
         allowedProjectIds: normalized.allowedProjectIds,
         allowedClientKeys: normalized.allowedClientKeys,
-      });
+      }) as Record<string, unknown>;
 
-      const result = await client.callTool({
-        name: input.toolName,
-        arguments: args,
-      });
+      let result: unknown;
+      try {
+        result = await client.callTool({
+          name: toolName,
+          arguments: args,
+        });
+      } catch (err) {
+        const fallbackArgs = prepareSemanticCoreMcpFallbackArguments({
+          toolName,
+          preparedArgs: args,
+        });
+        if (!fallbackArgs) throw err;
+        result = await client.callTool({
+          name: toolName,
+          arguments: fallbackArgs,
+        });
+      }
       return normalizeSemanticCoreToolResult(result as McpCallToolResult);
     },
   });
