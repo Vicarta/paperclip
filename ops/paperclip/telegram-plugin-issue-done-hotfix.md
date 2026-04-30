@@ -23,6 +23,10 @@ Behavior after the patch:
 - Repeated English status prefixes such as `Done Completed` are stripped.
 - Known agent-facing summaries such as review-lane decisions and stale
   human-decision blocker audits are rewritten as short Ukrainian summaries.
+- Final semantic-core manager decisions are summarized from the full completion
+  comment, not only the first sentence. This prevents comments that start with
+  headings such as `Final Manager Decision` from collapsing to the generic
+  `Задачу завершено` fallback.
 - `worker.js` enriches issue-done events from `ctx.companies.get(...)` and
   `ctx.issues.get(...)` so the formatter has `companyName` and `projectName`.
 

@@ -605,6 +605,146 @@ describeEmbeddedPostgres("issueTelegramNotificationService", () => {
     expect(caption).not.toContain("Validation artifact");
   });
 
+  it("humanizes final semantic-core manager decisions using the full completion comment", async () => {
+    const companyId = randomUUID();
+    const projectId = randomUUID();
+    const issueId = randomUUID();
+    const pluginId = randomUUID();
+
+    await db.insert(companies).values({
+      id: companyId,
+      name: "DiskInternals",
+      issuePrefix: "DIS",
+      requireBoardApprovalForNewAgents: false,
+    });
+
+    await db.insert(projects).values({
+      id: projectId,
+      companyId,
+      name: "Growth OS Launch",
+      status: "in_progress",
+    });
+
+    await db.insert(issues).values({
+      id: issueId,
+      companyId,
+      projectId,
+      title: "Semantic core for VMFS Recovery for Mac OS users",
+      status: "done",
+      priority: "medium",
+      createdByUserId: "user-1",
+      issueNumber: 55,
+      identifier: "DIS-55",
+    });
+
+    await documentsSvc.upsertIssueDocument({
+      issueId,
+      key: "notification-contract",
+      title: "Telegram delivery",
+      format: "markdown",
+      body: `
+\`\`\`json notification-contract
+{
+  "enabled": true,
+  "channel": "telegram",
+  "trigger": "issue_done",
+  "recipient": { "target": "default_chat" },
+  "delivery": {
+    "mode": "attach_file",
+    "artifact": {
+      "source": "issue_attachment",
+      "filenameIncludes": "summary"
+    }
+  }
+}
+\`\`\`
+`,
+      authorAgentId: null,
+    });
+
+    const attachment = await issuesSvc.createAttachment({
+      issueId,
+      provider: "local_fs",
+      objectKey: `${companyId}/issues/${issueId}/summary.md`,
+      contentType: "text/markdown",
+      byteSize: 9,
+      sha256: "f".repeat(64),
+      originalFilename: "summary.md",
+      createdByUserId: "user-1",
+    });
+
+    await db.insert(plugins).values({
+      id: pluginId,
+      pluginKey: "paperclip-plugin-telegram",
+      packageName: "paperclip-plugin-telegram",
+      version: "0.3.0",
+      apiVersion: 1,
+      manifestJson: {},
+      status: "ready",
+    });
+    await db.insert(pluginConfig).values({
+      pluginId,
+      configJson: {
+        telegramBotTokenRef: "telegram-secret",
+        defaultChatId: "-5154906793",
+        paperclipPublicUrl: "https://paperclip.example.test",
+      },
+    });
+
+    const storage: StorageService = {
+      provider: "local_fs",
+      putFile: vi.fn(),
+      getObject: vi.fn().mockResolvedValue({
+        stream: Readable.from(["# summary"]),
+        contentType: "text/markdown",
+        contentLength: 9,
+      }),
+      headObject: vi.fn(),
+      deleteObject: vi.fn(),
+    };
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: vi.fn().mockResolvedValue({
+        ok: true,
+        result: { message_id: 9903 },
+      }),
+    });
+
+    const svc = issueTelegramNotificationService(db, storage, {
+      fetchImpl: fetchMock as unknown as typeof fetch,
+      resolveTelegramBotToken: vi.fn().mockResolvedValue("telegram-token"),
+    });
+
+    await svc.sendIssueDoneNotification(issueId, {
+      completionSummary: `## Final Manager Decision
+
+Decision: \`accepted\`.
+
+The reopened native-worldwide live rerun loop is accepted with a narrow downstream boundary.
+
+Accepted artifacts:
+- Full owner-visible semantic-universe export remains: /companies/diskinternals/work/53-seo-semantic-core/active/full-export.md
+- Native-worldwide live rerun accepted as the latest narrow live evidence: /companies/diskinternals/work/53-seo-semantic-core/active/live-rerun.md
+
+Manager review:
+- The six kept rerun rows have measured global_search_volume = 0; do not use them alone for Stage 56 demand-priority math.`,
+    });
+
+    expect(storage.getObject).toHaveBeenCalledWith(companyId, attachment.objectKey);
+    const form = fetchMock.mock.calls[0]?.[1]?.body as FormData;
+    const caption = String(form.get("caption"));
+    expect(caption).toContain("✅ Готово: DIS-55");
+    expect(caption).toContain("Компанія: DiskInternals");
+    expect(caption).toContain("Проєкт: Growth OS Launch");
+    expect(caption).toContain("Що зроблено: CMO прийняв фінальний результат");
+    expect(caption).toContain("live native-worldwide перезапуск прийнято тільки як вузьку перевірку");
+    expect(caption).not.toContain("Задачу завершено. Деталі можна відкрити в Paperclip.");
+    expect(caption).not.toContain("Final Manager Decision");
+    expect(caption).not.toContain("global_search_volume");
+  });
+
   it("skips delivery when no notification contract exists", async () => {
     const companyId = randomUUID();
     const issueId = randomUUID();

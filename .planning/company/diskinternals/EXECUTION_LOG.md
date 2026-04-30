@@ -183,6 +183,30 @@ Verification:
 - Verified `/api/health` returns `ok`.
 - Verified the Telegram plugin activates successfully after restart.
 
+## 2026-04-30
+
+Created the full seed-set rerun control task for CMO.
+
+Paperclip changes:
+- Created [DIS-78](/DIS/issues/DIS-78) under [DIS-55](/DIS/issues/DIS-55) and assigned it to CMO.
+- The task requires a full plugin-backed VMFS/VMDK Mac semantic-core rerun from the complete human seed list, not the narrow six-keyword live probe.
+- The task explicitly requires all four Semantic Core MCP layers, seed traceability, geo/global volume fields, import payload preparation, and a Stage 54 validation handoff.
+
+Telegram notification follow-up:
+- Root cause for the [DIS-55](/DIS/issues/DIS-55) Telegram text was the installed `paperclip-plugin-telegram` formatter summarizing only the first sentence of the completion comment.
+- For final manager decisions, the first sentence can be a technical heading/status such as `Final Manager Decision` / `Decision: accepted`, so the formatter fell back to generic `Задачу завершено`.
+- Patched the live installed plugin formatter to detect final semantic-core manager decisions from the full completion comment and return a human-readable Ukrainian summary.
+- Added the same guard to the server-side `issueTelegramNotificationService` and a regression test for the [DIS-55](/DIS/issues/DIS-55) style completion comment.
+
+Verification/deploy:
+- `pnpm exec vitest run src/__tests__/issue-telegram-notifications.test.ts` passed.
+- `pnpm --filter @paperclipai/server typecheck` passed.
+- Deployed the server change to `paperclip-app-1` and verified `http://127.0.0.1:3200/api/health` returns `ok`.
+- Verified the installed Telegram plugin formatter still contains the live hotfix after restart and the plugin activates successfully.
+
+Follow-up observed:
+- CMO accepted [DIS-78](/DIS/issues/DIS-78), delegated Stage 53 as [DIS-79](/DIS/issues/DIS-79), and escalated a real Semantic Core MCP runtime blocker as [DIS-80](/DIS/issues/DIS-80) when the live run rejected `owner_type_preliminary = commercial`.
+
 ## 2026-04-29
 
 Executed initial DiskInternals Growth OS setup.

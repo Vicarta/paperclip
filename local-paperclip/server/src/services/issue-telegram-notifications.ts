@@ -158,15 +158,57 @@ function summarizeIssueTitleForTelegram(title: string): string {
 }
 
 function summarizeCompletionForTelegram(summary: string | null | undefined, title: string): string {
+  const known = summarizeKnownCompletionForTelegram(summary, title);
+  if (known) return truncateForTelegramLine(known, 360);
+
   const normalized = normalizeTelegramSummary(summary);
   const simple = simplifyCompletionSummaryForHuman(normalized, title);
   if (simple) return truncateForTelegramLine(simple, 360);
 
   if (/telegram|notification/i.test(title)) return "Оновлено формат повідомлень у Telegram.";
   if (/release|delta|runtime|deploy|sync/i.test(title)) return "Оновлення застосовано і перевірено.";
+  if (/semantic\s+core|семантич/i.test(title)) {
+    return "Задачу зі збору семантичного ядра завершено; результат і файли залишені в Paperclip.";
+  }
   if (/agent|heartbeat/i.test(title)) return "Налаштування агентів оновлено.";
 
   return "Задачу завершено.";
+}
+
+function normalizeTelegramText(value: string | null | undefined): string {
+  return String(value ?? "")
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/^#+\s*/gm, "")
+    .replace(/^\s*[-*]\s+/gm, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function summarizeKnownCompletionForTelegram(summary: string | null | undefined, title: string): string | null {
+  const normalized = normalizeTelegramText(summary);
+  if (!normalized) return null;
+
+  if (
+    /final manager decision/i.test(normalized) &&
+    /decision:\s*accepted/i.test(normalized) &&
+    /native[-\s]?worldwide/i.test(normalized) &&
+    /semantic[-\s]?universe|full[-\s]?export/i.test(normalized)
+  ) {
+    return "CMO прийняв фінальний результат: повне семантичне ядро лишається основною базою, а live native-worldwide перезапуск прийнято тільки як вузьку перевірку; його 6 рядків не можна використовувати як повний планувальний набір.";
+  }
+
+  if (
+    /semantic\s+core/i.test(title) &&
+    /decision:\s*accepted/i.test(normalized) &&
+    /validation/i.test(normalized) &&
+    /boundary/i.test(normalized)
+  ) {
+    return "Результат семантичного ядра прийнято з обмеженнями: ширша база і live-перевірка мають різне призначення, тож деталі потрібно дивитися в Paperclip.";
+  }
+
+  return null;
 }
 
 function textStats(value: string) {
@@ -240,14 +282,7 @@ function simplifyCompletionSummaryForHuman(summary: string | null, title: string
 }
 
 function normalizeTelegramSummary(value: string | null | undefined): string | null {
-  const normalized = String(value ?? "")
-    .replace(/```[\s\S]*?```/g, " ")
-    .replace(/`([^`]+)`/g, "$1")
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
-    .replace(/^#+\s*/gm, "")
-    .replace(/^\s*[-*]\s+/gm, "")
-    .replace(/\s+/g, " ")
-    .trim();
+  const normalized = normalizeTelegramText(value);
   if (!normalized) return null;
 
   const firstSentence = normalized.match(/^(.+?[.!?])(?:\s|$)/u)?.[1]?.trim();
