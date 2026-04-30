@@ -108,6 +108,17 @@ Live Paperclip follow-up:
 - Updated live `SEO Semantic Core Strategist` instructions with the current MCP config contract and the `search_volume` demand-field rule.
 - Updated live `CMO` instructions so `invalid_config` cannot be accepted as demand-provider evidence and `search_volume` is required in review.
 
+Fixed Telegram issue completion notification readability for DiskInternals.
+
+Code changes:
+- Telegram completion captions now include the Paperclip project name when the issue belongs to a project.
+- Added humanization for agent-facing review summaries such as `Review Decision`, `Accepted draft lane`, and `Accepted validation lane`.
+- Added a regression test for the [DIS-50](/DIS/issues/DIS-50) style message so Telegram shows company, project, task, and a human-readable completion summary.
+
+Verification:
+- `pnpm exec vitest run src/__tests__/issue-telegram-notifications.test.ts` passed.
+- `pnpm --filter @paperclipai/server typecheck` passed.
+
 ## 2026-04-29
 
 Executed initial DiskInternals Growth OS setup.

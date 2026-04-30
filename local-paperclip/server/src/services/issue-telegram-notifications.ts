@@ -1,6 +1,6 @@
 import { eq, and, desc } from "drizzle-orm";
 import type { Db } from "@paperclipai/db";
-import { companies, pluginConfig, plugins } from "@paperclipai/db";
+import { companies, pluginConfig, plugins, projects } from "@paperclipai/db";
 import type { StorageService } from "../storage/types.js";
 import { issueService } from "./issues.js";
 import { issueNotificationContractService } from "./issue-notification-contracts.js";
@@ -97,9 +97,13 @@ function resolveChatId(
 }
 
 function buildCaption(
-  issue: Pick<{ identifier: string | null; title: string; status: string; id: string }, "identifier" | "title" | "status" | "id">,
+  issue: Pick<
+    { identifier: string | null; title: string; status: string; id: string; projectId: string | null },
+    "identifier" | "title" | "status" | "id" | "projectId"
+  >,
   publicUrl: string | null,
   company: { name: string; issuePrefix: string } | null,
+  project: { name: string } | null,
   completionSummary?: string | null,
 ): string {
   const identifier = issue.identifier ?? issue.id;
@@ -108,6 +112,9 @@ function buildCaption(
   const parts = [`✅ Готово: ${identifier}`];
   if (company?.name) {
     parts.push(`Компанія: ${company.name}`);
+  }
+  if (project?.name) {
+    parts.push(`Проєкт: ${project.name}`);
   }
   parts.push(`Задача: ${title}`, `Що зроблено: ${summary}`);
   if (publicUrl) {
@@ -185,6 +192,18 @@ function simplifyCompletionSummaryForHuman(summary: string | null, title: string
     /(?:schema|handoff|runtime|deploy|plugin|adapter|api|mcp|json|metadata|writeback|rollback|sync|provider|canonical)/i.test(
       withoutStatusPrefix,
     ) || /[`{}[\]|]|->|=>|::/.test(withoutStatusPrefix);
+
+  if (
+    /review decision/i.test(withoutStatusPrefix) &&
+    /accepted/i.test(withoutStatusPrefix) &&
+    /(?:draft|validation)\s+lane/i.test(withoutStatusPrefix)
+  ) {
+    const laneIds = Array.from(new Set(withoutStatusPrefix.match(/[A-Z]{2,10}-\d+/g) ?? []));
+    const laneNote = laneIds.length > 0
+      ? ` Пов'язані задачі: ${laneIds.join(", ")}.`
+      : "";
+    return `Результат перевірено й прийнято.${laneNote} Деталі та файли залишені в Paperclip.`;
+  }
 
   if (stats.cyrillicRatio >= 0.45 && !looksTechnical) {
     return withoutStatusPrefix;
@@ -311,6 +330,15 @@ export function issueTelegramNotificationService(
       .then((rows) => rows[0] ?? null);
   }
 
+  async function getIssueProject(projectId: string | null): Promise<{ name: string } | null> {
+    if (!projectId) return null;
+    return await db
+      .select({ name: projects.name })
+      .from(projects)
+      .where(eq(projects.id, projectId))
+      .then((rows) => rows[0] ?? null);
+  }
+
   async function sendIssueDoneNotification(
     issueId: string,
     actor?: IssueDoneNotificationActor,
@@ -338,10 +366,13 @@ export function issueTelegramNotificationService(
     const chatId = resolveChatId(config, resolved.contract.recipient);
     if (!chatId) return { status: "skipped", reason: "telegram_chat_id_missing" };
 
-    const token = await resolveTelegramBotToken(issue.companyId, config.telegramBotTokenRef);
+    const [token, company, project] = await Promise.all([
+      resolveTelegramBotToken(issue.companyId, config.telegramBotTokenRef),
+      getIssueCompany(issue.companyId),
+      getIssueProject(issue.projectId),
+    ]);
     const topicId = resolved.contract.recipient?.topicId ?? null;
-    const company = await getIssueCompany(issue.companyId);
-    const caption = buildCaption(issue, config.paperclipPublicUrl, company, actor?.completionSummary);
+    const caption = buildCaption(issue, config.paperclipPublicUrl, company, project, actor?.completionSummary);
     const messageIds: Array<number | null> = [];
 
     for (const [index, attachment] of resolved.attachments.entries()) {

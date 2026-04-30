@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { Readable } from "node:stream";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { companies, createDb, issues, pluginConfig, plugins } from "@paperclipai/db";
+import { companies, createDb, issues, pluginConfig, plugins, projects } from "@paperclipai/db";
 import type { StorageService } from "../storage/types.js";
 import { documentService } from "../services/documents.js";
 import { issueService } from "../services/issues.js";
@@ -471,6 +471,138 @@ describeEmbeddedPostgres("issueTelegramNotificationService", () => {
     expect(caption).toContain("Відкрити в Paperclip: https://paperclip.example.test/DIS/issues/DIS-28");
     expect(caption).not.toContain("interim proxy attribution policy");
     expect(caption).not.toContain("ecommerce product attribution");
+  });
+
+  it("includes project context and humanizes review lane summaries", async () => {
+    const companyId = randomUUID();
+    const projectId = randomUUID();
+    const issueId = randomUUID();
+    const pluginId = randomUUID();
+
+    await db.insert(companies).values({
+      id: companyId,
+      name: "DiskInternals",
+      issuePrefix: "DIS",
+      requireBoardApprovalForNewAgents: false,
+    });
+
+    await db.insert(projects).values({
+      id: projectId,
+      companyId,
+      name: "Growth OS Launch",
+      status: "in_progress",
+    });
+
+    await db.insert(issues).values({
+      id: issueId,
+      companyId,
+      projectId,
+      title: "Проаналізуй продукт",
+      status: "done",
+      priority: "medium",
+      createdByUserId: "user-1",
+      issueNumber: 50,
+      identifier: "DIS-50",
+    });
+
+    await documentsSvc.upsertIssueDocument({
+      issueId,
+      key: "notification-contract",
+      title: "Telegram delivery",
+      format: "markdown",
+      body: `
+\`\`\`json notification-contract
+{
+  "enabled": true,
+  "channel": "telegram",
+  "trigger": "issue_done",
+  "recipient": { "target": "default_chat" },
+  "delivery": {
+    "mode": "attach_file",
+    "artifact": {
+      "source": "issue_attachment",
+      "filenameIncludes": "summary"
+    }
+  }
+}
+\`\`\`
+`,
+      authorAgentId: null,
+    });
+
+    const attachment = await issuesSvc.createAttachment({
+      issueId,
+      provider: "local_fs",
+      objectKey: `${companyId}/issues/${issueId}/summary.md`,
+      contentType: "text/markdown",
+      byteSize: 9,
+      sha256: "e".repeat(64),
+      originalFilename: "summary.md",
+      createdByUserId: "user-1",
+    });
+
+    await db.insert(plugins).values({
+      id: pluginId,
+      pluginKey: "paperclip-plugin-telegram",
+      packageName: "paperclip-plugin-telegram",
+      version: "0.3.0",
+      apiVersion: 1,
+      manifestJson: {},
+      status: "ready",
+    });
+    await db.insert(pluginConfig).values({
+      pluginId,
+      configJson: {
+        telegramBotTokenRef: "telegram-secret",
+        defaultChatId: "-5154906793",
+        paperclipPublicUrl: "https://paperclip.example.test",
+      },
+    });
+
+    const storage: StorageService = {
+      provider: "local_fs",
+      putFile: vi.fn(),
+      getObject: vi.fn().mockResolvedValue({
+        stream: Readable.from(["# summary"]),
+        contentType: "text/markdown",
+        contentLength: 9,
+      }),
+      headObject: vi.fn(),
+      deleteObject: vi.fn(),
+    };
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: vi.fn().mockResolvedValue({
+        ok: true,
+        result: { message_id: 9902 },
+      }),
+    });
+
+    const svc = issueTelegramNotificationService(db, storage, {
+      fetchImpl: fetchMock as unknown as typeof fetch,
+      resolveTelegramBotToken: vi.fn().mockResolvedValue("telegram-token"),
+    });
+
+    await svc.sendIssueDoneNotification(issueId, {
+      completionSummary:
+        "Review Decision Decision: accepted Accepted draft lane: DIS-53 Accepted validation lane: DIS-54 Canonical writer delivery: DIS-53 delivery comment Validation artifact: /companies/diskinternals/work/61-validation.md",
+    });
+
+    expect(storage.getObject).toHaveBeenCalledWith(companyId, attachment.objectKey);
+    const form = fetchMock.mock.calls[0]?.[1]?.body as FormData;
+    const caption = String(form.get("caption"));
+    expect(caption).toContain("✅ Готово: DIS-50");
+    expect(caption).toContain("Компанія: DiskInternals");
+    expect(caption).toContain("Проєкт: Growth OS Launch");
+    expect(caption).toContain("Задача: Проаналізуй продукт");
+    expect(caption).toContain("Що зроблено: Результат перевірено й прийнято.");
+    expect(caption).toContain("Пов'язані задачі: DIS-53, DIS-54.");
+    expect(caption).toContain("Відкрити в Paperclip: https://paperclip.example.test/DIS/issues/DIS-50");
+    expect(caption).not.toContain("Review Decision");
+    expect(caption).not.toContain("Accepted draft lane");
+    expect(caption).not.toContain("Validation artifact");
   });
 
   it("skips delivery when no notification contract exists", async () => {
