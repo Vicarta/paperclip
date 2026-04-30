@@ -185,6 +185,47 @@ Verification:
 
 ## 2026-04-30
 
+Repaired the live Semantic Core MCP Paperclip adapter and resumed the VMFS/VMDK Mac semantic-core workflow.
+
+Code/runtime changes:
+- Updated `plugin-semantic-core-mcp-agent-tools` to normalize legacy owner type aliases before MCP registration:
+  - `commercial` -> `product`
+  - `transactional` -> `product`
+  - `informational` -> `blog`
+- Updated `get_keywords` argument handling so agent-facing flat args `{ project_id, run_id }` are sent to the MCP server as `{ filters: { project_id, run_id } }`.
+- Hardened keyword volume validation so MCP error payloads can no longer be counted as keyword rows.
+- Preserved the volume contract fields required by DiskInternals semantic-core work:
+  - `search_volume`
+  - `geo_search_volume`
+  - `global_search_volume`
+  - `global_search_volume_status`
+  - `global_search_volume_source`
+  - `global_search_volume_country_distribution`
+
+Verification/deploy:
+- `pnpm --filter @paperclipai/plugin-semantic-core-mcp-agent-tools test` passed.
+- `pnpm --filter @paperclipai/plugin-semantic-core-mcp-agent-tools typecheck` passed.
+- `pnpm --filter @paperclipai/plugin-semantic-core-mcp-agent-tools build` passed.
+- Deployed to the active server build context at `/home/paperclip/apps/paperclip/paperclip-src`.
+- Rebuilt and restarted `paperclip-app-1`.
+- Verified `/api/health` returns `ok`.
+- Verified the running container has the updated compiled plugin `dist`.
+- Live Paperclip smoke passed through `paperclip.semantic-core-mcp-agent-tools:smoke-test`:
+  - project `paperclip-semantic-smoke-dis-81-1777583222`
+  - run `run_20260430_210703_core_product_intent_559daf35`
+  - `get_keywords_count: 6`
+  - `keywords_result.isError: false`
+  - `keyword_volume_contract: ok`
+  - import schema `paperclip_import.v1`
+- Verified flat `get-keywords` calls also work and return 6 rows.
+
+Paperclip updates:
+- Marked [DIS-81](/DIS/issues/DIS-81) done with smoke evidence.
+- Marked [DIS-80](/DIS/issues/DIS-80) done with runtime blocker evidence.
+- Moved [DIS-79](/DIS/issues/DIS-79) from blocked to todo and instructed SEO Semantic Core Strategist to run the real full-seed VMFS/VMDK Mac semantic core across all four layers.
+- Moved [DIS-78](/DIS/issues/DIS-78) from blocked to todo and instructed CMO to continue coordination.
+- Queued on-demand wakeups for CMO and SEO Semantic Core Strategist.
+
 Created the full seed-set rerun control task for CMO.
 
 Paperclip changes:

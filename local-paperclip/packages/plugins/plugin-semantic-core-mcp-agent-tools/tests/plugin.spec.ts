@@ -167,6 +167,42 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
     });
   });
 
+  it("normalizes get_keywords flat args to the current MCP filters contract", () => {
+    expect(
+      prepareSemanticCoreMcpArguments({
+        toolName: "get_keywords",
+        args: {
+          project_id: "diskinternals-vmfs-mac",
+          run_id: "run_1",
+          status: "accepted",
+        },
+      }),
+    ).toEqual({
+      filters: {
+        project_id: "diskinternals-vmfs-mac",
+        run_id: "run_1",
+        status: "accepted",
+      },
+    });
+
+    expect(
+      prepareSemanticCoreMcpArguments({
+        toolName: "get_keywords",
+        args: {
+          filters: {
+            project_id: "diskinternals-vmfs-mac",
+            run_id: "run_1",
+          },
+        },
+      }),
+    ).toEqual({
+      filters: {
+        project_id: "diskinternals-vmfs-mac",
+        run_id: "run_1",
+      },
+    });
+  });
+
   it("enforces optional project and client allowlists", () => {
     expect(
       prepareSemanticCoreMcpArguments({
@@ -381,16 +417,16 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
             ],
             sections: [
               {
-                section_id: "commercial",
-                allowed_owner_types: ["commercial", "blog"],
+                section_id: "product",
+                allowed_owner_types: ["product", "category", "support", "brand", "blog"],
                 allowed_page_types: ["landing_page", "product_page", "guide"],
                 forbidden_topics: [],
               },
             ],
             owner_rules: {
               informational: "blog",
-              commercial: "commercial",
-              transactional: "commercial",
+              commercial: "product",
+              transactional: "product",
               navigational: "brand",
             },
             thresholds: {
@@ -563,16 +599,58 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
       ],
     });
 
+    const legacyKeyword = {
+      keyword_text: "vmfs recovery mac",
+      search_volume: 49500,
+    };
+    expect(validateKeywordVolumeContract({ keywords: [legacyKeyword] })).toEqual({
+      keywordCount: 1,
+      requiredFields: [
+        "geo_search_volume",
+        "global_search_volume",
+        "global_search_volume_status",
+        "global_search_volume_source",
+        "global_search_volume_country_distribution",
+      ],
+    });
+    expect(legacyKeyword).toMatchObject({
+      search_volume: 49500,
+      geo_search_volume: 49500,
+      global_search_volume: null,
+      global_search_volume_status: "unavailable",
+      global_search_volume_source: null,
+      global_search_volume_country_distribution: [],
+    });
+
     expect(() =>
       validateKeywordVolumeContract({
-        keywords: [
-          {
-            keyword_text: "vmfs recovery mac",
-            search_volume: 49500,
-          },
-        ],
+        isError: true,
+        content: "Error executing tool get_keywords: filters field required",
+        data: {
+          structuredContent: null,
+          content: [
+            {
+              type: "text",
+              text: "Error executing tool get_keywords: filters field required",
+            },
+          ],
+        },
       }),
-    ).toThrow(/missing geo_search_volume/);
+    ).toThrow(/returned MCP error/);
+
+    expect(() =>
+      validateKeywordVolumeContract({
+        data: {
+          structuredContent: null,
+          content: [
+            {
+              type: "text",
+              text: "Error executing tool get_keywords: filters field required",
+            },
+          ],
+        },
+      }),
+    ).toThrow(/returned no keyword items/);
   });
 
   it("validates fenced JSON import payload responses", async () => {

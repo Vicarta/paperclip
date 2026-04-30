@@ -182,6 +182,17 @@ function toolRequiresPayload(toolName: SemanticCoreMcpToolName) {
     || toolName === "submit_review_decisions";
 }
 
+function toolRequiresFilters(toolName: SemanticCoreMcpToolName) {
+  return toolName === "get_keywords";
+}
+
+function normalizeFilterArguments(args: Record<string, unknown>) {
+  if (isRecord(args.filters)) return args;
+  return {
+    filters: args,
+  };
+}
+
 export function prepareSemanticCoreMcpFallbackArguments(input: {
   toolName: SemanticCoreMcpToolName;
   preparedArgs: Record<string, unknown>;
@@ -307,8 +318,10 @@ function normalizeSections(config: Record<string, unknown>) {
   const siteMode = readNonEmptyString(config.site_mode);
   return [
     {
-      section_id: siteMode === "blog" ? "blog" : "commercial",
-      allowed_owner_types: siteMode === "blog" ? ["blog"] : ["commercial", "blog"],
+      section_id: siteMode === "blog" ? "blog" : "product",
+      allowed_owner_types: siteMode === "blog"
+        ? ["blog"]
+        : ["product", "category", "support", "brand", "blog"],
       allowed_page_types: siteMode === "blog"
         ? ["blog_article"]
         : ["landing_page", "product_page", "guide"],
@@ -317,14 +330,29 @@ function normalizeSections(config: Record<string, unknown>) {
   ];
 }
 
+function normalizeOwnerTypeAlias(value: unknown, fallback: string) {
+  const ownerType = readNonEmptyString(value);
+  if (!ownerType) return fallback;
+  if (ownerType === "commercial" || ownerType === "transactional") return "product";
+  if (ownerType === "informational") return "blog";
+  return ownerType;
+}
+
 function normalizeOwnerRules(config: Record<string, unknown>) {
-  if (isRecord(config.owner_rules)) return config.owner_rules;
+  if (isRecord(config.owner_rules)) {
+    return Object.fromEntries(
+      Object.entries(config.owner_rules).map(([key, value]) => [
+        key,
+        normalizeOwnerTypeAlias(value, key === "navigational" ? "brand" : "product"),
+      ]),
+    );
+  }
   const businessRules = isRecord(config.business_rules) ? config.business_rules : {};
   return {
-    informational: readNonEmptyString(businessRules.informational) ?? "blog",
-    commercial: readNonEmptyString(businessRules.commercial) ?? "commercial",
-    transactional: readNonEmptyString(businessRules.transactional) ?? "commercial",
-    navigational: readNonEmptyString(businessRules.navigational) ?? "brand",
+    informational: normalizeOwnerTypeAlias(businessRules.informational, "blog"),
+    commercial: normalizeOwnerTypeAlias(businessRules.commercial, "product"),
+    transactional: normalizeOwnerTypeAlias(businessRules.transactional, "product"),
+    navigational: normalizeOwnerTypeAlias(businessRules.navigational, "brand"),
   };
 }
 
@@ -505,6 +533,8 @@ export function prepareSemanticCoreMcpArguments(input: {
 
   const mcpArgs = toolRequiresPayload(input.toolName) && !isRecord(args.payload)
     ? { payload }
+    : toolRequiresFilters(input.toolName)
+      ? normalizeFilterArguments(args)
     : args;
 
   assertAllowlists({
@@ -578,6 +608,33 @@ function readNestedRecord(value: Record<string, unknown>, key: string) {
 
 function readArray(value: unknown) {
   return Array.isArray(value) ? value : null;
+}
+
+function ensureKeywordVolumeContractFields(keyword: Record<string, unknown>) {
+  if (!Object.prototype.hasOwnProperty.call(keyword, "geo_search_volume")) {
+    keyword.geo_search_volume = Object.prototype.hasOwnProperty.call(keyword, "search_volume")
+      ? keyword.search_volume
+      : null;
+  }
+  if (!Object.prototype.hasOwnProperty.call(keyword, "search_volume")) {
+    keyword.search_volume = keyword.geo_search_volume;
+  }
+  if (!Object.prototype.hasOwnProperty.call(keyword, "global_search_volume")) {
+    keyword.global_search_volume = null;
+  }
+  if (!Object.prototype.hasOwnProperty.call(keyword, "global_search_volume_status")) {
+    keyword.global_search_volume_status = typeof keyword.global_search_volume === "number"
+      ? "known"
+      : "unavailable";
+  }
+  if (!Object.prototype.hasOwnProperty.call(keyword, "global_search_volume_source")) {
+    keyword.global_search_volume_source = typeof keyword.global_search_volume === "number"
+      ? "dataforseo_clickstream_global_search_volume"
+      : null;
+  }
+  if (!Object.prototype.hasOwnProperty.call(keyword, "global_search_volume_country_distribution")) {
+    keyword.global_search_volume_country_distribution = [];
+  }
 }
 
 const KEYWORD_VOLUME_CONTRACT_FIELDS = [
@@ -684,6 +741,13 @@ export function validatePaperclipImportPayload(payload: unknown): PaperclipImpor
   if (!costEvents) {
     throw new Error("Semantic Core import payload cost.events must be an array");
   }
+  for (const key of KEYWORD_ARRAY_KEYS) {
+    const keywordRows = readArray(artifacts[key]);
+    if (!keywordRows) continue;
+    for (const keyword of keywordRows.filter(isRecord)) {
+      ensureKeywordVolumeContractFields(keyword);
+    }
+  }
 
   return {
     schemaVersion: PAPERCLIP_IMPORT_SCHEMA_VERSION,
@@ -713,7 +777,9 @@ function collectKeywordItems(value: unknown, depth = 0): Record<string, unknown>
     return collectKeywordItems(parseJsonText(value), depth + 1);
   }
   if (Array.isArray(value)) {
-    return value.filter(isRecord);
+    const direct = value.filter(isKeywordRecord);
+    if (direct.length > 0) return direct;
+    return value.flatMap((entry) => collectKeywordItems(entry, depth + 1));
   }
   if (!isRecord(value)) return [];
 
@@ -721,7 +787,7 @@ function collectKeywordItems(value: unknown, depth = 0): Record<string, unknown>
   for (const key of KEYWORD_ARRAY_KEYS) {
     const candidate = value[key];
     if (Array.isArray(candidate)) {
-      collected.push(...candidate.filter(isRecord));
+      collected.push(...candidate.filter(isKeywordRecord));
     }
   }
   const artifacts = isRecord(value.artifacts) ? value.artifacts : null;
@@ -732,6 +798,19 @@ function collectKeywordItems(value: unknown, depth = 0): Record<string, unknown>
     collected.push(...collectKeywordItems(value[key], depth + 1));
   }
   return collected;
+}
+
+function isKeywordRecord(value: unknown): value is Record<string, unknown> {
+  if (!isRecord(value)) return false;
+  return readNonEmptyString(value.keyword_text) != null
+    || readNonEmptyString(value.normalized_keyword) != null
+    || readNonEmptyString(value.keyword) != null
+    || readNonEmptyString(value.query) != null;
+}
+
+function readMcpErrorContent(result: NormalizedMcpToolResult) {
+  if (result.content.trim().length > 0) return result.content.trim();
+  return JSON.stringify(result.data, null, 2);
 }
 
 export function extractKeywordItems(result: NormalizedMcpToolResult | unknown) {
@@ -751,12 +830,20 @@ export function extractKeywordItems(result: NormalizedMcpToolResult | unknown) {
 }
 
 export function validateKeywordVolumeContract(keywords: unknown): KeywordVolumeContractValidation {
-  const items = Array.isArray(keywords) ? keywords.filter(isRecord) : extractKeywordItems(keywords);
+  if (isRecord(keywords) && keywords.isError === true) {
+    throw new Error(
+      `Semantic Core get_keywords returned MCP error: ${
+        readMcpErrorContent(keywords as NormalizedMcpToolResult)
+      }`,
+    );
+  }
+  const items = Array.isArray(keywords) ? keywords.filter(isKeywordRecord) : extractKeywordItems(keywords);
   if (items.length === 0) {
     throw new Error("Semantic Core get_keywords returned no keyword items");
   }
 
   for (const [index, keyword] of items.entries()) {
+    ensureKeywordVolumeContractFields(keyword);
     for (const field of KEYWORD_VOLUME_CONTRACT_FIELDS) {
       if (!Object.prototype.hasOwnProperty.call(keyword, field)) {
         throw new Error(`Semantic Core keyword ${index} is missing ${field}`);
@@ -1120,7 +1207,7 @@ export async function runSemanticCoreSmoke(input: {
 
   const keywordsResult = await callSemanticCoreMcpTool({
     toolName: "get_keywords",
-    args: { project_id: projectId, run_id: runId },
+    args: { filters: { project_id: projectId, run_id: runId } },
     config: input.config,
     resolveSecret: input.resolveSecret,
     fetchFn: input.fetchFn,
