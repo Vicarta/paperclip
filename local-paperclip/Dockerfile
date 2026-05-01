@@ -39,6 +39,7 @@ COPY packages/adapters/pi-local/package.json packages/adapters/pi-local/
 COPY packages/plugins/create-paperclip-plugin/package.json packages/plugins/create-paperclip-plugin/
 COPY packages/plugins/plugin-bright-data-agent-tools/package.json packages/plugins/plugin-bright-data-agent-tools/
 COPY packages/plugins/plugin-dataforseo-agent-tools/package.json packages/plugins/plugin-dataforseo-agent-tools/
+COPY packages/plugins/plugin-diskinternals-bigquery-growth/package.json packages/plugins/plugin-diskinternals-bigquery-growth/
 COPY packages/plugins/plugin-exa-agent-tools/package.json packages/plugins/plugin-exa-agent-tools/
 COPY packages/plugins/plugin-seo-performance-loop/package.json packages/plugins/plugin-seo-performance-loop/
 COPY packages/plugins/plugin-serper-agent-tools/package.json packages/plugins/plugin-serper-agent-tools/
@@ -63,6 +64,7 @@ RUN pnpm --filter @paperclipai/plugin-sdk build
 RUN pnpm --filter @paperclipai/plugin-exa-agent-tools build
 RUN pnpm --filter @paperclipai/plugin-serper-agent-tools build
 RUN pnpm --filter @paperclipai/plugin-dataforseo-agent-tools build
+RUN pnpm --filter @paperclipai/plugin-diskinternals-bigquery-growth build
 RUN pnpm --filter @paperclipai/plugin-bright-data-agent-tools build
 RUN pnpm --filter @paperclipai/plugin-search-console-mcp-agent-tools build
 RUN pnpm --filter @paperclipai/plugin-semantic-core-mcp-agent-tools build

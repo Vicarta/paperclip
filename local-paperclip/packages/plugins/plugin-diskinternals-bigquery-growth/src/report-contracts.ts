@@ -1,0 +1,200 @@
+import { TOOL_NAMES, type ToolName } from "./constants.js";
+
+export type ReportContract = {
+  toolName: ToolName;
+  source: string;
+  dateField?: string;
+  columns: string[];
+  defaultOrderBy?: string;
+  knownLimitations: string[];
+};
+
+export const REPORT_CONTRACTS: Partial<Record<ToolName, ReportContract>> = {
+  [TOOL_NAMES.getSiteUrlInventory]: {
+    toolName: TOOL_NAMES.getSiteUrlInventory,
+    source: "report_site_url_inventory",
+    columns: [
+      "url_id",
+      "raw_url",
+      "normalized_url",
+      "canonical_url",
+      "language",
+      "country_target",
+      "page_type",
+      "product_id",
+      "product_family",
+      "indexable_status",
+      "sitemap_present",
+      "last_seen_in_sitemap_at",
+      "last_crawled_at",
+    ],
+    defaultOrderBy: "updated_at DESC",
+    knownLimitations: ["Sitemap and crawl freshness depend on scheduled ingestion jobs."],
+  },
+  [TOOL_NAMES.getProductFunnelMetrics]: {
+    toolName: TOOL_NAMES.getProductFunnelMetrics,
+    source: "report_product_funnel_metrics",
+    dateField: "event_date",
+    columns: [
+      "event_date",
+      "product_id",
+      "country",
+      "language",
+      "sessions",
+      "file_downloads",
+      "visit_order_page",
+      "purchases",
+      "purchase_value",
+    ],
+    defaultOrderBy: "event_date DESC",
+    knownLimitations: ["Purchase attribution depends on GA4 ecommerce item quality."],
+  },
+  [TOOL_NAMES.getGscUrlQueryOpportunities]: {
+    toolName: TOOL_NAMES.getGscUrlQueryOpportunities,
+    source: "report_gsc_url_query_opportunities",
+    dateField: "data_date",
+    columns: [
+      "data_date",
+      "url_id",
+      "normalized_url",
+      "query",
+      "country",
+      "device",
+      "clicks",
+      "impressions",
+      "ctr",
+      "position",
+    ],
+    defaultOrderBy: "impressions DESC",
+    knownLimitations: ["GSC privacy aggregation can omit low-volume query rows."],
+  },
+  [TOOL_NAMES.getUrlGrowthOpportunityQueue]: {
+    toolName: TOOL_NAMES.getUrlGrowthOpportunityQueue,
+    source: "mart_growth_opportunities",
+    columns: [
+      "opportunity_id",
+      "url_id",
+      "normalized_url",
+      "product_id",
+      "page_type",
+      "sessions",
+      "file_downloads",
+      "visit_order_page",
+      "gsc_impressions",
+      "gsc_clicks",
+      "avg_position",
+      "page_action_score",
+      "preliminary_action_type",
+      "scored_at",
+    ],
+    defaultOrderBy: "page_action_score DESC",
+    knownLimitations: ["Thank You pages are excluded from scoring."],
+  },
+  [TOOL_NAMES.getProductPriorityScores]: {
+    toolName: TOOL_NAMES.getProductPriorityScores,
+    source: "mart_product_priority",
+    columns: [
+      "product_id",
+      "product_name",
+      "product_family",
+      "sessions",
+      "file_downloads",
+      "visit_order_page",
+      "purchases",
+      "purchase_value",
+      "order_visit_rate",
+      "scored_at",
+    ],
+    defaultOrderBy: "visit_order_page DESC",
+    knownLimitations: ["Use Product Proxy Score until purchase attribution is reliable."],
+  },
+  [TOOL_NAMES.getCroExperimentCandidates]: {
+    toolName: TOOL_NAMES.getCroExperimentCandidates,
+    source: "mart_growth_opportunities",
+    columns: [
+      "opportunity_id",
+      "url_id",
+      "normalized_url",
+      "product_id",
+      "page_action_score",
+      "preliminary_action_type",
+      "scored_at",
+    ],
+    defaultOrderBy: "page_action_score DESC",
+    knownLimitations: ["Returns candidates; CRO launch still requires approval."],
+  },
+  [TOOL_NAMES.getLocalizationCandidates]: {
+    toolName: TOOL_NAMES.getLocalizationCandidates,
+    source: "mart_localization_candidate",
+    columns: [
+      "url_id",
+      "normalized_url",
+      "product_id",
+      "country",
+      "impressions",
+      "clicks",
+      "avg_position",
+      "scored_at",
+    ],
+    defaultOrderBy: "impressions DESC",
+    knownLimitations: ["Localization requires product/funnel feasibility review before launch."],
+  },
+  [TOOL_NAMES.getInternalLinkCandidates]: {
+    toolName: TOOL_NAMES.getInternalLinkCandidates,
+    source: "mart_growth_opportunities",
+    columns: [
+      "opportunity_id",
+      "url_id",
+      "normalized_url",
+      "product_id",
+      "page_action_score",
+      "scored_at",
+    ],
+    defaultOrderBy: "page_action_score DESC",
+    knownLimitations: ["Internal-link candidates require editorial relevance review."],
+  },
+  [TOOL_NAMES.getIndexingCandidates]: {
+    toolName: TOOL_NAMES.getIndexingCandidates,
+    source: "mart_indexing_candidate",
+    columns: [
+      "url_id",
+      "normalized_url",
+      "changed_by_issue",
+      "changed_by_pr",
+      "change_type",
+      "change_date",
+      "indexable_status",
+      "last_crawled_at",
+    ],
+    defaultOrderBy: "change_date DESC",
+    knownLimitations: ["Manual indexing is only for meaningful high-value changes."],
+  },
+  [TOOL_NAMES.getPostChangeFollowup]: {
+    toolName: TOOL_NAMES.getPostChangeFollowup,
+    source: "report_post_change_followup",
+    dateField: "DATE(measured_at)",
+    columns: [
+      "measured_at",
+      "url_id",
+      "changed_by_issue",
+      "followup_window_days",
+      "gsc_clicks",
+      "gsc_impressions",
+      "avg_position",
+      "organic_sessions",
+      "file_downloads",
+      "visit_order_page",
+      "purchases",
+      "invalidated_by_new_change",
+      "notes",
+    ],
+    defaultOrderBy: "measured_at DESC",
+    knownLimitations: ["Follow-up windows are invalidated when the page changed again."],
+  },
+};
+
+export function getReportContract(toolName: ToolName) {
+  const contract = REPORT_CONTRACTS[toolName];
+  if (!contract) throw new Error(`No report contract for tool ${toolName}`);
+  return contract;
+}

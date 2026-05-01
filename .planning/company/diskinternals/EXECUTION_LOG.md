@@ -2,6 +2,28 @@
 
 ## 2026-05-01
 
+Implemented the first runtime slice of the BigQuery-backed growth automation plan.
+
+Local implementation:
+- Added BigQuery schema/view/bootstrap scripts under `ops/bigquery/diskinternals/`.
+- Added a new Paperclip plugin package, `@paperclipai/plugin-diskinternals-bigquery-growth`, that exposes allowlisted DiskInternals growth tools instead of raw BigQuery/GA4/GSC access.
+- Added tool surfaces for schema status, sitemap parsing, URL normalization, crawl batch preparation/status, funnel metrics, GSC URL/query opportunities, growth opportunity queue, product priorities, CRO candidates, localization candidates, indexing candidates, opportunity decisions, and post-change follow-up.
+- Added URL normalization, sitemap parsing, scoring/routing helpers, crawl policy helpers, and BigQuery REST client support with secret-backed credentials.
+- Wired the new plugin into the Docker build.
+
+Guardrails preserved:
+- Agents do not receive raw BigQuery credentials, arbitrary SQL, direct GA4/GSC access, or `bq`.
+- Thank You pages are excluded from scoring and backlog routing.
+- Crawl work is bounded and represented as job/queue state rather than unbounded agent page loops.
+- BigQuery remains the planned source of truth for DiskInternals growth data.
+
+Verification:
+- `pnpm --filter @paperclipai/plugin-diskinternals-bigquery-growth test` passed.
+- `pnpm --filter @paperclipai/plugin-diskinternals-bigquery-growth typecheck` passed.
+- `pnpm --filter @paperclipai/plugin-diskinternals-bigquery-growth build` passed.
+- `pnpm --filter @paperclipai/server typecheck` passed.
+- `bash -n ops/bigquery/diskinternals/scripts/apply.sh && bash -n ops/bigquery/diskinternals/scripts/smoke.sh` passed.
+
 Planned the BigQuery growth implementation in GSD.
 
 GSD changes:
