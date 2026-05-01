@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-04-29)
 
 **Core value:** Every Paperclip action should turn trustworthy product, URL, and funnel data into measurable growth work for visitors, trial downloads, order-page visits, and license purchases.
-**Current focus:** Phase 1-10 Growth OS readiness complete; next work is live backlog operation from BigQuery opportunity queues.
+**Current focus:** Phase 1-10 Growth OS readiness complete; next work is Phase 11 Perfex CRM human implementation handoff so approved growth actions become tasks for people.
 
 ## Current Position
 
-Phase: 1-10 readiness
-Plan: all Phase 1-10 GSD plans now present and completed for the Growth OS readiness layer
-Status: Ready for recurring operation
-Last activity: 2026-05-01 - Completed missing Phase 2-5/8 plan coverage and Phase 7 live BigQuery data/crawl readiness
+Phase: 11 planning
+Plan: Perfex CRM human implementation handoff
+Status: Planned
+Last activity: 2026-05-01 - Corrected production implementation model from website PRs to Perfex CRM human tasks
 
-Progress: [##########] 100%
+Progress: [#########-] 90%
 
 ## Performance Metrics
 
@@ -44,7 +44,8 @@ Recent decisions affecting current work:
 - Create the plan for all agents now before execution.
 - BigQuery export is the operational source of truth for GA4/GSC-derived DiskInternals data.
 - Direct GA4/GSC access is not available to agents; access must go through BigQuery-backed Paperclip plugin tools.
-- Agents may prepare patches/PRs; production remains approval-gated.
+- DiskInternals website code is not available to Paperclip agents. Website changes are implemented manually by people through Perfex CRM tasks.
+- Agents may prepare implementation-ready briefs and Perfex CRM task payloads; production remains approval-gated.
 - Pilot focus is confirmed: RAID, VMFS, Linux Reader/Linux Writer funnel, Download/Order/Checkout. Thank You pages are QA/debug-only and excluded from scoring/backlog.
 - Blog work belongs to SEO; SOC is the future social content lane.
 - Plans should not use fixed day counts.
@@ -61,6 +62,7 @@ Recent decisions affecting current work:
 - Phase 10 Semantic Core MCP adapter is deployed live, configured with encrypted token secret, and smoke-tested through Paperclip plugin tools.
 - Follow-up: audit and, if needed, update live DiskInternals SEO Performance Analyst and SEO Internal Linking Indexation Agent contracts for explicit SEO/MCP lane separation language. Do this as a separate live-agent contract change, not as part of the planning-only governance overlay.
 - Phase 1-10 readiness plans are complete. Phase 7 live BigQuery now has initial sitemap URL inventory, GA4/GSC fact ingestion, opportunity marts, and crawl smoke snapshots.
+- Phase 11 is planned to add a Perfex CRM MCP plugin so approved Paperclip opportunities become human implementation tasks.
 
 ### Guardrails
 
@@ -86,7 +88,8 @@ Recent decisions affecting current work:
 
 ### Blockers/Concerns
 
-- Website repository/access is still required before agents can create real website PRs. Growth OS readiness is complete, but production implementation remains approval-gated and repo-dependent.
+- Website repository/access is not expected for DiskInternals. Production implementation should route through Perfex CRM human tasks instead of website PRs.
+- Phase 11 plugin work is required before Paperclip can automatically create and monitor Perfex tasks.
 - Linux Writer is upcoming, so product/URL/event mapping may start with placeholder fields.
 - Winning Structure MCP smoke returned `human_review_required: true` with low confidence for the sample `convert vhd to vmdk` run, so downstream automation must keep human/editorial review before using the recommendation.
 - Semantic Core MCP live server now exposes a dedicated `get_review_queue` tool; Paperclip wrapper smoke returned 200 with a valid paginated queue response.

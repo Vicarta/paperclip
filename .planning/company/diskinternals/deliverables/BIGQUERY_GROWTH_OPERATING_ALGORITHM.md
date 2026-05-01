@@ -11,6 +11,7 @@ It replaces the earlier MCP-first assumption for GA4/GSC data. DiskInternals can
 - BigQuery is the company data source of truth for DiskInternals growth operations.
 - Paperclip agents must not connect directly to GA4, GSC, or arbitrary BigQuery SQL.
 - A Paperclip BigQuery Growth Data plugin should expose stable, allowlisted report tools to agents.
+- DiskInternals website code is not available to Paperclip agents. Approved website changes should be handed off as Perfex CRM tasks for human implementation.
 - The `bq` CLI is useful for ops, bootstrap, migrations, backfills, smoke tests, and manual debugging, but not as the primary runtime interface for agents.
 - Sitemap, URL registry, crawl/page snapshots, scoring marts, experiment history, and follow-up measurements should also live in BigQuery.
 - `Thank You` pages are excluded from growth scoring and backlog prioritization. They may be retained only as debug/QA signals for download-flow integrity.
@@ -42,13 +43,13 @@ Paperclip BigQuery Growth Data plugin
 DATA / SEO / Growth Opportunity / CRO / Localization / CMO agents
         |
         v
-Approved backlog -> patch/PR/content/CRO/localization/indexing work
+Approved backlog -> Perfex CRM human tasks/content/CRO/localization/indexing work
         |
         v
 7/14/28 day follow-up back into BigQuery
 ```
 
-Paperclip orchestrates the workflow. BigQuery stores state and facts. The plugin mediates safe access. Workers perform scheduled ingestion and crawl jobs. Agents consume stable reports and create decisions, issues, patches, and approval requests.
+Paperclip orchestrates the workflow. BigQuery stores state and facts. The plugin mediates safe access. Workers perform scheduled ingestion and crawl jobs. Agents consume stable reports and create decisions, issues, implementation-ready task payloads, and approval requests.
 
 ## BigQuery Dataset Model
 
@@ -424,10 +425,10 @@ CRO, SEO, and localization can run in parallel only when they are working from t
 5. BigQuery marts compute product, URL, CRO, localization, internal-link, and indexing candidates.
 6. Growth Opportunity Strategist classifies top opportunities into action lanes.
 7. CMO approves the backlog and delegates child issues.
-8. Specialist agents produce briefs, patches, PRs, linking queues, CRO variants, localization proposals, or indexing candidates.
+8. Specialist agents produce briefs, Perfex task payloads, linking queues, CRO variants, localization proposals, or indexing candidates.
 9. QA reviews recovery claims, product routing, unsupported compatibility, and safety messaging.
 10. Human approval gates production, tracking, checkout/order flow, popup launches, broad localization, and manual indexing batches.
-11. Released changes are recorded in `fact_content_change`.
+11. Human-implemented changes are recorded in `fact_content_change` with Perfex task references when available.
 12. Follow-up metrics are checked at 7, 14, and 28 days.
 13. Results update opportunity scores and future backlog.
 

@@ -37,7 +37,31 @@ Verification:
 - `pnpm --filter @paperclipai/server typecheck` passed.
 
 Remaining operational dependency:
-- Real website PR execution depends on website repository/workspace access. The Growth OS planning/platform layer is ready, but production changes remain approval-gated.
+- Superseded by the 2026-05-01 Perfex CRM correction below: DiskInternals website source access is not expected, so production implementation should route through Perfex CRM human tasks instead of website PRs.
+
+Corrected DiskInternals production implementation model.
+
+Decision:
+- DiskInternals website source code is not available to Paperclip agents.
+- Website/content/tracking changes should be assigned to people through Perfex CRM, not implemented through source-code PRs.
+
+Planning/GSD changes:
+- Added Phase 11: `Perfex CRM Human Implementation Handoff`.
+- Added `PERFEX-01` through `PERFEX-05` requirements for the Perfex MCP plugin, bearer-token secret handling, task creation/update/status sync, and follow-up state.
+- Added deliverable `PERFEX_CRM_HANDOFF_PLUGIN.md`.
+- Added Phase 11 plans:
+  - `11-01-perfex-mcp-plugin-adapter-PLAN.md`
+  - `11-02-human-implementation-task-payload-PLAN.md`
+  - `11-03-perfex-status-sync-followup-PLAN.md`
+- Updated `PROJECT.md`, `ROADMAP.md`, `REQUIREMENTS.md`, `STATE.md`, `PR_QA_INDEXING_WORKFLOW.md`, and `BIGQUERY_GROWTH_OPERATING_ALGORITHM.md` so production handoff means Perfex CRM task payloads and human implementation.
+
+Perfex MCP constraints captured:
+- MCP transport: Streamable HTTP.
+- MCP URL: `https://pxmc.aibizmate.com/mcp`.
+- Auth: `Authorization: Bearer <MCP_TOKEN>`.
+- Token source: Paperclip encrypted secret only.
+- Healthcheck: `GET https://pxmc.aibizmate.com/healthz` with the same bearer token.
+- Perfex Bridge Shared Secret is not required; Perfex authorization and acting user are server-side concerns of the MCP service.
 
 Planned the missing live bootstrap slice for DiskInternals BigQuery growth automation.
 
@@ -461,6 +485,6 @@ Local deliverables created:
 - `BIGQUERY_TRANSITION.md`
 - `SELECTOR_LOCALIZATION_ASSISTANT.md`
 
-Open blockers:
-- BigQuery agent access is deferred by operator decision.
-- DiskInternals website repository/access is not provided in this workspace, so agents can prepare PR workflows and backlog specs but cannot yet create real website PRs here.
+Open blockers at that time:
+- BigQuery agent access was deferred by operator decision.
+- Superseded on 2026-05-01: DiskInternals website changes now route through planned Perfex CRM human tasks instead of website repository PRs.

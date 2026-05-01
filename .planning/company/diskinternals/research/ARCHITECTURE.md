@@ -28,7 +28,7 @@ BigQuery GA4/GSC exports
   -> Growth Opportunity Strategist routing
   -> CMO backlog approval
   -> Agent tasks
-  -> Patches/PRs or recommendations
+  -> Perfex CRM task payloads or recommendations
   -> QA and approval
   -> Release/indexing
   -> Follow-up telemetry
@@ -46,4 +46,4 @@ BigQuery GA4/GSC exports
 
 ## Approval Boundaries
 
-Agents may prepare patches/PRs. Agents may not autonomously publish production changes, tracking changes, popup experiments, or indexation batches without the approved workflow from Phase 5.
+Agents may prepare implementation-ready Perfex CRM task payloads. Agents may not autonomously publish production changes, tracking changes, popup experiments, or indexation batches without the approved workflow from Phase 5 and the Perfex handoff from Phase 11.

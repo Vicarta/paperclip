@@ -13,7 +13,8 @@
 | Agent adapters | `codex_local`, model `gpt-5.4` across current agents | Keep unless there is a targeted reason to change. |
 | GA4/GSC | Available through BigQuery export only | Use BigQuery-backed Paperclip plugin reports; no direct agent GA4/GSC access. |
 | BigQuery | Operational source of truth for company growth data | Store exports, URL inventory, crawl/page state, marts, and follow-up measurements. |
-| Website changes | Agents may prepare patches/PRs | Require QA and approval before production publication. |
+| Website changes | People implement manually from Perfex CRM tasks | Agents prepare task payloads with QA and acceptance criteria; no source-code PR path is assumed. |
+| Perfex CRM MCP | Planned Phase 11 plugin | Use Streamable HTTP MCP with bearer token stored as a Paperclip secret. |
 | Plugins | Exa, Serper, DataForSEO, Bright Data, Telegram, SEO performance loop, file browser | Use provider-cost tools only with explicit scope; avoid large Bright Data jobs without approval. |
 
 ## Agent Stack Implication
@@ -28,4 +29,4 @@
 
 ## Recommendation
 
-Start with Paperclip issue/agent configuration and normalized data contracts, not code changes. Once Phase 5 is reached, agents can prepare patches/PRs for website changes, with QA and approval gates.
+Start with Paperclip issue/agent configuration and normalized data contracts, not code changes. Once Phase 11 is implemented, agents can create Perfex CRM tasks for human website changes, with QA and approval gates.

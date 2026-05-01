@@ -2,7 +2,7 @@
 
 ## Overview
 
-This roadmap turns the DiskInternals Paperclip company into a controlled growth operating system. It starts with guardrails and agent role cleanup, then establishes BigQuery-first data contracts, URL inventory/normalization, product and URL scoring, pilot backlog generation, PR/approval workflows, operating routines, BigQuery-backed growth automation, and readiness for guided selector, localization, and AI assistant work.
+This roadmap turns the DiskInternals Paperclip company into a controlled growth operating system. It starts with guardrails and agent role cleanup, then establishes BigQuery-first data contracts, URL inventory/normalization, product and URL scoring, pilot backlog generation, implementation approval workflows, operating routines, BigQuery-backed growth automation, and readiness for guided selector, localization, AI assistant work, and Perfex CRM human implementation handoff.
 
 The roadmap is phase-based, not day-based. Execution can run automatically through Paperclip routines and GSD phases, but production publication and tracking changes remain approval-gated.
 
@@ -17,12 +17,13 @@ The roadmap is phase-based, not day-based. Execution can run automatically throu
 - [x] **Phase 2: Data Contracts And Attribution** - Define BigQuery-backed reports, plugin access, and attribution QA before scaling agent work.
 - [x] **Phase 3: Product, URL, And Scoring Foundation** - Build product/URL mapping and scoring models, including Linux Writer.
 - [x] **Phase 4: Pilot Backlog System** - Generate controlled RAID, VMFS, Linux Reader/Linux Writer, and checkout-flow work.
-- [x] **Phase 5: Production PR And Approval Workflow** - Convert agent output into patches/PRs with QA and indexing controls.
+- [x] **Phase 5: Production Implementation Approval Workflow** - Convert agent output into implementation-ready artifacts with QA and indexing controls.
 - [x] **Phase 6: Automated Operating Routines** - Configure recurring growth operations without idle specialist budget burn.
 - [x] **Phase 7: BigQuery Growth Automation And Portfolio Expansion** - Automate BigQuery marts, crawler-backed URL state, and expansion beyond the pilot when scores support it.
 - [x] **Phase 8: Guided Selector, Localization, And Assistant Readiness** - Stage selector, localization, and AI assistant work behind guardrails.
 - [x] **Phase 9: Winning Structure MCP Adapter** - Add the Paperclip adapter for SERP-based Winning Structure recommendations.
 - [x] **Phase 10: Semantic Core MCP Adapter** - Add the Paperclip adapter for semantic-core generation runs and Paperclip import validation.
+- [ ] **Phase 11: Perfex CRM Human Implementation Handoff** - Add the Paperclip adapter that turns approved Paperclip growth actions into Perfex CRM tasks for human website changes.
 
 ## Phase Details
 
@@ -93,19 +94,19 @@ Plans:
 - [x] 04-03: Download, Order, Checkout, CTA, and popup experiment backlog
 - [x] 04-04: Internal linking and localization candidate queue
 
-### Phase 5: Production PR And Approval Workflow
-**Goal**: Agent work becomes reviewable patches/PRs with quality, compliance, rollout, and indexing discipline.
+### Phase 5: Production Implementation Approval Workflow
+**Goal**: Agent work becomes reviewable implementation artifacts with quality, compliance, rollout, and indexing discipline.
 **Depends on**: Phase 4
 **Requirements**: PR-01, PR-02, QA-01, IDX-01, IDX-02
 **Success Criteria**:
-  1. Agents can prepare PRs with affected URLs, business rationale, expected metrics, and rollback notes.
+  1. Agents can prepare implementation-ready artifacts with affected URLs, business rationale, expected metrics, exact requested changes, and rollback notes.
   2. QA rejects unsafe recovery guarantees, unsupported compatibility, wrong product routing, and unsourced price claims.
   3. Reindexing queues include only meaningful high-value changed URLs.
-  4. Release and indexing reports connect PRs to follow-up telemetry.
+  4. Release and indexing reports connect implemented changes to follow-up telemetry.
 **Plans**: 3 plans
 
 Plans:
-- [x] 05-01: PR template and patch-preparation workflow for agents
+- [x] 05-01: Implementation artifact template and approval handoff workflow for agents
 - [x] 05-02: QA and compliance checklist for recovery/product content
 - [x] 05-03: Changed URL, indexing, and telemetry follow-up process
 
@@ -116,7 +117,7 @@ Plans:
 **Success Criteria**:
   1. Operating loop covers data review, sprint planning, production/QA, release/indexing, and reporting.
   2. Routine plan keeps specialist agents wake-on-demand by default.
-  3. `CEO` receives concise growth reports tied to downloads, order visits, purchases, PRs, and URLs.
+  3. `CEO` receives concise growth reports tied to downloads, order visits, purchases, Perfex implementation tasks, and URLs.
   4. Manual approval points are explicit before routines are activated.
 **Plans**: 3 plans
 
@@ -192,6 +193,23 @@ Plans:
 Plans:
 - [x] 10-01: Semantic Core MCP plugin, validation, smoke test, and private endpoint allowlist
 
+### Phase 11: Perfex CRM Human Implementation Handoff
+**Goal**: Paperclip can create and monitor Perfex CRM tasks for human implementation of approved website/content/tracking changes.
+**Depends on**: Phase 5, Phase 7
+**Requirements**: PERFEX-01, PERFEX-02, PERFEX-03, PERFEX-04, PERFEX-05
+**Success Criteria**:
+  1. A bundled Paperclip plugin uses Streamable HTTP to connect to `https://pxmc.aibizmate.com/mcp` with a server-side bearer secret.
+  2. The plugin can healthcheck/discover tools, create implementation tasks, add/update task comments or status where MCP capabilities allow, and read task status back.
+  3. Agent-facing task payloads include affected URLs, requested changes, source evidence, QA checklist, acceptance criteria, priority, owner hints, and related `DIS` issue.
+  4. Perfex task IDs and statuses are recorded into Paperclip/BigQuery follow-up state so indexing and 7/14/28 day measurements can start after human completion.
+  5. The plugin does not expose raw MCP token material, arbitrary HTTP, or Perfex Bridge Shared Secret fields to agents.
+**Plans**: 3 plans
+
+Plans:
+- [ ] 11-01: Perfex CRM MCP plugin adapter MVP
+- [ ] 11-02: Human implementation task payload and QA contract
+- [ ] 11-03: Perfex status sync, indexing trigger, and follow-up telemetry
+
 ## Progress
 
 **Execution Order:**
@@ -203,9 +221,10 @@ Phases 1-8 are the Growth OS rollout path. Phases 9-10 were implemented early as
 | 2. Data Contracts And Attribution | 3/3 | Complete | 2026-05-01 |
 | 3. Product, URL, And Scoring Foundation | 3/3 | Complete | 2026-05-01 |
 | 4. Pilot Backlog System | 4/4 | Complete | 2026-05-01 |
-| 5. Production PR And Approval Workflow | 3/3 | Complete | 2026-05-01 |
+| 5. Production Implementation Approval Workflow | 3/3 | Complete | 2026-05-01 |
 | 6. Automated Operating Routines | 3/3 | Complete | 2026-04-29 |
 | 7. BigQuery Growth Automation And Portfolio Expansion | 6/6 | Complete | 2026-05-01 |
 | 8. Guided Selector, Localization, And Assistant Readiness | 3/3 | Complete | 2026-05-01 |
 | 9. Winning Structure MCP Adapter | 1/1 | Complete | 2026-04-29 |
 | 10. Semantic Core MCP Adapter | 1/1 | Complete | 2026-04-30 |
+| 11. Perfex CRM Human Implementation Handoff | 0/3 | Planned | - |

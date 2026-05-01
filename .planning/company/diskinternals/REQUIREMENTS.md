@@ -9,7 +9,7 @@
 
 - [x] **GOV-01**: Every Paperclip API action explicitly targets DiskInternals company ID `969d66ff-d77e-4dbf-8759-1a17c2bb17c2`.
 - [x] **GOV-02**: Planning, issue descriptions, comments, and links use the `DIS` prefix and never rely on the Astrogen default context.
-- [x] **GOV-03**: Publication, tracking changes, and production experiments require approval even when agents prepare patches or PRs.
+- [x] **GOV-03**: Publication, tracking changes, and production experiments require approval even when agents prepare implementation-ready briefs or Perfex CRM task payloads.
 - [x] **GOV-04**: Specialist agents remain wake-on-demand unless a routine is explicitly approved.
 - [x] **GOV-05**: DiskInternals agents must follow the shared agency-core governance contract at `.planning/agency-core/governance/AGENT_EXECUTION_GOVERNANCE.md`.
 
@@ -50,10 +50,10 @@
 - [x] **CRO-01**: Popup and CTA experiments are scenario-based uncertainty reducers, not generic sale popups.
 - [x] **LOC-01**: Localization queue requires country demand, GSC signal, product/funnel signal, and product priority.
 
-### Production, QA, And Indexing
+### Production, QA, Indexing, And Human Implementation
 
-- [x] **PR-01**: Agents can prepare patches or PRs for website/content/tracking work.
-- [x] **PR-02**: PR outputs include business context, affected URLs, expected metrics, rollback notes, and approval checklist.
+- [x] **PR-01**: Agents can prepare implementation-ready artifacts for website/content/tracking work. For DiskInternals these artifacts target Perfex CRM human tasks, not website repository PRs.
+- [x] **PR-02**: Implementation outputs include business context, affected URLs, exact requested changes, expected metrics, rollback notes, and approval checklist.
 - [x] **QA-01**: QA checks reject fake recovery guarantees, unsupported compatibility claims, price/discount claims without source, cannibalization, and wrong product recommendations.
 - [x] **IDX-01**: Indexing queue prioritizes product pages, hubs, high-value refreshed pages, GSC opportunity pages, and meaningful title/H1/core content/CTA/link changes.
 - [x] **IDX-02**: Low-value text edits and bulk template changes are excluded from manual reindexing.
@@ -92,7 +92,15 @@
 ### BigQuery Automation
 
 - **BQA-01**: Automate BigQuery growth marts as the primary source of truth for weekly backlog generation.
-- **BQA-02**: Add content-change telemetry to connect Paperclip PRs to post-release search and funnel outcomes.
+- **BQA-02**: Add content-change telemetry to connect Paperclip/Perfex implementation tasks to post-release search and funnel outcomes.
+
+### Perfex CRM Handoff
+
+- **PERFEX-01**: Create a Paperclip plugin adapter for the Perfex CRM MCP endpoint using Streamable HTTP at `https://pxmc.aibizmate.com/mcp`.
+- **PERFEX-02**: Store the MCP bearer token only as a Paperclip secret and pass it as `Authorization: Bearer <MCP_TOKEN>` from server-side plugin code.
+- **PERFEX-03**: Do not require or expose any Perfex Bridge Shared Secret; Perfex authorization and acting user are controlled server-side by the MCP service.
+- **PERFEX-04**: Agents can create/update/read implementation tasks in Perfex CRM with affected URLs, exact requested changes, source data, QA checklist, owner, due/priority if available, and Paperclip issue link.
+- **PERFEX-05**: Perfex task IDs and status changes are recorded back into Paperclip/BigQuery follow-up state so completed human work can trigger indexing and 7/14/28 day measurements.
 
 ## Out of Scope
 
@@ -101,6 +109,7 @@
 | Separate Growth PM agent | `CMO` will own Growth PM responsibilities. |
 | Mass article generation | Product attribution and page scoring must come first. |
 | Autonomous production publishing | Approval governance is required for website and tracking changes. |
+| Website repository PRs as the default implementation path | DiskInternals website source is not available to Paperclip; human implementation must flow through Perfex CRM. |
 | Broad social content operations | SOC lane is future scope and should not be mixed with SEO blog work. |
 | Blanket localization | Localization must be gated by business signal. |
 | Immediate AI assistant | Selector, safety policy, telemetry, and support routing come first. |
@@ -155,12 +164,18 @@
 | SEL-02 | Phase 8 | Complete |
 | AI-01 | Phase 8 | Complete |
 | LOC-02 | Phase 8 | Complete |
+| PERFEX-01 | Phase 11 | Planned |
+| PERFEX-02 | Phase 11 | Planned |
+| PERFEX-03 | Phase 11 | Planned |
+| PERFEX-04 | Phase 11 | Planned |
+| PERFEX-05 | Phase 11 | Planned |
 
 **Coverage:**
 - v1 requirements: 45 total
-- Mapped to phases: 45
+- v2 requirements: 11 total
+- Mapped to phases: 56
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-29*
-*Last updated: 2026-05-01 after Phase 1-10 readiness execution pass*
+*Last updated: 2026-05-01 after Perfex CRM human implementation handoff correction*

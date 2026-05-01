@@ -8,7 +8,7 @@
 - GA4/GSC data is available for current operations only through BigQuery export. Agent access should be mediated through BigQuery-backed Paperclip plugin tools.
 - Product attribution is the main analytics risk and must be fixed or proxied before scaling content and CRO.
 - Linux Writer should be included as an upcoming product in the Linux Reader/freeware funnel.
-- Agents may prepare patches/PRs, but production publication, tracking changes, and experiments require approval.
+- DiskInternals website changes are implemented manually through Perfex CRM tasks. Agents prepare implementation-ready task payloads, but production publication, tracking changes, and experiments require approval.
 - Phase planning should avoid day counts and use operating phases plus recurring routines.
 
 ## Recommended Roadmap Shape
@@ -17,10 +17,11 @@
 2. BigQuery data contracts, URL inventory, and attribution QA.
 3. Product/URL mapping and scoring.
 4. Pilot backlog across RAID, VMFS, Linux Reader/Linux Writer, and checkout flow.
-5. PR, QA, approval, and indexing workflow.
+5. Human implementation, QA, approval, and indexing workflow.
 6. Recurring operating routines.
 7. BigQuery growth automation and portfolio expansion.
 8. Guided selector, localization, and AI assistant readiness.
+9. Perfex CRM human implementation handoff plugin.
 
 ## Source Files
 

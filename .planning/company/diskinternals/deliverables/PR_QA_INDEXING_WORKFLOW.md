@@ -1,4 +1,4 @@
-# PR, QA, Approval, And Indexing Workflow
+# Human Implementation, QA, Approval, And Indexing Workflow
 
 ## Agent Output Types
 
@@ -8,20 +8,24 @@ Agents may produce:
 - refreshed content draft;
 - CTA/popup copy variant;
 - internal linking queue;
-- website patch;
-- pull request.
+- implementation-ready task payload for Perfex CRM;
+- QA checklist and acceptance criteria for the human implementer.
 
 Agents may not publish directly to production.
 
-## PR Requirements
+DiskInternals website source code is not available to Paperclip agents. The default production route is a Perfex CRM task assigned to a human implementer, not a website repository patch or pull request.
 
-Every PR or patch-ready artifact must include:
+## Implementation Task Requirements
+
+Every Perfex CRM task-ready artifact must include:
 - affected URLs;
 - related `DIS` issue;
 - product lane;
 - source data or score;
+- exact requested page/content/tracking changes;
 - expected metric movement;
-- screenshots or rendered preview if UI/content layout changes;
+- screenshots, examples, or rendered preview if UI/content layout changes;
+- acceptance criteria for the human implementer;
 - rollback notes;
 - QA checklist;
 - indexing recommendation.
