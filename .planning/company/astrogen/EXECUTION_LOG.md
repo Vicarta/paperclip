@@ -38,3 +38,5 @@
   - [AST-683](/AST/issues/AST-683) cancelled as obsolete Observability watch; re-enabling Observability should be a fresh decision/task, not continuation of the old watch.
   - [AST-129](/AST/issues/AST-129) cancelled as obsolete Instagram/Bright Data rerun blocker; this should not be revived without a new explicit cost/coverage guarded task.
   - Post-cleanup open `Human Decision Needed` count is `0`; active process is [AST-688](/AST/issues/AST-688) -> [AST-696](/AST/issues/AST-696).
+- Ten-minute control cycle found [AST-696](/AST/issues/AST-696) completed and CMO moved [AST-688](/AST/issues/AST-688) to the next real human gate: choose `1-3` segment hypotheses for Validation Preparation.
+- Cancelled [AST-697](/AST/issues/AST-697) as a duplicate HIA liaison gate after it incorrectly carried `Human Decision Needed`; canonical owner response location remains [AST-688](/AST/issues/AST-688).
