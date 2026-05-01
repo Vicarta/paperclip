@@ -56,6 +56,26 @@ When a child issue completes, the completing agent must:
 
 The parent issue remains the manager-owned coordination lane. Child completion is not automatically the same as parent completion.
 
+## Delegation Execution State Rule
+
+When a manager creates a child issue for work that should start now, the child issue must be executable, not parked.
+
+Required manager behavior:
+
+- create execution-ready child issues in `todo`, not `backlog`;
+- use `backlog` only for intentionally parked or future work, and state why it is not meant to start;
+- before assigning a child issue, check that the intended assignee is not `paused`, archived, missing, or otherwise non-invokable;
+- if the intended assignee is paused or unavailable, do not silently assign the issue to that agent; either choose a valid assignee or mark the parent/child `blocked` with the owner and unblock condition;
+- after creating or updating an execution child issue, verify that there is a wakeup, active run, or clear reason why no wakeup is expected;
+- if no wakeup or active run appears for an execution child issue, the manager should recover it immediately instead of waiting for a later heartbeat.
+
+Common failure states this rule is meant to prevent:
+
+- manager says "I opened the child issue" but the child remains in `backlog`;
+- child issue is assigned to a paused agent;
+- parent remains `in_progress` with no active child execution and no blocker;
+- human has authorized execution, but the manager leaves the workflow in a plan-only state.
+
 ## Plugin And Capability Rule
 
 Paperclip agents must use Paperclip's live plugin registry as the source of truth for available tools.
@@ -119,6 +139,8 @@ Avoid raw agent-to-agent summaries, English status boilerplate in non-English co
 
 Managers and observability routines should detect:
 
+- execution-ready child issues left in `backlog`;
+- child issues assigned to paused or non-invokable agents;
 - `in_progress` tasks without active/recent run evidence;
 - `blocked` tasks with no owner or unblock condition;
 - completed child issues that did not hand off to the parent;
