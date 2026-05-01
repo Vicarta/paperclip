@@ -40,3 +40,6 @@
   - Post-cleanup open `Human Decision Needed` count is `0`; active process is [AST-688](/AST/issues/AST-688) -> [AST-696](/AST/issues/AST-696).
 - Ten-minute control cycle found [AST-696](/AST/issues/AST-696) completed and CMO moved [AST-688](/AST/issues/AST-688) to the next real human gate: choose `1-3` segment hypotheses for Validation Preparation.
 - Cancelled [AST-697](/AST/issues/AST-697) as a duplicate HIA liaison gate after it incorrectly carried `Human Decision Needed`; canonical owner response location remains [AST-688](/AST/issues/AST-688).
+- After the owner answered [AST-688](/AST/issues/AST-688), recovered the chain through [AST-698](/AST/issues/AST-698), [AST-700](/AST/issues/AST-700), and [AST-701](/AST/issues/AST-701) with 10-minute controls and manual wakeups where child issues were `todo` without active run.
+- The process reached a new valid owner gate on [AST-688](/AST/issues/AST-688): approve whether to open Stage 45 Paid Ads Copy for `/free-horoscope` and which segments to include.
+- Cancelled [AST-702](/AST/issues/AST-702) as another duplicate HIA liaison gate; Paperclip auto-labels blocked issues as `Human Decision Needed`, so HIA liaison tasks must not remain `blocked` after posting the canonical source-issue question.
