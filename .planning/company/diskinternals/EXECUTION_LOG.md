@@ -2,6 +2,47 @@
 
 ## 2026-05-01
 
+Planned the missing live bootstrap slice for DiskInternals BigQuery growth automation.
+
+GSD changes:
+- Added `07-06-live-bigquery-bootstrap-PLAN.md` under Phase 7.
+- Updated the Phase 7 plan count from five to six plans.
+- Captured the live bootstrap scope separately from implementation work:
+  - apply `dre-di.diskinternals_growth` schema and views;
+  - store the BigQuery service account JSON as a Paperclip encrypted company secret;
+  - wire `paperclip.diskinternals-bigquery-growth` to the encrypted secret reference;
+  - smoke-check expected tables/views and plugin readiness.
+
+Guardrails:
+- No service account JSON or plaintext secret material belongs in Git, planning files, prompts, or plugin config.
+- Runtime agents must continue using the Paperclip plugin registry and allowlisted tools, not direct BigQuery SQL.
+
+Completed the live bootstrap slice for DiskInternals BigQuery growth automation.
+
+Runtime work:
+- Confirmed/created BigQuery dataset `dre-di.diskinternals_growth` in `US`.
+- Applied growth schema and views to the live dataset.
+- Fixed a live SQL defect in `ops/bigquery/diskinternals/views/020_opportunity_marts.sql`: `mart_localization_candidate` now joins `dim_url` for `product_id` instead of reading a nonexistent `product_id` field from GSC facts.
+- Created/updated Paperclip encrypted company secret `DISK_INTERNALS_BIGQUERY_SERVICE_ACCOUNT_JSON` for DiskInternals company `969d66ff-d77e-4dbf-8759-1a17c2bb17c2`.
+- Updated live plugin config for `paperclip.diskinternals-bigquery-growth`:
+  - `bigQueryProjectId`: `dre-di`
+  - `bigQueryDatasetId`: `diskinternals_growth`
+  - `ga4ExportDatasetId`: `analytics_287393097`
+  - `gscExportDatasetId`: `searchconsole`
+  - `bigQueryLocation`: `US`
+  - credential stored only as encrypted secret reference.
+- Restarted the live Paperclip app container and confirmed the BigQuery Growth plugin activates with 18 tools.
+
+Verification:
+- BigQuery smoke queries passed for `report_site_url_inventory` and `mart_growth_opportunities`.
+- `dre-di.diskinternals_growth.INFORMATION_SCHEMA.TABLES` returns 22 expected objects: 12 base tables and 10 views.
+- Live plugin loader logs show `paperclip.diskinternals-bigquery-growth` activated successfully with 18 registered tools.
+
+Remaining Phase 7 work:
+- Populate `dim_url` and sitemap snapshots from the DiskInternals sitemap.
+- Build/import normalized GA4 and GSC export-derived facts.
+- Activate rate-limited crawl batches and scoring/routing/follow-up workflows.
+
 Updated the BigQuery Growth plugin configuration model for the actual DiskInternals exports.
 
 Runtime/config decisions:

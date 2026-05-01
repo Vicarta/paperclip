@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-04-29)
 
 **Core value:** Every Paperclip action should turn trustworthy product, URL, and funnel data into measurable growth work for visitors, trial downloads, order-page visits, and license purchases.
-**Current focus:** Phase 2 - Data Contracts And Attribution
+**Current focus:** Phase 7 - BigQuery Growth Automation And Portfolio Expansion live bootstrap
 
 ## Current Position
 
-Phase: 2 of 8 (Data Contracts And Attribution)
-Plan: 0 of 3 in current phase
+Phase: 7 of 8 (BigQuery Growth Automation And Portfolio Expansion)
+Plan: 07-06 completed; next 07-03/07-04/07-05 data population and automation
 Status: In progress
-Last activity: 2026-05-01 - Planned Phase 7 BigQuery growth implementation in GSD
+Last activity: 2026-05-01 - Completed live BigQuery bootstrap and plugin secret wiring as Phase 7 plan 07-06
 
 Progress: [###-------] 28%
 
@@ -60,7 +60,7 @@ Recent decisions affecting current work:
 - Phase 9 Winning Structure MCP adapter is deployed live, configured with encrypted token secret, and smoke-tested through Paperclip plugin tools.
 - Phase 10 Semantic Core MCP adapter is deployed live, configured with encrypted token secret, and smoke-tested through Paperclip plugin tools.
 - Follow-up: audit and, if needed, update live DiskInternals SEO Performance Analyst and SEO Internal Linking Indexation Agent contracts for explicit SEO/MCP lane separation language. Do this as a separate live-agent contract change, not as part of the planning-only governance overlay.
-- Phase 7 implementation plans are ready for BigQuery schema/ops, Paperclip plugin, URL inventory, rate-limited crawler, scoring/routing/follow-up.
+- Phase 7 implementation plans are partly complete: `07-01`, `07-02`, and `07-06` are done; `07-03`, `07-04`, and `07-05` remain for sitemap population, crawl automation, scoring/routing, localization, and follow-up.
 
 ### Guardrails
 
@@ -77,11 +77,13 @@ Recent decisions affecting current work:
 - Phase 9 implementation completed locally and live on 2026-04-29; Docker build now includes the plugin and live registry has the tools enabled.
 - Phase 10 added and completed: Semantic Core MCP Adapter. It bridges Paperclip to the private semantic-core MCP server, validates `paperclip_import.v1`, and stores import candidates in plugin state/entities until native SEO semantic tables are implemented.
 - BigQuery-first growth operations algorithm added: `deliverables/BIGQUERY_GROWTH_OPERATING_ALGORITHM.md`.
-- Phase 7 planned as BigQuery Growth Automation with five executable GSD plans in `phases/07-bigquery-growth-automation-portfolio-expansion/`.
+- Phase 7 planned as BigQuery Growth Automation with six executable GSD plans in `phases/07-bigquery-growth-automation-portfolio-expansion/`.
+- Plan `07-06` covers the live operational bootstrap: applying `dre-di.diskinternals_growth` schema/views, storing the BigQuery service account as a Paperclip encrypted company secret, wiring the live plugin config, and smoke-checking the resulting surface.
+- Plan `07-06` completed live: `dre-di.diskinternals_growth` has the schema/views, the service account is stored as Paperclip encrypted company secret `DISK_INTERNALS_BIGQUERY_SERVICE_ACCOUNT_JSON`, and `paperclip.diskinternals-bigquery-growth` is configured with the secret reference.
 
 ### Blockers/Concerns
 
-- BigQuery-backed agent plugin and URL/crawl marts still need implementation before agents can safely operate on GA4/GSC-derived reports.
+- BigQuery-backed agent plugin and live bootstrap are ready; next blocker is data population from sitemap plus GA4/GSC export-derived facts before agents receive useful opportunity queues.
 - Linux Writer is upcoming, so product/URL/event mapping may start with placeholder fields.
 - DiskInternals website repository/access is not present in this workspace, so real website PR creation depends on later workspace configuration.
 - Winning Structure MCP smoke returned `human_review_required: true` with low confidence for the sample `convert vhd to vmdk` run, so downstream automation must keep human/editorial review before using the recommendation.

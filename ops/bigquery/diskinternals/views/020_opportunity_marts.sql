@@ -63,17 +63,19 @@ FROM `__PROJECT__.__DATASET__.mart_url_growth_opportunity`;
 
 CREATE OR REPLACE VIEW `__PROJECT__.__DATASET__.mart_localization_candidate` AS
 SELECT
-  url_id,
-  normalized_url,
-  product_id,
-  country,
-  SUM(impressions) AS impressions,
-  SUM(clicks) AS clicks,
-  AVG(position) AS avg_position,
+  s.url_id,
+  s.normalized_url,
+  ANY_VALUE(u.product_id) AS product_id,
+  s.country,
+  SUM(s.impressions) AS impressions,
+  SUM(s.clicks) AS clicks,
+  AVG(s.position) AS avg_position,
   CURRENT_TIMESTAMP() AS scored_at
 FROM `__PROJECT__.__DATASET__.fact_gsc_url_query_day`
-WHERE country IS NOT NULL
-GROUP BY url_id, normalized_url, product_id, country;
+ s
+LEFT JOIN `__PROJECT__.__DATASET__.dim_url` u USING (url_id)
+WHERE s.country IS NOT NULL
+GROUP BY s.url_id, s.normalized_url, s.country;
 
 CREATE OR REPLACE VIEW `__PROJECT__.__DATASET__.mart_indexing_candidate` AS
 SELECT
