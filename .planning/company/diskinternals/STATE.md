@@ -5,21 +5,21 @@
 See: .planning/PROJECT.md (updated 2026-04-29)
 
 **Core value:** Every Paperclip action should turn trustworthy product, URL, and funnel data into measurable growth work for visitors, trial downloads, order-page visits, and license purchases.
-**Current focus:** Phase 7 - BigQuery Growth Automation And Portfolio Expansion live bootstrap
+**Current focus:** Phase 1-10 Growth OS readiness complete; next work is live backlog operation from BigQuery opportunity queues.
 
 ## Current Position
 
-Phase: 7 of 8 (BigQuery Growth Automation And Portfolio Expansion)
-Plan: 07-06 completed; next 07-03/07-04/07-05 data population and automation
-Status: In progress
-Last activity: 2026-05-01 - Completed live BigQuery bootstrap and plugin secret wiring as Phase 7 plan 07-06
+Phase: 1-10 readiness
+Plan: all Phase 1-10 GSD plans now present and completed for the Growth OS readiness layer
+Status: Ready for recurring operation
+Last activity: 2026-05-01 - Completed missing Phase 2-5/8 plan coverage and Phase 7 live BigQuery data/crawl readiness
 
-Progress: [###-------] 28%
+Progress: [##########] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 7
+- Total plans completed: 30
 - Average duration: n/a
 - Total execution time: 0 hours
 
@@ -54,13 +54,13 @@ Recent decisions affecting current work:
 - Paperclip manager flow created `DIS-48` for canonical DiskInternals company/product reference.
 - `DIS-28` interim proxy attribution policy completed by DATA Growth Analytics Agent.
 
-### Pending Todos
+### Operational Notes
 
-- `DIS-48` created by Paperclip manager flow: canonical DiskInternals company and product reference layer.
+- `DIS-48` completed by Paperclip manager flow: canonical DiskInternals company and product reference layer.
 - Phase 9 Winning Structure MCP adapter is deployed live, configured with encrypted token secret, and smoke-tested through Paperclip plugin tools.
 - Phase 10 Semantic Core MCP adapter is deployed live, configured with encrypted token secret, and smoke-tested through Paperclip plugin tools.
 - Follow-up: audit and, if needed, update live DiskInternals SEO Performance Analyst and SEO Internal Linking Indexation Agent contracts for explicit SEO/MCP lane separation language. Do this as a separate live-agent contract change, not as part of the planning-only governance overlay.
-- Phase 7 implementation plans are partly complete: `07-01`, `07-02`, and `07-06` are done; `07-03`, `07-04`, and `07-05` remain for sitemap population, crawl automation, scoring/routing, localization, and follow-up.
+- Phase 1-10 readiness plans are complete. Phase 7 live BigQuery now has initial sitemap URL inventory, GA4/GSC fact ingestion, opportunity marts, and crawl smoke snapshots.
 
 ### Guardrails
 
@@ -80,12 +80,14 @@ Recent decisions affecting current work:
 - Phase 7 planned as BigQuery Growth Automation with six executable GSD plans in `phases/07-bigquery-growth-automation-portfolio-expansion/`.
 - Plan `07-06` covers the live operational bootstrap: applying `dre-di.diskinternals_growth` schema/views, storing the BigQuery service account as a Paperclip encrypted company secret, wiring the live plugin config, and smoke-checking the resulting surface.
 - Plan `07-06` completed live: `dre-di.diskinternals_growth` has the schema/views, the service account is stored as Paperclip encrypted company secret `DISK_INTERNALS_BIGQUERY_SERVICE_ACCOUNT_JSON`, and `paperclip.diskinternals-bigquery-growth` is configured with the secret reference.
+- Missing Phase 2-5 and Phase 8 GSD plan files were created so every roadmap plan has a physical execution plan.
+- Phase 7 BigQuery Growth plugin was hardened with sitemap index handling, GA4/GSC ingestion tools, bounded due-crawl execution, product/page classification, and additional tests.
+- Live BigQuery initial data load completed: `dim_url`, `raw_sitemap_snapshots`, `fact_ga4_url_day`, `fact_gsc_url_query_day`, `mart_growth_opportunities`, and `fact_crawl_page_snapshot` now contain initial operational data.
 
 ### Blockers/Concerns
 
-- BigQuery-backed agent plugin and live bootstrap are ready; next blocker is data population from sitemap plus GA4/GSC export-derived facts before agents receive useful opportunity queues.
+- Website repository/access is still required before agents can create real website PRs. Growth OS readiness is complete, but production implementation remains approval-gated and repo-dependent.
 - Linux Writer is upcoming, so product/URL/event mapping may start with placeholder fields.
-- DiskInternals website repository/access is not present in this workspace, so real website PR creation depends on later workspace configuration.
 - Winning Structure MCP smoke returned `human_review_required: true` with low confidence for the sample `convert vhd to vmdk` run, so downstream automation must keep human/editorial review before using the recommendation.
 - Semantic Core MCP live server now exposes a dedicated `get_review_queue` tool; Paperclip wrapper smoke returned 200 with a valid paginated queue response.
 

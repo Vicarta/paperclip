@@ -94,6 +94,50 @@ describe("plugin-diskinternals-bigquery-growth", () => {
     );
   });
 
+  it("builds bounded GA4 and GSC ingestion queries", async () => {
+    const harness = createTestHarness({ manifest, config: pluginConfig });
+    await plugin.definition.setup(harness.ctx);
+
+    runBigQueryQueryMock.mockResolvedValue({
+      rows: [],
+      totalRows: 0,
+      totalBytesProcessed: "0",
+      cacheHit: null,
+      jobReference: { jobId: "job-ingest" },
+      dryRun: true,
+    });
+
+    await harness.executeTool(TOOL_NAMES.ingestGa4UrlDay, {
+      startDate: "2026-04-28",
+      endDate: "2026-04-30",
+      dry_run: true,
+    });
+    await harness.executeTool(TOOL_NAMES.ingestGscUrlQueryDay, {
+      startDate: "2026-04-28",
+      endDate: "2026-04-30",
+      dry_run: true,
+    });
+
+    expect(runBigQueryQueryMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        options: expect.objectContaining({
+          query: expect.stringContaining("analytics_287393097.events_*"),
+          parameters: { startDate: "2026-04-28", endDate: "2026-04-30" },
+          dryRun: true,
+        }),
+      }),
+    );
+    expect(runBigQueryQueryMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        options: expect.objectContaining({
+          query: expect.stringContaining("searchconsole.searchdata_url_impression"),
+          parameters: { startDate: "2026-04-28", endDate: "2026-04-30" },
+          dryRun: true,
+        }),
+      }),
+    );
+  });
+
   it("rejects unsupported decision action types", async () => {
     const harness = createTestHarness({ manifest, config: pluginConfig });
     await plugin.definition.setup(harness.ctx);

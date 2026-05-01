@@ -19,9 +19,12 @@ async function getConfig(ctx: PluginSetupContext) {
 const toolDescriptions: Record<ToolName, string> = {
   [TOOL_NAMES.getSchemaStatus]: "Check configured BigQuery growth schema/views.",
   [TOOL_NAMES.syncSitemapSnapshot]: "Parse a sitemap snapshot for DiskInternals URL inventory ingestion.",
+  [TOOL_NAMES.ingestGa4UrlDay]: "Ingest GA4 export rows into normalized URL-day fact tables.",
+  [TOOL_NAMES.ingestGscUrlQueryDay]: "Ingest GSC export rows into normalized URL/query-day fact tables.",
   [TOOL_NAMES.getSiteUrlInventory]: "Get canonical URL inventory rows.",
   [TOOL_NAMES.normalizeUrlInventory]: "Normalize one URL using DiskInternals URL identity rules.",
   [TOOL_NAMES.scheduleCrawlBatch]: "Prepare a bounded rate-limited crawl batch.",
+  [TOOL_NAMES.runDueCrawlItems]: "Process a bounded batch of due crawl items.",
   [TOOL_NAMES.getCrawlJobStatus]: "Get crawl job status summary.",
   [TOOL_NAMES.getProductFunnelMetrics]: "Get product-level GA4 funnel metrics from BigQuery.",
   [TOOL_NAMES.getGscUrlQueryOpportunities]: "Get GSC URL/query opportunities from BigQuery.",
@@ -65,7 +68,21 @@ const plugin = definePlugin({
     }
 
     ctx.jobs.register("crawl-due-items", async () => {
-      ctx.logger.info("crawl-due-items job tick; crawl execution is controlled by scheduled crawl batch tools");
+      const result = await executeBigQueryGrowthTool({
+        deps: {
+          config: await getConfig(ctx),
+          resolveSecret: (secretRef) => ctx.secrets.resolve(secretRef),
+          fetchFn: ctx.http.fetch as typeof fetch,
+        },
+        toolName: TOOL_NAMES.runDueCrawlItems,
+        params: { limit: 20, write_to_bigquery: true, source: "scheduled-job" },
+      });
+      ctx.logger.info(
+        "crawl-due-items job tick completed",
+        result.data && typeof result.data === "object" && !Array.isArray(result.data)
+          ? result.data as Record<string, unknown>
+          : { result: result.content },
+      );
     });
   },
 

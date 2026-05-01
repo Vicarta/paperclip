@@ -14,13 +14,13 @@ The roadmap is phase-based, not day-based. Execution can run automatically throu
 - Phases execute in numeric order.
 
 - [x] **Phase 1: Company Guardrails And Agent Architecture** - Lock DiskInternals context and normalize the full agent operating model.
-- [ ] **Phase 2: Data Contracts And Attribution** - Define BigQuery-backed reports, plugin access, and attribution QA before scaling agent work.
-- [ ] **Phase 3: Product, URL, And Scoring Foundation** - Build product/URL mapping and scoring models, including Linux Writer.
-- [ ] **Phase 4: Pilot Backlog System** - Generate controlled RAID, VMFS, Linux Reader/Linux Writer, and checkout-flow work.
-- [ ] **Phase 5: Production PR And Approval Workflow** - Convert agent output into patches/PRs with QA and indexing controls.
+- [x] **Phase 2: Data Contracts And Attribution** - Define BigQuery-backed reports, plugin access, and attribution QA before scaling agent work.
+- [x] **Phase 3: Product, URL, And Scoring Foundation** - Build product/URL mapping and scoring models, including Linux Writer.
+- [x] **Phase 4: Pilot Backlog System** - Generate controlled RAID, VMFS, Linux Reader/Linux Writer, and checkout-flow work.
+- [x] **Phase 5: Production PR And Approval Workflow** - Convert agent output into patches/PRs with QA and indexing controls.
 - [x] **Phase 6: Automated Operating Routines** - Configure recurring growth operations without idle specialist budget burn.
-- [ ] **Phase 7: BigQuery Growth Automation And Portfolio Expansion** - Automate BigQuery marts, crawler-backed URL state, and expansion beyond the pilot when scores support it.
-- [ ] **Phase 8: Guided Selector, Localization, And Assistant Readiness** - Stage selector, localization, and AI assistant work behind guardrails.
+- [x] **Phase 7: BigQuery Growth Automation And Portfolio Expansion** - Automate BigQuery marts, crawler-backed URL state, and expansion beyond the pilot when scores support it.
+- [x] **Phase 8: Guided Selector, Localization, And Assistant Readiness** - Stage selector, localization, and AI assistant work behind guardrails.
 - [x] **Phase 9: Winning Structure MCP Adapter** - Add the Paperclip adapter for SERP-based Winning Structure recommendations.
 - [x] **Phase 10: Semantic Core MCP Adapter** - Add the Paperclip adapter for semantic-core generation runs and Paperclip import validation.
 
@@ -55,9 +55,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 02-01: BigQuery report contracts and Paperclip plugin access for GA4/GSC growth operations
-- [ ] 02-02: GA4 parameter QA and ecommerce attribution fix scope
-- [ ] 02-03: Interim proxy attribution policy for agents
+- [x] 02-01: BigQuery report contracts and Paperclip plugin access for GA4/GSC growth operations
+- [x] 02-02: GA4 parameter QA and ecommerce attribution fix scope
+- [x] 02-03: Interim proxy attribution policy for agents
 
 ### Phase 3: Product, URL, And Scoring Foundation
 **Goal**: Product and URL mappings support product-level decisions, page-level actions, and Linux Writer launch readiness.
@@ -71,9 +71,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 03-01: Product taxonomy and Linux Writer launch placeholder mapping
-- [ ] 03-02: URL inventory and page-type mapping specification
-- [ ] 03-03: Growth scoring formulas and agent usage rules
+- [x] 03-01: Product taxonomy and Linux Writer launch placeholder mapping
+- [x] 03-02: URL inventory and page-type mapping specification
+- [x] 03-03: Growth scoring formulas and agent usage rules
 
 ### Phase 4: Pilot Backlog System
 **Goal**: The confirmed pilot lanes produce controlled issues for SEO refresh, internal linking, CRO, localization tests, and funnel improvements.
@@ -88,10 +88,10 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
-- [ ] 04-01: RAID and VMFS pilot backlog generation
-- [ ] 04-02: Linux Reader and Linux Writer funnel backlog generation
-- [ ] 04-03: Download, Order, Checkout, CTA, and popup experiment backlog
-- [ ] 04-04: Internal linking and localization candidate queue
+- [x] 04-01: RAID and VMFS pilot backlog generation
+- [x] 04-02: Linux Reader and Linux Writer funnel backlog generation
+- [x] 04-03: Download, Order, Checkout, CTA, and popup experiment backlog
+- [x] 04-04: Internal linking and localization candidate queue
 
 ### Phase 5: Production PR And Approval Workflow
 **Goal**: Agent work becomes reviewable patches/PRs with quality, compliance, rollout, and indexing discipline.
@@ -105,9 +105,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 05-01: PR template and patch-preparation workflow for agents
-- [ ] 05-02: QA and compliance checklist for recovery/product content
-- [ ] 05-03: Changed URL, indexing, and telemetry follow-up process
+- [x] 05-01: PR template and patch-preparation workflow for agents
+- [x] 05-02: QA and compliance checklist for recovery/product content
+- [x] 05-03: Changed URL, indexing, and telemetry follow-up process
 
 ### Phase 6: Automated Operating Routines
 **Goal**: Paperclip runs recurring growth operations through `CEO`, `CMO`, and `CTO` without waking every specialist unnecessarily.
@@ -142,9 +142,9 @@ Plans:
 Plans:
 - [x] 07-01: BigQuery schema, views, and ops scripts
 - [x] 07-02: BigQuery Growth Data Paperclip plugin
-- [ ] 07-03: Sitemap URL inventory, normalization, and product mapping
-- [ ] 07-04: Rate-limited crawl and page snapshot worker
-- [ ] 07-05: Scoring marts, opportunity routing, localization, and follow-up
+- [x] 07-03: Sitemap URL inventory, normalization, and product mapping
+- [x] 07-04: Rate-limited crawl and page snapshot worker
+- [x] 07-05: Scoring marts, opportunity routing, localization, and follow-up
 - [x] 07-06: Live BigQuery bootstrap and plugin secret wiring
 
 ### Phase 8: Guided Selector, Localization, And Assistant Readiness
@@ -159,9 +159,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 08-01: Guided product selector scenario and telemetry specification
-- [ ] 08-02: Signal-gated localization operating plan
-- [ ] 08-03: AI assistant readiness checklist and deferred launch guardrails
+- [x] 08-01: Guided product selector scenario and telemetry specification
+- [x] 08-02: Signal-gated localization operating plan
+- [x] 08-03: AI assistant readiness checklist and deferred launch guardrails
 
 ### Phase 9: Winning Structure MCP Adapter
 **Goal**: Paperclip agents can call the Winning Structure MCP server through a server-side adapter that keeps endpoint credentials private and returns recommendation/provenance artifacts for review.
@@ -200,12 +200,12 @@ Phases 1-8 are the Growth OS rollout path. Phases 9-10 were implemented early as
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Company Guardrails And Agent Architecture | 3/3 | Complete | 2026-04-29 |
-| 2. Data Contracts And Attribution | 1/3 | In progress | - |
-| 3. Product, URL, And Scoring Foundation | 0/3 | Not started | - |
-| 4. Pilot Backlog System | 0/4 | Not started | - |
-| 5. Production PR And Approval Workflow | 0/3 | Not started | - |
+| 2. Data Contracts And Attribution | 3/3 | Complete | 2026-05-01 |
+| 3. Product, URL, And Scoring Foundation | 3/3 | Complete | 2026-05-01 |
+| 4. Pilot Backlog System | 4/4 | Complete | 2026-05-01 |
+| 5. Production PR And Approval Workflow | 3/3 | Complete | 2026-05-01 |
 | 6. Automated Operating Routines | 3/3 | Complete | 2026-04-29 |
-| 7. BigQuery Growth Automation And Portfolio Expansion | 3/6 | In progress | - |
-| 8. Guided Selector, Localization, And Assistant Readiness | 0/3 | Not started | - |
+| 7. BigQuery Growth Automation And Portfolio Expansion | 6/6 | Complete | 2026-05-01 |
+| 8. Guided Selector, Localization, And Assistant Readiness | 3/3 | Complete | 2026-05-01 |
 | 9. Winning Structure MCP Adapter | 1/1 | Complete | 2026-04-29 |
 | 10. Semantic Core MCP Adapter | 1/1 | Complete | 2026-04-30 |

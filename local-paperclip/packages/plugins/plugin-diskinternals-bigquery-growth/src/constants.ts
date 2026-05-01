@@ -19,9 +19,12 @@ export const EXPORT_NAMES = {
 export const TOOL_NAMES = {
   getSchemaStatus: "get-schema-status",
   syncSitemapSnapshot: "sync-sitemap-snapshot",
+  ingestGa4UrlDay: "ingest-ga4-url-day",
+  ingestGscUrlQueryDay: "ingest-gsc-url-query-day",
   getSiteUrlInventory: "get-site-url-inventory",
   normalizeUrlInventory: "normalize-url-inventory",
   scheduleCrawlBatch: "schedule-crawl-batch",
+  runDueCrawlItems: "run-due-crawl-items",
   getCrawlJobStatus: "get-crawl-job-status",
   getProductFunnelMetrics: "get-product-funnel-metrics",
   getGscUrlQueryOpportunities: "get-gsc-url-query-opportunities",

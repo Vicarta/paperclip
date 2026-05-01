@@ -5,6 +5,12 @@ export type SitemapUrlEntry = {
   normalizedUrl: string;
   urlId: string;
   lastmod: string | null;
+  sitemapUrl?: string | null;
+};
+
+export type SitemapIndexEntry = {
+  loc: string;
+  lastmod: string | null;
 };
 
 function extractTags(xml: string, tagName: string) {
@@ -30,6 +36,16 @@ export function parseSitemapXml(xml: string): SitemapUrlEntry[] {
       urlId: normalized.urlId,
       lastmod: lastmod ?? null,
     }];
+  });
+}
+
+export function parseSitemapIndexXml(xml: string): SitemapIndexEntry[] {
+  const sitemapBlocks = extractTags(xml, "sitemap");
+  return sitemapBlocks.flatMap((block) => {
+    const [loc] = extractTags(block, "loc");
+    if (!loc) return [];
+    const [lastmod] = extractTags(block, "lastmod");
+    return [{ loc, lastmod: lastmod ?? null }];
   });
 }
 

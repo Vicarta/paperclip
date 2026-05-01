@@ -2,6 +2,7 @@ export type CrawlPolicy = {
   maxConcurrentRequestsPerHost: number;
   minDelayMsPerHost: number;
   maxAttemptsPerUrl: number;
+  maxItemsPerTick?: number;
 };
 
 export type CrawlItem = {
@@ -40,4 +41,15 @@ export function computeRetryAt(input: {
   }
   const delayMs = Math.min(60 * 60 * 1000, 2 ** Math.max(0, input.attemptCount) * 1000);
   return new Date(input.now.getTime() + delayMs).toISOString();
+}
+
+export function parseRetryAfterSeconds(value: string | null) {
+  if (!value) return null;
+  const numeric = Number(value);
+  if (Number.isFinite(numeric) && numeric > 0) return numeric;
+  const dateMs = Date.parse(value);
+  if (!Number.isNaN(dateMs)) {
+    return Math.max(1, Math.ceil((dateMs - Date.now()) / 1000));
+  }
+  return null;
 }

@@ -2,6 +2,43 @@
 
 ## 2026-05-01
 
+Completed the DiskInternals Phase 1-10 Growth OS readiness pass.
+
+Planning/GSD:
+- Added missing executable GSD plan files for Phase 2, Phase 3, Phase 4, Phase 5, and Phase 8.
+- Updated `ROADMAP.md` so all Phase 1-10 roadmap entries and plan checkboxes reflect the current readiness state.
+- Updated `REQUIREMENTS.md` so v1 requirements that are satisfied by current contracts, deliverables, plugin tools, live BigQuery bootstrap, and guardrails are marked complete.
+
+Phase 7 runtime hardening:
+- Added BigQuery Growth plugin tools for GA4 URL-day ingestion, GSC URL-query ingestion, and bounded due-crawl execution.
+- Extended sitemap sync to handle sitemap indexes and to write URL inventory into `raw_sitemap_snapshots`, `dim_url`, and `url_identity_map`.
+- Added DiskInternals product/page classification for Linux Reader, Linux Writer, recovery families, localized paths, page types, and Thank You exclusion handling.
+- Converted the scheduled `crawl-due-items` job from a no-op log into a bounded worker execution path.
+- Added tests for product mapping, crawl worker selection/retry handling, page snapshot extraction, sitemap index parsing, and ingestion query generation.
+
+Live BigQuery execution:
+- Loaded an initial sitemap-derived URL inventory into `dre-di.diskinternals_growth`.
+- Ingested available GA4 export data from `analytics_287393097` for 2026-04-28 through 2026-04-30 into `fact_ga4_url_day`.
+- Ingested available GSC export data from `searchconsole` for 2026-04-28 through 2026-04-30 into `fact_gsc_url_query_day`.
+- Ran a bounded crawl smoke job against 10 DiskInternals pages and wrote crawl snapshots.
+- Resulting live counts:
+  - `dim_url`: 2000 rows
+  - `raw_sitemap_snapshots`: 2250 rows
+  - `fact_ga4_url_day`: 6619 rows
+  - `fact_gsc_url_query_day`: 64559 rows
+  - `mart_growth_opportunities`: 2000 rows
+  - crawl smoke: 10/10 pages succeeded
+
+Verification:
+- BigQuery dry-runs passed for GA4 and GSC ingestion queries.
+- `pnpm --filter @paperclipai/plugin-diskinternals-bigquery-growth test` passed.
+- `pnpm --filter @paperclipai/plugin-diskinternals-bigquery-growth typecheck` passed.
+- `pnpm --filter @paperclipai/plugin-diskinternals-bigquery-growth build` passed.
+- `pnpm --filter @paperclipai/server typecheck` passed.
+
+Remaining operational dependency:
+- Real website PR execution depends on website repository/workspace access. The Growth OS planning/platform layer is ready, but production changes remain approval-gated.
+
 Planned the missing live bootstrap slice for DiskInternals BigQuery growth automation.
 
 GSD changes:
