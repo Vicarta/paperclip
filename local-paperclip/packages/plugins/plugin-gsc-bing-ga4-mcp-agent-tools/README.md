@@ -28,17 +28,55 @@ sc-domain:astrogen.com.ua
 - Calls with a mismatched `siteUrl`, `site_url`, or `site` are rejected before reaching MCP.
 - Site-scoped GSC tools receive the configured `allowedSiteUrl` automatically when the caller does not provide it.
 
-Verified default MCP tools:
+Verified default MCP tools are read-only analytics, diagnostics, and intelligence tools:
 
 - `sites_list`
-- `analytics_top_queries`
 - `analytics_query`
+- `analytics_top_queries`
+- `analytics_trends`
+- `analytics_anomalies`
+- `analytics_drop_attribution`
+- `analytics_time_series`
+- `analytics_compare_periods`
+- `seo_brand_vs_nonbrand`
+- `seo_low_hanging_fruit`
+- `seo_striking_distance`
 - `seo_low_ctr_opportunities`
+- `seo_cannibalization`
+- `seo_lost_queries`
+- `seo_primitive_ranking_bucket`
+- `seo_primitive_traffic_delta`
+- `seo_primitive_is_brand`
+- `seo_primitive_is_cannibalized`
+- `sites_health_check`
 - `inspection_inspect`
 - `sitemaps_list`
 - `pagespeed_analyze`
+- `schema_validate`
+- `bing_sites_list`
+- `bing_analytics_query`
+- `bing_opportunity_finder`
+- `bing_seo_recommendations`
+- `bing_url_info`
+- `bing_crawl_issues`
+- `bing_analytics_detect_anomalies`
+- `bing_analytics_time_series`
+- `bing_seo_lost_queries`
+- `bing_brand_analysis`
+- `bing_sitemaps_list`
+- `analytics_page_performance`
+- `analytics_traffic_sources`
+- `analytics_organic_landing_pages`
+- `analytics_content_performance`
+- `analytics_conversion_funnel`
+- `analytics_user_behavior`
+- `analytics_audience_segments`
+- `analytics_realtime`
+- `analytics_ecommerce`
+- `analytics_pagespeed_correlation`
+- `opportunity_matrix`
 
-Bing and GA4 MCP tools should be added to `allowedMcpToolNamesCsv` only after MCP-side verification. This keeps the plugin ready for the combined endpoint without granting agents arbitrary future tool access.
+Mutating tools such as `sites_add`, `sites_delete`, `sitemaps_submit`, `bing_index_now`, and `bing_sitemaps_submit` are intentionally not in the default allowlist.
 
 ## Configuration
 

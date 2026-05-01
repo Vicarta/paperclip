@@ -2,7 +2,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createTestHarness } from "@paperclipai/plugin-sdk/testing";
 import manifest from "../src/manifest.js";
 import plugin from "../src/worker.js";
-import { DEFAULT_ALLOWED_SITE_URL, TOOL_NAMES } from "../src/constants.js";
+import {
+  DEFAULT_ALLOWED_SITE_URL,
+  TOOL_NAMES,
+  VERIFIED_MCP_TOOL_NAMES,
+} from "../src/constants.js";
 import {
   callGscBingGa4McpTool,
   listGscBingGa4McpTools,
@@ -138,14 +142,25 @@ describe("plugin-gsc-bing-ga4-mcp-agent-tools", () => {
     ).toThrow(/not allowed/);
   });
 
-  it("allows future verified Bing or GA4 tools only through backend allowlist config", () => {
+  it("allows verified Bing and GA4 read-only tools by default", () => {
+    expect(VERIFIED_MCP_TOOL_NAMES).toContain("bing_analytics_query");
+    expect(VERIFIED_MCP_TOOL_NAMES).toContain("analytics_page_performance");
+    expect(VERIFIED_MCP_TOOL_NAMES).toContain("opportunity_matrix");
+
     expect(
       prepareGscBingGa4McpArguments({
-        toolName: "ga4_report_query",
+        toolName: "analytics_page_performance",
         args: { propertyId: "123456" },
         allowedSiteUrl: DEFAULT_ALLOWED_SITE_URL,
-        allowedToolNames: ["ga4_report_query"],
       }),
     ).toEqual({ propertyId: "123456" });
+  });
+
+  it("keeps mutating MCP tools out of the default allowlist", () => {
+    expect(VERIFIED_MCP_TOOL_NAMES).not.toContain("sites_add");
+    expect(VERIFIED_MCP_TOOL_NAMES).not.toContain("sites_delete");
+    expect(VERIFIED_MCP_TOOL_NAMES).not.toContain("sitemaps_submit");
+    expect(VERIFIED_MCP_TOOL_NAMES).not.toContain("bing_index_now");
+    expect(VERIFIED_MCP_TOOL_NAMES).not.toContain("bing_sitemaps_submit");
   });
 });
