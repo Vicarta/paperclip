@@ -43,7 +43,7 @@ A blocker must name:
 
 Do not use a vague blocker such as "waiting" without owner and unblock condition.
 
-Human blockers do not need a short timeout. They do need a durable Paperclip card, clear human decision request, and a resume path after the answer is recorded.
+Human blockers do not need a short timeout. They do need a durable source-issue comment, the `Human Decision Needed` label, a clear human decision request, and a resume path after the answer is recorded. Do not create a separate owner-assigned issue by default; the human should answer in the blocked source issue unless a manager explicitly requests a different channel.
 
 ## Parent And Child Handoff Rule
 
