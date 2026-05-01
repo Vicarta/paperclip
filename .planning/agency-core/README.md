@@ -12,6 +12,7 @@ Use this scope for reusable agency-level assets only:
 
 - `agents/MKT_GROWTH_STRATEGY_ARCHITECT.md` - MKT specialist for growth strategy options after product discovery.
 - `processes/15_STRATEGIC_OPPORTUNITY_BRIEF.md` - Stage 15 process between Product Discovery and downstream execution.
+- `processes/SEO_PERFORMANCE_LOOP.md` - shared multi-company SEO performance loop for sitemap discovery, GSC query accumulation, semantic-core growth, rank tracking policy, new-page opportunities, and product-launch SEO packages.
 - `governance/AGENT_EXECUTION_GOVERNANCE.md` - shared Paperclip task execution rules for parent/child hierarchy, blockers, assignees, plugin usage, SEO/MCP lanes, provenance, and human-facing updates.
 
 Do not put Astrogen- or DiskInternals-specific execution state here.

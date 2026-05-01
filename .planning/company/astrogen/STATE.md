@@ -39,6 +39,7 @@ Last activity: 2026-05-01 - Added agency-core Agent Execution Governance and ado
 - Human-facing messages for Astrogen should be Ukrainian, simple, and understandable for a non-technical human.
 - New/free routes that may affect acquisition, conversion, lead capture, monetization, offer architecture, or positioning should not jump directly from Product Discovery into execution; run Stage 15 Strategic Opportunity Brief and require human approval first.
 - Agent tasks must follow agency-core `AGENT_EXECUTION_GOVERNANCE`: no silent hanging `in_progress` work, explicit blockers, clear parent/child handoffs, and plugin use only through Paperclip capabilities.
+- SEO monitoring and growth should follow agency-core `SEO_PERFORMANCE_LOOP`: pages can be discovered outside Paperclip, GSC queries feed keyword candidates and new-page opportunities, and rank tracking follows company/project tier policies.
 
 ## Pending Todos
 
@@ -47,6 +48,7 @@ Last activity: 2026-05-01 - Added agency-core Agent Execution Governance and ado
 - Decide whether Semantic Core MCP should be enabled for Astrogen immediately or after the next semantic-core workflow pass.
 - Keep future commits scoped and documented.
 - Add direct references to agency-core execution governance in live CEO/CMO/CTO/HIA/Observability contracts during the next live contract maintenance pass.
+- Convert `SEO_PERFORMANCE_LOOP` into concrete Astrogen Phase 5 implementation tasks when SEO monitoring work resumes.
 
 ## Blockers/Concerns
 
