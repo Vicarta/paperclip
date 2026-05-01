@@ -5,6 +5,7 @@
 - `AST-GOV-01`: Astrogen-specific planning state must stay under `.planning/company/astrogen/`.
 - `AST-GOV-02`: Shared reusable logic belongs in `.planning/agency-core/` or Paperclip source, not in a client-only planning file.
 - `AST-GOV-03`: Astrogen must use separate company/project/budget context from DiskInternals.
+- `AST-GOV-04`: Astrogen agent workflows must follow agency-core `AGENT_EXECUTION_GOVERNANCE`: explicit parent/child handoff, named blockers, current assignee ownership, plugin access through Paperclip capabilities, and separate SEO/MCP child lanes.
 
 ## Content
 

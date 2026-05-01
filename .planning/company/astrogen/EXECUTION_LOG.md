@@ -17,3 +17,4 @@
 - Strengthened the growth strategy output-language rule after the AST-690 artifact was Ukrainian but the first completion comment used English status wording.
 - Tested from CMO through `AST-689`: CMO updated the plan document with Stage 10 -> Stage 15 -> human approval, named `MKT Growth Strategy Architect`, surfaced four hypotheses, and created zero child issues.
 - Tested the new agent directly through `AST-690`: it produced a speculative Ukrainian Stage 15 brief for `/free-horoscope`, marked missing Product Discovery clearly, recommended human-review options, created no child issues, and closed the test issue.
+- Added agency-core `AGENT_EXECUTION_GOVERNANCE` and adopted it for Astrogen planning: explicit `parentId` vs dependency separation, non-silent task states, named blockers, Paperclip plugin/capability usage, SEO/MCP child lanes, provenance/cost recording, and human-readable notifications.

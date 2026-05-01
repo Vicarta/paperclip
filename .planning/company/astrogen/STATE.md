@@ -13,7 +13,7 @@ See: `.planning/company/astrogen/README.md`
 
 Phase: Astrogen growth/content operating system hardening
 Status: Active
-Last activity: 2026-05-01 - Added MKT Growth Strategy Architect, Stage 15 Strategic Opportunity Brief contract, and CMO route-planning test for `/free-horoscope`.
+Last activity: 2026-05-01 - Added agency-core Agent Execution Governance and adopted it for Astrogen planning.
 
 ## Current Focus
 
@@ -38,6 +38,7 @@ Last activity: 2026-05-01 - Added MKT Growth Strategy Architect, Stage 15 Strate
 - Do not store MCP/GSC tokens in source, prompts, docs, or planning files.
 - Human-facing messages for Astrogen should be Ukrainian, simple, and understandable for a non-technical human.
 - New/free routes that may affect acquisition, conversion, lead capture, monetization, offer architecture, or positioning should not jump directly from Product Discovery into execution; run Stage 15 Strategic Opportunity Brief and require human approval first.
+- Agent tasks must follow agency-core `AGENT_EXECUTION_GOVERNANCE`: no silent hanging `in_progress` work, explicit blockers, clear parent/child handoffs, and plugin use only through Paperclip capabilities.
 
 ## Pending Todos
 
@@ -45,6 +46,7 @@ Last activity: 2026-05-01 - Added MKT Growth Strategy Architect, Stage 15 Strate
 - Verify which shared plugins are installed/enabled for Astrogen company specifically.
 - Decide whether Semantic Core MCP should be enabled for Astrogen immediately or after the next semantic-core workflow pass.
 - Keep future commits scoped and documented.
+- Add direct references to agency-core execution governance in live CEO/CMO/CTO/HIA/Observability contracts during the next live contract maintenance pass.
 
 ## Blockers/Concerns
 
