@@ -128,18 +128,23 @@ Plans:
 ### Phase 7: BigQuery Growth Automation And Portfolio Expansion
 **Goal**: BigQuery-first growth marts, URL state, and follow-up measurements are automated, then product scope expands beyond the pilot when scores support it.
 **Depends on**: Phase 6
-**Requirements**: BQ-01, BQ-02, BQ-03
+**Requirements**: BQ-01, BQ-02, BQ-03, AGT-07
 **Success Criteria**:
   1. BigQuery is documented as the operational source of truth for GA4/GSC-derived data.
-  2. Growth marts/views are specified for product funnel, URL opportunities, GSC refresh, crawl/page state, popup, localization, content changes, and final opportunity ranking.
-  3. Agent data contracts use Paperclip plugin tools over allowlisted BigQuery reports.
-  4. Portfolio expansion criteria cover Partition Recovery, NTFS Recovery, Linux Recovery, database products, and Office/Mail products when score supports them.
-**Plans**: 3 plans
+  2. BigQuery dataset/view contracts and `bq` ops scripts exist for setup, migrations, backfills, dry runs, and smoke checks.
+  3. A Paperclip BigQuery Growth Data plugin exposes allowlisted reports with cost/query provenance and no arbitrary SQL access.
+  4. Sitemap, URL normalization, product mapping, crawl/page state, and post-change follow-up are stored in BigQuery with stable `url_id` joins.
+  5. Rate-limited crawl jobs spread requests over time and enforce per-host concurrency, delay, retry, robots, and budget controls.
+  6. Growth Opportunity Strategist routing classifies scored opportunities before CMO backlog approval.
+  7. Portfolio expansion criteria cover Partition Recovery, NTFS Recovery, Linux Recovery, database products, and Office/Mail products when score supports them.
+**Plans**: 5 plans
 
 Plans:
-- [ ] 07-01: BigQuery mart/view and URL-state specification
-- [ ] 07-02: BigQuery Growth Data plugin and crawler job contract
-- [ ] 07-03: Portfolio expansion scoring and backlog rules
+- [ ] 07-01: BigQuery schema, views, and ops scripts
+- [ ] 07-02: BigQuery Growth Data Paperclip plugin
+- [ ] 07-03: Sitemap URL inventory, normalization, and product mapping
+- [ ] 07-04: Rate-limited crawl and page snapshot worker
+- [ ] 07-05: Scoring marts, opportunity routing, localization, and follow-up
 
 ### Phase 8: Guided Selector, Localization, And Assistant Readiness
 **Goal**: Later-stage growth surfaces are staged safely: guided product selector first, localization by signal, AI assistant only after guardrails.
@@ -199,6 +204,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8.
 | 4. Pilot Backlog System | 0/4 | Not started | - |
 | 5. Production PR And Approval Workflow | 0/3 | Not started | - |
 | 6. Automated Operating Routines | 3/3 | Complete | 2026-04-29 |
-| 7. BigQuery Growth Automation And Portfolio Expansion | 0/3 | Not started | - |
+| 7. BigQuery Growth Automation And Portfolio Expansion | 0/5 | Planned | - |
 | 8. Guided Selector, Localization, And Assistant Readiness | 0/3 | Not started | - |
 | 9. Winning Structure MCP Adapter | 1/1 | Implemented, waiting live smoke inputs | 2026-04-29 |

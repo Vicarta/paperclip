@@ -12,7 +12,7 @@ See: .planning/PROJECT.md (updated 2026-04-29)
 Phase: 2 of 8 (Data Contracts And Attribution)
 Plan: 0 of 3 in current phase
 Status: In progress
-Last activity: 2026-05-01 - Added BigQuery-first growth operating algorithm and corrected GA4/GSC data-source assumptions
+Last activity: 2026-05-01 - Planned Phase 7 BigQuery growth implementation in GSD
 
 Progress: [###-------] 28%
 
@@ -60,6 +60,7 @@ Recent decisions affecting current work:
 - Phase 9 Winning Structure MCP adapter is deployed live, configured with encrypted token secret, and smoke-tested through Paperclip plugin tools.
 - Phase 10 Semantic Core MCP adapter is deployed live, configured with encrypted token secret, and smoke-tested through Paperclip plugin tools.
 - Follow-up: audit and, if needed, update live DiskInternals SEO Performance Analyst and SEO Internal Linking Indexation Agent contracts for explicit SEO/MCP lane separation language. Do this as a separate live-agent contract change, not as part of the planning-only governance overlay.
+- Phase 7 implementation plans are ready for BigQuery schema/ops, Paperclip plugin, URL inventory, rate-limited crawler, scoring/routing/follow-up.
 
 ### Guardrails
 
@@ -76,6 +77,7 @@ Recent decisions affecting current work:
 - Phase 9 implementation completed locally and live on 2026-04-29; Docker build now includes the plugin and live registry has the tools enabled.
 - Phase 10 added and completed: Semantic Core MCP Adapter. It bridges Paperclip to the private semantic-core MCP server, validates `paperclip_import.v1`, and stores import candidates in plugin state/entities until native SEO semantic tables are implemented.
 - BigQuery-first growth operations algorithm added: `deliverables/BIGQUERY_GROWTH_OPERATING_ALGORITHM.md`.
+- Phase 7 planned as BigQuery Growth Automation with five executable GSD plans in `phases/07-bigquery-growth-automation-portfolio-expansion/`.
 
 ### Blockers/Concerns
 

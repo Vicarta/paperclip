@@ -21,6 +21,7 @@
 - [x] **AGT-04**: MKT blog-prefixed roles are either renamed/repurposed away from blog ownership or held until reassignment.
 - [x] **AGT-05**: SOC is defined as the future owner for social content planning; no existing MKT blog role should silently own SOC work.
 - [x] **AGT-06**: Missing specialist roles are proposed with reporting line, responsibility, and reuse/creation recommendation.
+- [ ] **AGT-07**: A Growth Opportunity Strategist lane classifies scored BigQuery opportunities into SEO, CRO, localization, internal-linking, indexing, data-quality, or parked actions before CMO approval.
 
 ### Data Contracts And Attribution
 
@@ -120,6 +121,7 @@
 | AGT-04 | Phase 1 | Complete |
 | AGT-05 | Phase 1 | Complete |
 | AGT-06 | Phase 1 | Complete |
+| AGT-07 | Phase 7 | Pending |
 | DATA-01 | Phase 2 | Pending |
 | DATA-02 | Phase 2 | Pending |
 | ATTR-01 | Phase 2 | Pending |
@@ -155,8 +157,8 @@
 | LOC-02 | Phase 8 | Pending |
 
 **Coverage:**
-- v1 requirements: 44 total
-- Mapped to phases: 44
+- v1 requirements: 45 total
+- Mapped to phases: 45
 - Unmapped: 0
 
 ---

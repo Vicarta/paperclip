@@ -131,6 +131,23 @@ MKT owns product discovery, audience, market, offer, campaign, funnel, and local
 | OPS Human Interaction Agent | Human approval and owner-decision handoff |
 | OPS Observability Agent | Routine, plugin, run, and budget observability |
 
+## Growth Opportunity Routing Lane
+
+Phase 7 plans a Growth Opportunity Strategist lane under `CMO`.
+
+This lane classifies BigQuery-scored opportunities before CMO approval:
+- `seo_refresh`
+- `new_page_or_article`
+- `internal_linking`
+- `cro_experiment`
+- `localization_experiment`
+- `product_page_update`
+- `indexing_followup`
+- `tracking_or_data_quality_issue`
+- `park_no_action`
+
+The lane may be implemented by creating a dedicated agent or by explicitly repurposing an existing strategist. It must not make final backlog approval decisions; CMO keeps that responsibility.
+
 ## CTO Operational Safety Net
 
 `CTO Stale Human Decision Blocker Audit` runs as a manager routine and checks blocked `Human Decision Needed` issues for already-recorded owner answers. If the answer exists and no other blocker remains, CTO returns the source issue to `todo`, preserves assignee ownership, and mentions the assignee so the workflow resumes.

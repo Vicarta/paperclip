@@ -2,6 +2,24 @@
 
 ## 2026-05-01
 
+Planned the BigQuery growth implementation in GSD.
+
+GSD changes:
+- Planned Phase 7 as `BigQuery Growth Automation And Portfolio Expansion` with five executable plan files under `phases/07-bigquery-growth-automation-portfolio-expansion/`.
+- Added `07-CONTEXT.md` and `07-RESEARCH.md` from the canonical BigQuery-first algorithm.
+- Added plans:
+  - `07-01` BigQuery schema, views, and ops scripts;
+  - `07-02` BigQuery Growth Data Paperclip plugin;
+  - `07-03` sitemap URL inventory, normalization, and product mapping;
+  - `07-04` rate-limited crawl and page snapshot worker;
+  - `07-05` scoring marts, Growth Opportunity Strategist routing, localization, and 7/14/28 follow-up.
+- Added requirement `AGT-07` for the Growth Opportunity Strategist lane.
+- Renamed the Phase 7 GSD directory from the old BigQuery transition slug to the new growth automation slug.
+
+Notes:
+- This is planning only; it does not create the live agent or implement the plugin yet.
+- Existing unrelated runtime changes under `local-paperclip/` were not touched.
+
 Corrected the DiskInternals growth monitoring architecture to BigQuery-first.
 
 Planning changes:
