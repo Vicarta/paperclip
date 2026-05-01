@@ -39,13 +39,101 @@ MVP tools should be allowlisted and domain-specific:
 ```text
 perfex-healthcheck
 perfex-list-tools
+perfex-preview-implementation-task
 perfex-create-implementation-task
 perfex-add-task-comment
 perfex-get-task-status
+perfex-get-task-comments
 perfex-sync-task-status
 ```
 
 If the MCP server exposes different exact tool names, the adapter should map those raw MCP tools into the stable Paperclip tool names above. Agents should not call arbitrary MCP tools directly.
+
+Discovered read-only MCP surface on 2026-05-01:
+
+```text
+add_task_comment
+create_task
+get_task
+get_task_comments
+list_projects
+list_staff
+list_project_tasks
+list_open_tasks
+get_due_soon_tasks
+get_overdue_tasks
+get_stale_tasks
+...
+```
+
+The plugin maps the MVP write/read tools to:
+
+```text
+create task -> create_task
+add comment -> add_task_comment
+status read -> get_task
+comment read -> get_task_comments
+```
+
+Task writes are disabled by default and task/comment tools return dry-run previews unless `enableTaskWrites = true` and the tool call passes `dry_run = false`.
+
+## Discovered Perfex IDs
+
+Read-only MCP discovery returned:
+
+```text
+project_id: 1
+project_name: DiskInternals.SEO
+client_name: DiskInternals
+status: In Progress
+```
+
+Available staff IDs:
+
+```text
+1  Oleh Savytskyi       admin
+2  Roman E              staff
+3  Artem B              staff
+5  Volodymyr G          staff
+6  Service Service      admin
+13 SEO Bot              staff
+```
+
+These IDs are not yet approved as the final assignment mapping.
+
+## Proposed Action Types And Assignment Mapping
+
+Action types implemented in the plugin:
+
+```text
+seo_refresh
+cro_experiment
+internal_linking
+localization
+tracking
+indexing
+data_quality
+```
+
+Proposed mapping for owner approval:
+
+```json
+{
+  "perfexProjectId": "1",
+  "projectManagerId": "1",
+  "assigneeByActionTypeJson": {
+    "seo_refresh": ["13"],
+    "internal_linking": ["13"],
+    "indexing": ["13"],
+    "cro_experiment": ["2"],
+    "localization": ["5"],
+    "tracking": ["3"],
+    "data_quality": ["3"]
+  }
+}
+```
+
+Open decision: confirm whether `projectManagerId` should be `1` or `6`, and whether the proposed assignee IDs match the real human/team ownership.
 
 ## Task Payload Contract
 
@@ -85,6 +173,32 @@ followup_complete
 ```
 
 The plugin should write Perfex task IDs and statuses back to Paperclip and BigQuery follow-up state so the Growth OS can measure whether the human change affected GSC clicks, GA4 sessions, downloads, order visits, and purchases.
+
+## Result Collection
+
+The MVP does not schedule automatic polling. The intended operating model after owner approval:
+
+- `perfex-sync-task-status` runs on approved task IDs every 60 minutes while a task is open.
+- For tasks due within 48 hours or already overdue, run every 15 minutes during working hours.
+- Stop polling when the task is verified, rejected, or parked as needs-clarification.
+- Each sync reads both `get_task` and `get_task_comments`.
+
+Human implementers should report completion in comments using a stable structure:
+
+```text
+Paperclip result:
+status: implemented | needs_clarification | rejected
+changed_urls:
+- https://...
+summary:
+...
+evidence:
+...
+questions:
+...
+```
+
+Paperclip should not trigger indexing or 7/14/28 follow-up only from a generic "done" status. It needs a task status plus a useful comment/evidence trail.
 
 ## Agent Rules
 

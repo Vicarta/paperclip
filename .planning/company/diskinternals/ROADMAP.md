@@ -206,7 +206,7 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 11-01: Perfex CRM MCP plugin adapter MVP
+- [x] 11-01: Perfex CRM MCP plugin adapter MVP
 - [ ] 11-02: Human implementation task payload and QA contract
 - [ ] 11-03: Perfex status sync, indexing trigger, and follow-up telemetry
 
@@ -227,4 +227,4 @@ Phases 1-8 are the Growth OS rollout path. Phases 9-10 were implemented early as
 | 8. Guided Selector, Localization, And Assistant Readiness | 3/3 | Complete | 2026-05-01 |
 | 9. Winning Structure MCP Adapter | 1/1 | Complete | 2026-04-29 |
 | 10. Semantic Core MCP Adapter | 1/1 | Complete | 2026-04-30 |
-| 11. Perfex CRM Human Implementation Handoff | 0/3 | Planned | - |
+| 11. Perfex CRM Human Implementation Handoff | 1/3 | In Progress | - |

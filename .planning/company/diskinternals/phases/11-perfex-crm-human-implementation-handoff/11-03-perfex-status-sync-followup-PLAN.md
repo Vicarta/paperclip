@@ -2,7 +2,7 @@
 phase: 11
 plan: 11-03
 title: "Perfex Status Sync, Indexing Trigger, And Follow-Up Telemetry"
-status: planned
+status: in_progress
 requirements: ["PERFEX-05"]
 deliverables:
   - ".planning/company/diskinternals/deliverables/PERFEX_CRM_HANDOFF_PLUGIN.md"
@@ -19,12 +19,12 @@ Close the loop after human implementation by syncing Perfex task state into Pape
 
 <task id="1" type="data-contract">
 <action>Add or extend BigQuery/Paperclip status fields for Perfex task ID, task URL, task status, implementation date, verification status, and follow-up windows.</action>
-<done>Growth opportunity and follow-up marts can distinguish approved, sent, implemented, verified, indexed, and measured items.</done>
+<done>Plugin entity storage is implemented for task/status sync; BigQuery marts are still pending until the final Perfex handoff contract is approved.</done>
 </task>
 
 <task id="2" type="implementation">
 <action>Implement `perfex-get-task-status` and `perfex-sync-task-status` using allowlisted MCP calls.</action>
-<done>Status sync can update Paperclip/BigQuery without arbitrary MCP access.</done>
+<done>Status sync reads `get_task` and `get_task_comments` and stores plugin entities without arbitrary MCP access.</done>
 </task>
 
 <task id="3" type="workflow">
@@ -36,4 +36,4 @@ Close the loop after human implementation by syncing Perfex task state into Pape
 
 - Mock status transitions exercise success, rejection, needs-clarification, and unknown-status paths.
 - Unknown status never marks implementation complete automatically.
-- Follow-up reports can join Perfex task IDs to affected URLs and source Paperclip opportunities.
+- Follow-up reports can join Perfex task IDs to affected URLs and source Paperclip opportunities after BigQuery follow-up fields are added.

@@ -2,7 +2,7 @@
 phase: 11
 plan: 11-01
 title: "Perfex CRM MCP Plugin Adapter MVP"
-status: planned
+status: completed
 requirements: ["PERFEX-01", "PERFEX-02", "PERFEX-03"]
 deliverables:
   - ".planning/company/diskinternals/deliverables/PERFEX_CRM_HANDOFF_PLUGIN.md"
@@ -33,6 +33,7 @@ Create a Paperclip plugin adapter that connects server-side to the Perfex CRM MC
 
 ## Verification
 
-- Unit tests cover secret resolution, header construction, and no-token logging.
-- Plugin build and server typecheck pass.
-- Live Paperclip plugin registry shows the adapter tools only for configured companies.
+- Unit tests cover task payload validation and write-gate behavior.
+- Plugin build and typecheck pass.
+- Read-only live MCP healthcheck/list-tools discovery passes without creating tasks.
+- Live Paperclip plugin registry shows the adapter with 8 tools, `enableTaskWrites=false`, and `defaultDryRun=true`.

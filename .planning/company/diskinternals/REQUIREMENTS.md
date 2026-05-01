@@ -164,11 +164,11 @@
 | SEL-02 | Phase 8 | Complete |
 | AI-01 | Phase 8 | Complete |
 | LOC-02 | Phase 8 | Complete |
-| PERFEX-01 | Phase 11 | Planned |
-| PERFEX-02 | Phase 11 | Planned |
-| PERFEX-03 | Phase 11 | Planned |
-| PERFEX-04 | Phase 11 | Planned |
-| PERFEX-05 | Phase 11 | Planned |
+| PERFEX-01 | Phase 11 | Complete |
+| PERFEX-02 | Phase 11 | Complete |
+| PERFEX-03 | Phase 11 | Complete |
+| PERFEX-04 | Phase 11 | In Progress |
+| PERFEX-05 | Phase 11 | In Progress |
 
 **Coverage:**
 - v1 requirements: 45 total

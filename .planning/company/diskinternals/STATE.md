@@ -11,10 +11,10 @@ See: .planning/PROJECT.md (updated 2026-04-29)
 
 Phase: 11 planning
 Plan: Perfex CRM human implementation handoff
-Status: Planned
-Last activity: 2026-05-01 - Corrected production implementation model from website PRs to Perfex CRM human tasks
+Status: In progress
+Last activity: 2026-05-01 - Implemented and deployed the Perfex CRM MCP plugin MVP with writes disabled by default
 
-Progress: [#########-] 90%
+Progress: [#########-] 93%
 
 ## Performance Metrics
 
@@ -63,6 +63,8 @@ Recent decisions affecting current work:
 - Follow-up: audit and, if needed, update live DiskInternals SEO Performance Analyst and SEO Internal Linking Indexation Agent contracts for explicit SEO/MCP lane separation language. Do this as a separate live-agent contract change, not as part of the planning-only governance overlay.
 - Phase 1-10 readiness plans are complete. Phase 7 live BigQuery now has initial sitemap URL inventory, GA4/GSC fact ingestion, opportunity marts, and crawl smoke snapshots.
 - Phase 11 is planned to add a Perfex CRM MCP plugin so approved Paperclip opportunities become human implementation tasks.
+- Phase 11 plugin MVP is implemented and deployed with read-only health/tool/status/comment tools and dry-run task/comment write gates.
+- Perfex read-only discovery found DiskInternals project `DiskInternals.SEO` as `project_id=1`; staff mapping still requires owner approval before writes are enabled.
 
 ### Guardrails
 
@@ -89,7 +91,8 @@ Recent decisions affecting current work:
 ### Blockers/Concerns
 
 - Website repository/access is not expected for DiskInternals. Production implementation should route through Perfex CRM human tasks instead of website PRs.
-- Phase 11 plugin work is required before Paperclip can automatically create and monitor Perfex tasks.
+- Phase 11 plugin deployment/configuration is required before Paperclip can automatically create and monitor Perfex tasks.
+- Real task/comment writes must remain disabled until owner confirms the action-type mapping, manager ID, and assignee IDs.
 - Linux Writer is upcoming, so product/URL/event mapping may start with placeholder fields.
 - Winning Structure MCP smoke returned `human_review_required: true` with low confidence for the sample `convert vhd to vmdk` run, so downstream automation must keep human/editorial review before using the recommendation.
 - Semantic Core MCP live server now exposes a dedicated `get_review_queue` tool; Paperclip wrapper smoke returned 200 with a valid paginated queue response.

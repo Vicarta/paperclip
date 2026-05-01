@@ -2,6 +2,56 @@
 
 ## 2026-05-01
 
+Implemented the Phase 11 Perfex CRM MCP plugin MVP with write safety gates.
+
+Runtime implementation:
+- Added bundled plugin package `@paperclipai/plugin-perfex-crm-agent-tools`.
+- Added server-side Streamable HTTP MCP client for `https://pxmc.aibizmate.com/mcp`.
+- Added bearer-token secret configuration through `perfexMcpTokenSecretRef`; no token is stored in Git or plugin config.
+- Added settings for:
+  - `perfexProjectId`
+  - `projectManagerId`
+  - `assigneeByActionTypeJson`
+  - raw MCP tool names for `create_task`, `add_task_comment`, `get_task`, and `get_task_comments`
+  - `enableTaskWrites`
+  - `defaultDryRun`
+  - status check interval
+- Added agent tools:
+  - `perfex-healthcheck`
+  - `perfex-list-tools`
+  - `perfex-preview-implementation-task`
+  - `perfex-create-implementation-task`
+  - `perfex-add-task-comment`
+  - `perfex-get-task-status`
+  - `perfex-get-task-comments`
+  - `perfex-sync-task-status`
+
+Live deployment:
+- Deployed the updated Paperclip app image.
+- Registered live plugin `paperclip.perfex-crm-agent-tools`.
+- Stored `PERFEX_MCP_TOKEN` as a Paperclip encrypted DiskInternals company secret; the token value was not printed or committed.
+- Configured live plugin with `perfexProjectId=1`, `projectManagerId=1`, proposed `assigneeByActionTypeJson`, `enableTaskWrites=false`, and `defaultDryRun=true`.
+- Restarted the app and confirmed plugin loader `loadAll complete` with 12/12 plugins and 8 Perfex tools registered.
+- Confirmed live config still has writes disabled and stores only a secret reference.
+
+Safety:
+- `enableTaskWrites` defaults to `false`.
+- `defaultDryRun` defaults to `true`.
+- Task/comment tools do not write to Perfex unless both plugin config enables writes and the tool call passes `dry_run=false`.
+- No scheduled jobs are declared in the MVP, so deploying the plugin does not create tasks or poll Perfex automatically.
+- No Perfex task/comment creation tool was executed during this phase.
+
+Read-only discovery:
+- Healthcheck returned 200 using the bearer token from `/Users/savitsky/CodexProjects/perfex-crm-mcp/.env`; the token value was not printed or stored.
+- MCP tool discovery returned the expected read/write surface including `create_task`, `add_task_comment`, `get_task`, `get_task_comments`, `list_projects`, and `list_staff`.
+- Read-only project discovery found `DiskInternals.SEO` as `project_id=1`.
+- Read-only staff discovery found staff IDs `1`, `2`, `3`, `5`, `6`, and `13`; final manager/assignee mapping still needs owner approval.
+
+Planning/GSD:
+- Marked Phase 11 plan `11-01` complete.
+- Kept `11-02` and `11-03` in progress pending owner approval of action types, manager ID, assignee mapping, and BigQuery follow-up persistence.
+- Updated `PERFEX_CRM_HANDOFF_PLUGIN.md` with discovered IDs, proposed action types, proposed assignment mapping, and the result-collection model using task comments.
+
 Completed the DiskInternals Phase 1-10 Growth OS readiness pass.
 
 Planning/GSD:
