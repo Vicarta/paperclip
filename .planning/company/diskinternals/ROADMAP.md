@@ -13,12 +13,12 @@ The roadmap is phase-based, not day-based. Execution can run automatically throu
 - Decimal phases are urgent insertions.
 - Phases execute in numeric order.
 
-- [ ] **Phase 1: Company Guardrails And Agent Architecture** - Lock DiskInternals context and normalize the full agent operating model.
+- [x] **Phase 1: Company Guardrails And Agent Architecture** - Lock DiskInternals context and normalize the full agent operating model.
 - [ ] **Phase 2: Data Contracts And Attribution** - Define BigQuery-backed reports, plugin access, and attribution QA before scaling agent work.
 - [ ] **Phase 3: Product, URL, And Scoring Foundation** - Build product/URL mapping and scoring models, including Linux Writer.
 - [ ] **Phase 4: Pilot Backlog System** - Generate controlled RAID, VMFS, Linux Reader/Linux Writer, and checkout-flow work.
 - [ ] **Phase 5: Production PR And Approval Workflow** - Convert agent output into patches/PRs with QA and indexing controls.
-- [ ] **Phase 6: Automated Operating Routines** - Configure recurring growth operations without idle specialist budget burn.
+- [x] **Phase 6: Automated Operating Routines** - Configure recurring growth operations without idle specialist budget burn.
 - [ ] **Phase 7: BigQuery Growth Automation And Portfolio Expansion** - Automate BigQuery marts, crawler-backed URL state, and expansion beyond the pilot when scores support it.
 - [ ] **Phase 8: Guided Selector, Localization, And Assistant Readiness** - Stage selector, localization, and AI assistant work behind guardrails.
 - [x] **Phase 9: Winning Structure MCP Adapter** - Add the Paperclip adapter for SERP-based Winning Structure recommendations.
@@ -39,9 +39,9 @@ The roadmap is phase-based, not day-based. Execution can run automatically throu
 **Plans**: 3 plans
 
 Plans:
-- [ ] 01-01: Paperclip company guardrails and context-safety checklist
-- [ ] 01-02: Existing agent audit and role normalization plan
-- [ ] 01-03: Missing specialist agent proposal package
+- [x] 01-01: Paperclip company guardrails and context-safety checklist
+- [x] 01-02: Existing agent audit and role normalization plan
+- [x] 01-03: Missing specialist agent proposal package
 
 ### Phase 2: Data Contracts And Attribution
 **Goal**: Agents can use BigQuery-backed GA4/GSC reports safely through Paperclip plugin tools, and attribution fixes are specified before content/CRO scale-up.
@@ -121,9 +121,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 06-01: CMO weekly growth backlog routine specification
-- [ ] 06-02: CTO data QA and attribution routine specification
-- [ ] 06-03: CEO reporting and approval handoff routine specification
+- [x] 06-01: CMO weekly growth backlog routine specification
+- [x] 06-02: CTO data QA and attribution routine specification
+- [x] 06-03: CEO reporting and approval handoff routine specification
 
 ### Phase 7: BigQuery Growth Automation And Portfolio Expansion
 **Goal**: BigQuery-first growth marts, URL state, and follow-up measurements are automated, then product scope expands beyond the pilot when scores support it.
@@ -165,6 +165,18 @@ Plans:
 
 ### Phase 9: Winning Structure MCP Adapter
 **Goal**: Paperclip agents can call the Winning Structure MCP server through a server-side adapter that keeps endpoint credentials private and returns recommendation/provenance artifacts for review.
+**Depends on**: Phase 2
+**Requirements**: DATA-01, PR-01, QA-01
+**Success Criteria**:
+  1. A bundled Paperclip plugin exposes `validate_task_input`, `start_winning_structure_run`, `get_run_status`, and `get_run_result` through agent tools.
+  2. MCP endpoint and bearer token are stored only in plugin config/secrets, not in prompts, code, or UI output.
+  3. The plugin preserves v1 contract fields including opaque namespace keys, idempotency/input hash, cache policy, cost, artifacts, and cache summary.
+  4. Unit tests cover tool allowlisting, secret resolution, and MCP result normalization.
+  5. Live plugin deployment and smoke verification are complete.
+**Plans**: 1 plan
+
+Plans:
+- [x] 09-01: Winning Structure MCP plugin adapter MVP
 
 ### Phase 10: Semantic Core MCP Adapter
 **Goal**: Paperclip agents can call the Semantic Core MCP server through a server-side adapter that keeps endpoint credentials private, orchestrates semantic layers, validates `paperclip_import.v1`, and stores operational import state for follow-up SEO work.
@@ -178,24 +190,12 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 10-01: Semantic Core MCP plugin, validation, smoke test, and private endpoint allowlist
-**Depends on**: Phase 2
-**Requirements**: DATA-01, PR-01, QA-01
-**Success Criteria**:
-  1. A bundled Paperclip plugin exposes `validate_task_input`, `start_winning_structure_run`, `get_run_status`, and `get_run_result` through agent tools.
-  2. MCP endpoint and bearer token are stored only in plugin config/secrets, not in prompts, code, or UI output.
-  3. The plugin preserves v1 contract fields including opaque namespace keys, idempotency/input hash, cache policy, cost, artifacts, and cache summary.
-  4. Unit tests cover tool allowlisting, secret resolution, and MCP result normalization.
-  5. Live smoke is ready to run once endpoint/auth/test input are provided.
-**Plans**: 1 plan
-
-Plans:
-- [ ] 09-01: Winning Structure MCP plugin adapter MVP
+- [x] 10-01: Semantic Core MCP plugin, validation, smoke test, and private endpoint allowlist
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8.
+Phases 1-8 are the Growth OS rollout path. Phases 9-10 were implemented early as enabling adapter work for SEO/MCP operations.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -207,4 +207,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8.
 | 6. Automated Operating Routines | 3/3 | Complete | 2026-04-29 |
 | 7. BigQuery Growth Automation And Portfolio Expansion | 3/6 | In progress | - |
 | 8. Guided Selector, Localization, And Assistant Readiness | 0/3 | Not started | - |
-| 9. Winning Structure MCP Adapter | 1/1 | Implemented, waiting live smoke inputs | 2026-04-29 |
+| 9. Winning Structure MCP Adapter | 1/1 | Complete | 2026-04-29 |
+| 10. Semantic Core MCP Adapter | 1/1 | Complete | 2026-04-30 |
