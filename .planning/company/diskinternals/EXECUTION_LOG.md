@@ -2,6 +2,22 @@
 
 ## 2026-05-01
 
+Updated the BigQuery Growth plugin configuration model for the actual DiskInternals exports.
+
+Runtime/config decisions:
+- Set BigQuery project context to `dre-di`.
+- Kept the derived growth dataset separate as `diskinternals_growth`.
+- Added explicit raw source dataset config fields:
+  - GA4 export: `analytics_287393097`
+  - GSC export: `searchconsole`
+- Documented that raw Google export datasets must not be used as the plugin's derived growth dataset.
+
+Verification:
+- `pnpm --filter @paperclipai/plugin-diskinternals-bigquery-growth test` passed.
+- `pnpm --filter @paperclipai/plugin-diskinternals-bigquery-growth typecheck` passed.
+- `pnpm --filter @paperclipai/plugin-diskinternals-bigquery-growth build` passed.
+- `pnpm --filter @paperclipai/server typecheck` passed.
+
 Implemented the first runtime slice of the BigQuery-backed growth automation plan.
 
 Local implementation:

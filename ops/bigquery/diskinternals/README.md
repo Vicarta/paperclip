@@ -11,8 +11,17 @@ Set these environment variables or pass matching flags to the scripts:
 ```sh
 GCP_PROJECT_ID=<project-id>
 BQ_DATASET=diskinternals_growth
+BQ_GA4_EXPORT_DATASET=analytics_287393097
+BQ_GSC_EXPORT_DATASET=searchconsole
 BQ_LOCATION=US
 ```
+
+For the current DiskInternals instance:
+
+- `GCP_PROJECT_ID=dre-di`
+- raw GA4 export dataset: `analytics_287393097`
+- raw GSC export dataset: `searchconsole`
+- derived growth dataset: `diskinternals_growth` unless the operator explicitly chooses another dataset
 
 Authentication is handled by the operator through `gcloud auth application-default login`, workload identity, or another approved BigQuery authentication path. Do not commit service account JSON files or access tokens.
 
@@ -29,10 +38,10 @@ Authentication is handled by the operator through `gcloud auth application-defau
 
 ```sh
 cd /Users/savitsky/CodexProjects/paper-clip
-GCP_PROJECT_ID=my-project BQ_DATASET=diskinternals_growth BQ_LOCATION=US \
+GCP_PROJECT_ID=dre-di BQ_DATASET=diskinternals_growth BQ_LOCATION=US \
   ops/bigquery/diskinternals/scripts/apply.sh
 
-GCP_PROJECT_ID=my-project BQ_DATASET=diskinternals_growth BQ_LOCATION=US \
+GCP_PROJECT_ID=dre-di BQ_DATASET=diskinternals_growth BQ_LOCATION=US \
   ops/bigquery/diskinternals/scripts/smoke.sh
 ```
 

@@ -14,7 +14,9 @@ The plugin keeps BigQuery credentials and SQL in the backend. Agents can request
 ## Required Config
 
 - `bigQueryProjectId`
-- `bigQueryDatasetId` (defaults to `diskinternals_growth`)
+- `bigQueryDatasetId` (defaults to `diskinternals_growth`) for derived growth tables, views, marts, decisions, crawl state, and follow-up measurements
+- `ga4ExportDatasetId` (DiskInternals: `analytics_287393097`) for raw GA4 BigQuery export
+- `gscExportDatasetId` (DiskInternals: `searchconsole`) for raw GSC BigQuery export
 - One credential secret:
   - `bigQueryServiceAccountJsonSecretRef`, preferred
   - or `bigQueryAccessTokenSecretRef`, for short-lived smoke/debug runs

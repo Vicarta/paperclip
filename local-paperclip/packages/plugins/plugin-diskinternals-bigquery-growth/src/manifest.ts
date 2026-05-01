@@ -47,8 +47,22 @@ const manifest: PaperclipPluginManifestV1 = {
       },
       bigQueryDatasetId: {
         type: "string",
-        title: "BigQuery Dataset ID",
+        title: "BigQuery Growth Dataset ID",
+        description:
+          "Derived DiskInternals growth dataset for normalized tables, report views, marts, decisions, crawl state, and follow-up measurements. Do not point this at raw GA4/GSC export datasets.",
         default: DEFAULT_DATASET_ID,
+      },
+      ga4ExportDatasetId: {
+        type: "string",
+        title: "GA4 Export Dataset ID",
+        description: "Raw GA4 BigQuery export dataset for DiskInternals.",
+        default: "analytics_287393097",
+      },
+      gscExportDatasetId: {
+        type: "string",
+        title: "GSC Export Dataset ID",
+        description: "Raw Google Search Console BigQuery export dataset for DiskInternals.",
+        default: "searchconsole",
       },
       bigQueryLocation: {
         type: "string",

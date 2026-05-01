@@ -10,6 +10,8 @@ import {
 export type BigQueryGrowthPluginConfig = {
   bigQueryProjectId?: string;
   bigQueryDatasetId?: string;
+  ga4ExportDatasetId?: string;
+  gscExportDatasetId?: string;
   bigQueryLocation?: string;
   bigQueryAccessTokenSecretRef?: string;
   bigQueryServiceAccountJsonSecretRef?: string;
@@ -45,6 +47,8 @@ export function normalizeConfig(config: BigQueryGrowthPluginConfig = {}) {
   return {
     bigQueryProjectId: readString(config.bigQueryProjectId),
     bigQueryDatasetId: readString(config.bigQueryDatasetId, DEFAULT_DATASET_ID),
+    ga4ExportDatasetId: readString(config.ga4ExportDatasetId, "analytics_287393097"),
+    gscExportDatasetId: readString(config.gscExportDatasetId, "searchconsole"),
     bigQueryLocation: readString(config.bigQueryLocation, DEFAULT_LOCATION),
     bigQueryAccessTokenSecretRef: readString(config.bigQueryAccessTokenSecretRef),
     bigQueryServiceAccountJsonSecretRef: readString(config.bigQueryServiceAccountJsonSecretRef),
