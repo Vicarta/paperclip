@@ -68,6 +68,8 @@ Required manager behavior:
 - if the intended assignee is paused or unavailable, do not silently assign the issue to that agent; either choose a valid assignee or mark the parent/child `blocked` with the owner and unblock condition;
 - after creating or updating an execution child issue, verify that there is a wakeup, active run, or clear reason why no wakeup is expected;
 - if no wakeup or active run appears for an execution child issue, the manager should recover it immediately instead of waiting for a later heartbeat.
+- before any recovery state change, re-read the child issue status and latest comments; never move a `done` or `cancelled` child issue back to `todo` unless a manager explicitly requests rework.
+- if the child already completed, treat missing active run as expected and wake the parent/manager for review instead of re-opening the child.
 
 Common failure states this rule is meant to prevent:
 
@@ -75,6 +77,7 @@ Common failure states this rule is meant to prevent:
 - child issue is assigned to a paused agent;
 - parent remains `in_progress` with no active child execution and no blocker;
 - human has authorized execution, but the manager leaves the workflow in a plan-only state.
+- completed child issue is accidentally re-opened by a stale recovery check.
 
 ## Plugin And Capability Rule
 
