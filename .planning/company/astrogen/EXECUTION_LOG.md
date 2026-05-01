@@ -26,3 +26,9 @@
 - A stale recovery check briefly re-opened [AST-692](/AST/issues/AST-692) after it had already completed; restored it to `done`, cancelled the duplicate wakeup, and added the recovery-race guardrail to agency-core governance.
 - CMO accepted Stage 15, blocked [AST-688](/AST/issues/AST-688) pending human decision, and opened [AST-693](/AST/issues/AST-693) / [AST-694](/AST/issues/AST-694) as the HIA decision-card path.
 - Corrected the HIA human-decision model after [AST-694](/AST/issues/AST-694) exposed a logical gap: owner-assigned decision issues do not naturally resume the source workflow when the owner comments. [AST-693](/AST/issues/AST-693) and [AST-694](/AST/issues/AST-694) were cancelled, the decision request was moved back into [AST-688](/AST/issues/AST-688), and contracts now require source-issue comment + `Human Decision Needed` label by default.
+- Cleaned stale backlog/silent-stall states after a second backlog review:
+  - [AST-644](/AST/issues/AST-644) cancelled as obsolete old Observability alert for the Instagram Stage 57 blocker.
+  - [AST-645](/AST/issues/AST-645) cancelled as obsolete HIA decision-card backlog under the retired owner-card model.
+  - [AST-688](/AST/issues/AST-688) restored to `blocked` with `Human Decision Needed` after the source-issue decision comment replaced [AST-694](/AST/issues/AST-694).
+  - [AST-683](/AST/issues/AST-683) moved from silent `in_progress` to explicit `blocked` with `Human Decision Needed` because its assignee `OPS Observability Agent` is intentionally paused.
+  - Post-cleanup active queue has no `backlog`, `todo`, or silent `in_progress` items; remaining open items are explicit human-decision blockers.
