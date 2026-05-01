@@ -51,6 +51,7 @@ const ALLOWED_PROTOCOLS = new Set(["http:", "https:"]);
 const TELEMETRY_EVENT_NAME_REGEX = /^[a-z0-9][a-z0-9_-]*$/;
 
 const SEARCH_CONSOLE_MCP_PLUGIN_KEY = "paperclip.search-console-mcp-agent-tools";
+const GSC_BING_GA4_MCP_PLUGIN_KEY = "paperclip.gsc-bing-ga4-mcp-agent-tools";
 const WINNING_STRUCTURE_MCP_PLUGIN_KEY = "paperclip.winning-structure-mcp-agent-tools";
 const SEMANTIC_CORE_MCP_PLUGIN_KEY = "paperclip.semantic-core-mcp-agent-tools";
 
@@ -66,6 +67,13 @@ const PRIVATE_HTTP_FETCH_TARGETS_BY_PLUGIN_KEY: ReadonlyMap<string, ReadonlySet<
   new Map([
     [
       SEARCH_CONSOLE_MCP_PLUGIN_KEY,
+      new Set([
+        "100.98.5.50:3002",
+        "172.21.0.1:3002",
+      ]),
+    ],
+    [
+      GSC_BING_GA4_MCP_PLUGIN_KEY,
       new Set([
         "100.98.5.50:3002",
         "172.21.0.1:3002",

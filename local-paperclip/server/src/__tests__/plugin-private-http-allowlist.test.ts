@@ -49,6 +49,29 @@ describe("plugin private HTTP allowlist", () => {
     ).toBe(true);
   });
 
+  it("allows the replacement GSC/Bing/GA4 MCP plugin to use the same exact private endpoint", () => {
+    expect(
+      allowed(
+        "paperclip.gsc-bing-ga4-mcp-agent-tools",
+        "http://100.98.5.50:3002/mcp",
+      ),
+    ).toBe(true);
+
+    expect(
+      allowed(
+        "paperclip.gsc-bing-ga4-mcp-agent-tools",
+        "http://172.21.0.1:3002/mcp",
+      ),
+    ).toBe(true);
+
+    expect(
+      allowed(
+        "paperclip.gsc-bing-ga4-mcp-agent-tools",
+        "http://100.98.5.50:8001/mcp",
+      ),
+    ).toBe(false);
+  });
+
   it("allows only the Winning Structure MCP plugin to use its exact private endpoint", () => {
     expect(
       allowed(

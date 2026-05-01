@@ -15,7 +15,8 @@
 
 | Plugin | Purpose | Astrogen Status |
 |---|---|---|
-| Search Console MCP Agent Tools | GSC/page/query/inspection data | Verify enabled/configured |
+| GSC Bing GA4 MCP Agent Tools | Replacement adapter for GSC/Bing/GA4/PageSpeed MCP data | Created locally; deploy/configure in Astrogen context |
+| Search Console MCP Agent Tools | Legacy GSC/page/query/inspection adapter | Replace with `GSC Bing GA4 MCP Agent Tools` |
 | Semantic Core MCP Agent Tools | Semantic core runs and import validation | Verify before use |
 | Winning Structure MCP Agent Tools | SERP-based page structure recommendations | Verify before use |
 | SEO Performance Loop | Published article registry and monitoring loop | Verify enabled/configured |
