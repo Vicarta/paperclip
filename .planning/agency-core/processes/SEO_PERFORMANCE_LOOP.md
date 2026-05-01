@@ -38,23 +38,54 @@ The design is multi-company and multi-project by default. A single domain or URL
 
 ## Multi-Tenant Data Model
 
-Recommended operational tables in Paperclip Postgres:
+### Persistence Location
+
+SEO Performance Loop state should live in the existing Paperclip Postgres database under a dedicated schema:
+
+```text
+seo_ops
+```
+
+Recommended table naming:
+
+```text
+seo_ops.sites
+seo_ops.project_scopes
+seo_ops.pages
+seo_ops.project_pages
+seo_ops.keywords
+seo_ops.keyword_observations
+seo_ops.page_keyword_targets
+seo_ops.performance_snapshots
+seo_ops.rank_tracking_policies
+```
+
+Do not create a separate database for MVP because SEO agents need operational joins with Paperclip companies, projects, issues, plugin runs, heartbeat runs, and cost events.
+
+Do not use prefix-only tables in `public` unless Drizzle/schema tooling blocks `seo_ops`; if used, treat it as a temporary fallback with a migration path back to `seo_ops`.
+
+Recommended operational tables:
 
 | Table | Purpose |
 |---|---|
-| `seo_sites` | Site identity inside a company. Same domain in another company is a separate row. |
-| `seo_project_scopes` | Project-level rules: domain, include/exclude paths, geo, language, device, page types, ownership mode, priority. |
-| `seo_pages` | Canonical URL registry for a company/site. Populated by sitemap, GSC, crawl, manual import, or CMS events. |
-| `seo_project_pages` | Project-specific membership and ownership for a page. This is the operational unit for SEO work. |
-| `seo_keywords` | Canonical normalized keyword universe. |
-| `seo_keyword_observations` | Raw evidence from GSC, rank providers, semantic-core MCP, SERP tools, or manual review. |
-| `seo_page_keyword_targets` | Project-page keyword targets by geo/language/device/tier/source/status. |
-| `seo_semantic_core_memberships` | Keyword membership in core/layer/cluster: candidate, accepted, parked, rejected, needs_review. |
-| `seo_performance_snapshots` | Time-series page/query/rank/GSC snapshots scoped to project page and keyword target. |
-| `seo_new_page_opportunities` | Validated or pending opportunities where observed demand lacks a good landing page. |
-| `seo_page_action_events` | Change history: created, refreshed, title/meta changed, internal links added, republished, etc. |
-| `seo_rank_tracking_policies` | Company/project/keyword-tier tracking frequency, provider, budget, and temporary-watch rules. |
-| `seo_scope_conflicts` | Cases where multiple project scopes claim the same URL in conflicting ways. |
+| `seo_ops.sites` | Site identity inside a company. Same domain in another company is a separate row. |
+| `seo_ops.project_scopes` | Project-level rules: domain, include/exclude paths, geo, language, device, page types, ownership mode, priority. |
+| `seo_ops.discovery_runs` | Immutable run records for sitemap, GSC, crawl, manual import, or CMS discovery jobs. |
+| `seo_ops.pages` | Canonical URL registry for a company/site. Populated by sitemap, GSC, crawl, manual import, or CMS events. |
+| `seo_ops.project_pages` | Project-specific membership and ownership for a page. This is the operational unit for SEO work. |
+| `seo_ops.keywords` | Canonical normalized keyword universe. |
+| `seo_ops.keyword_observations` | Raw evidence from GSC, rank providers, semantic-core MCP, SERP tools, or manual review. |
+| `seo_ops.semantic_core_runs` | Imported MCP semantic-core run metadata, artifacts, provider versions, and cost summary. |
+| `seo_ops.semantic_core_memberships` | Keyword membership in core/layer/cluster: candidate, accepted, parked, rejected, needs_review. |
+| `seo_ops.clusters` | Operational cluster registry imported from semantic-core MCP or created by SEO agents. |
+| `seo_ops.keyword_cluster_memberships` | Many-to-many keyword-to-cluster membership. |
+| `seo_ops.page_keyword_targets` | Project-page keyword targets by geo/language/device/tier/source/status. |
+| `seo_ops.rank_tracking_policies` | Company/project/keyword-tier tracking frequency, provider, budget, and temporary-watch rules. |
+| `seo_ops.rank_tracking_targets` | Concrete scheduled rank checks derived from keyword target and policy rows. |
+| `seo_ops.performance_snapshots` | Time-series page/query/rank/GSC snapshots scoped to project page and keyword target. |
+| `seo_ops.new_page_opportunities` | Validated or pending opportunities where observed demand lacks a good landing page. |
+| `seo_ops.page_action_events` | Change history: created, refreshed, title/meta changed, internal links added, republished, etc. |
+| `seo_ops.scope_conflicts` | Cases where multiple project scopes claim the same URL in conflicting ways. |
 
 ### Identity Rules
 
