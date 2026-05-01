@@ -1,8 +1,10 @@
-# BigQuery Transition And Portfolio Expansion
+# BigQuery Growth Data Platform And Portfolio Expansion
 
 ## Current Policy
 
-BigQuery export is already working, but operational agent access is deferred until enough data accumulates and access is granted. MCP remains the operational source now.
+BigQuery export is already working and is the operational source of truth for DiskInternals GA4/GSC-derived growth data. Direct GA4/GSC access is not available to agents.
+
+Runtime access must be provided through a BigQuery-backed Paperclip plugin with allowlisted reports, cost controls, URL normalization, and crawl/job provenance.
 
 ## Target Marts / Views
 
@@ -24,7 +26,15 @@ Query x URL x country x device search data.
 
 ### `fact_funnel_by_product_daily`
 
-Download -> thank_you -> order -> purchase by product.
+Download -> order -> purchase by product. Thank You pages are QA/debug-only and excluded from scoring.
+
+### `fact_crawl_page_snapshot`
+
+Rate-limited crawler output: HTTP status, robots/noindex, canonical, title/H1, content hash, response size, fetch timestamp, and crawl job provenance.
+
+### `fact_url_identity`
+
+Raw URL, normalized URL, canonical URL, redirect target, Google canonical when available, and URL join keys used to connect GA4, GSC, sitemap, crawl, and change data.
 
 ### `fact_popup_experiments`
 
@@ -38,13 +48,16 @@ Paperclip/user changes by URL, PR, issue, date, and change type.
 
 Final ranked opportunities for CMO backlog generation.
 
-## Migration Plan
+## Implementation Plan
 
-1. Keep MCP report contracts stable.
-2. Implement BigQuery views that match or improve those contracts.
-3. Validate BigQuery numbers against MCP reports.
-4. Switch DATA and SEO Performance agents to BigQuery-first reports.
-5. Keep MCP as fallback until BigQuery reliability is proven.
+1. Define BigQuery dataset, table, and view contracts.
+2. Add `bq` CLI ops scripts for setup, migrations, backfills, and smoke checks.
+3. Build a BigQuery Growth Data Paperclip plugin with allowlisted tools.
+4. Build sitemap-driven URL inventory and normalization.
+5. Add rate-limited crawl/page snapshot worker with BigQuery queue/state.
+6. Implement scoring marts and opportunity queues.
+7. Route opportunities through a Growth Opportunity Strategist lane before CMO approval.
+8. Track post-change 7/14/28 day follow-up metrics.
 
 ## Portfolio Expansion Candidates
 

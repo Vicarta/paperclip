@@ -30,8 +30,9 @@
 - Specialists stay wake-on-demand unless a manager routine is explicitly approved.
 - Agents may prepare patches and PRs.
 - Agents may not publish production changes, tracking changes, popup experiments, or indexing batches without approval.
-- GA4/GSC MCP is the current operational data source.
-- BigQuery export works, but agent access is deferred until data and access are ready.
+- BigQuery export is the current operational source of truth for GA4/GSC-derived data.
+- Direct GA4/GSC access is not available to agents; agents must consume allowlisted BigQuery-backed Paperclip plugin reports.
+- Use `bq` CLI for ops/bootstrap/backfill/debug only, not as the primary runtime interface for agents.
 - Product attribution gaps must be fixed or proxied before scaling content.
 
 ## Human Decision Closure Guardrail

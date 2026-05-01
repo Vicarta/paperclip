@@ -12,7 +12,7 @@ See: .planning/PROJECT.md (updated 2026-04-29)
 Phase: 2 of 8 (Data Contracts And Attribution)
 Plan: 0 of 3 in current phase
 Status: In progress
-Last activity: 2026-05-01 - Applied agency-core agent execution governance to DiskInternals planning overlay
+Last activity: 2026-05-01 - Added BigQuery-first growth operating algorithm and corrected GA4/GSC data-source assumptions
 
 Progress: [###-------] 28%
 
@@ -42,10 +42,10 @@ Recent decisions affecting current work:
 
 - `CMO` acts as Growth PM; no separate Growth PM agent.
 - Create the plan for all agents now before execution.
-- BigQuery export works, but agent access comes later after data accumulates.
-- GA4/GSC MCP should be treated as ready.
+- BigQuery export is the operational source of truth for GA4/GSC-derived DiskInternals data.
+- Direct GA4/GSC access is not available to agents; access must go through BigQuery-backed Paperclip plugin tools.
 - Agents may prepare patches/PRs; production remains approval-gated.
-- Pilot focus is confirmed: RAID, VMFS, Linux Reader/Linux Writer funnel, Download/Thank You/Checkout.
+- Pilot focus is confirmed: RAID, VMFS, Linux Reader/Linux Writer funnel, Download/Order/Checkout. Thank You pages are QA/debug-only and excluded from scoring/backlog.
 - Blog work belongs to SEO; SOC is the future social content lane.
 - Plans should not use fixed day counts.
 - Phase 1 completed in Paperclip as `DIS-15`; Phase 2 is active as `DIS-16`.
@@ -75,10 +75,11 @@ Recent decisions affecting current work:
 - Phase 9 added: Winning Structure MCP Adapter.
 - Phase 9 implementation completed locally and live on 2026-04-29; Docker build now includes the plugin and live registry has the tools enabled.
 - Phase 10 added and completed: Semantic Core MCP Adapter. It bridges Paperclip to the private semantic-core MCP server, validates `paperclip_import.v1`, and stores import candidates in plugin state/entities until native SEO semantic tables are implemented.
+- BigQuery-first growth operations algorithm added: `deliverables/BIGQUERY_GROWTH_OPERATING_ALGORITHM.md`.
 
 ### Blockers/Concerns
 
-- BigQuery operational access is deferred.
+- BigQuery-backed agent plugin and URL/crawl marts still need implementation before agents can safely operate on GA4/GSC-derived reports.
 - Linux Writer is upcoming, so product/URL/event mapping may start with placeholder fields.
 - DiskInternals website repository/access is not present in this workspace, so real website PR creation depends on later workspace configuration.
 - Winning Structure MCP smoke returned `human_review_required: true` with low confidence for the sample `convert vhd to vmdk` run, so downstream automation must keep human/editorial review before using the recommendation.

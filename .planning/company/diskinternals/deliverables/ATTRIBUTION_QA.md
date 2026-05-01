@@ -63,7 +63,7 @@ QA:
 
 ### `thank_you_page`
 
-Status: download-flow QA signal, not primary conversion.
+Status: download-flow QA/debug signal, not primary conversion and not a scoring/backlog signal.
 
 Required parameters:
 - `product_id`
@@ -76,6 +76,7 @@ Required parameters:
 QA:
 - confirms correct product path after download;
 - safety messaging can be tied to product/funnel.
+- excluded from Product Proxy Score, Product Growth Score, Page Action Score, and backlog prioritization.
 
 ### Popup Events
 

@@ -6,7 +6,7 @@
 |-------|-------------------|--------|
 | CEO | Executive sponsor, strategy approval, weekly growth impact review | Existing |
 | CMO | Acting Growth PM, backlog owner, specialist delegation, approval handoff | Existing, updated |
-| CTO | Tracking, MCP/BigQuery, attribution, technical PR review | Existing |
+| CTO | Tracking, BigQuery/plugin, crawler limits, attribution, technical PR review | Existing |
 
 ## Canonical Workspace Root
 
@@ -123,7 +123,7 @@ MKT owns product discovery, audience, market, offer, campaign, funnel, and local
 
 | Agent | Responsibility |
 |-------|----------------|
-| DATA Growth Analytics Agent | MCP contracts, data QA, scoring inputs, BigQuery marts, pending approval |
+| DATA Growth Analytics Agent | BigQuery report contracts, data QA, scoring inputs, marts, pending approval |
 | CRO Funnel Experiment Agent | CTA, popup, and funnel experiment design, pending approval |
 | QA Recovery Compliance Agent | Recovery-safety, product-routing, compatibility, price/discount QA, pending approval |
 | ADS Paid Ads Copy Strategist | Paid ad copy and offer variants |

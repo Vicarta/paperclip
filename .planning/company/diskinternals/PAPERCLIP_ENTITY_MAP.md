@@ -21,12 +21,12 @@
 | `DIS-18` | Phase 4: Pilot Backlog System |
 | `DIS-19` | Phase 5: Production PR And Approval Workflow |
 | `DIS-20` | Phase 6: Automated Operating Routines |
-| `DIS-21` | Phase 7: BigQuery Transition And Portfolio Expansion |
+| `DIS-21` | Phase 7: BigQuery Growth Automation And Portfolio Expansion |
 | `DIS-22` | Phase 8: Guided Selector, Localization, And Assistant Readiness |
 | `DIS-23` | 01-01 guardrails, completed |
 | `DIS-24` | 01-02 agent audit and role normalization, completed |
 | `DIS-25` | 01-03 specialist hire package, completed after approvals |
-| `DIS-26` | 02-01 MCP report contracts, active |
+| `DIS-26` | 02-01 BigQuery report/plugin contracts, active |
 | `DIS-27` | 02-02 GA4 parameter QA and attribution fix scope, active |
 | `DIS-28` | 02-03 interim proxy attribution policy, active |
 | `DIS-29` - `DIS-47` | Remaining roadmap plan-level issues |

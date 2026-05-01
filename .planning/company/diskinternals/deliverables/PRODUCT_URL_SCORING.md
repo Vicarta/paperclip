@@ -12,12 +12,13 @@ Minimum fields:
 - `main_url`
 - `download_url`
 - `order_url`
-- `thank_you_url_pattern`
 - `supported_filesystems`
 - `supported_scenarios`
 - `primary_language`
 - `localized_urls`
 - `recovery_safety_notes`
+
+Debug-only fields may include `thank_you_url_pattern`, but Thank You pages are excluded from scoring and backlog prioritization.
 
 Linux Writer placeholder:
 - `product_name`: Linux Writer
@@ -91,6 +92,7 @@ Page Action Score =
 ## Agent Usage Rules
 
 - CMO chooses backlog from score-ranked opportunities, not raw traffic alone.
+- Growth Opportunity Strategist should classify scored opportunities into action lanes before CMO approval.
 - SEO Performance Analyst owns GSC and URL opportunity scoring.
 - MKT Product Discovery Analyst owns product mapping and product-priority interpretation.
 - DATA Growth Analytics Agent owns score input quality and report contracts.

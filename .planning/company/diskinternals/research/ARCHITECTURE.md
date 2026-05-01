@@ -20,11 +20,13 @@ CEO
 ## Data Flow
 
 ```text
-GA4/GSC MCP reports
-  -> Data contracts and QA
+BigQuery GA4/GSC exports
+  -> BigQuery-backed plugin reports
+  -> URL normalization and data QA
   -> Product and URL mapping
   -> Product Proxy Score / Page Action Score
-  -> CMO backlog decisions
+  -> Growth Opportunity Strategist routing
+  -> CMO backlog approval
   -> Agent tasks
   -> Patches/PRs or recommendations
   -> QA and approval
@@ -32,19 +34,10 @@ GA4/GSC MCP reports
   -> Follow-up telemetry
 ```
 
-Later:
-
-```text
-GA4/GSC exports in BigQuery
-  -> BigQuery marts
-  -> Paperclip agent reports
-  -> Same backlog and PR workflow
-```
-
 ## Ownership Rules
 
 - `CMO` owns backlog priority and acts as Growth PM.
-- `CTO` owns data correctness, tracking, MCP/BigQuery integration, and attribution fixes.
+- `CTO` owns data correctness, tracking, BigQuery/plugin integration, crawler limits, and attribution fixes.
 - SEO owns blog content, semantic core, content refresh, article writing, and SEO validation.
 - MKT owns market intelligence, audience segmentation, offer hypotheses, product discovery, and campaign/funnel planning.
 - ADS owns paid ads copy and simulation critique only.

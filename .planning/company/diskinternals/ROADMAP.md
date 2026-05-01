@@ -2,7 +2,7 @@
 
 ## Overview
 
-This roadmap turns the DiskInternals Paperclip company into a controlled growth operating system. It starts with guardrails and agent role cleanup, then establishes MCP-first data contracts, product and URL scoring, pilot backlog generation, PR/approval workflows, operating routines, later BigQuery transition, and readiness for guided selector, localization, and AI assistant work.
+This roadmap turns the DiskInternals Paperclip company into a controlled growth operating system. It starts with guardrails and agent role cleanup, then establishes BigQuery-first data contracts, URL inventory/normalization, product and URL scoring, pilot backlog generation, PR/approval workflows, operating routines, BigQuery-backed growth automation, and readiness for guided selector, localization, and AI assistant work.
 
 The roadmap is phase-based, not day-based. Execution can run automatically through Paperclip routines and GSD phases, but production publication and tracking changes remain approval-gated.
 
@@ -14,12 +14,12 @@ The roadmap is phase-based, not day-based. Execution can run automatically throu
 - Phases execute in numeric order.
 
 - [ ] **Phase 1: Company Guardrails And Agent Architecture** - Lock DiskInternals context and normalize the full agent operating model.
-- [ ] **Phase 2: Data Contracts And Attribution** - Define MCP reports and attribution QA before scaling agent work.
+- [ ] **Phase 2: Data Contracts And Attribution** - Define BigQuery-backed reports, plugin access, and attribution QA before scaling agent work.
 - [ ] **Phase 3: Product, URL, And Scoring Foundation** - Build product/URL mapping and scoring models, including Linux Writer.
 - [ ] **Phase 4: Pilot Backlog System** - Generate controlled RAID, VMFS, Linux Reader/Linux Writer, and checkout-flow work.
 - [ ] **Phase 5: Production PR And Approval Workflow** - Convert agent output into patches/PRs with QA and indexing controls.
 - [ ] **Phase 6: Automated Operating Routines** - Configure recurring growth operations without idle specialist budget burn.
-- [ ] **Phase 7: BigQuery Transition And Portfolio Expansion** - Prepare BigQuery-first marts and expand beyond the pilot when data is ready.
+- [ ] **Phase 7: BigQuery Growth Automation And Portfolio Expansion** - Automate BigQuery marts, crawler-backed URL state, and expansion beyond the pilot when scores support it.
 - [ ] **Phase 8: Guided Selector, Localization, And Assistant Readiness** - Stage selector, localization, and AI assistant work behind guardrails.
 - [x] **Phase 9: Winning Structure MCP Adapter** - Add the Paperclip adapter for SERP-based Winning Structure recommendations.
 - [x] **Phase 10: Semantic Core MCP Adapter** - Add the Paperclip adapter for semantic-core generation runs and Paperclip import validation.
@@ -44,18 +44,18 @@ Plans:
 - [ ] 01-03: Missing specialist agent proposal package
 
 ### Phase 2: Data Contracts And Attribution
-**Goal**: Agents can use GA4/GSC MCP reports safely, and attribution fixes are specified before content/CRO scale-up.
+**Goal**: Agents can use BigQuery-backed GA4/GSC reports safely through Paperclip plugin tools, and attribution fixes are specified before content/CRO scale-up.
 **Depends on**: Phase 1
 **Requirements**: DATA-01, DATA-02, ATTR-01, ATTR-02, ATTR-03
 **Success Criteria**:
-  1. MCP report contracts exist with fields, consumers, and owners.
+  1. BigQuery report/plugin contracts exist with fields, consumers, owners, and cost controls.
   2. GA4 event parameter QA is written for all required events.
   3. Ecommerce product attribution fix is defined as a CTO-owned stream.
   4. Attribution-limited proxy logic is documented for interim operation.
 **Plans**: 3 plans
 
 Plans:
-- [ ] 02-01: MCP report contracts for GA4/GSC growth operations
+- [ ] 02-01: BigQuery report contracts and Paperclip plugin access for GA4/GSC growth operations
 - [ ] 02-02: GA4 parameter QA and ecommerce attribution fix scope
 - [ ] 02-03: Interim proxy attribution policy for agents
 
@@ -90,7 +90,7 @@ Plans:
 Plans:
 - [ ] 04-01: RAID and VMFS pilot backlog generation
 - [ ] 04-02: Linux Reader and Linux Writer funnel backlog generation
-- [ ] 04-03: Download, Thank You, Checkout, CTA, and popup experiment backlog
+- [ ] 04-03: Download, Order, Checkout, CTA, and popup experiment backlog
 - [ ] 04-04: Internal linking and localization candidate queue
 
 ### Phase 5: Production PR And Approval Workflow
@@ -125,20 +125,20 @@ Plans:
 - [ ] 06-02: CTO data QA and attribution routine specification
 - [ ] 06-03: CEO reporting and approval handoff routine specification
 
-### Phase 7: BigQuery Transition And Portfolio Expansion
-**Goal**: BigQuery-first growth marts are ready once access and accumulated data are available, then product scope expands beyond the pilot.
+### Phase 7: BigQuery Growth Automation And Portfolio Expansion
+**Goal**: BigQuery-first growth marts, URL state, and follow-up measurements are automated, then product scope expands beyond the pilot when scores support it.
 **Depends on**: Phase 6
 **Requirements**: BQ-01, BQ-02, BQ-03
 **Success Criteria**:
-  1. BigQuery dependency is documented as deferred, not blocking MCP-first work.
-  2. Growth marts/views are specified for product funnel, URL opportunities, GSC refresh, popup, localization, content changes, and final opportunity ranking.
-  3. Agent data contracts can switch from MCP reports to BigQuery marts.
+  1. BigQuery is documented as the operational source of truth for GA4/GSC-derived data.
+  2. Growth marts/views are specified for product funnel, URL opportunities, GSC refresh, crawl/page state, popup, localization, content changes, and final opportunity ranking.
+  3. Agent data contracts use Paperclip plugin tools over allowlisted BigQuery reports.
   4. Portfolio expansion criteria cover Partition Recovery, NTFS Recovery, Linux Recovery, database products, and Office/Mail products when score supports them.
 **Plans**: 3 plans
 
 Plans:
-- [ ] 07-01: BigQuery mart/view specification
-- [ ] 07-02: MCP-to-BigQuery agent contract migration plan
+- [ ] 07-01: BigQuery mart/view and URL-state specification
+- [ ] 07-02: BigQuery Growth Data plugin and crawler job contract
 - [ ] 07-03: Portfolio expansion scoring and backlog rules
 
 ### Phase 8: Guided Selector, Localization, And Assistant Readiness
@@ -199,6 +199,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8.
 | 4. Pilot Backlog System | 0/4 | Not started | - |
 | 5. Production PR And Approval Workflow | 0/3 | Not started | - |
 | 6. Automated Operating Routines | 3/3 | Complete | 2026-04-29 |
-| 7. BigQuery Transition And Portfolio Expansion | 0/3 | Not started | - |
+| 7. BigQuery Growth Automation And Portfolio Expansion | 0/3 | Not started | - |
 | 8. Guided Selector, Localization, And Assistant Readiness | 0/3 | Not started | - |
 | 9. Winning Structure MCP Adapter | 1/1 | Implemented, waiting live smoke inputs | 2026-04-29 |

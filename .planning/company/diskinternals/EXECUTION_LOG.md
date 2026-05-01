@@ -2,6 +2,20 @@
 
 ## 2026-05-01
 
+Corrected the DiskInternals growth monitoring architecture to BigQuery-first.
+
+Planning changes:
+- Added `deliverables/BIGQUERY_GROWTH_OPERATING_ALGORITHM.md` as the canonical algorithm for BigQuery-backed GA4/GSC exports, URL inventory, URL normalization, crawl/page snapshots, opportunity scoring, routing, experiments, localization, indexing, and 7/14/28 day follow-up.
+- Replaced stale MCP-first planning assumptions with BigQuery-first report/plugin contracts across project, roadmap, requirements, state, guardrails, data contracts, operating routines, scoring, pilot backlog, BigQuery platform, and research docs.
+- Documented that `bq` CLI is for ops/bootstrap/backfill/debug, while runtime agent access must go through allowlisted Paperclip plugin tools.
+- Documented rate-limited crawl/job handling for thousands of URLs: conservative per-host concurrency, per-host delays, job size limits, retry backoff, robots handling, and priority bands.
+- Marked Thank You pages as QA/debug-only and excluded them from scoring and backlog prioritization.
+- Added the Growth Opportunity Strategist routing lane as the classifier between score-ranked opportunities and CMO backlog approval.
+
+Follow-up needed:
+- Create or repurpose a live DiskInternals Growth Opportunity Strategist agent/lane.
+- Specify and implement the BigQuery Growth Data Paperclip plugin and crawler/job worker.
+
 Applied the shared agency-core agent execution governance contract to the DiskInternals planning overlay.
 
 Planning changes:

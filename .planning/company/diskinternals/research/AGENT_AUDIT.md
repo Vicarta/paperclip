@@ -11,7 +11,7 @@
 |-------|---------------|-------------|----------------|
 | CEO | Chief Executive Officer | Executive sponsor and final escalation | Keep. Receives concise growth impact reports and approves strategic changes. |
 | CMO | Chief Marketing Officer | Acting Growth PM | Keep. Owns weekly growth backlog, sprint priority, pilot scope, and agent coordination. |
-| CTO | Chief Technical Officer | Data, tracking, attribution, BigQuery, and website-change technical owner | Keep. Owns MCP/BigQuery contracts, GA4 parameter QA, ecommerce attribution, and technical PR review. |
+| CTO | Chief Technical Officer | Data, tracking, attribution, BigQuery, crawler limits, and website-change technical owner | Keep. Owns BigQuery/plugin contracts, GA4 parameter QA, ecommerce attribution, and technical PR review. |
 
 ## SEO Lane
 
@@ -59,7 +59,7 @@
 
 | Proposed Role | Create Now? | Suggested Reporting | Why |
 |---------------|-------------|---------------------|-----|
-| DATA Growth Analytics Agent | Yes | CTO | Owns MCP report contracts, GA4/GSC normalized reports, interim scoring inputs, later BigQuery marts. |
+| DATA Growth Analytics Agent | Yes | CTO | Owns BigQuery report contracts, GA4/GSC export-derived normalized reports, scoring inputs, and marts. |
 | GA4 Funnel Agent | Optional | CTO or DATA agent | Can be separate if funnel volume grows; otherwise fold into DATA Growth Analytics initially. |
 | CRO Funnel Experiment Agent | Yes | CMO | Owns popup/CTA/product-fit block experiments and funnel hypotheses. |
 | SEO Internal Linking & Indexation Agent | Yes | CMO or SEO lane | Owns internal link queues and changed URL indexing policy. |

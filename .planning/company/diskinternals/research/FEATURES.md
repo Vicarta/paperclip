@@ -6,7 +6,7 @@
 |---------|----------------|-------|
 | Company guardrails | Prevents accidental Astrogen operations. | 1 |
 | Agent role normalization | Prevents duplicate blog/MKT/SOC ownership. | 1 |
-| MCP report contracts | Gives agents stable data inputs. | 2 |
+| BigQuery report/plugin contracts | Gives agents stable data inputs without direct GA4/GSC or arbitrary SQL access. | 2 |
 | Attribution QA | Prevents optimizing downloads or traffic as if they were sales. | 2 |
 | Product and URL mapping | Enables product-level and page-level decisions. | 3 |
 | Scoring formulas | Converts data into ranked backlog. | 3 |
@@ -21,7 +21,7 @@
 |---------|----------------|-------|
 | Linux Reader/Linux Writer funnel | Converts utility intent into either low-price writer purchase or relevant recovery product path. | 3-4 |
 | Scenario-based popup strategy | Reduces uncertainty instead of pushing generic discounts. | 4 |
-| BigQuery-first transition | Makes agents operate from durable marts instead of repeated ad hoc analysis. | 7 |
+| BigQuery growth automation | Makes agents operate from durable marts instead of repeated ad hoc analysis. | 7 |
 | Guided product selector | Safer pre-sales routing before AI assistant. | 8 |
 
 ## Anti-Features

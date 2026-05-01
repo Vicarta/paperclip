@@ -7,7 +7,7 @@
 | RAID Recovery | 35% | Large traffic and direct commercial recovery intent |
 | VMFS Recovery | 25% | Strategic core product and high-value recovery intent |
 | Linux Reader / Linux Writer funnel | 25% | Freeware/utility traffic routed to paid writer or recovery paths |
-| Download / Thank You / Checkout flow | 15% | Shortest path from trial to order to purchase |
+| Download / Order / Checkout flow | 15% | Shortest path from trial to order to purchase |
 
 ## Work Type Mix
 
@@ -64,7 +64,7 @@ Recover missing/deleted/damaged files -> relevant recovery product
 
 Do not push recovery products where user only needs a utility. Do not route recovery intent to Linux Writer.
 
-## Download / Thank You / Checkout Lane
+## Download / Order / Checkout Lane
 
 Focus:
 - safety message after download;
@@ -72,6 +72,8 @@ Focus:
 - preview-before-purchase guidance;
 - product discovery on download pages;
 - source-page and product attribution preservation.
+
+Thank You pages are excluded from scoring and backlog prioritization. They may be used only as QA/debug signals for download-flow integrity.
 
 ## Backlog Acceptance Criteria
 

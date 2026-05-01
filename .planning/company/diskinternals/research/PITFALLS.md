@@ -11,8 +11,8 @@
 3. Product attribution is incomplete.
    - Guardrail: use Product Proxy Score until ecommerce attribution is fixed.
 
-4. BigQuery is not operationally accessible yet.
-   - Guardrail: treat BigQuery as deferred data source; MCP is the current operational source.
+4. Agents may try to bypass the BigQuery source of truth.
+   - Guardrail: agents use allowlisted BigQuery-backed Paperclip plugin reports; `bq` CLI is ops-only, and arbitrary SQL/direct GA4/GSC access is out of scope.
 
 5. Linux Writer is upcoming.
    - Guardrail: include placeholder mapping and launch status, but do not fabricate URLs, pricing, or claims.

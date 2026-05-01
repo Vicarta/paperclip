@@ -24,11 +24,11 @@
 
 ### Data Contracts And Attribution
 
-- [ ] **DATA-01**: MCP report contracts are defined for GA4 funnel, product proxy, GSC opportunities, site search, popup performance, landing-page-to-purchase paths, and changed URLs.
-- [ ] **DATA-02**: Agents consume normalized MCP reports instead of inventing funnel calculations ad hoc.
-- [ ] **ATTR-01**: GA4 parameter QA is specified for `file_download`, `visit_order_page`, `purchase`, popup events, `thank_you_page`, and `view_search_results`.
+- [ ] **DATA-01**: BigQuery-backed report/plugin contracts are defined for GA4 funnel, product proxy, GSC opportunities, URL inventory, crawl/page state, site search, popup performance, landing-page-to-purchase paths, and changed URLs.
+- [ ] **DATA-02**: Agents consume normalized BigQuery plugin reports instead of raw credentials, direct GA4/GSC access, arbitrary SQL, or ad hoc funnel calculations.
+- [ ] **ATTR-01**: GA4 parameter QA is specified for `file_download`, `visit_order_page`, `purchase`, popup events, and `view_search_results`; `thank_you_page` is QA/debug-only and excluded from growth scoring.
 - [ ] **ATTR-02**: Ecommerce product attribution fix is captured as a CTO-owned execution stream.
-- [x] **ATTR-03**: Until ecommerce attribution is fixed, product scoring uses URL, filename, thank-you, order-page, and GSC proxy signals.
+- [x] **ATTR-03**: Until ecommerce attribution is fixed, product scoring uses URL, filename/download, order-page, and GSC proxy signals; Thank You pages remain QA/debug-only.
 
 ### Product, URL, And Scoring Foundation
 
@@ -40,11 +40,11 @@
 
 ### Pilot Backlog System
 
-- [ ] **PILOT-01**: Pilot backlog allocation is fixed at RAID 35%, VMFS 25%, Linux Reader/Linux Writer funnel 25%, Download/Thank You/Checkout flow 15%.
+- [ ] **PILOT-01**: Pilot backlog allocation is fixed at RAID 35%, VMFS 25%, Linux Reader/Linux Writer funnel 25%, Download/Order/Checkout flow 15%.
 - [ ] **PILOT-02**: RAID backlog covers product page, RAID articles, CTA blocks, internal links, popup scenarios, and reindexing candidates.
 - [ ] **PILOT-03**: VMFS backlog covers product page, VMFS articles, datastore/VMDK messaging, internal links, popup scenarios, and reindexing candidates.
 - [ ] **PILOT-04**: Linux Reader/Linux Writer backlog distinguishes read/write utility intent from recovery intent and routes each to the correct product path.
-- [ ] **PILOT-05**: Download, Thank You, and Checkout backlog includes safety messaging, next steps, product discovery, and order-page intent tracking.
+- [ ] **PILOT-05**: Download, Order, and Checkout backlog includes safety messaging, next steps, product discovery, and order-page intent tracking; Thank You pages are excluded from scoring/backlog except QA/debug checks.
 - [ ] **LINK-01**: Internal linking queue identifies high-traffic weak-link pages, product pages needing support links, orphan/near-orphan pages, and pages with GSC signal but weak conversion.
 - [ ] **CRO-01**: Popup and CTA experiments are scenario-based uncertainty reducers, not generic sale popups.
 - [ ] **LOC-01**: Localization queue requires country demand, GSC signal, product/funnel signal, and product priority.
@@ -65,9 +65,9 @@
 
 ### BigQuery Transition
 
-- [ ] **BQ-01**: BigQuery access is treated as deferred operational dependency, not a blocker for MCP-first setup.
-- [ ] **BQ-02**: BigQuery marts/views are specified for product funnel, URL opportunities, GSC refresh, popup performance, localization, content changes, and final growth opportunities.
-- [ ] **BQ-03**: Paperclip agent data flow can switch from MCP-only to BigQuery-first once access and data maturity are ready.
+- [ ] **BQ-01**: BigQuery is treated as the current operational source of truth for GA4/GSC-derived DiskInternals growth data.
+- [ ] **BQ-02**: BigQuery marts/views are specified for product funnel, URL inventory, URL normalization, crawl/page state, GSC refresh, popup performance, localization, content changes, and final growth opportunities.
+- [ ] **BQ-03**: Paperclip agent data flow uses allowlisted BigQuery Growth Data plugin tools, with `bq` CLI reserved for ops/bootstrap/backfill/debug.
 
 ### Selector, Localization, And Assistant Readiness
 

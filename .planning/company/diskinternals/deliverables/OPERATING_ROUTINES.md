@@ -5,7 +5,7 @@
 | Routine | Agent | Schedule | Purpose |
 |---------|-------|----------|---------|
 | CMO Growth Backlog Review | CMO | Monday 09:00 Europe/Kiev | Convert data and priorities into backlog |
-| CTO Data QA And Attribution Review | CTO | Monday 10:00 Europe/Kiev | Check MCP contracts, tracking, attribution, BigQuery readiness |
+| CTO Data QA And Attribution Review | CTO | Monday 10:00 Europe/Kiev | Check BigQuery contracts, tracking, attribution, plugin health, and crawl/job limits |
 | CTO Stale Human Decision Blocker Audit | CTO | 09:20, 13:20, 17:20, 21:20 Europe/Kiev | Detect resolved owner decisions that did not unblock source issues |
 | CEO Growth Impact Review | CEO | Friday 16:00 Europe/Kiev | Review impact, blockers, approvals, and next priorities |
 
@@ -16,7 +16,7 @@ Only `CEO`, `CMO`, and `CTO` have scheduled routines. Specialist agents remain w
 ## CMO Growth Backlog Review
 
 Inputs:
-- GA4/GSC MCP reports;
+- BigQuery-backed growth reports from the Paperclip plugin;
 - product and URL scoring;
 - previous PRs and changed URLs;
 - pending approvals;
@@ -31,16 +31,16 @@ Outputs:
 ## CTO Data QA And Attribution Review
 
 Inputs:
-- MCP report health;
+- BigQuery export, mart, and plugin report health;
 - GA4 parameter coverage;
 - ecommerce product attribution status;
-- BigQuery export maturity;
+- crawl/page snapshot job health and rate-limit incidents;
 - tracking PR needs.
 
 Outputs:
 - data QA findings;
 - attribution fix tasks;
-- BigQuery readiness notes;
+- BigQuery/plugin/crawler readiness notes;
 - blockers for CMO.
 
 ## CTO Stale Human Decision Blocker Audit

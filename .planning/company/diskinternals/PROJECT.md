@@ -2,7 +2,7 @@
 
 ## What This Is
 
-This project sets up DiskInternals in Paperclip as a growth operating system, not as a bulk content generator. The system coordinates DiskInternals agents around GA4, GSC, BigQuery-ready data, product attribution, SEO refresh, CRO, internal linking, localization, indexing, and PR-based website changes.
+This project sets up DiskInternals in Paperclip as a growth operating system, not as a bulk content generator. The system coordinates DiskInternals agents around BigQuery-backed GA4/GSC exports, product attribution, SEO refresh, CRO, internal linking, localization, indexing, and PR-based website changes.
 
 The Paperclip company already exists as DiskInternals, with `CMO` acting as the Growth PM function under `CEO`. The launch must use the live DiskInternals company only: `969d66ff-d77e-4dbf-8759-1a17c2bb17c2`, issue prefix `DIS`.
 
@@ -17,8 +17,8 @@ Every Paperclip action should turn trustworthy product, URL, and funnel data int
 - ✓ DiskInternals Paperclip company exists with company ID `969d66ff-d77e-4dbf-8759-1a17c2bb17c2` and issue prefix `DIS`.
 - ✓ Current company has 25 live agents including `CEO`, `CMO`, `CTO`, SEO, MKT, ADS, and OPS roles.
 - ✓ DiskInternals currently has one active goal: `Growth of website visitors, trial downloads, and license purchases`.
-- ✓ BigQuery export is already working, but operational agent access will be granted later after enough data accumulates.
-- ✓ GA4/GSC MCP should be treated as ready for current planning.
+- ✓ BigQuery export is already working and is the only operational source for GA4/GSC-derived data.
+- ✓ Direct GA4/GSC access is not available to agents; agent access must be mediated through BigQuery-backed Paperclip plugin tools.
 - ✓ Agents may prepare website patches and PRs, but publication/release remains approval-gated.
 
 ### Active
@@ -27,10 +27,10 @@ Every Paperclip action should turn trustworthy product, URL, and funnel data int
 - [ ] Make `CMO` the acting Growth PM instead of creating a separate Growth PM agent.
 - [ ] Normalize agent roles so SEO owns blog work, MKT owns market, offer, funnel, and audience work, ADS owns paid ads, OPS owns monitoring/human handoff, and SOC is reserved for social content work.
 - [ ] Plan all current agents and proposed missing specialist agents before execution.
-- [ ] Build MCP-first GA4/GSC data contracts now and BigQuery-first marts later.
+- [ ] Build BigQuery-first growth data contracts, URL inventory, normalization, and plugin-mediated reports.
 - [ ] Fix or work around product attribution gaps before scaling content.
 - [ ] Include Linux Writer as an upcoming low-price product in product mapping and funnel planning.
-- [ ] Build the first pilot around RAID Recovery, VMFS Recovery, Linux Reader/Linux Writer funnel, and Download/Thank You/Checkout flows.
+- [ ] Build the first pilot around RAID Recovery, VMFS Recovery, Linux Reader/Linux Writer funnel, and Download/Order/Checkout flows.
 - [ ] Convert agent output into patches/PRs with QA, approval, indexing, and follow-up telemetry.
 - [ ] Avoid day-based planning; use phase sequence and recurring operating loops instead.
 
@@ -58,14 +58,14 @@ Every Paperclip action should turn trustworthy product, URL, and funnel data int
   - RAID Recovery: 35%
   - VMFS Recovery: 25%
   - Linux Reader / Linux Writer / freeware-to-paid funnel: 25%
-  - Download / Thank You / Checkout flow: 15%
+  - Download / Order / Checkout flow: 15%
 - Linux Writer is expected soon and should be planned as a low-price Windows-to-Linux-filesystem write/edit product, distinct from recovery products.
 
 ## Constraints
 
 - **Company isolation**: All Paperclip work must use DiskInternals company ID and `DIS` prefix - this is a shared instance and Astrogen is the local default.
 - **Approval governance**: Agents can prepare patches/PRs, but site publication, tracking changes, and production experiments require human approval.
-- **Data availability**: GA4/GSC MCP is available now; BigQuery export exists, but operational access comes later after data accumulation.
+- **Data availability**: BigQuery export is the operational source of truth for GA4/GSC-derived data; direct GA4/GSC access is not available.
 - **Budget**: Specialist agents should stay demand-woken unless a routine has a clear operating value.
 - **Content ownership**: Blog work belongs to SEO. Social content planning belongs to SOC, not MKT.
 - **Analytics integrity**: Do not scale content, localization, popups, or AI assistant before attribution and guardrails exist.
@@ -78,8 +78,8 @@ Every Paperclip action should turn trustworthy product, URL, and funnel data int
 | Plan all agents now | Existing roles overlap; cleanup is required before automatic delegation. | - Pending |
 | Blog belongs to SEO | MKT blog roles duplicate SEO roles and create ownership ambiguity. | - Pending |
 | SOC is the social content lane | Social content plans should not be hidden under MKT blog roles. | - Pending |
-| GA4/GSC MCP is ready for current phase | Current setup can start MCP-first contracts before BigQuery access is granted. | - Pending |
-| BigQuery is later-stage operational source | Export works, but agents should wait for access and enough accumulated data. | - Pending |
+| BigQuery is the current operational data source | GA4/GSC data is available only through BigQuery export, so contracts and plugin tools must be BigQuery-first. | - Pending |
+| Paperclip plugin mediates data access | Agents should consume allowlisted BigQuery reports, not raw credentials, direct GA4/GSC access, or arbitrary SQL. | - Pending |
 | Agents may prepare patches/PRs | This enables concrete website work while preserving approval governance. | - Pending |
 | Linux Writer is part of pilot planning | It changes the Linux Reader funnel from pure freeware routing into a low-price product path. | - Pending |
 | No day-based launch plan | The company should run continuously through phases and routines, not fixed calendar windows. | - Pending |
