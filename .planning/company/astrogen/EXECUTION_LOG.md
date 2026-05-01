@@ -32,3 +32,9 @@
   - [AST-688](/AST/issues/AST-688) restored to `blocked` with `Human Decision Needed` after the source-issue decision comment replaced [AST-694](/AST/issues/AST-694).
   - [AST-683](/AST/issues/AST-683) moved from silent `in_progress` to explicit `blocked` with `Human Decision Needed` because its assignee `OPS Observability Agent` is intentionally paused.
   - Post-cleanup active queue has no `backlog`, `todo`, or silent `in_progress` items; remaining open items are explicit human-decision blockers.
+- Re-reviewed all open `Human Decision Needed` tasks and removed stale/non-owner gates:
+  - [AST-688](/AST/issues/AST-688) had already received and applied the owner answer, so it is no longer a human gate and moved forward to [AST-696](/AST/issues/AST-696).
+  - [AST-664](/AST/issues/AST-664) cancelled as obsolete runtime-recovery blocker; latest comments stated `human decision required: no`, and the old cohort state no longer matched current agent status.
+  - [AST-683](/AST/issues/AST-683) cancelled as obsolete Observability watch; re-enabling Observability should be a fresh decision/task, not continuation of the old watch.
+  - [AST-129](/AST/issues/AST-129) cancelled as obsolete Instagram/Bright Data rerun blocker; this should not be revived without a new explicit cost/coverage guarded task.
+  - Post-cleanup open `Human Decision Needed` count is `0`; active process is [AST-688](/AST/issues/AST-688) -> [AST-696](/AST/issues/AST-696).
