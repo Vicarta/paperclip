@@ -1,5 +1,19 @@
 # Execution Log
 
+## 2026-05-01
+
+Applied the shared agency-core agent execution governance contract to the DiskInternals planning overlay.
+
+Planning changes:
+- Added `GOV-05` to `REQUIREMENTS.md`, referencing `.planning/agency-core/governance/AGENT_EXECUTION_GOVERNANCE.md` instead of duplicating the shared contract text.
+- Added DiskInternals guardrails to `STATE.md` for silent hanging tasks, explicit blockers, parent/child handoff, Paperclip-only plugin/capability use, and SEO/MCP child-lane separation.
+- Recorded a separate follow-up to audit live SEO agent contracts where explicit SEO/MCP lane wording may still need hardening.
+
+Live contract check:
+- Checked DiskInternals CEO, CMO, CTO, OPS Human Interaction Agent, OPS Observability Agent, and SEO agent instruction bundles through the DiskInternals company context.
+- Core ownership/blocker/liveness/plugin rules are already present in the checked live contracts.
+- Simple contract scan found that SEO Performance Analyst and SEO Internal Linking Indexation Agent may lack explicit SEO/MCP lane separation wording, so any live-agent edits should be handled in a separate follow-up.
+
 ## 2026-04-30
 
 Implemented updated Semantic Core MCP volume/import contract.

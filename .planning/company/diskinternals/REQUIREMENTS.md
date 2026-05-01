@@ -11,6 +11,7 @@
 - [x] **GOV-02**: Planning, issue descriptions, comments, and links use the `DIS` prefix and never rely on the Astrogen default context.
 - [x] **GOV-03**: Publication, tracking changes, and production experiments require approval even when agents prepare patches or PRs.
 - [x] **GOV-04**: Specialist agents remain wake-on-demand unless a routine is explicitly approved.
+- [x] **GOV-05**: DiskInternals agents must follow the shared agency-core governance contract at `.planning/agency-core/governance/AGENT_EXECUTION_GOVERNANCE.md`.
 
 ### Agent Operating Model
 
@@ -112,6 +113,7 @@
 | GOV-02 | Phase 1 | Complete |
 | GOV-03 | Phase 1 | Complete |
 | GOV-04 | Phase 1 | Complete |
+| GOV-05 | Phase 1 | Complete |
 | AGT-01 | Phase 1 | Complete |
 | AGT-02 | Phase 1 | Complete |
 | AGT-03 | Phase 1 | Complete |
@@ -153,8 +155,8 @@
 | LOC-02 | Phase 8 | Pending |
 
 **Coverage:**
-- v1 requirements: 43 total
-- Mapped to phases: 43
+- v1 requirements: 44 total
+- Mapped to phases: 44
 - Unmapped: 0
 
 ---

@@ -12,7 +12,7 @@ See: .planning/PROJECT.md (updated 2026-04-29)
 Phase: 2 of 8 (Data Contracts And Attribution)
 Plan: 0 of 3 in current phase
 Status: In progress
-Last activity: 2026-04-29 - Semantic Core MCP adapter implemented, deployed live, and smoke-tested through Paperclip plugin dispatcher
+Last activity: 2026-05-01 - Applied agency-core agent execution governance to DiskInternals planning overlay
 
 Progress: [###-------] 28%
 
@@ -59,6 +59,16 @@ Recent decisions affecting current work:
 - `DIS-48` created by Paperclip manager flow: canonical DiskInternals company and product reference layer.
 - Phase 9 Winning Structure MCP adapter is deployed live, configured with encrypted token secret, and smoke-tested through Paperclip plugin tools.
 - Phase 10 Semantic Core MCP adapter is deployed live, configured with encrypted token secret, and smoke-tested through Paperclip plugin tools.
+- Follow-up: audit and, if needed, update live DiskInternals SEO Performance Analyst and SEO Internal Linking Indexation Agent contracts for explicit SEO/MCP lane separation language. Do this as a separate live-agent contract change, not as part of the planning-only governance overlay.
+
+### Guardrails
+
+- DiskInternals follows the shared agency-core execution governance contract: `.planning/agency-core/governance/AGENT_EXECUTION_GOVERNANCE.md`.
+- Open agent tasks must not hang silently. `in_progress` work needs run, wakeup, recovery, or fresh continuation evidence.
+- Blocked work must state the blocker owner, the unblock condition, and the resume path.
+- Parent/child work must use explicit handoff: completing a child issue does not automatically complete the parent coordination issue.
+- Plugins and MCP-backed tools must be used only through Paperclip's live plugin registry and agent capabilities; desktop-local connectors or raw external MCP assumptions are not valid inside Paperclip.
+- SEO/MCP work should stay split into child lanes for generation, validation, review/routing, implementation, and monitoring unless the manager marks the issue as a small smoke test.
 
 ### Roadmap Evolution
 
