@@ -197,6 +197,13 @@ Plans:
 **Goal**: Paperclip can create and monitor Perfex CRM tasks for human implementation of approved website/content/tracking changes.
 **Depends on**: Phase 5, Phase 7
 **Requirements**: PERFEX-01, PERFEX-02, PERFEX-03, PERFEX-04, PERFEX-05
+**Current Status**:
+  1. Perfex CRM MCP plugin MVP is implemented, deployed, and loaded in Paperclip with 8 tools.
+  2. Live plugin config is wired to Perfex project `1` and confirmed `projectManagerId=1`.
+  3. Setup-stage routing maps every canonical action type to assignee `1`.
+  4. Task/comment writes remain disabled: `enableTaskWrites=false`, `defaultDryRun=true`.
+  5. Canonical action types now match Growth OS routing: `seo_refresh`, `new_page_or_article`, `product_page_update`, `internal_linking`, `cro_experiment`, `localization_experiment`, `indexing_followup`, and `tracking_or_data_quality_issue`.
+  6. Final human implementer assignment mapping and explicit write activation remain pending owner approval.
 **Success Criteria**:
   1. A bundled Paperclip plugin uses Streamable HTTP to connect to `https://pxmc.aibizmate.com/mcp` with a server-side bearer secret.
   2. The plugin can healthcheck/discover tools, create implementation tasks, add/update task comments or status where MCP capabilities allow, and read task status back.
@@ -207,7 +214,7 @@ Plans:
 
 Plans:
 - [x] 11-01: Perfex CRM MCP plugin adapter MVP
-- [ ] 11-02: Human implementation task payload and QA contract
+- [ ] 11-02: Human implementation task payload and QA contract - in progress; payload, canonical action types, setup-stage routing, and preview smoke are done; live agent contract switch and write activation wait for final implementer mapping approval.
 - [ ] 11-03: Perfex status sync, indexing trigger, and follow-up telemetry
 
 ## Progress
@@ -227,4 +234,4 @@ Phases 1-8 are the Growth OS rollout path. Phases 9-10 were implemented early as
 | 8. Guided Selector, Localization, And Assistant Readiness | 3/3 | Complete | 2026-05-01 |
 | 9. Winning Structure MCP Adapter | 1/1 | Complete | 2026-04-29 |
 | 10. Semantic Core MCP Adapter | 1/1 | Complete | 2026-04-30 |
-| 11. Perfex CRM Human Implementation Handoff | 1/3 | In Progress | - |
+| 11. Perfex CRM Human Implementation Handoff | 1/3 | In Progress - plugin deployed, setup routing confirmed, writes disabled | - |
