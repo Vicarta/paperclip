@@ -24,6 +24,139 @@ function readStringArray(value) {
         .map((entry) => entry.trim())
         .filter(Boolean);
 }
+function stringifyForSearch(value) {
+    if (typeof value === "string")
+        return value.replace(/\\n/g, "\n");
+    try {
+        return JSON.stringify(value ?? "", null, 2).replace(/\\n/g, "\n");
+    }
+    catch {
+        return String(value ?? "").replace(/\\n/g, "\n");
+    }
+}
+function extractPerfexStatusText(value) {
+    if (!isRecord(value))
+        return null;
+    const structured = isRecord(value.structuredContent) ? value.structuredContent : null;
+    const directCandidates = [
+        value.status,
+        value.task_status,
+        value.name,
+        structured?.status,
+        structured?.task_status,
+        structured?.name,
+    ];
+    for (const candidate of directCandidates) {
+        const text = readString(candidate);
+        if (text)
+            return text;
+    }
+    const haystack = stringifyForSearch(value);
+    const match = haystack.match(/"status"\\s*:\\s*"([^"]+)"/i);
+    return match?.[1]?.trim() || null;
+}
+function extractPaperclipResultStatus(text) {
+    const match = text.match(/(?:paperclip\s+result[\s\S]{0,250}?)?status\s*:\s*(implemented|verified|needs[_ -]clarification|rejected)\b/i);
+    if (!match)
+        return null;
+    const normalized = match[1].toLowerCase().replace(/[- ]/g, "_");
+    if (normalized === "needs_clarification")
+        return "needs_clarification";
+    if (normalized === "implemented" || normalized === "verified" || normalized === "rejected") {
+        return normalized;
+    }
+    return null;
+}
+function extractChangedUrls(text) {
+    const urls = text.match(/https?:\/\/[^\s)\]>"]+/g) ?? [];
+    return Array.from(new Set(urls.map((url) => url.replace(/[.,;:]+$/, ""))));
+}
+export function classifyPerfexFollowup(input) {
+    const statusText = extractPerfexStatusText(input.statusResult);
+    const commentsText = stringifyForSearch(input.commentsResult);
+    const resultStatus = extractPaperclipResultStatus(commentsText);
+    const changedUrls = extractChangedUrls(commentsText);
+    const followupWindows = readStringArray(input.followupWindows);
+    if (resultStatus === "verified") {
+        return {
+            task_id: input.taskId,
+            perfex_status_text: statusText,
+            paperclip_result_status: resultStatus,
+            workflow_state: "verified",
+            changed_urls: changedUrls,
+            indexing_eligible: changedUrls.length > 0,
+            followup_eligible: changedUrls.length > 0,
+            followup_windows: followupWindows.length > 0 ? followupWindows : ["7 days", "14 days", "28 days"],
+            reason: changedUrls.length > 0
+                ? "Human result is verified and includes changed URLs."
+                : "Human result is verified but changed URLs are missing, so follow-up is parked.",
+        };
+    }
+    if (resultStatus === "implemented") {
+        return {
+            task_id: input.taskId,
+            perfex_status_text: statusText,
+            paperclip_result_status: resultStatus,
+            workflow_state: "implemented_pending_verification",
+            changed_urls: changedUrls,
+            indexing_eligible: false,
+            followup_eligible: false,
+            followup_windows: followupWindows,
+            reason: "Human result says implemented, but Paperclip verification is still required before indexing or telemetry follow-up.",
+        };
+    }
+    if (resultStatus === "needs_clarification" || resultStatus === "rejected") {
+        return {
+            task_id: input.taskId,
+            perfex_status_text: statusText,
+            paperclip_result_status: resultStatus,
+            workflow_state: resultStatus,
+            changed_urls: changedUrls,
+            indexing_eligible: false,
+            followup_eligible: false,
+            followup_windows: [],
+            reason: `Human result is ${resultStatus}; do not start indexing or follow-up.`,
+        };
+    }
+    const completedByPerfexOnly = statusText ? /done|complete|completed|closed|finished/i.test(statusText) : false;
+    if (completedByPerfexOnly) {
+        return {
+            task_id: input.taskId,
+            perfex_status_text: statusText,
+            paperclip_result_status: null,
+            workflow_state: "implemented_needs_evidence",
+            changed_urls: changedUrls,
+            indexing_eligible: false,
+            followup_eligible: false,
+            followup_windows: [],
+            reason: "Perfex status looks complete, but no structured Paperclip result comment was found.",
+        };
+    }
+    if (statusText) {
+        return {
+            task_id: input.taskId,
+            perfex_status_text: statusText,
+            paperclip_result_status: null,
+            workflow_state: "in_progress_in_perfex",
+            changed_urls: changedUrls,
+            indexing_eligible: false,
+            followup_eligible: false,
+            followup_windows: [],
+            reason: "Perfex task is not verified complete.",
+        };
+    }
+    return {
+        task_id: input.taskId,
+        perfex_status_text: null,
+        paperclip_result_status: null,
+        workflow_state: "unknown_status",
+        changed_urls: changedUrls,
+        indexing_eligible: false,
+        followup_eligible: false,
+        followup_windows: [],
+        reason: "Perfex status could not be normalized; park for OPS/CTO review.",
+    };
+}
 function parseAssigneeMap(value) {
     const raw = readString(value) ?? "{}";
     try {

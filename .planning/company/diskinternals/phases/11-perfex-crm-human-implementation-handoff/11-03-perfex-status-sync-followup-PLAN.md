@@ -2,7 +2,7 @@
 phase: 11
 plan: 11-03
 title: "Perfex Status Sync, Indexing Trigger, And Follow-Up Telemetry"
-status: in_progress
+status: complete
 requirements: ["PERFEX-05"]
 deliverables:
   - ".planning/company/diskinternals/deliverables/PERFEX_CRM_HANDOFF_PLUGIN.md"
@@ -19,7 +19,7 @@ Close the loop after human implementation by syncing Perfex task state into Pape
 
 <task id="1" type="data-contract">
 <action>Add or extend BigQuery/Paperclip status fields for Perfex task ID, task URL, task status, implementation date, verification status, and follow-up windows.</action>
-<done>Plugin entity storage is implemented for task/status sync; BigQuery marts are still pending until the final Perfex handoff contract is approved.</done>
+<done>Plugin entity storage is implemented for task/status sync and records normalized follow-up decisions. BigQuery marts remain gated until real Perfex writes and final implementer mapping are approved.</done>
 </task>
 
 <task id="2" type="implementation">
@@ -29,11 +29,11 @@ Close the loop after human implementation by syncing Perfex task state into Pape
 
 <task id="3" type="workflow">
 <action>Define when implemented tasks enter indexing candidate and 7/14/28 day follow-up queues.</action>
-<done>Only verified meaningful changes enter manual indexing; small or unverified changes are parked.</done>
+<done>Only `verified` tasks with changed URLs enter indexing/follow-up eligibility. `implemented`, `needs_clarification`, `rejected`, Perfex-only done, and unknown status paths are parked.</done>
 </task>
 
 ## Verification
 
-- Mock status transitions exercise success, rejection, needs-clarification, and unknown-status paths.
+- Unit tests exercise verified success, implemented-pending-verification, rejection, needs-clarification, and unknown-status paths.
 - Unknown status never marks implementation complete automatically.
-- Follow-up reports can join Perfex task IDs to affected URLs and source Paperclip opportunities after BigQuery follow-up fields are added.
+- Follow-up reports can join Perfex task IDs to affected URLs and source Paperclip opportunities after BigQuery follow-up fields are added and real Perfex task writes are approved.

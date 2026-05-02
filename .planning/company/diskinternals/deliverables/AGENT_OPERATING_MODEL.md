@@ -85,6 +85,35 @@ When an agent completes a child issue:
 
 This is the standard handoff for specialist -> manager work, including Product Discovery -> CMO, Semantic Core -> CMO, and Validator -> CMO chains.
 
+## Perfex CRM Handoff Contract
+
+Every live DiskInternals agent has a `DiskInternals Perfex CRM Handoff Rule`.
+
+DiskInternals website source code is not available to Paperclip agents. For website, content, CRO, localization, tracking, indexing, and implementation work:
+
+- do not promise direct website patches or pull requests unless a future issue explicitly provides a website repo/workspace;
+- use Paperclip plugin discovery through `/api/agents/me/plugin-tools`;
+- use `paperclip.perfex-crm-agent-tools:perfex-preview-implementation-task` for normal planning and review;
+- use `paperclip.perfex-crm-agent-tools:perfex-create-implementation-task` only when the parent issue explicitly approves Perfex writes;
+- do not call raw Perfex MCP directly and do not expose the MCP bearer token;
+- setup-stage routing uses Perfex project `1`, project manager `1`, and assignee `1` for all canonical action types;
+- keep task/comment writes disabled until owner approval changes plugin config from `enableTaskWrites=false` and the tool call explicitly passes `dry_run=false`.
+
+Canonical Perfex action types are:
+
+```text
+seo_refresh
+new_page_or_article
+product_page_update
+internal_linking
+cro_experiment
+localization_experiment
+indexing_followup
+tracking_or_data_quality_issue
+```
+
+Every Perfex-ready payload must include affected URLs, exact requested changes, source evidence, QA checklist, acceptance criteria, related `DIS` issue, priority/due-date when available, and follow-up/indexing recommendation when relevant.
+
 ## SEO Lane
 
 SEO owns all blog and organic-search work.

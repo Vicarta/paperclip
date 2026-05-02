@@ -5,6 +5,7 @@ import plugin from "../src/worker.js";
 import { TOOL_NAMES } from "../src/constants.js";
 import {
   buildImplementationTaskPayload,
+  classifyPerfexFollowup,
   callPerfexMcpTool,
   listPerfexMcpTools,
   perfexHealthcheck,
@@ -204,5 +205,83 @@ describe("plugin-perfex-crm-agent-tools", () => {
       expect.objectContaining({ toolName: "get_task_comments" }),
     );
     expect(result.data).toMatchObject({ taskId: "500" });
+  });
+
+  it("classifies verified Perfex comments as eligible for indexing and follow-up", () => {
+    const decision = classifyPerfexFollowup({
+      taskId: "500",
+      statusResult: { structuredContent: { status: "Done" }, content: [] },
+      commentsResult: {
+        structuredContent: {
+          comments: [
+            {
+              body: "Paperclip result:\nstatus: verified\nchanged_urls:\n- https://www.diskinternals.com/vmfs-recovery/\nsummary:\nUpdated copy.",
+            },
+          ],
+        },
+      },
+    });
+    expect(decision).toMatchObject({
+      workflow_state: "verified",
+      indexing_eligible: true,
+      followup_eligible: true,
+      changed_urls: ["https://www.diskinternals.com/vmfs-recovery/"],
+    });
+  });
+
+  it("does not treat implemented comments as indexing-ready before verification", () => {
+    const decision = classifyPerfexFollowup({
+      taskId: "501",
+      statusResult: { structuredContent: { status: "Done" }, content: [] },
+      commentsResult: {
+        structuredContent: {
+          comments: [
+            {
+              body: "Paperclip result:\nstatus: implemented\nchanged_urls:\n- https://www.diskinternals.com/linux-reader/",
+            },
+          ],
+        },
+      },
+    });
+    expect(decision).toMatchObject({
+      workflow_state: "implemented_pending_verification",
+      indexing_eligible: false,
+      followup_eligible: false,
+    });
+  });
+
+  it("parks rejected, needs-clarification, and unknown status paths", () => {
+    const rejected = classifyPerfexFollowup({
+      taskId: "502",
+      statusResult: { structuredContent: { status: "Done" }, content: [] },
+      commentsResult: { structuredContent: { comments: [{ body: "Paperclip result:\nstatus: rejected" }] } },
+    });
+    expect(rejected).toMatchObject({
+      workflow_state: "rejected",
+      indexing_eligible: false,
+      followup_eligible: false,
+    });
+
+    const needsClarification = classifyPerfexFollowup({
+      taskId: "503",
+      statusResult: { structuredContent: { status: "In Progress" }, content: [] },
+      commentsResult: { structuredContent: { comments: [{ body: "Paperclip result:\nstatus: needs_clarification" }] } },
+    });
+    expect(needsClarification).toMatchObject({
+      workflow_state: "needs_clarification",
+      indexing_eligible: false,
+      followup_eligible: false,
+    });
+
+    const unknown = classifyPerfexFollowup({
+      taskId: "504",
+      statusResult: { structuredContent: {}, content: [] },
+      commentsResult: { structuredContent: { comments: [] } },
+    });
+    expect(unknown).toMatchObject({
+      workflow_state: "unknown_status",
+      indexing_eligible: false,
+      followup_eligible: false,
+    });
   });
 });

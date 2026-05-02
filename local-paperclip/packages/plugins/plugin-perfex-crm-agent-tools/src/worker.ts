@@ -13,6 +13,7 @@ import {
 import {
   assertWriteAllowed,
   buildImplementationTaskPayload,
+  classifyPerfexFollowup,
   callPerfexMcpTool,
   listPerfexMcpTools,
   normalizeConfig,
@@ -352,17 +353,24 @@ const plugin = definePlugin({
           resolveSecret: (secretRef) => ctx.secrets.resolve(secretRef),
           fetchFn: ctx.http.fetch as typeof fetch,
         });
+        const followupDecision = classifyPerfexFollowup({
+          taskId: payload.task_id,
+          statusResult: statusResult.data,
+          commentsResult: commentsResult.data,
+          followupWindows: isRecord(params) ? params.followup_windows : undefined,
+        });
         await storeEntity({
           ctx,
           runCtx,
           entityType: ENTITY_TYPES.taskStatus,
           externalId: payload.task_id,
           title: `Perfex status ${payload.task_id}`,
-          status: "synced",
+          status: followupDecision.workflow_state,
           data: {
             taskId: payload.task_id,
             statusResult: statusResult.data,
             commentsResult: commentsResult.data,
+            followupDecision,
           },
         });
         return resultAsToolResult({
@@ -370,6 +378,10 @@ const plugin = definePlugin({
             {
               task_id: payload.task_id,
               status: "synced",
+              workflow_state: followupDecision.workflow_state,
+              indexing_eligible: followupDecision.indexing_eligible,
+              followup_eligible: followupDecision.followup_eligible,
+              followup_decision: followupDecision,
               status_result: statusResult.data,
               comments_result: commentsResult.data,
             },
@@ -380,6 +392,7 @@ const plugin = definePlugin({
             taskId: payload.task_id,
             statusResult: statusResult.data,
             commentsResult: commentsResult.data,
+            followupDecision,
           },
         });
       },

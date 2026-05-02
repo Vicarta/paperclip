@@ -67,6 +67,23 @@ export type PerfexCreateTaskMcpArguments = {
     created_by: string;
     has_write_permission: true;
 };
+export type PerfexFollowupDecision = {
+    task_id: string;
+    perfex_status_text: string | null;
+    paperclip_result_status: "implemented" | "verified" | "needs_clarification" | "rejected" | null;
+    workflow_state: "in_progress_in_perfex" | "implemented_needs_evidence" | "implemented_pending_verification" | "verified" | "needs_clarification" | "rejected" | "unknown_status";
+    changed_urls: string[];
+    indexing_eligible: boolean;
+    followup_eligible: boolean;
+    followup_windows: string[];
+    reason: string;
+};
+export declare function classifyPerfexFollowup(input: {
+    taskId: string;
+    statusResult: unknown;
+    commentsResult: unknown;
+    followupWindows?: unknown;
+}): PerfexFollowupDecision;
 export declare function normalizeConfig(config: PerfexPluginConfig): {
     mcpUrl: string;
     healthUrl: string;

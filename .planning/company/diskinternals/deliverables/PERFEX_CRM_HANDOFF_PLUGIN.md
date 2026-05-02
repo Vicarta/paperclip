@@ -196,6 +196,19 @@ followup_complete
 
 The plugin should write Perfex task IDs and statuses back to Paperclip and BigQuery follow-up state so the Growth OS can measure whether the human change affected GSC clicks, GA4 sessions, downloads, order visits, and purchases.
 
+Read-only sync classification:
+
+```text
+verified -> indexing/follow-up eligible only when changed URLs are present
+implemented -> implementation exists but needs Paperclip verification before indexing/follow-up
+needs_clarification -> parked, ask human/manager for missing input
+rejected -> parked, do not index or measure as a release
+Perfex done without structured Paperclip result -> implemented_needs_evidence
+unknown/unsupported status -> unknown_status, OPS/CTO review
+```
+
+This prevents a generic Perfex "done" or unstructured comment from triggering indexing or 7/14/28 day measurement.
+
 ## Result Collection
 
 The MVP does not schedule automatic polling. The intended operating model after owner approval:
@@ -209,7 +222,7 @@ Human implementers should report completion in comments using a stable structure
 
 ```text
 Paperclip result:
-status: implemented | needs_clarification | rejected
+status: implemented | verified | needs_clarification | rejected
 changed_urls:
 - https://...
 summary:
@@ -221,6 +234,8 @@ questions:
 ```
 
 Paperclip should not trigger indexing or 7/14/28 follow-up only from a generic "done" status. It needs a task status plus a useful comment/evidence trail.
+
+`implemented` means the human says the work is done. `verified` means Paperclip/owner QA accepted the changed URLs and the change can enter indexing and measurement follow-up.
 
 ## Agent Rules
 

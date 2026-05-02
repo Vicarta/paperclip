@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-04-29)
 
 **Core value:** Every Paperclip action should turn trustworthy product, URL, and funnel data into measurable growth work for visitors, trial downloads, order-page visits, and license purchases.
-**Current focus:** Phase 1-10 Growth OS readiness complete; next work is Phase 11 Perfex CRM human implementation handoff so approved growth actions become tasks for people.
+**Current focus:** Phase 1-11 Growth OS readiness complete; next work is future owner-approved Perfex write activation and BigQuery follow-up persistence once real human implementer mapping is provided.
 
 ## Current Position
 
-Phase: 11 planning
+Phase: 11 complete
 Plan: Perfex CRM human implementation handoff
-Status: In progress
-Last activity: 2026-05-02 - Confirmed Perfex project manager ID, normalized setup-stage task routing, and deployed the updated Perfex plugin
+Status: Complete, with writes disabled pending future owner activation
+Last activity: 2026-05-02 - Updated all live DiskInternals agent contracts and completed Perfex read-only follow-up classification
 
-Progress: [#########-] 93%
+Progress: [##########] 100%
 
 ## Performance Metrics
 
@@ -65,6 +65,8 @@ Recent decisions affecting current work:
 - Phase 11 is planned to add a Perfex CRM MCP plugin so approved Paperclip opportunities become human implementation tasks.
 - Phase 11 plugin MVP is implemented and deployed with read-only health/tool/status/comment tools and dry-run task/comment write gates.
 - Perfex read-only discovery found DiskInternals project `DiskInternals.SEO` as `project_id=1`; `projectManagerId=1` is confirmed and setup-stage assignment routes all action types to `1`. Final implementer mapping still requires owner approval before writes are enabled.
+- All 30 live DiskInternals agent contracts include the Perfex CRM handoff rule.
+- Perfex status sync classifies verified, implemented-pending-verification, rejected, needs-clarification, Perfex-only done, and unknown status paths. Only verified tasks with changed URLs become indexing/follow-up eligible.
 
 ### Guardrails
 

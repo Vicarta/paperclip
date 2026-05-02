@@ -30,6 +30,31 @@ Live deployment/config:
 - Verified the Perfex plugin loaded with 8 registered tools and `loadAll complete` reported 12/12 plugins succeeded.
 - Ran a preview-only plugin smoke test for `product_page_update`; it returned `wrote_to_perfex=false`, `project_id=1`, `project_manager_id=1`, and `assignee_ids=["1"]`.
 
+Completed Phase 11 contract and follow-up work after owner approved proceeding with items 3-5 and deferred final implementer mapping.
+
+Live agent contracts:
+- Added `DiskInternals Perfex CRM Handoff Rule` to all 30 live DiskInternals agents.
+- Rule states that DiskInternals website implementation does not use website PRs, raw Perfex MCP, or exposed bearer tokens.
+- Rule requires agents to use Paperclip plugin tools, prefer preview/payload mode, and keep real writes gated by explicit owner approval.
+
+Runtime follow-up classification:
+- Extended `perfex-sync-task-status` to classify read-only Perfex status/comment results.
+- `verified` with changed URLs can become indexing/follow-up eligible.
+- `implemented` becomes `implemented_pending_verification`, not indexing-ready.
+- `needs_clarification`, `rejected`, Perfex-only done without structured comment, and unknown statuses are parked.
+- Added unit coverage for verified success, implemented-pending-verification, rejected, needs-clarification, and unknown-status paths.
+
+GSD:
+- Marked `11-02` and `11-03` complete.
+- Updated `ROADMAP.md` and `STATE.md` to show Phase 11 complete with writes disabled pending future owner activation.
+- Updated `AGENT_OPERATING_MODEL.md` with the live Perfex handoff contract.
+
+Deploy/verification:
+- Deployed the updated plugin/runtime to `paperclip-app-1`.
+- Verified `/api/health` is `ok`.
+- Verified `paperclip.perfex-crm-agent-tools` exposes 8 tools after restart.
+- Ran read-only Perfex healthcheck through the Paperclip plugin; MCP health returned HTTP 200.
+
 ## 2026-05-01
 
 Implemented the Phase 11 Perfex CRM MCP plugin MVP with write safety gates.
