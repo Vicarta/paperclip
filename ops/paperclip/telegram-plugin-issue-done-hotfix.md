@@ -27,6 +27,12 @@ Behavior after the patch:
   comment, not only the first sentence. This prevents comments that start with
   headings such as `Final Manager Decision` from collapsing to the generic
   `Задачу завершено` fallback.
+- 2026-05-02 update: `readableCompletionSummary` now has the same human-facing
+  quality rule as the server-side notifier. If the source completion comment is
+  generic, too short, technical, or agent-facing, the plugin expands
+  `Що зроблено` into a 150-250 word Ukrainian explanation and filters raw
+  phrases such as `Review Decision`, `Final Manager Decision`, artifact paths,
+  and `global_search_volume` from the Telegram text.
 - `worker.js` enriches issue-done events from `ctx.companies.get(...)` and
   `ctx.issues.get(...)` so the formatter has `companyName` and `projectName`.
 

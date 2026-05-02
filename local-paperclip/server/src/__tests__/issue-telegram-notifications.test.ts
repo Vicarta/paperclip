@@ -14,6 +14,18 @@ import {
 const embeddedPostgresSupport = await getEmbeddedPostgresTestSupport();
 const describeEmbeddedPostgres = embeddedPostgresSupport.supported ? describe : describe.skip;
 
+function getTelegramTextBody(fetchMock: ReturnType<typeof vi.fn>, callIndex = 0): Record<string, unknown> {
+  return JSON.parse(String(fetchMock.mock.calls[callIndex]?.[1]?.body ?? "{}")) as Record<string, unknown>;
+}
+
+function getTelegramDocumentForm(fetchMock: ReturnType<typeof vi.fn>, callIndex = 1): FormData {
+  return fetchMock.mock.calls[callIndex]?.[1]?.body as FormData;
+}
+
+function wordCount(value: string): number {
+  return value.split(/\s+/).filter((word) => /\p{L}|\d/u.test(word)).length;
+}
+
 describeEmbeddedPostgres("issueTelegramNotificationService", () => {
   let db!: ReturnType<typeof createDb>;
   let documentsSvc!: ReturnType<typeof documentService>;
@@ -33,6 +45,7 @@ describeEmbeddedPostgres("issueTelegramNotificationService", () => {
       TRUNCATE TABLE
         activity_log,
         issue_attachments,
+        issue_comments,
         assets,
         issue_documents,
         document_revisions,
@@ -164,17 +177,28 @@ describeEmbeddedPostgres("issueTelegramNotificationService", () => {
       status: "sent",
       chatId: "-5154906793",
       attachmentIds: [attachment.id],
-      messageIds: [7788],
+      messageIds: [7788, 7788],
       attachmentId: attachment.id,
       messageId: 7788,
     });
     expect(storage.getObject).toHaveBeenCalledWith(companyId, `${companyId}/issues/${issueId}/money-article-final.md`);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
     const [url, init] = fetchMock.mock.calls[0]!;
-    expect(url).toBe("https://api.telegram.org/bottelegram-token/sendDocument");
+    expect(url).toBe("https://api.telegram.org/bottelegram-token/sendMessage");
     expect(init.method).toBe("POST");
+    const textBody = getTelegramTextBody(fetchMock);
+    expect(textBody.text).toContain("✅ Готово: AST-456");
+    expect(textBody.text).toContain("Що зроблено:");
+    expect(wordCount(String(textBody.text).split("Що зроблено:")[1] ?? "")).toBeGreaterThanOrEqual(150);
+    expect(textBody.reply_markup).toEqual({
+      inline_keyboard: [[{ text: "Відкрити задачу", url: "https://paperclip.example.test/AST/issues/AST-456" }]],
+    });
 
-    const form = init.body as FormData;
+    const [documentUrl, documentInit] = fetchMock.mock.calls[1]!;
+    expect(documentUrl).toBe("https://api.telegram.org/bottelegram-token/sendDocument");
+    expect(documentInit.method).toBe("POST");
+
+    const form = documentInit.body as FormData;
     expect(form.get("chat_id")).toBe("-5154906793");
     expect(form.get("caption")).toContain("✅ Готово: AST-456");
     expect(form.get("caption")).toContain("Компанія: Astrogen");
@@ -321,6 +345,14 @@ describeEmbeddedPostgres("issueTelegramNotificationService", () => {
           ok: true,
           result: { message_id: 8802 },
         }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({
+          ok: true,
+          result: { message_id: 8803 },
+        }),
       });
 
     const svc = issueTelegramNotificationService(db, storage, {
@@ -336,13 +368,16 @@ describeEmbeddedPostgres("issueTelegramNotificationService", () => {
       status: "sent",
       chatId: "-5154906793",
       attachmentIds: [markdownAttachment.id, htmlAttachment.id],
-      messageIds: [8801, 8802],
+      messageIds: [8801, 8802, 8803],
       attachmentId: markdownAttachment.id,
       messageId: 8801,
     });
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-    const firstForm = fetchMock.mock.calls[0]?.[1]?.body as FormData;
-    const secondForm = fetchMock.mock.calls[1]?.[1]?.body as FormData;
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    const textBody = getTelegramTextBody(fetchMock);
+    expect(String(textBody.text)).toContain("Що зроблено:");
+    expect(wordCount(String(textBody.text).split("Що зроблено:")[1] ?? "")).toBeGreaterThanOrEqual(150);
+    const firstForm = getTelegramDocumentForm(fetchMock, 1);
+    const secondForm = getTelegramDocumentForm(fetchMock, 2);
     expect(firstForm.get("caption")).toContain("✅ Готово: AST-457");
     expect(firstForm.get("caption")).toContain("Компанія: Astrogen");
     expect(firstForm.get("caption")).toContain("Задача: Налаштування Telegram-повідомлень");
@@ -460,7 +495,11 @@ describeEmbeddedPostgres("issueTelegramNotificationService", () => {
     });
 
     expect(storage.getObject).toHaveBeenCalledWith(companyId, attachment.objectKey);
-    const form = fetchMock.mock.calls[0]?.[1]?.body as FormData;
+    const textBody = getTelegramTextBody(fetchMock);
+    expect(String(textBody.text)).toContain("Що зроблено:");
+    expect(wordCount(String(textBody.text).split("Що зроблено:")[1] ?? "")).toBeGreaterThanOrEqual(150);
+    expect(String(textBody.text)).not.toContain("interim proxy attribution policy");
+    const form = getTelegramDocumentForm(fetchMock);
     const caption = String(form.get("caption"));
     expect(caption).toContain("✅ Готово: DIS-28");
     expect(caption).toContain("Компанія: DiskInternals");
@@ -591,7 +630,11 @@ describeEmbeddedPostgres("issueTelegramNotificationService", () => {
     });
 
     expect(storage.getObject).toHaveBeenCalledWith(companyId, attachment.objectKey);
-    const form = fetchMock.mock.calls[0]?.[1]?.body as FormData;
+    const textBody = getTelegramTextBody(fetchMock);
+    expect(String(textBody.text)).toContain("Що зроблено:");
+    expect(wordCount(String(textBody.text).split("Що зроблено:")[1] ?? "")).toBeGreaterThanOrEqual(150);
+    expect(String(textBody.text)).not.toContain("Review Decision");
+    const form = getTelegramDocumentForm(fetchMock);
     const caption = String(form.get("caption"));
     expect(caption).toContain("✅ Готово: DIS-50");
     expect(caption).toContain("Компанія: DiskInternals");
@@ -733,7 +776,11 @@ Manager review:
     });
 
     expect(storage.getObject).toHaveBeenCalledWith(companyId, attachment.objectKey);
-    const form = fetchMock.mock.calls[0]?.[1]?.body as FormData;
+    const textBody = getTelegramTextBody(fetchMock);
+    expect(String(textBody.text)).toContain("Що зроблено:");
+    expect(wordCount(String(textBody.text).split("Що зроблено:")[1] ?? "")).toBeGreaterThanOrEqual(150);
+    expect(String(textBody.text)).not.toContain("Final Manager Decision");
+    const form = getTelegramDocumentForm(fetchMock);
     const caption = String(form.get("caption"));
     expect(caption).toContain("✅ Готово: DIS-55");
     expect(caption).toContain("Компанія: DiskInternals");
@@ -743,6 +790,136 @@ Manager review:
     expect(caption).not.toContain("Задачу завершено. Деталі можна відкрити в Paperclip.");
     expect(caption).not.toContain("Final Manager Decision");
     expect(caption).not.toContain("global_search_volume");
+  });
+
+  it("uses a recent rich issue comment when the done transition summary is generic", async () => {
+    const companyId = randomUUID();
+    const projectId = randomUUID();
+    const issueId = randomUUID();
+    const pluginId = randomUUID();
+
+    await db.insert(companies).values({
+      id: companyId,
+      name: "DiskInternals",
+      issuePrefix: "DIS",
+      requireBoardApprovalForNewAgents: false,
+    });
+
+    await db.insert(projects).values({
+      id: projectId,
+      companyId,
+      name: "Growth OS Launch",
+      status: "in_progress",
+    });
+
+    await db.insert(issues).values({
+      id: issueId,
+      companyId,
+      projectId,
+      title: "Semantic core for VMFS Recovery for Mac OS users",
+      status: "done",
+      priority: "medium",
+      createdByUserId: "user-1",
+      issueNumber: 91,
+      identifier: "DIS-91",
+    });
+
+    await issuesSvc.addComment(
+      issueId,
+      "Семантичне ядро для VMFS Recovery на Mac перевірено: агент зібрав повний набір seed-запитів, розділив їх на продуктові, проблемні, VMware/ESXi, datastore, RAID та how-to кластери, зберіг geo і global volume поля та підготував результат до подальшої SEO-валидації.",
+      { agentId: undefined, userId: "user-1" },
+    );
+
+    await documentsSvc.upsertIssueDocument({
+      issueId,
+      key: "notification-contract",
+      title: "Telegram delivery",
+      format: "markdown",
+      body: `
+\`\`\`json notification-contract
+{
+  "enabled": true,
+  "channel": "telegram",
+  "trigger": "issue_done",
+  "recipient": { "target": "default_chat" },
+  "delivery": {
+    "mode": "attach_file",
+    "artifact": {
+      "source": "issue_attachment",
+      "filenameIncludes": "summary"
+    }
+  }
+}
+\`\`\`
+`,
+      authorAgentId: null,
+    });
+
+    await issuesSvc.createAttachment({
+      issueId,
+      provider: "local_fs",
+      objectKey: `${companyId}/issues/${issueId}/summary.md`,
+      contentType: "text/markdown",
+      byteSize: 9,
+      sha256: "1".repeat(64),
+      originalFilename: "summary.md",
+      createdByUserId: "user-1",
+    });
+
+    await db.insert(plugins).values({
+      id: pluginId,
+      pluginKey: "paperclip-plugin-telegram",
+      packageName: "paperclip-plugin-telegram",
+      version: "0.3.0",
+      apiVersion: 1,
+      manifestJson: {},
+      status: "ready",
+    });
+    await db.insert(pluginConfig).values({
+      pluginId,
+      configJson: {
+        telegramBotTokenRef: "telegram-secret",
+        defaultChatId: "-5154906793",
+        paperclipPublicUrl: "https://paperclip.example.test",
+      },
+    });
+
+    const storage: StorageService = {
+      provider: "local_fs",
+      putFile: vi.fn(),
+      getObject: vi.fn().mockResolvedValue({
+        stream: Readable.from(["# summary"]),
+        contentType: "text/markdown",
+        contentLength: 9,
+      }),
+      headObject: vi.fn(),
+      deleteObject: vi.fn(),
+    };
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: vi.fn().mockResolvedValue({
+        ok: true,
+        result: { message_id: 9910 },
+      }),
+    });
+
+    const svc = issueTelegramNotificationService(db, storage, {
+      fetchImpl: fetchMock as unknown as typeof fetch,
+      resolveTelegramBotToken: vi.fn().mockResolvedValue("telegram-token"),
+    });
+
+    await svc.sendIssueDoneNotification(issueId, {
+      completionSummary: "Done",
+    });
+
+    const textBody = getTelegramTextBody(fetchMock);
+    expect(String(textBody.text)).toContain("Семантичне ядро для VMFS Recovery на Mac перевірено");
+    expect(String(textBody.text)).toContain("geo і global volume");
+    expect(wordCount(String(textBody.text).split("Що зроблено:")[1] ?? "")).toBeGreaterThanOrEqual(150);
+    const form = getTelegramDocumentForm(fetchMock);
+    expect(String(form.get("caption"))).not.toContain("Що зроблено: Done");
   });
 
   it("skips delivery when no notification contract exists", async () => {

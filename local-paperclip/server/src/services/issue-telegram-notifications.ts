@@ -1,6 +1,6 @@
 import { eq, and, desc } from "drizzle-orm";
 import type { Db } from "@paperclipai/db";
-import { companies, pluginConfig, plugins, projects } from "@paperclipai/db";
+import { activityLog, companies, issueComments, pluginConfig, plugins, projects } from "@paperclipai/db";
 import type { StorageService } from "../storage/types.js";
 import { issueService } from "./issues.js";
 import { issueNotificationContractService } from "./issue-notification-contracts.js";
@@ -8,6 +8,10 @@ import { secretService } from "./secrets.js";
 import { logActivity, type LogActivityInput } from "./activity-log.js";
 
 const TELEGRAM_PLUGIN_PACKAGE_NAME = "paperclip-plugin-telegram";
+const TELEGRAM_DOCUMENT_CAPTION_LIMIT = 1024;
+const TELEGRAM_MESSAGE_TEXT_LIMIT = 4096;
+const COMPLETION_SUMMARY_MIN_WORDS = 150;
+const COMPLETION_SUMMARY_MAX_WORDS = 250;
 
 type TelegramPluginConfig = {
   telegramBotTokenRef: string | null;
@@ -108,7 +112,7 @@ function buildCaption(
 ): string {
   const identifier = issue.identifier ?? issue.id;
   const title = summarizeIssueTitleForTelegram(issue.title);
-  const summary = summarizeCompletionForTelegram(completionSummary, issue.title);
+  const summary = summarizeCompletionBriefForTelegram(completionSummary, issue.title);
   const parts = [`✅ Готово: ${identifier}`];
   if (company?.name) {
     parts.push(`Компанія: ${company.name}`);
@@ -125,7 +129,56 @@ function buildCaption(
     parts.push(`Відкрити в Paperclip: ${trimmed}${issuePath}`);
   }
   const caption = parts.join("\n");
-  return caption.length > 1024 ? caption.slice(0, 1021) + "..." : caption;
+  return caption.length > TELEGRAM_DOCUMENT_CAPTION_LIMIT
+    ? caption.slice(0, TELEGRAM_DOCUMENT_CAPTION_LIMIT - 3) + "..."
+    : caption;
+}
+
+function buildIssueUrl(
+  issue: Pick<{ identifier: string | null; id: string }, "identifier" | "id">,
+  publicUrl: string | null,
+  company: { issuePrefix: string } | null,
+): string | null {
+  if (!publicUrl) return null;
+  const trimmed = publicUrl.replace(/\/+$/, "");
+  const issuePath = issue.identifier && company?.issuePrefix
+    ? `/${company.issuePrefix}/issues/${issue.identifier}`
+    : `/issues/${issue.id}`;
+  return `${trimmed}${issuePath}`;
+}
+
+function buildIssueDoneMessage(
+  issue: Pick<
+    { identifier: string | null; title: string; status: string; id: string; projectId: string | null },
+    "identifier" | "title" | "status" | "id" | "projectId"
+  >,
+  publicUrl: string | null,
+  company: { name: string; issuePrefix: string } | null,
+  project: { name: string } | null,
+  completionSummary?: string | null,
+): string {
+  const identifier = issue.identifier ?? issue.id;
+  const title = summarizeIssueTitleForTelegram(issue.title);
+  const summary = summarizeCompletionForTelegram(completionSummary, issue.title, {
+    companyName: company?.name ?? null,
+    projectName: project?.name ?? null,
+  });
+  const issueUrl = buildIssueUrl(issue, publicUrl, company);
+  const parts = [`✅ Готово: ${identifier}`];
+  if (company?.name) {
+    parts.push(`Компанія: ${company.name}`);
+  }
+  if (project?.name) {
+    parts.push(`Проєкт: ${project.name}`);
+  }
+  parts.push(`Задача: ${title}`, `Що зроблено: ${summary}`);
+  if (issueUrl) {
+    parts.push(`Відкрити задачу: ${issueUrl}`);
+  }
+  const message = parts.join("\n");
+  return message.length > TELEGRAM_MESSAGE_TEXT_LIMIT
+    ? message.slice(0, TELEGRAM_MESSAGE_TEXT_LIMIT - 3).trimEnd() + "..."
+    : message;
 }
 
 function truncateForTelegramLine(value: string, maxLength: number): string {
@@ -157,7 +210,7 @@ function summarizeIssueTitleForTelegram(title: string): string {
   return truncateForTelegramLine(normalized, 180);
 }
 
-function summarizeCompletionForTelegram(summary: string | null | undefined, title: string): string {
+function summarizeCompletionBriefForTelegram(summary: string | null | undefined, title: string): string {
   const known = summarizeKnownCompletionForTelegram(summary, title);
   if (known) return truncateForTelegramLine(known, 360);
 
@@ -173,6 +226,15 @@ function summarizeCompletionForTelegram(summary: string | null | undefined, titl
   if (/agent|heartbeat/i.test(title)) return "Налаштування агентів оновлено.";
 
   return "Задачу завершено.";
+}
+
+function summarizeCompletionForTelegram(
+  summary: string | null | undefined,
+  title: string,
+  context?: { companyName?: string | null; projectName?: string | null },
+): string {
+  const brief = summarizeCompletionBriefForTelegram(summary, title);
+  return ensureHumanCompletionSummaryQuality(brief, summary, title, context);
 }
 
 function normalizeTelegramText(value: string | null | undefined): string {
@@ -289,6 +351,106 @@ function normalizeTelegramSummary(value: string | null | undefined): string | nu
   return firstSentence || normalized;
 }
 
+function wordCount(value: string): number {
+  return value.split(/\s+/).filter((word) => /\p{L}|\d/u.test(word)).length;
+}
+
+function trimToWordLimit(value: string, maxWords: number): string {
+  const words = value.split(/\s+/).filter(Boolean);
+  if (words.length <= maxWords) return value.trim();
+  const trimmed = words.slice(0, maxWords).join(" ").replace(/[,:;]+$/u, "");
+  return /[.!?]$/u.test(trimmed) ? trimmed : `${trimmed}.`;
+}
+
+function splitReadableSentences(value: string | null | undefined): string[] {
+  const normalized = normalizeTelegramText(value);
+  if (!normalized) return [];
+  return normalized
+    .split(/(?<=[.!?])\s+/u)
+    .map((sentence) => sentence.trim())
+    .filter((sentence) => {
+      if (!sentence) return false;
+      if (/^(?:done|completed|finished|accepted|decision|update|summary|result)[:.\s-]*$/i.test(sentence)) {
+        return false;
+      }
+      if (/^(?:final manager decision|review decision|decision:\s*accepted)$/i.test(sentence)) return false;
+      return wordCount(sentence) >= 5;
+    })
+    .slice(0, 3);
+}
+
+function isGenericCompletionSummary(value: string): boolean {
+  const normalized = value.toLowerCase().replace(/\s+/g, " ").trim();
+  return (
+    normalized === "задачу завершено." ||
+    normalized === "задачу завершено" ||
+    normalized.includes("деталі можна відкрити в paperclip") ||
+    normalized.includes("технічні деталі залишені в paperclip") ||
+    normalized.includes("це технічне оновлення")
+  );
+}
+
+function ensureHumanCompletionSummaryQuality(
+  brief: string,
+  rawSummary: string | null | undefined,
+  title: string,
+  context?: { companyName?: string | null; projectName?: string | null },
+): string {
+  const normalizedBrief = truncateForTelegramLine(brief, 700);
+  const stats = textStats(normalizedBrief);
+  const hasHumanLanguage = stats.cyrillicRatio >= 0.35;
+  const needsExpansion =
+    wordCount(normalizedBrief) < COMPLETION_SUMMARY_MIN_WORDS ||
+    !hasHumanLanguage ||
+    isGenericCompletionSummary(normalizedBrief);
+
+  if (!needsExpansion) {
+    return trimToWordLimit(normalizedBrief, COMPLETION_SUMMARY_MAX_WORDS);
+  }
+
+  return expandCompletionSummaryForHuman(normalizedBrief, rawSummary, title, context);
+}
+
+function expandCompletionSummaryForHuman(
+  brief: string,
+  rawSummary: string | null | undefined,
+  title: string,
+  context?: { companyName?: string | null; projectName?: string | null },
+): string {
+  const companyName = context?.companyName?.trim() || "компанії";
+  const projectName = context?.projectName?.trim();
+  const issueTitle = summarizeIssueTitleForTelegram(title);
+  const evidence = splitReadableSentences(rawSummary)
+    .filter((sentence) => !/https?:\/\/|\b\/(?:companies|clients|paperclip)\//i.test(sentence))
+    .join(" ");
+  const evidenceStats = textStats(evidence);
+  const evidenceLooksAgentFacing =
+    /(?:review decision|final manager decision|accepted draft lane|validation artifact|interim proxy attribution|global_search_volume|canonical writer delivery)/i.test(
+      evidence,
+    ) || evidenceStats.cyrillicRatio < 0.35;
+  const usefulEvidence = evidence && !isGenericCompletionSummary(evidence) && !evidenceLooksAgentFacing
+    ? evidence
+    : null;
+  const opening = isGenericCompletionSummary(brief)
+    ? `Задачу "${issueTitle}" завершено і зафіксовано як готову до наступного кроку.`
+    : brief;
+  const parts = [
+    opening,
+    usefulEvidence ? `У фінальному коментарі агент зафіксував таку суть: ${usefulEvidence}` : null,
+    `Для ${companyName} це означає, що робота не просто закрита формальним статусом, а доведена до контрольної точки, з якої зрозуміло, що саме можна використовувати далі.`,
+    projectName ? `У межах проєкту "${projectName}" цей результат потрібно читати як частину ширшого ланцюжка: підготовка, перевірка, рішення менеджера, можливий Perfex handoff, індексація або подальший моніторинг.` : `Цей результат потрібно читати як частину робочого ланцюжка: підготовка, перевірка, рішення менеджера, можливий Perfex handoff, індексація або подальший моніторинг.`,
+    "Якщо в задачі були файли, артефакти, дочірні задачі або технічні деталі, вони залишаються в Paperclip як джерело правди. Telegram-повідомлення передає людську суть: що завершено, чому це має значення, і який наступний операційний крок не варто загубити.",
+    "Якщо результат передбачає зміни на сайті, саме повідомлення не є дозволом на публікацію. Потрібна перевірка affected URLs, acceptance criteria, QA-нотаток і, за потреби, створення або перевірка задачі для людського впровадження.",
+  ].filter(Boolean) as string[];
+
+  let expanded = parts.join(" ");
+  if (wordCount(expanded) < COMPLETION_SUMMARY_MIN_WORDS) {
+    expanded +=
+      " Після впровадження результат має бути пов'язаний з вимірюванням: показами, кліками, позиціями, trial downloads, переходами на order page або покупками, залежно від типу задачі. Якщо цих даних ще немає, наступний крок має бути сформульований як очікуване спостереження, а не як доведений бізнес-ефект.";
+  }
+  return trimToWordLimit(expanded, COMPLETION_SUMMARY_MAX_WORDS);
+}
+
 async function streamToBuffer(stream: NodeJS.ReadableStream): Promise<Buffer> {
   const chunks: Buffer[] = [];
   for await (const chunk of stream) {
@@ -328,6 +490,42 @@ async function sendTelegramDocument(params: {
 
   if (!response.ok || payload?.ok !== true) {
     throw new Error(payload?.description || `Telegram sendDocument failed with status ${response.status}`);
+  }
+
+  return payload?.result?.message_id ?? null;
+}
+
+async function sendTelegramMessage(params: {
+  fetchImpl: typeof fetch;
+  token: string;
+  chatId: string;
+  topicId?: string | null;
+  text: string;
+  issueUrl?: string | null;
+}): Promise<number | null> {
+  const body: Record<string, unknown> = {
+    chat_id: params.chatId,
+    text: params.text,
+    disable_web_page_preview: true,
+  };
+  if (params.topicId) body.message_thread_id = params.topicId;
+  if (params.issueUrl) {
+    body.reply_markup = {
+      inline_keyboard: [[{ text: "Відкрити задачу", url: params.issueUrl }]],
+    };
+  }
+
+  const response = await params.fetchImpl(`https://api.telegram.org/bot${params.token}/sendMessage`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const payload = (await response.json().catch(() => null)) as
+    | { ok?: boolean; description?: string; result?: { message_id?: number } }
+    | null;
+
+  if (!response.ok || payload?.ok !== true) {
+    throw new Error(payload?.description || `Telegram sendMessage failed with status ${response.status}`);
   }
 
   return payload?.result?.message_id ?? null;
@@ -374,6 +572,72 @@ export function issueTelegramNotificationService(
       .then((rows) => rows[0] ?? null);
   }
 
+  async function resolveCompletionSummaryEvidence(
+    issue: { id: string; companyId: string },
+    actor?: IssueDoneNotificationActor,
+  ): Promise<string | null> {
+    const candidates: string[] = [];
+    const explicitSummary = asNonEmptyString(actor?.completionSummary);
+    if (explicitSummary) candidates.push(explicitSummary);
+
+    const recentComments = await db
+      .select({
+        body: issueComments.body,
+        authorAgentId: issueComments.authorAgentId,
+        createdByRunId: issueComments.createdByRunId,
+      })
+      .from(issueComments)
+      .where(and(eq(issueComments.companyId, issue.companyId), eq(issueComments.issueId, issue.id)))
+      .orderBy(desc(issueComments.createdAt), desc(issueComments.id))
+      .limit(10);
+
+    for (const comment of recentComments) {
+      if (actor?.runId && comment.createdByRunId === actor.runId) candidates.push(comment.body);
+    }
+    for (const comment of recentComments) {
+      if (actor?.agentId && comment.authorAgentId === actor.agentId) candidates.push(comment.body);
+    }
+    candidates.push(...recentComments.map((comment) => comment.body));
+
+    const recentIssueUpdates = await db
+      .select({ details: activityLog.details })
+      .from(activityLog)
+      .where(
+        and(
+          eq(activityLog.companyId, issue.companyId),
+          eq(activityLog.entityType, "issue"),
+          eq(activityLog.entityId, issue.id),
+          eq(activityLog.action, "issue.updated"),
+        ),
+      )
+      .orderBy(desc(activityLog.createdAt), desc(activityLog.id))
+      .limit(10);
+
+    for (const update of recentIssueUpdates) {
+      const comment = asNonEmptyString(asRecord(update.details)?.comment);
+      if (comment) candidates.push(comment);
+    }
+
+    return selectBestCompletionSummaryCandidate(candidates);
+  }
+
+  function selectBestCompletionSummaryCandidate(candidates: string[]): string | null {
+    const scored = candidates
+      .map((candidate, index) => {
+        const normalized = normalizeTelegramText(candidate);
+        if (!normalized) return null;
+        const stats = textStats(normalized);
+        const genericPenalty = isGenericCompletionSummary(normalized) || /^(?:done|completed|finished)\.?$/i.test(normalized)
+          ? 60
+          : 0;
+        const score = Math.min(wordCount(normalized), 120) + stats.cyrillicRatio * 20 - genericPenalty - index * 0.1;
+        return { normalized, score };
+      })
+      .filter((item): item is { normalized: string; score: number } => Boolean(item))
+      .sort((a, b) => b.score - a.score);
+    return scored[0]?.normalized ?? null;
+  }
+
   async function sendIssueDoneNotification(
     issueId: string,
     actor?: IssueDoneNotificationActor,
@@ -407,8 +671,21 @@ export function issueTelegramNotificationService(
       getIssueProject(issue.projectId),
     ]);
     const topicId = resolved.contract.recipient?.topicId ?? null;
-    const caption = buildCaption(issue, config.paperclipPublicUrl, company, project, actor?.completionSummary);
+    const completionSummary = await resolveCompletionSummaryEvidence(issue, actor);
+    const issueUrl = buildIssueUrl(issue, config.paperclipPublicUrl, company);
+    const richMessage = buildIssueDoneMessage(issue, config.paperclipPublicUrl, company, project, completionSummary);
+    const caption = buildCaption(issue, config.paperclipPublicUrl, company, project, completionSummary);
     const messageIds: Array<number | null> = [];
+
+    const summaryMessageId = await sendTelegramMessage({
+      fetchImpl,
+      token,
+      chatId,
+      topicId,
+      text: richMessage,
+      issueUrl,
+    });
+    messageIds.push(summaryMessageId);
 
     for (const [index, attachment] of resolved.attachments.entries()) {
       const object = await storage.getObject(issue.companyId, attachment.objectKey);

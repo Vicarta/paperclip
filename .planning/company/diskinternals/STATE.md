@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-04-29)
 
 **Core value:** Every Paperclip action should turn trustworthy product, URL, and funnel data into measurable growth work for visitors, trial downloads, order-page visits, and license purchases.
-**Current focus:** Phase 1-11 Growth OS readiness complete; next work is future owner-approved Perfex write activation and BigQuery follow-up persistence once real human implementer mapping is provided.
+**Current focus:** Phase 12 is complete; next work is future owner-approved Perfex write activation, BigQuery follow-up persistence, and any new DiskInternals operating improvements.
 
 ## Current Position
 
-Phase: 11 complete
-Plan: Perfex CRM human implementation handoff
-Status: Complete, with writes disabled pending future owner activation
-Last activity: 2026-05-02 - Updated all live DiskInternals agent contracts and completed Perfex read-only follow-up classification
+Phase: 12 complete
+Plan: Operator guide and Telegram summary quality
+Status: Complete
+Last activity: 2026-05-02 - Created the DiskInternals human guide and deployed the Telegram completion-summary quality gate
 
 Progress: [##########] 100%
 
@@ -93,7 +93,6 @@ Recent decisions affecting current work:
 ### Blockers/Concerns
 
 - Website repository/access is not expected for DiskInternals. Production implementation should route through Perfex CRM human tasks instead of website PRs.
-- Phase 11 plugin deployment/configuration is required before Paperclip can automatically create and monitor Perfex tasks.
 - Real task/comment writes must remain disabled until owner approves the final human implementer assignment mapping and explicitly activates writes.
 - Linux Writer is upcoming, so product/URL/event mapping may start with placeholder fields.
 - Winning Structure MCP smoke returned `human_review_required: true` with low confidence for the sample `convert vhd to vmdk` run, so downstream automation must keep human/editorial review before using the recommendation.

@@ -102,6 +102,11 @@
 - **PERFEX-04**: Agents can create/update/read implementation tasks in Perfex CRM with affected URLs, exact requested changes, source data, QA checklist, owner, due/priority if available, and Paperclip issue link.
 - **PERFEX-05**: Perfex task IDs and status changes are recorded back into Paperclip/BigQuery follow-up state so completed human work can trigger indexing and 7/14/28 day measurements.
 
+### Operator Documentation And Notifications
+
+- **DOC-01**: Maintain a DiskInternals-specific human usage guide that explains Paperclip from business tasks to configured workflows, agent roles, plugins, approvals, Perfex handoff, and result review.
+- **NOTIF-01**: Telegram issue completion notifications must explain `Що зроблено` in human language. Generic one-line fallbacks are not acceptable; the resolver must use available issue evidence and enforce a 150-250 word quality gate when the source summary is too short or agent-facing.
+
 ## Out of Scope
 
 | Feature | Reason |
@@ -169,6 +174,8 @@
 | PERFEX-03 | Phase 11 | Complete |
 | PERFEX-04 | Phase 11 | In Progress |
 | PERFEX-05 | Phase 11 | In Progress |
+| DOC-01 | Phase 12 | Complete |
+| NOTIF-01 | Phase 12 | Complete |
 
 **Coverage:**
 - v1 requirements: 45 total

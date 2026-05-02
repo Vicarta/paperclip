@@ -2,6 +2,28 @@
 
 ## 2026-05-02
 
+Added Phase 12 to the DiskInternals GSD roadmap.
+
+Scope:
+- `12-01` creates the approved human guide for using Paperclip as DiskInternals' growth operating system.
+- `12-02` implements a richer Telegram completion-summary resolver and a quality gate so `Що зроблено` explains the actual completion in human language instead of collapsing to a short generic fallback.
+- The Telegram plan explicitly requires 150-250 word human summaries when the source completion text is too short or agent-facing, and it sends the rich summary outside the 1024-character document-caption path.
+
+Completed Phase 12.
+
+Deliverables:
+- Added `deliverables/PAPERCLIP_DISK_INTERNALS_USER_GUIDE.md` as a business-first Ukrainian operator guide.
+- Updated server-side issue completion notifications so Telegram receives a rich human summary text message before attachment documents.
+- Added a completion evidence resolver using explicit summaries, recent comments, and issue update activity.
+- Added a 150-250 word quality gate for `Що зроблено` when the source summary is short, generic, technical, or agent-facing.
+- Patched the live installed Telegram plugin formatter so its `issue.updated` forwarding follows the same quality rule.
+- Updated the operational Telegram hotfix note.
+
+Verification:
+- `pnpm exec vitest run src/__tests__/issue-telegram-notifications.test.ts` passed.
+- `pnpm --filter @paperclipai/server typecheck` passed.
+- The user guide was checked for unrelated-company references.
+
 Normalized the Perfex CRM handoff routing contract after owner clarification.
 
 Decisions applied:

@@ -23,7 +23,8 @@ The roadmap is phase-based, not day-based. Execution can run automatically throu
 - [x] **Phase 8: Guided Selector, Localization, And Assistant Readiness** - Stage selector, localization, and AI assistant work behind guardrails.
 - [x] **Phase 9: Winning Structure MCP Adapter** - Add the Paperclip adapter for SERP-based Winning Structure recommendations.
 - [x] **Phase 10: Semantic Core MCP Adapter** - Add the Paperclip adapter for semantic-core generation runs and Paperclip import validation.
-- [ ] **Phase 11: Perfex CRM Human Implementation Handoff** - Add the Paperclip adapter that turns approved Paperclip growth actions into Perfex CRM tasks for human website changes.
+- [x] **Phase 11: Perfex CRM Human Implementation Handoff** - Add the Paperclip adapter that turns approved Paperclip growth actions into Perfex CRM tasks for human website changes.
+- [x] **Phase 12: Operator Guide And Telegram Summary Quality** - Create the DiskInternals human operating guide and make completion notifications explain completed work in useful human language.
 
 ## Phase Details
 
@@ -219,6 +220,22 @@ Plans:
 - [x] 11-02: Human implementation task payload and QA contract
 - [x] 11-03: Perfex status sync, indexing trigger, and follow-up telemetry
 
+### Phase 12: Operator Guide And Telegram Summary Quality
+**Goal**: Give DiskInternals operators a practical Paperclip usage guide and make Telegram completion notifications readable enough to understand what was actually completed.
+**Depends on**: Phase 11
+**Requirements**: DOC-01, NOTIF-01
+**Success Criteria**:
+  1. A detailed Ukrainian operator guide exists and starts from business tasks, not internal settings.
+  2. The guide explains leadership levels, agent groups, workflows, plugins, approvals, and Perfex handoff as practical business processes.
+  3. The guide avoids references to unrelated companies.
+  4. Telegram issue completion notifications have a richer resolver and a quality gate for the `Що зроблено` section.
+  5. Human-facing completion summaries can be 150-250 words and are not constrained by document caption limits.
+**Plans**: 2 plans
+
+Plans:
+- [x] 12-01: DiskInternals Paperclip human user guide
+- [x] 12-02: Telegram completion summary rich resolver and quality gate
+
 ## Progress
 
 **Execution Order:**
@@ -237,3 +254,4 @@ Phases 1-8 are the Growth OS rollout path. Phases 9-10 were implemented early as
 | 9. Winning Structure MCP Adapter | 1/1 | Complete | 2026-04-29 |
 | 10. Semantic Core MCP Adapter | 1/1 | Complete | 2026-04-30 |
 | 11. Perfex CRM Human Implementation Handoff | 3/3 | Complete - writes remain disabled pending future owner activation | 2026-05-02 |
+| 12. Operator Guide And Telegram Summary Quality | 2/2 | Complete | 2026-05-02 |
