@@ -1,5 +1,35 @@
 # Execution Log
 
+## 2026-05-02
+
+Normalized the Perfex CRM handoff routing contract after owner clarification.
+
+Decisions applied:
+- `projectManagerId=1` is confirmed as the correct Perfex project manager for DiskInternals setup.
+- During setup, all Perfex implementation task types route to assignee `1`.
+- Final distribution to human implementers remains a separate approval before writes are enabled.
+
+Plugin/planning changes:
+- Aligned plugin action types with the existing Growth OS opportunity-routing contract:
+  - `seo_refresh`
+  - `new_page_or_article`
+  - `product_page_update`
+  - `internal_linking`
+  - `cro_experiment`
+  - `localization_experiment`
+  - `indexing_followup`
+  - `tracking_or_data_quality_issue`
+- Kept short legacy aliases only as compatibility input and normalized them to canonical names.
+- Updated docs to explain that action types are routing categories for templates, QA, indexing/follow-up, telemetry, and future assignee routing, not job titles or agent roles.
+- Updated setup mapping so every canonical action type maps to `["1"]` while `enableTaskWrites=false`.
+
+Live deployment/config:
+- Deployed the updated Paperclip app image and restarted `paperclip-app-1`.
+- Updated live plugin config for `paperclip.perfex-crm-agent-tools` with `projectManagerId=1`, setup-stage assignees `["1"]` for every canonical action type, `enableTaskWrites=false`, and `defaultDryRun=true`.
+- Verified `/api/health` is `ok`.
+- Verified the Perfex plugin loaded with 8 registered tools and `loadAll complete` reported 12/12 plugins succeeded.
+- Ran a preview-only plugin smoke test for `product_page_update`; it returned `wrote_to_perfex=false`, `project_id=1`, `project_manager_id=1`, and `assignee_ids=["1"]`.
+
 ## 2026-05-01
 
 Implemented the Phase 11 Perfex CRM MCP plugin MVP with write safety gates.

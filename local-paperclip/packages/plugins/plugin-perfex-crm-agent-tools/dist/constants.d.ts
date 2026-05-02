@@ -8,8 +8,9 @@ export declare const SLOT_IDS: {
 export declare const EXPORT_NAMES: {
     readonly settingsPage: "PerfexCrmSettingsPage";
 };
-export declare const PERFEX_ACTION_TYPES: readonly ["seo_refresh", "cro_experiment", "internal_linking", "localization", "tracking", "indexing", "data_quality"];
+export declare const PERFEX_ACTION_TYPES: readonly ["seo_refresh", "new_page_or_article", "product_page_update", "internal_linking", "cro_experiment", "localization_experiment", "indexing_followup", "tracking_or_data_quality_issue"];
 export type PerfexActionType = (typeof PERFEX_ACTION_TYPES)[number];
+export declare const PERFEX_ACTION_TYPE_ALIASES: Record<string, PerfexActionType>;
 export declare const TOOL_NAMES: {
     readonly healthcheck: "perfex-healthcheck";
     readonly listTools: "perfex-list-tools";

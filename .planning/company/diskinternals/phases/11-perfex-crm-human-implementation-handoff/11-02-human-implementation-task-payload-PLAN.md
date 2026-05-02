@@ -19,7 +19,7 @@ Standardize the human-facing task payload so agents can hand off SEO, CRO, local
 
 <task id="1" type="contract">
 <action>Define the Perfex task payload fields, required/optional validation, and action-type-specific templates.</action>
-<done>Every task has affected URLs, exact requested changes, source evidence, QA checklist, acceptance criteria, and related `DIS` issue.</done>
+<done>Every task has affected URLs, exact requested changes, source evidence, QA checklist, acceptance criteria, related `DIS` issue, and a canonical Growth OS action type.</done>
 </task>
 
 <task id="2" type="implementation">
@@ -29,11 +29,11 @@ Standardize the human-facing task payload so agents can hand off SEO, CRO, local
 
 <task id="3" type="agent-contract">
 <action>Update live DiskInternals CMO/Growth Opportunity/Specialist routing contracts so implementation means Perfex task payload, not website PR, unless future source access is explicitly granted.</action>
-<done>Pending owner approval of action types, Perfex project manager ID, and assignee mapping before live agent contracts are switched to task creation.</done>
+<done>Project manager ID is approved as `1`; setup-stage assignment routes all action types to `1`. Live task creation remains disabled pending final implementer assignment approval and explicit activation.</done>
 </task>
 
 ## Verification
 
-- Fixture payloads validate for SEO refresh and write-gate behavior; expand fixtures after owner approves the final action-type mapping.
+- Fixture payloads validate for SEO refresh, legacy action-type aliases, and write-gate behavior; expand fixtures after owner approves final implementer assignment.
 - Human-readable task body is understandable without agent jargon.
 - Mock task creation returns a Perfex task identifier and Paperclip issue link. Live task creation remains disabled until approval.

@@ -31,7 +31,7 @@ export function PerfexCrmSettingsPage(_props: PluginSettingsPageProps) {
         <h2>Perfex CRM MCP Handoff</h2>
         <p>
           Configure the MCP bearer token as a Paperclip secret. Keep task writes disabled
-          until the DiskInternals project ID, manager ID, and assignee mapping are approved.
+          until the final DiskInternals implementer assignment mapping is approved.
         </p>
       </section>
       <section style={cardStyle}>

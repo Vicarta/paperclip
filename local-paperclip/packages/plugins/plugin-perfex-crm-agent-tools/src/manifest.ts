@@ -76,7 +76,7 @@ const manifest: PaperclipPluginManifestV1 = {
         type: "string",
         title: "Assignee By Action Type JSON",
         description:
-          "JSON object mapping action types to Perfex staff/user IDs. Example: {\"seo_refresh\":[\"12\"],\"cro_experiment\":[\"15\"]}.",
+          "JSON object mapping canonical Growth OS action types to Perfex staff/user IDs. Example: {\"seo_refresh\":[\"12\"],\"product_page_update\":[\"15\"]}.",
         default: "{}",
       },
       createTaskToolName: {
@@ -107,7 +107,7 @@ const manifest: PaperclipPluginManifestV1 = {
         type: "boolean",
         title: "Enable Task Writes",
         description:
-          "Safety gate. Keep false until action-type mapping, project ID, manager ID, and assignees are approved.",
+          "Safety gate. Keep false until the final implementer assignment mapping is approved.",
         default: false,
       },
       defaultDryRun: {

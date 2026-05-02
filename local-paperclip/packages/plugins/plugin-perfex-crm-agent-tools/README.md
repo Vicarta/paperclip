@@ -21,41 +21,48 @@ health: https://pxmc.aibizmate.com/healthz
 
 The bearer token must be stored as a Paperclip encrypted secret and referenced by `perfexMcpTokenSecretRef`.
 
-## Proposed Action Types
+## Canonical Action Types
+
+These are routing categories, not human job titles. They exist so Paperclip can choose the right task template, validation checklist, assignee mapping, indexing behavior, and follow-up telemetry. They intentionally mirror the DiskInternals Growth OS opportunity-routing contract.
 
 ```text
 seo_refresh
-cro_experiment
+new_page_or_article
+product_page_update
 internal_linking
-localization
-tracking
-indexing
-data_quality
+cro_experiment
+localization_experiment
+indexing_followup
+tracking_or_data_quality_issue
 ```
 
 Each action type can map to one or more Perfex assignee IDs through `assigneeByActionTypeJson`.
+Legacy short aliases such as `localization`, `tracking`, `indexing`, and `data_quality` are accepted and normalized to the canonical names above.
 
 ## Discovered DiskInternals Defaults
 
 Read-only MCP discovery found project `DiskInternals.SEO` as `project_id=1`.
 
-Proposed but not yet approved mapping:
+Owner-approved setup routing:
 
 ```json
 {
   "perfexProjectId": "1",
   "projectManagerId": "1",
   "assigneeByActionTypeJson": {
-    "seo_refresh": ["13"],
-    "internal_linking": ["13"],
-    "indexing": ["13"],
-    "cro_experiment": ["2"],
-    "localization": ["5"],
-    "tracking": ["3"],
-    "data_quality": ["3"]
+    "seo_refresh": ["1"],
+    "new_page_or_article": ["1"],
+    "product_page_update": ["1"],
+    "internal_linking": ["1"],
+    "cro_experiment": ["1"],
+    "localization_experiment": ["1"],
+    "indexing_followup": ["1"],
+    "tracking_or_data_quality_issue": ["1"]
   }
 }
 ```
+
+This is a setup-stage mapping only. Final distribution to implementers should be approved later before `enableTaskWrites` is turned on.
 
 ## Verification
 

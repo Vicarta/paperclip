@@ -99,41 +99,63 @@ Available staff IDs:
 13 SEO Bot              staff
 ```
 
-These IDs are not yet approved as the final assignment mapping.
+`projectManagerId=1` is owner-approved for setup-stage routing. During setup, all handoff task types should also assign to `1` until the final human implementer mapping is explicitly approved.
 
-## Proposed Action Types And Assignment Mapping
+## Action Types And Setup Assignment Mapping
 
-Action types implemented in the plugin:
+Action types are routing categories, not job titles and not agent roles. They exist for five practical reasons:
+
+- choose the correct human task template;
+- choose the correct QA checklist;
+- decide whether indexing follow-up is allowed;
+- preserve comparable telemetry in BigQuery/Paperclip after the human change;
+- route to the right Perfex assignee once final implementer ownership is approved.
+
+Canonical action types mirror the Growth OS opportunity-routing contract:
 
 ```text
 seo_refresh
-cro_experiment
+new_page_or_article
+product_page_update
 internal_linking
-localization
-tracking
-indexing
-data_quality
+cro_experiment
+localization_experiment
+indexing_followup
+tracking_or_data_quality_issue
 ```
 
-Proposed mapping for owner approval:
+Short aliases are accepted only for compatibility and are normalized by the plugin:
+
+```text
+content_update -> seo_refresh
+new_page -> new_page_or_article
+product_update -> product_page_update
+localization -> localization_experiment
+tracking -> tracking_or_data_quality_issue
+data_quality -> tracking_or_data_quality_issue
+indexing -> indexing_followup
+```
+
+Owner-approved setup mapping:
 
 ```json
 {
   "perfexProjectId": "1",
   "projectManagerId": "1",
   "assigneeByActionTypeJson": {
-    "seo_refresh": ["13"],
-    "internal_linking": ["13"],
-    "indexing": ["13"],
-    "cro_experiment": ["2"],
-    "localization": ["5"],
-    "tracking": ["3"],
-    "data_quality": ["3"]
+    "seo_refresh": ["1"],
+    "new_page_or_article": ["1"],
+    "product_page_update": ["1"],
+    "internal_linking": ["1"],
+    "cro_experiment": ["1"],
+    "localization_experiment": ["1"],
+    "indexing_followup": ["1"],
+    "tracking_or_data_quality_issue": ["1"]
   }
 }
 ```
 
-Open decision: confirm whether `projectManagerId` should be `1` or `6`, and whether the proposed assignee IDs match the real human/team ownership.
+Open decision before enabling writes: approve the final implementer assignment mapping. Until then, keep `enableTaskWrites=false` and use previews/dry-runs only.
 
 ## Task Payload Contract
 
@@ -146,7 +168,7 @@ paperclip_issue_key: DIS-...
 source_opportunity_id: ...
 affected_urls: [...]
 product_lane: ...
-action_type: seo_refresh | cro_experiment | internal_linking | localization | tracking | indexing | data_quality
+action_type: seo_refresh | new_page_or_article | product_page_update | internal_linking | cro_experiment | localization_experiment | indexing_followup | tracking_or_data_quality_issue
 priority: ...
 requested_changes: exact human-readable instructions
 source_evidence: BigQuery/plugin report links or summarized rows

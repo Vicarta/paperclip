@@ -3,12 +3,13 @@ var DEFAULT_PERFEX_MCP_URL = "https://pxmc.aibizmate.com/mcp";
 var DEFAULT_PERFEX_HEALTH_URL = "https://pxmc.aibizmate.com/healthz";
 var PERFEX_ACTION_TYPES = [
   "seo_refresh",
-  "cro_experiment",
+  "new_page_or_article",
+  "product_page_update",
   "internal_linking",
-  "localization",
-  "tracking",
-  "indexing",
-  "data_quality"
+  "cro_experiment",
+  "localization_experiment",
+  "indexing_followup",
+  "tracking_or_data_quality_issue"
 ];
 
 // src/ui/index.tsx
@@ -32,7 +33,7 @@ function PerfexCrmSettingsPage(_props) {
   return /* @__PURE__ */ jsxs("div", { style: stackStyle, children: [
     /* @__PURE__ */ jsxs("section", { style: cardStyle, children: [
       /* @__PURE__ */ jsx("h2", { children: "Perfex CRM MCP Handoff" }),
-      /* @__PURE__ */ jsx("p", { children: "Configure the MCP bearer token as a Paperclip secret. Keep task writes disabled until the DiskInternals project ID, manager ID, and assignee mapping are approved." })
+      /* @__PURE__ */ jsx("p", { children: "Configure the MCP bearer token as a Paperclip secret. Keep task writes disabled until the final DiskInternals implementer assignment mapping is approved." })
     ] }),
     /* @__PURE__ */ jsxs("section", { style: cardStyle, children: [
       /* @__PURE__ */ jsx("h3", { children: "Defaults" }),

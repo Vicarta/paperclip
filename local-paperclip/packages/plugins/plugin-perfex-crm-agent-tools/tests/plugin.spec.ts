@@ -81,6 +81,20 @@ describe("plugin-perfex-crm-agent-tools", () => {
     expect(payload.metadata.paperclip_company_id).toBe("969d66ff-d77e-4dbf-8759-1a17c2bb17c2");
   });
 
+  it("normalizes legacy short action type aliases to canonical Growth OS routing types", () => {
+    const payload = buildImplementationTaskPayload({
+      args: { ...taskInput, action_type: "localization" },
+      config: {
+        ...config,
+        assigneeByActionTypeJson: JSON.stringify({
+          localization_experiment: ["55"],
+        }),
+      },
+    });
+    expect(payload.action_type).toBe("localization_experiment");
+    expect(payload.assignee_ids).toEqual(["55"]);
+  });
+
   it("registers read-only health and list tools", async () => {
     const harness = createTestHarness({ manifest, config });
     await plugin.definition.setup(harness.ctx);

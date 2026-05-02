@@ -3,6 +3,7 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import {
   DEFAULT_PERFEX_HEALTH_URL,
   DEFAULT_PERFEX_MCP_URL,
+  PERFEX_ACTION_TYPE_ALIASES,
   PERFEX_ACTION_TYPES,
   PLUGIN_ID,
   PLUGIN_VERSION,
@@ -161,6 +162,8 @@ export function normalizeConfig(config: PerfexPluginConfig) {
 function normalizeActionType(value: unknown): PerfexActionType | null {
   const candidate = readString(value);
   if (!candidate) return null;
+  const alias = PERFEX_ACTION_TYPE_ALIASES[candidate];
+  if (alias) return alias;
   return (PERFEX_ACTION_TYPES as readonly string[]).includes(candidate)
     ? candidate as PerfexActionType
     : null;

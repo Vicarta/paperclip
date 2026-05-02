@@ -1,6 +1,6 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import { DEFAULT_PERFEX_HEALTH_URL, DEFAULT_PERFEX_MCP_URL, PERFEX_ACTION_TYPES, PLUGIN_ID, PLUGIN_VERSION, } from "./constants.js";
+import { DEFAULT_PERFEX_HEALTH_URL, DEFAULT_PERFEX_MCP_URL, PERFEX_ACTION_TYPE_ALIASES, PERFEX_ACTION_TYPES, PLUGIN_ID, PLUGIN_VERSION, } from "./constants.js";
 function isRecord(value) {
     return !!value && typeof value === "object" && !Array.isArray(value);
 }
@@ -66,6 +66,9 @@ function normalizeActionType(value) {
     const candidate = readString(value);
     if (!candidate)
         return null;
+    const alias = PERFEX_ACTION_TYPE_ALIASES[candidate];
+    if (alias)
+        return alias;
     return PERFEX_ACTION_TYPES.includes(candidate)
         ? candidate
         : null;
