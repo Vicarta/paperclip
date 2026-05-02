@@ -43,3 +43,11 @@
 - After the owner answered [AST-688](/AST/issues/AST-688), recovered the chain through [AST-698](/AST/issues/AST-698), [AST-700](/AST/issues/AST-700), and [AST-701](/AST/issues/AST-701) with 10-minute controls and manual wakeups where child issues were `todo` without active run.
 - The process reached a new valid owner gate on [AST-688](/AST/issues/AST-688): approve whether to open Stage 45 Paid Ads Copy for `/free-horoscope` and which segments to include.
 - Cancelled [AST-702](/AST/issues/AST-702) as another duplicate HIA liaison gate; Paperclip auto-labels blocked issues as `Human Decision Needed`, so HIA liaison tasks must not remain `blocked` after posting the canonical source-issue question.
+
+## 2026-05-02
+
+- Corrected the `/free-horoscope` direction after the owner clarified the needed lane is SEO/blog traffic acquisition, not Google Ads / paid ads copy.
+- Closed [AST-688](/AST/issues/AST-688) with a direction-correction note and created [AST-705](/AST/issues/AST-705) as the CMO-owned SEO/blog content-plan parent lane.
+- Linked [AST-704](/AST/issues/AST-704) as the specialist content-plan child under [AST-705](/AST/issues/AST-705); the child correctly detected missing prerequisites instead of producing a speculative Stage 56 plan.
+- Returned [AST-704](/AST/issues/AST-704) to CMO as done-with-prerequisite-blocker, because the blocker was not owner input: missing route-level SEO contract plus `Stage 53 -> Stage 54 -> human approval`.
+- CMO opened [AST-706](/AST/issues/AST-706) for canonical `/free-horoscope` route reference refresh. Corrected [AST-705](/AST/issues/AST-705) from `blocked` to `in_progress` because a manager parent waiting for a running child is not a `Human Decision Needed` gate.

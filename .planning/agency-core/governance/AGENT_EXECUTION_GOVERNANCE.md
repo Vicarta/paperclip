@@ -58,6 +58,8 @@ When a child issue completes, the completing agent must:
 
 The parent issue remains the manager-owned coordination lane. Child completion is not automatically the same as parent completion.
 
+When a manager opens an execution child issue and the child is running or ready to run, the parent should normally stay `in_progress`, not `blocked`. Use `blocked` on the parent only for a real external blocker or owner decision. In Paperclip, `blocked` auto-adds `Human Decision Needed`, so using it as "waiting for my child" creates a false human gate.
+
 ## Delegation Execution State Rule
 
 When a manager creates a child issue for work that should start now, the child issue must be executable, not parked.
