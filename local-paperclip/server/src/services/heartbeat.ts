@@ -12,6 +12,7 @@ import {
   agentWakeupRequests,
   heartbeatRunEvents,
   heartbeatRuns,
+  issueComments,
   issues,
   projects,
   projectWorkspaces,
@@ -47,6 +48,7 @@ import {
   sanitizeRuntimeServiceBaseEnv,
 } from "./workspace-runtime.js";
 import { issueService } from "./issues.js";
+import { operationalTelegramAlertService } from "./operational-telegram-alerts.js";
 import { executionWorkspaceService, mergeExecutionWorkspaceConfig } from "./execution-workspaces.js";
 import { workspaceOperationService } from "./workspace-operations.js";
 import {
@@ -376,6 +378,20 @@ export function prioritizeProjectWorkspaceCandidatesForRun<T extends ProjectWork
 
 function readNonEmptyString(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value : null;
+}
+
+export function shouldFailSucceededIssueRunAsSilentNoop(input: {
+  invocationSource: string;
+  outcome: "succeeded" | "failed" | "cancelled" | "timed_out";
+  hasIssueId: boolean;
+  issueStatus: string | null;
+  runCommentCount: number;
+}): boolean {
+  if (input.invocationSource !== "assignment") return false;
+  if (input.outcome !== "succeeded") return false;
+  if (!input.hasIssueId) return false;
+  if (!["backlog", "todo"].includes(input.issueStatus ?? "")) return false;
+  return input.runCommentCount === 0;
 }
 
 function normalizeLedgerBillingType(value: unknown): BillingType {
@@ -941,6 +957,63 @@ export function heartbeatService(db: Db) {
       .from(heartbeatRuns)
       .where(eq(heartbeatRuns.id, runId))
       .then((rows) => rows[0] ?? null);
+  }
+
+  async function detectSilentNoopSucceededIssueRun(input: {
+    run: typeof heartbeatRuns.$inferSelect;
+    outcome: "succeeded" | "failed" | "cancelled" | "timed_out";
+  }): Promise<{
+    issueId: string;
+    issueIdentifier: string | null;
+    issueTitle: string;
+    issueStatus: string;
+    runCommentCount: number;
+  } | null> {
+    const context = parseObject(input.run.contextSnapshot);
+    const issueId = readNonEmptyString(context.issueId) ?? readNonEmptyString(context.taskId);
+    if (input.run.invocationSource !== "assignment" || input.outcome !== "succeeded" || !issueId) return null;
+
+    const issue = await db
+      .select({
+        id: issues.id,
+        identifier: issues.identifier,
+        title: issues.title,
+        status: issues.status,
+      })
+      .from(issues)
+      .where(and(eq(issues.id, issueId), eq(issues.companyId, input.run.companyId)))
+      .then((rows) => rows[0] ?? null);
+    if (!issue) return null;
+
+    const runCommentCount = await db
+      .select({ body: issueComments.body })
+      .from(issueComments)
+      .where(
+        and(
+          eq(issueComments.companyId, input.run.companyId),
+          eq(issueComments.issueId, issue.id),
+          eq(issueComments.createdByRunId, input.run.id),
+        ),
+      )
+      .limit(20)
+      .then((rows) => rows.filter((row) => !row.body.trim().startsWith("## Workspace Ready")).length);
+
+    const shouldFail = shouldFailSucceededIssueRunAsSilentNoop({
+      invocationSource: input.run.invocationSource,
+      outcome: input.outcome,
+      hasIssueId: true,
+      issueStatus: issue.status,
+      runCommentCount,
+    });
+    if (!shouldFail) return null;
+
+    return {
+      issueId: issue.id,
+      issueIdentifier: issue.identifier,
+      issueTitle: issue.title,
+      issueStatus: issue.status,
+      runCommentCount,
+    };
   }
 
   async function getRuntimeState(agentId: string) {
@@ -2798,6 +2871,11 @@ export function heartbeatService(db: Db) {
         outcome = "failed";
       }
 
+      const silentNoop = await detectSilentNoopSucceededIssueRun({ run, outcome });
+      if (silentNoop) {
+        outcome = "failed";
+      }
+
       let logSummary: { bytes: number; sha256?: string; compressed: boolean } | null = null;
       if (handle) {
         logSummary = await runLogStore.finalize(handle);
@@ -2841,20 +2919,27 @@ export function heartbeatService(db: Db) {
       await setRunStatus(run.id, status, {
         finishedAt: new Date(),
         error:
-          outcome === "succeeded"
-            ? null
-            : redactCurrentUserText(
-                adapterResult.errorMessage ?? (outcome === "timed_out" ? "Timed out" : "Adapter failed"),
+          silentNoop
+            ? redactCurrentUserText(
+                `Assignment run finished without updating ${silentNoop.issueIdentifier ?? silentNoop.issueId}; marked as silent_noop.`,
                 currentUserRedactionOptions,
-              ),
+              )
+            : outcome === "succeeded"
+              ? null
+              : redactCurrentUserText(
+                  adapterResult.errorMessage ?? (outcome === "timed_out" ? "Timed out" : "Adapter failed"),
+                  currentUserRedactionOptions,
+                ),
         errorCode:
-          outcome === "timed_out"
-            ? "timeout"
-            : outcome === "cancelled"
-              ? "cancelled"
-              : outcome === "failed"
-                ? (adapterResult.errorCode ?? "adapter_failed")
-                : null,
+          silentNoop
+            ? "silent_noop"
+            : outcome === "timed_out"
+              ? "timeout"
+              : outcome === "cancelled"
+                ? "cancelled"
+                : outcome === "failed"
+                  ? (adapterResult.errorCode ?? "adapter_failed")
+                  : null,
         exitCode: adapterResult.exitCode,
         signal: adapterResult.signal,
         usageJson,
@@ -2869,8 +2954,57 @@ export function heartbeatService(db: Db) {
 
       await setWakeupStatus(run.wakeupRequestId, outcome === "succeeded" ? "completed" : status, {
         finishedAt: new Date(),
-        error: adapterResult.errorMessage ?? null,
+        error: silentNoop
+          ? `Assignment run finished without updating ${silentNoop.issueIdentifier ?? silentNoop.issueId}`
+          : (adapterResult.errorMessage ?? null),
       });
+
+      if (silentNoop) {
+        const issueLabel = silentNoop.issueIdentifier ?? silentNoop.issueId;
+        try {
+          await issuesSvc.addComment(
+            silentNoop.issueId,
+            [
+              "⚠️ Runtime guard: agent run marked as `silent_noop`.",
+              "",
+              `Run \`${run.id}\` for agent **${agent.name}** exited successfully, but issue ${issueLabel} stayed in \`${silentNoop.issueStatus}\` and received no result comment from that run.`,
+              "",
+              "Paperclip marked the run as failed so this task does not disappear behind a green process status. Re-run or reassign the issue after checking the agent output.",
+            ].join("\n"),
+            { agentId: agent.id, runId: run.id },
+          );
+        } catch (err) {
+          logger.warn(
+            {
+              companyId: run.companyId,
+              agentId: agent.id,
+              runId: run.id,
+              issueId: silentNoop.issueId,
+              err,
+            },
+            "failed to write silent noop diagnostic issue comment",
+          );
+        }
+        try {
+          await operationalTelegramAlertService(db).sendSilentNoopAlert({
+            companyId: run.companyId,
+            issueId: silentNoop.issueId,
+            agentId: agent.id,
+            runId: run.id,
+          });
+        } catch (err) {
+          logger.warn(
+            {
+              companyId: run.companyId,
+              agentId: agent.id,
+              runId: run.id,
+              issueId: silentNoop.issueId,
+              err,
+            },
+            "failed to send silent noop telegram alert",
+          );
+        }
+      }
 
       const finalizedRun = await getRun(run.id);
       if (finalizedRun) {

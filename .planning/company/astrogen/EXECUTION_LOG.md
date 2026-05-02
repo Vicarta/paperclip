@@ -56,3 +56,8 @@
 - Investigated the root cause of the `AST-706` permission failure and confirmed it was systemic: `/home/paperclip/astrogen` is shared by Paperclip app/agents running as `oc`/uid 1000 and File Browser running as `paperclip`/uid 1002. The old ACL mask gave `oc` read/execute on several existing directories but not write/create.
 - Applied a cross-runtime ACL/default-ACL policy to `/home/paperclip/astrogen` so both `oc` and `paperclip` can create and edit managed workspace files. Verified bidirectional smoke writes in `docs/reference/products`, `docs/reference`, and `work`.
 - Added reusable ops documentation in `ops/paperclip/company-workspace-permissions.md` and added the workspace mount permission rule to agency-core execution governance.
+- Diagnosed [AST-708](/AST/issues/AST-708) as a true runtime silent-noop: `SEO Semantic Core Validator` assignment runs exited successfully but left the issue in `todo` with no result comment.
+- Planned and implemented agency-core Phase 3 `Runtime Silent-Noop Recovery And Telegram Operational Alerts`.
+- Deployed the updated Paperclip app to live `paperclip-app-1` and verified `/api/health` returned `ok`.
+- Re-ran [AST-708](/AST/issues/AST-708) after deployment. The new guard correctly marked replacement run `63d44d5c-a4d1-4d72-9e03-f4d6de1968a6` as `failed/silent_noop`, added a diagnostic issue comment, released the issue execution lock, and sent a Telegram operational alert (`messageId=477`).
+- Existing issue-done Telegram messages now include the responsible agent name when available.

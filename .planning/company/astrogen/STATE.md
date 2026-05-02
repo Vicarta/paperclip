@@ -13,7 +13,7 @@ See: `.planning/company/astrogen/README.md`
 
 Phase: Astrogen growth/content operating system hardening
 Status: Active
-Last activity: 2026-05-02 - Recovered `/free-horoscope` SEO/blog lane and applied a systemic cross-runtime ACL policy to the live Astrogen workspace after `AST-706` exposed a write-permission mismatch.
+Last activity: 2026-05-02 - Deployed the runtime silent-noop guard and Telegram operational alerts after `AST-708` proved an agent assignment run could exit successfully without moving the issue forward.
 
 ## Current Focus
 
@@ -47,6 +47,7 @@ Last activity: 2026-05-02 - Recovered `/free-horoscope` SEO/blog lane and applie
 - Manager parent issues should remain `in_progress` while execution children are running; do not use `blocked` to mean "waiting for child", because Paperclip treats `blocked` as a human-decision gate.
 - SEO monitoring and growth should follow agency-core `SEO_PERFORMANCE_LOOP`: pages can be discovered outside Paperclip, GSC queries feed keyword candidates and new-page opportunities, and rank tracking follows company/project tier policies.
 - Live Astrogen workspace permissions must follow `ops/paperclip/company-workspace-permissions.md`: `/home/paperclip/astrogen` is shared by Paperclip app/agents (`oc`/uid 1000) and File Browser (`paperclip`/uid 1002), so ACL/default ACL must keep both runtimes writable.
+- Paperclip runtime now treats issue-assigned successful runs with no meaningful issue-side effect as `failed/silent_noop`, writes a diagnostic comment, releases the issue lock, and sends a Telegram alert with responsible agent attribution.
 
 ## Pending Todos
 
@@ -56,6 +57,7 @@ Last activity: 2026-05-02 - Recovered `/free-horoscope` SEO/blog lane and applie
 - Keep future commits scoped and documented.
 - Add direct references to agency-core execution governance in live CEO/CMO/CTO/HIA/Observability contracts during the next live contract maintenance pass.
 - Convert `SEO_PERFORMANCE_LOOP` into concrete Astrogen Phase 5 implementation tasks when SEO monitoring work resumes.
+- Recover [AST-708](/AST/issues/AST-708): the system now detects the validator no-op, but the Stage 54 validation result still needs to be produced by a corrected contract or a different working agent.
 
 ## Blockers/Concerns
 

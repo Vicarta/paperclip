@@ -32,6 +32,19 @@ Every open task must be in one of these explainable states:
 
 If a task is `in_progress` but has no active run, wakeup, recovery path, or fresh continuation comment, a manager or observability routine should treat it as suspicious and escalate or recover it.
 
+## Run Side-Effect Rule
+
+An assignment run is not complete just because the adapter process exits successfully.
+
+For issue-assigned work, a successful run must leave at least one meaningful issue-side effect:
+
+- a result, blocker, continuation, or handoff comment;
+- a status transition;
+- an artifact/attachment/work-product handoff referenced from the issue;
+- a parent/child handoff when the issue is part of a managed workflow.
+
+If an assignment run exits successfully while the issue remains executable and unchanged, Paperclip runtime should treat it as a `silent_noop` failure, release the execution lock, add a diagnostic issue comment, and alert the operator. This prevents work from disappearing behind a green process status.
+
 ## Blocker Rule
 
 A blocker must name:
@@ -150,6 +163,7 @@ Telegram or other human notification channels should include:
 
 - company/project context when multiple companies share one instance;
 - issue identifier;
+- sending or responsible agent name when known;
 - human-readable title;
 - short useful result or question;
 - one link to the Paperclip task for details.
@@ -170,6 +184,8 @@ Managers and observability routines should detect:
 - budget-heavy provider loops without run/cost provenance.
 
 Observability should report "found issue / started recovery / recovery complete" for long-running or stuck system problems when the channel is stable and appropriate.
+
+Runtime-level guards may also report directly when a problem is detected before observability sees it. These alerts should be short, human-readable, and should not expose raw logs, secrets, provider tokens, or long agent-internal reasoning.
 
 ## Adoption Rule
 

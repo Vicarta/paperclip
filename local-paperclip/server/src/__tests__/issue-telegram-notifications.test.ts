@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { Readable } from "node:stream";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { companies, createDb, issues, pluginConfig, plugins, projects } from "@paperclipai/db";
+import { agents, companies, createDb, issues, pluginConfig, plugins, projects } from "@paperclipai/db";
 import type { StorageService } from "../storage/types.js";
 import { documentService } from "../services/documents.js";
 import { issueService } from "../services/issues.js";
@@ -65,6 +65,7 @@ describeEmbeddedPostgres("issueTelegramNotificationService", () => {
   it("sends the resolved issue attachment to telegram when the issue is done", async () => {
     const companyId = randomUUID();
     const issueId = randomUUID();
+    const agentId = randomUUID();
     const pluginId = randomUUID();
 
     await db.insert(companies).values({
@@ -83,6 +84,15 @@ describeEmbeddedPostgres("issueTelegramNotificationService", () => {
       createdByUserId: "user-1",
       issueNumber: 456,
       identifier: "AST-456",
+    });
+
+    await db.insert(agents).values({
+      id: agentId,
+      companyId,
+      name: "SEO Blog Writer",
+      role: "seo",
+      title: "SEO Blog Writer",
+      adapterType: "codex_local",
     });
 
     await documentsSvc.upsertIssueDocument({
@@ -170,6 +180,7 @@ describeEmbeddedPostgres("issueTelegramNotificationService", () => {
     });
 
     const result = await svc.sendIssueDoneNotification(issueId, {
+      agentId,
       completionSummary: "Статтю підготовлено й надіслано в Telegram.",
     });
 
@@ -188,6 +199,7 @@ describeEmbeddedPostgres("issueTelegramNotificationService", () => {
     expect(init.method).toBe("POST");
     const textBody = getTelegramTextBody(fetchMock);
     expect(textBody.text).toContain("✅ Готово: AST-456");
+    expect(textBody.text).toContain("Агент: SEO Blog Writer (SEO Blog Writer)");
     expect(textBody.text).toContain("Що зроблено:");
     expect(wordCount(String(textBody.text).split("Що зроблено:")[1] ?? "")).toBeGreaterThanOrEqual(150);
     expect(textBody.reply_markup).toEqual({
@@ -202,6 +214,7 @@ describeEmbeddedPostgres("issueTelegramNotificationService", () => {
     expect(form.get("chat_id")).toBe("-5154906793");
     expect(form.get("caption")).toContain("✅ Готово: AST-456");
     expect(form.get("caption")).toContain("Компанія: Astrogen");
+    expect(form.get("caption")).toContain("Агент: SEO Blog Writer (SEO Blog Writer)");
     expect(form.get("caption")).toContain("Задача: Налаштування Telegram-повідомлень");
     expect(form.get("caption")).toContain("Що зроблено: Статтю підготовлено й надіслано в Telegram.");
     expect(form.get("caption")).toContain("Відкрити в Paperclip: https://paperclip.example.test/AST/issues/AST-456");

@@ -1,6 +1,6 @@
 import { eq, and, desc } from "drizzle-orm";
 import type { Db } from "@paperclipai/db";
-import { activityLog, companies, issueComments, pluginConfig, plugins, projects } from "@paperclipai/db";
+import { activityLog, agents, companies, issueComments, pluginConfig, plugins, projects } from "@paperclipai/db";
 import type { StorageService } from "../storage/types.js";
 import { issueService } from "./issues.js";
 import { issueNotificationContractService } from "./issue-notification-contracts.js";
@@ -108,6 +108,7 @@ function buildCaption(
   publicUrl: string | null,
   company: { name: string; issuePrefix: string } | null,
   project: { name: string } | null,
+  agentName?: string | null,
   completionSummary?: string | null,
 ): string {
   const identifier = issue.identifier ?? issue.id;
@@ -119,6 +120,9 @@ function buildCaption(
   }
   if (project?.name) {
     parts.push(`Проєкт: ${project.name}`);
+  }
+  if (agentName) {
+    parts.push(`Агент: ${agentName}`);
   }
   parts.push(`Задача: ${title}`, `Що зроблено: ${summary}`);
   if (publicUrl) {
@@ -155,6 +159,7 @@ function buildIssueDoneMessage(
   publicUrl: string | null,
   company: { name: string; issuePrefix: string } | null,
   project: { name: string } | null,
+  agentName?: string | null,
   completionSummary?: string | null,
 ): string {
   const identifier = issue.identifier ?? issue.id;
@@ -170,6 +175,9 @@ function buildIssueDoneMessage(
   }
   if (project?.name) {
     parts.push(`Проєкт: ${project.name}`);
+  }
+  if (agentName) {
+    parts.push(`Агент: ${agentName}`);
   }
   parts.push(`Задача: ${title}`, `Що зроблено: ${summary}`);
   if (issueUrl) {
@@ -572,6 +580,17 @@ export function issueTelegramNotificationService(
       .then((rows) => rows[0] ?? null);
   }
 
+  async function getActorAgentName(companyId: string, agentId: string | null | undefined): Promise<string | null> {
+    if (!agentId) return null;
+    const row = await db
+      .select({ name: agents.name, title: agents.title })
+      .from(agents)
+      .where(and(eq(agents.companyId, companyId), eq(agents.id, agentId)))
+      .then((rows) => rows[0] ?? null);
+    if (!row) return null;
+    return row.title ? `${row.name} (${row.title})` : row.name;
+  }
+
   async function resolveCompletionSummaryEvidence(
     issue: { id: string; companyId: string },
     actor?: IssueDoneNotificationActor,
@@ -665,16 +684,24 @@ export function issueTelegramNotificationService(
     const chatId = resolveChatId(config, resolved.contract.recipient);
     if (!chatId) return { status: "skipped", reason: "telegram_chat_id_missing" };
 
-    const [token, company, project] = await Promise.all([
+    const [token, company, project, actorAgentName] = await Promise.all([
       resolveTelegramBotToken(issue.companyId, config.telegramBotTokenRef),
       getIssueCompany(issue.companyId),
       getIssueProject(issue.projectId),
+      getActorAgentName(issue.companyId, actor?.agentId),
     ]);
     const topicId = resolved.contract.recipient?.topicId ?? null;
     const completionSummary = await resolveCompletionSummaryEvidence(issue, actor);
     const issueUrl = buildIssueUrl(issue, config.paperclipPublicUrl, company);
-    const richMessage = buildIssueDoneMessage(issue, config.paperclipPublicUrl, company, project, completionSummary);
-    const caption = buildCaption(issue, config.paperclipPublicUrl, company, project, completionSummary);
+    const richMessage = buildIssueDoneMessage(
+      issue,
+      config.paperclipPublicUrl,
+      company,
+      project,
+      actorAgentName,
+      completionSummary,
+    );
+    const caption = buildCaption(issue, config.paperclipPublicUrl, company, project, actorAgentName, completionSummary);
     const messageIds: Array<number | null> = [];
 
     const summaryMessageId = await sendTelegramMessage({
