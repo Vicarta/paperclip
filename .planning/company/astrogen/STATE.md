@@ -13,7 +13,7 @@ See: `.planning/company/astrogen/README.md`
 
 Phase: Astrogen growth/content operating system hardening
 Status: Active
-Last activity: 2026-05-01 - Cleaned stale Astrogen human-decision gates and confirmed only the real `/free-horoscope` segment-selection gate remains on `AST-688`.
+Last activity: 2026-05-02 - Recovered `/free-horoscope` SEO/blog lane and applied a systemic cross-runtime ACL policy to the live Astrogen workspace after `AST-706` exposed a write-permission mismatch.
 
 ## Current Focus
 
@@ -46,6 +46,7 @@ Last activity: 2026-05-01 - Cleaned stale Astrogen human-decision gates and conf
 - Manager-created execution child issues must be `todo`, not `backlog`, unless intentionally parked. Managers must verify assignee availability and wakeup/active-run evidence after delegation. Recovery checks must re-read child status/comments first and must not move `done` or `cancelled` children back to `todo` unless explicit rework is requested.
 - Manager parent issues should remain `in_progress` while execution children are running; do not use `blocked` to mean "waiting for child", because Paperclip treats `blocked` as a human-decision gate.
 - SEO monitoring and growth should follow agency-core `SEO_PERFORMANCE_LOOP`: pages can be discovered outside Paperclip, GSC queries feed keyword candidates and new-page opportunities, and rank tracking follows company/project tier policies.
+- Live Astrogen workspace permissions must follow `ops/paperclip/company-workspace-permissions.md`: `/home/paperclip/astrogen` is shared by Paperclip app/agents (`oc`/uid 1000) and File Browser (`paperclip`/uid 1002), so ACL/default ACL must keep both runtimes writable.
 
 ## Pending Todos
 
@@ -60,6 +61,7 @@ Last activity: 2026-05-01 - Cleaned stale Astrogen human-decision gates and conf
 
 - Local `.planning/company/astrogen/` previously had only README, so historical Astrogen state must be reconstructed incrementally from conversation history and Paperclip issues.
 - Some shared plugins have been live-tested in DiskInternals context first; Astrogen enablement should be verified separately before agents rely on them.
+- The legacy Astrogen workspace is mounted directly as `/astrogen`; future company workspaces should prefer `/home/paperclip/companies/{client_key}` and must pass cross-runtime write verification before agent execution.
 
 ## Session Continuity
 

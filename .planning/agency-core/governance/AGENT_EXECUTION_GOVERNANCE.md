@@ -97,6 +97,20 @@ Agents must not assume that Codex desktop tools, local MCP resources, GitHub con
 
 Secrets, bearer tokens, and provider credentials must remain server-side and must not be written into prompts, issue comments, run logs, or planning files.
 
+## Workspace Mount Permission Rule
+
+Company workspaces mounted into Paperclip must be writable by the actual runtime users that create files, not only by the nominal owner of the directory.
+
+Required operations behavior:
+
+- identify every runtime that writes to the workspace, including Paperclip app/agent runtime, file-browser tools, import/export helpers, and deployment scripts;
+- use a stable ownership or ACL policy that lets those runtimes create and edit files in the managed workspace;
+- set default ACLs on directories so newly created files remain editable by the required runtimes;
+- verify cross-runtime writes before assigning agent work that creates docs, reference files, artifacts, or work products;
+- document the live policy in `ops/paperclip/company-workspace-permissions.md` or the equivalent company ops note.
+
+Do not treat a single-directory `Permission denied` fix as complete if the workspace is shared by multiple runtimes with different uid/gid values.
+
 ## SEO And MCP Work Separation
 
 SEO/MCP workflows should use separate child issues for different execution lanes.
