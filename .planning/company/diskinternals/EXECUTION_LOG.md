@@ -13,6 +13,7 @@ Completed Phase 12.
 
 Deliverables:
 - Added `deliverables/PAPERCLIP_DISK_INTERNALS_USER_GUIDE.md` as a business-first Ukrainian operator guide.
+- Added `deliverables/PAPERCLIP_DISK_INTERNALS_USER_GUIDE_UA.md` as the fully Ukrainian operator-facing variant.
 - Updated server-side issue completion notifications so Telegram receives a rich human summary text message before attachment documents.
 - Added a completion evidence resolver using explicit summaries, recent comments, and issue update activity.
 - Added a 150-250 word quality gate for `Що зроблено` when the source summary is short, generic, technical, or agent-facing.
