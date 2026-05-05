@@ -1,5 +1,21 @@
 # Execution Log
 
+## 2026-05-05
+
+Updated DiskInternals Semantic Core MCP competitor recall contract.
+
+Planning/code changes:
+- Added `SEO-MCP-03` through `SEO-MCP-05` requirements for production competitor SERP content parsing, debug artifact preservation, and normal-gate validation before accepting parsed content terms.
+- Updated Phase 10 roadmap and state notes so production semantic-core runs enable `semantic_expansion.serp_competitor_expansion.enable_content_parsing=true`, while smoke/budget-sensitive runs can keep content parsing disabled.
+- Updated the Semantic Core MCP plugin adapter so top-level `semantic_expansion` supplied with `register-project` is preserved inside the registered project config.
+- Updated `prepare-paperclip-import` output to summarize competitor expansion evidence: endpoint source fields, classification reasons, recall ledger count, competitor candidate count, and `competitor_expansion_debug` counters.
+- Updated plugin README/tests to reflect `geo_search_volume` vs `global_search_volume` and the competitor recall artifact contract.
+
+Live contract changes:
+- Updated DiskInternals `CMO`, `CTO`, `SEO Semantic Core Strategist`, and `SEO Semantic Core Validator` live instructions with the competitor SERP recall rule.
+- `SEO Semantic Core Strategist` now has the exact production `semantic_expansion` JSON block and the rule that smoke/budget runs must be labeled as limited.
+- `SEO Semantic Core Validator` now explicitly checks missing content parsing, missing recall/debug artifacts, previous-layer duplicate boundaries, and normal-gate acceptance before approving a semantic core.
+
 ## 2026-05-02
 
 Added Phase 12 to the DiskInternals GSD roadmap.

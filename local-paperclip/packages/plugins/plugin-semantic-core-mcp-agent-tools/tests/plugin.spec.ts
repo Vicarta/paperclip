@@ -503,6 +503,50 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
     expect(projectConfig).not.toHaveProperty("market_matrix");
   });
 
+  it("preserves top-level semantic expansion options inside the registered project config", () => {
+    const result = prepareSemanticCoreMcpArguments({
+      toolName: "register_project",
+      args: {
+        project_id: "diskinternals-vmfs-mac-production",
+        project_config: {
+          target_domain: "diskinternals.com",
+          language_code: "en",
+          location_code: 2840,
+        },
+        semantic_expansion: {
+          serp_competitor_expansion: {
+            enabled: true,
+            enable_content_parsing: true,
+            max_representatives_per_cluster: 1,
+            max_serp_results_per_representative: 5,
+            max_competitor_urls_per_cluster: 3,
+            max_ranked_keywords_per_url: 100,
+            max_content_terms_per_url: 50,
+            content_term_min_words: 2,
+            content_term_max_words: 8,
+          },
+        },
+        seed_catalog: [],
+      },
+    });
+
+    const projectConfig = (result as { payload: { inputs: { project_config: Record<string, unknown> } } })
+      .payload.inputs.project_config;
+    expect(projectConfig.semantic_expansion).toEqual({
+      serp_competitor_expansion: {
+        enabled: true,
+        enable_content_parsing: true,
+        max_representatives_per_cluster: 1,
+        max_serp_results_per_representative: 5,
+        max_competitor_urls_per_cluster: 3,
+        max_ranked_keywords_per_url: 100,
+        max_content_terms_per_url: 50,
+        content_term_min_words: 2,
+        content_term_max_words: 8,
+      },
+    });
+  });
+
   it("validates paperclip_import.v1 before storing import candidate", async () => {
     const harness = createTestHarness({ manifest });
     await plugin.definition.setup(harness.ctx);

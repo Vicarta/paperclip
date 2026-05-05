@@ -406,14 +406,33 @@ function normalizeProjectConfig(value: unknown, projectId: unknown) {
   };
 }
 
+function mergeTopLevelSemanticExpansion(
+  projectConfig: unknown,
+  payload: Record<string, unknown>,
+) {
+  if (!isRecord(projectConfig)) return projectConfig;
+  if (Object.prototype.hasOwnProperty.call(projectConfig, "semantic_expansion")) {
+    return projectConfig;
+  }
+  if (!isRecord(payload.semantic_expansion)) return projectConfig;
+  return {
+    ...projectConfig,
+    semantic_expansion: payload.semantic_expansion,
+  };
+}
+
 function normalizeRegisterProjectPayload(payload: Record<string, unknown>) {
   const existingInputs = isRecord(payload.inputs) ? payload.inputs : null;
   if (existingInputs) {
+    const projectConfig = mergeTopLevelSemanticExpansion(
+      existingInputs.project_config,
+      payload,
+    );
     return {
       ...payload,
       inputs: {
         ...existingInputs,
-        project_config: normalizeProjectConfig(existingInputs.project_config, payload.project_id),
+        project_config: normalizeProjectConfig(projectConfig, payload.project_id),
         seed_catalog: normalizeSeedCatalog(existingInputs.seed_catalog),
       },
     };
@@ -427,7 +446,10 @@ function normalizeRegisterProjectPayload(payload: Record<string, unknown>) {
   return {
     project_id: payload.project_id,
     inputs: {
-      project_config: normalizeProjectConfig(payload.project_config, payload.project_id),
+      project_config: normalizeProjectConfig(
+        mergeTopLevelSemanticExpansion(payload.project_config, payload),
+        payload.project_id,
+      ),
       seed_catalog: normalizeSeedCatalog(payload.seed_catalog),
       existing_pages: payload.existing_pages,
       audience_summary: payload.audience_summary ?? null,

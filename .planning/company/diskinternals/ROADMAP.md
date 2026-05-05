@@ -183,12 +183,14 @@ Plans:
 ### Phase 10: Semantic Core MCP Adapter
 **Goal**: Paperclip agents can call the Semantic Core MCP server through a server-side adapter that keeps endpoint credentials private, orchestrates semantic layers, validates `paperclip_import.v1`, and stores operational import state for follow-up SEO work.
 **Depends on**: Phase 9
-**Requirements**: SEO-MCP-01, SEO-MCP-02, SEO-MCP-03, SEO-MCP-04
+**Requirements**: SEO-MCP-01, SEO-MCP-02, SEO-MCP-03, SEO-MCP-04, SEO-MCP-05
 **Success Criteria**:
   1. MCP endpoint and bearer token are configured only in backend plugin settings/secrets.
   2. Agents can register projects, run semantic layers, poll jobs, and prepare Paperclip import payloads.
   3. Import payloads are rejected unless `schema_version = paperclip_import.v1` and required artifact arrays exist.
   4. Cost telemetry and run/job/import IDs are preserved in plugin-owned operational state.
+  5. Production semantic-core runs can enable competitor SERP content parsing for fuller recall, while smoke/budget runs can leave it disabled.
+  6. Import payloads preserve and summarize competitor expansion evidence, including recall ledger, competitor candidates, endpoint source, and SERP classification reason fields.
 **Plans**: 1 plan
 
 Plans:

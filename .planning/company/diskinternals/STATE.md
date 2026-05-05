@@ -60,6 +60,9 @@ Recent decisions affecting current work:
 - `DIS-48` completed by Paperclip manager flow: canonical DiskInternals company and product reference layer.
 - Phase 9 Winning Structure MCP adapter is deployed live, configured with encrypted token secret, and smoke-tested through Paperclip plugin tools.
 - Phase 10 Semantic Core MCP adapter is deployed live, configured with encrypted token secret, and smoke-tested through Paperclip plugin tools.
+- Semantic Core MCP production runs should enable competitor SERP expansion with content parsing for maximum recall; quick/smoke/budget-sensitive runs may leave content parsing disabled.
+- Semantic Core import artifacts should preserve recall/debug evidence, including `recall_ledger`, `serp_competitor_candidates`, `competitor_expansion_debug`, `competitor_expansion_endpoint`, and `serp_result_classification_reason`.
+- Live `CMO`, `CTO`, `SEO Semantic Core Strategist`, and `SEO Semantic Core Validator` instructions include the competitor SERP recall rule.
 - Follow-up: audit and, if needed, update live DiskInternals SEO Performance Analyst and SEO Internal Linking Indexation Agent contracts for explicit SEO/MCP lane separation language. Do this as a separate live-agent contract change, not as part of the planning-only governance overlay.
 - Phase 1-10 readiness plans are complete. Phase 7 live BigQuery now has initial sitemap URL inventory, GA4/GSC fact ingestion, opportunity marts, and crawl smoke snapshots.
 - Phase 11 is planned to add a Perfex CRM MCP plugin so approved Paperclip opportunities become human implementation tasks.
@@ -82,6 +85,7 @@ Recent decisions affecting current work:
 - Phase 9 added: Winning Structure MCP Adapter.
 - Phase 9 implementation completed locally and live on 2026-04-29; Docker build now includes the plugin and live registry has the tools enabled.
 - Phase 10 added and completed: Semantic Core MCP Adapter. It bridges Paperclip to the private semantic-core MCP server, validates `paperclip_import.v1`, and stores import candidates in plugin state/entities until native SEO semantic tables are implemented.
+- Phase 10 semantic-core adapter is extended for competitor SERP recall: production project config can pass `semantic_expansion.serp_competitor_expansion.enable_content_parsing=true`, and import summaries expose competitor expansion evidence for review.
 - BigQuery-first growth operations algorithm added: `deliverables/BIGQUERY_GROWTH_OPERATING_ALGORITHM.md`.
 - Phase 7 planned as BigQuery Growth Automation with six executable GSD plans in `phases/07-bigquery-growth-automation-portfolio-expansion/`.
 - Plan `07-06` covers the live operational bootstrap: applying `dre-di.diskinternals_growth` schema/views, storing the BigQuery service account as a Paperclip encrypted company secret, wiring the live plugin config, and smoke-checking the resulting surface.

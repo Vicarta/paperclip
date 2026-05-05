@@ -23,6 +23,14 @@
 - [x] **AGT-06**: Missing specialist roles are proposed with reporting line, responsibility, and reuse/creation recommendation.
 - [x] **AGT-07**: A Growth Opportunity Strategist lane classifies scored BigQuery opportunities into SEO, CRO, localization, internal-linking, indexing, data-quality, or parked actions before CMO approval.
 
+### Semantic Core MCP
+
+- [x] **SEO-MCP-01**: Semantic-core generation must use the Paperclip Semantic Core MCP plugin, not direct raw MCP access or desktop-local connectors.
+- [x] **SEO-MCP-02**: Production semantic-core runs cover `core_product_intent`, `adjacent_use_case_intent`, `audience_need_intent`, and `audience_interest_intent` unless the task is explicitly marked as smoke/budget-sensitive.
+- [x] **SEO-MCP-03**: Production semantic-core runs enable competitor SERP expansion with content parsing through `semantic_expansion.serp_competitor_expansion.enable_content_parsing=true`; quick/smoke/budget-sensitive runs can keep content parsing disabled.
+- [x] **SEO-MCP-04**: Semantic-core imports preserve `recall_ledger`, `serp_competitor_candidates`, `competitor_expansion_debug`, `serp_result_classification_reason`, and `competitor_expansion_endpoint` when MCP returns them.
+- [x] **SEO-MCP-05**: Parsed competitor content terms are never treated as accepted keywords unless the MCP output passes normal status, owner-fit, and `layer_membership` gates.
+
 ### Data Contracts And Attribution
 
 - [x] **DATA-01**: BigQuery-backed report/plugin contracts are defined for GA4 funnel, product proxy, GSC opportunities, URL inventory, crawl/page state, site search, popup performance, landing-page-to-purchase paths, and changed URLs.
