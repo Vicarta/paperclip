@@ -539,6 +539,13 @@ export function prepareSemanticCoreMcpArguments(input: {
   const args = normalizeArguments(input.args);
   const payload = isRecord(args.payload) ? { ...args.payload } : { ...args };
   if (input.toolName === "run_layer") {
+    for (const key of TOP_LEVEL_PROJECT_CONFIG_KEYS) {
+      if (Object.prototype.hasOwnProperty.call(payload, key)) {
+        throw new Error(
+          `Semantic Core MCP ${key} must be registered in project_config via register_project before run_layer; live MCP ignores ${key} on run_layer`,
+        );
+      }
+    }
     const layer = normalizeLayer(payload.layer);
     const asyncJob = typeof args.async_job === "boolean" ? args.async_job : true;
     return {

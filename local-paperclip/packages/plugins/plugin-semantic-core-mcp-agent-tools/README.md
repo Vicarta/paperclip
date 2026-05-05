@@ -21,8 +21,10 @@ The MCP server expects the current project config contract:
 
 For agent compatibility, `register-project` also accepts older Paperclip brief fields such as `target_domain`, `geo_targets`, `language_code`, `location_code`, `market_matrix`, `site_mode`, and `business_rules`. The adapter translates those fields before sending the payload to MCP so live runs do not fail config validation on stale agent-facing schema names.
 If agents send top-level `semantic_expansion` or `provider_cache` beside a flat
-legacy `project_config`, the adapter preserves those objects inside the
-registered project config.
+legacy `project_config` during `register-project`, the adapter preserves those
+objects inside the registered project config. Do not send these options to
+`run-layer`: live MCP reads them only from the registered `project_config`, so
+the adapter rejects them on `run-layer` instead of allowing a silent no-op.
 
 Keyword demand values returned in import payloads use `search_volume` as a
 legacy alias for `geo_search_volume`; it must not be treated as global demand.
@@ -47,9 +49,9 @@ agent workflows.
 ## Competitor SERP Recall
 
 The Semantic Core MCP supports opt-in competitor SERP expansion. The adapter
-preserves `semantic_expansion` inside registered project config and passes it
-through direct `run_layer` calls, so production semantic-core runs can request
-both competitor URL ranked keywords and parsed page-content terms:
+preserves `semantic_expansion` inside registered project config, so production
+semantic-core runs can request both competitor URL ranked keywords and parsed
+page-content terms:
 
 ```json
 {

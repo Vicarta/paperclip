@@ -167,8 +167,8 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
     });
   });
 
-  it("preserves competitor SERP content-parsing expansion options on run_layer calls", () => {
-    expect(
+  it("rejects project-config-only expansion options on run_layer calls", () => {
+    expect(() =>
       prepareSemanticCoreMcpArguments({
         toolName: "run_layer",
         args: {
@@ -190,27 +190,7 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
           },
         },
       }),
-    ).toEqual({
-      payload: {
-        project_id: "astrogen-ukraine",
-        layer: "core_product_intent",
-        mode: "live",
-        semantic_expansion: {
-          serp_competitor_expansion: {
-            enabled: true,
-            enable_content_parsing: true,
-            max_representatives_per_cluster: 1,
-            max_serp_results_per_representative: 5,
-            max_competitor_urls_per_cluster: 3,
-            max_ranked_keywords_per_url: 100,
-            max_content_terms_per_url: 50,
-            content_term_min_words: 2,
-            content_term_max_words: 8,
-          },
-        },
-      },
-      async_job: true,
-    });
+    ).toThrow(/semantic_expansion must be registered in project_config/);
   });
 
   it("normalizes get_keywords flat args to the current MCP filters contract", () => {

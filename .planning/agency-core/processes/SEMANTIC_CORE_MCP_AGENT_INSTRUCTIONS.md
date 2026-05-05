@@ -17,7 +17,7 @@ Content parsing is opt-in. It is disabled by default.
 
 ## Production Run Parameters
 
-For full production semantic-core generation with maximum recall, Paperclip agents should pass:
+For full production semantic-core generation with maximum recall, Paperclip agents should register this inside `register_project.inputs.project_config` before running the layer:
 
 ```json
 {
@@ -38,6 +38,8 @@ For full production semantic-core generation with maximum recall, Paperclip agen
 ```
 
 For quick, smoke, or budget-sensitive runs, keep `enable_content_parsing: false` or omit it.
+
+Do not send `semantic_expansion` directly to `run_layer`. Current live MCP reads this configuration from the registered `project_config`; sending it on `run_layer` is not a valid way to enable expansion.
 
 ## Agent Rules
 
