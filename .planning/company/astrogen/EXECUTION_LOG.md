@@ -2,6 +2,15 @@
 
 ## 2026-05-05
 
+- Continued Astrogen Semantic Core generation to layer 2 `adjacent_use_case_intent`.
+- Fixed and deployed Semantic Core MCP provider handling before layer 2 completion:
+  - DataForSEO `keyword_overview` requests are now chunked at the provider limit of 700 keywords, preventing `40501 Max number exceeded` failures on large candidate sets.
+  - SERP competitor content parsing now filters additional UI/CTA noise discovered in live Astrogen runs (`Введіть корректно email`, `КУПИТИ КВИТКИ`).
+- Rebuilt and redeployed live Semantic Core MCP at `http://100.98.5.50:8001/mcp`; verified container health and 13-tool MCP surface.
+- Final layer 2 run `run_20260505_183226_adjacent_use_case_intent_3fd352ec` completed with `paperclip_import.v1`, accepted 1, review 465, parked 2297, clusters 1, SERP segments 1, SERP competitor candidates 91, and recall ledger 91.
+- Confirmed final layer 2 keyword-like artifacts are clean for provider/UI/email/CTA sanitation patterns after the MCP fix.
+- Marked layer 2 as not ready for operational import: the only accepted keyword is the mixed-language `натальная карта що це`, while high-value adjacent terms such as `гороскоп`, `натальна карта`, `гороскоп на тиждень`, and related horoscope/natal phrases are mostly in `candidate_review` via `high_demand_conflict`.
+- Exported local inspection CSVs under `.tmp/astrogen-semantic-core/csv-run_20260505_183226_adjacent_use_case_intent_3fd352ec/`.
 - Analyzed Astrogen Semantic Core MCP run `run_20260505_163254_core_product_intent_9b8d4983` after MCP query-shape gate fixes.
 - Confirmed query-shape gates removed provider/UI junk from keyword-like artifacts: no email, legal/UI labels, price/count snippets, numbered UI labels, or provider error/timing rows in accepted/review/parked/competitor/recall artifacts.
 - Recorded a remaining quality issue: `high_demand_conflict` review escalation still promotes high-volume off-topic competitor content terms, such as unrelated marketplace/service/banking/app-store phrases, when topical/domain confidence is too low.
