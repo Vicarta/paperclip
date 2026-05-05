@@ -1,5 +1,13 @@
 # Execution Log: Astrogen
 
+## 2026-05-05
+
+- Updated Semantic Core MCP competitor SERP recall contract for Astrogen and agency-core.
+- Added agency-core instructions for production semantic-core runs to enable competitor content parsing when maximum recall matters.
+- Clarified that parsed competitor content terms are candidate evidence only and still require normal MCP gates/layer membership.
+- Updated the Semantic Core MCP plugin adapter to surface competitor expansion evidence summary during `prepare-paperclip-import`.
+- Added tests that preserve `semantic_expansion.serp_competitor_expansion` run-layer parameters and expose `competitor_expansion_endpoint` / `serp_result_classification_reason` evidence summary.
+
 ## 2026-04-29
 
 - Restored Astrogen-specific GSD working context after DiskInternals setup work was moved to a separate dialogue.

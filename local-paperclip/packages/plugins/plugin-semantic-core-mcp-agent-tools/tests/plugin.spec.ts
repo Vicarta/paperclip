@@ -167,6 +167,52 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
     });
   });
 
+  it("preserves competitor SERP content-parsing expansion options on run_layer calls", () => {
+    expect(
+      prepareSemanticCoreMcpArguments({
+        toolName: "run_layer",
+        args: {
+          project_id: "astrogen-ukraine",
+          layer: "core_product_intent",
+          mode: "live",
+          semantic_expansion: {
+            serp_competitor_expansion: {
+              enabled: true,
+              enable_content_parsing: true,
+              max_representatives_per_cluster: 1,
+              max_serp_results_per_representative: 5,
+              max_competitor_urls_per_cluster: 3,
+              max_ranked_keywords_per_url: 100,
+              max_content_terms_per_url: 50,
+              content_term_min_words: 2,
+              content_term_max_words: 8,
+            },
+          },
+        },
+      }),
+    ).toEqual({
+      payload: {
+        project_id: "astrogen-ukraine",
+        layer: "core_product_intent",
+        mode: "live",
+        semantic_expansion: {
+          serp_competitor_expansion: {
+            enabled: true,
+            enable_content_parsing: true,
+            max_representatives_per_cluster: 1,
+            max_serp_results_per_representative: 5,
+            max_competitor_urls_per_cluster: 3,
+            max_ranked_keywords_per_url: 100,
+            max_content_terms_per_url: 50,
+            content_term_min_words: 2,
+            content_term_max_words: 8,
+          },
+        },
+      },
+      async_job: true,
+    });
+  });
+
   it("normalizes get_keywords flat args to the current MCP filters contract", () => {
     expect(
       prepareSemanticCoreMcpArguments({
@@ -466,9 +512,30 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
         schema_version: "paperclip_import.v1",
         run_id: "run_1",
         artifacts: {
-          accepted_keywords: [],
+          accepted_keywords: [
+            {
+              keyword_text: "vmfs recovery mac",
+              competitor_expansion_endpoint: "dataforseo_ranked_keywords",
+              serp_result_classification_reason: "Relevant product recovery result.",
+            },
+          ],
           clusters: [],
           serp_segments: [],
+          recall_ledger: [{ keyword_text: "vmfs recovery mac", status: "accepted" }],
+          serp_competitor_candidates: [
+            {
+              keyword_text: "vmfs repair on mac",
+              competitor_expansion_endpoint: "dataforseo_content_parsing",
+            },
+          ],
+          competitor_expansion_debug: {
+            source_counts: { serp_competitor: 2 },
+            endpoint_counts: {
+              dataforseo_ranked_keywords: 1,
+              dataforseo_content_parsing: 1,
+            },
+            result_type_counts: { heading: 1, ranked_keyword: 1 },
+          },
         },
         cost: {
           total_estimated: 1.23,
@@ -480,9 +547,30 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
           schema_version: "paperclip_import.v1",
           run_id: "run_1",
           artifacts: {
-            accepted_keywords: [],
+            accepted_keywords: [
+              {
+                keyword_text: "vmfs recovery mac",
+                competitor_expansion_endpoint: "dataforseo_ranked_keywords",
+                serp_result_classification_reason: "Relevant product recovery result.",
+              },
+            ],
             clusters: [],
             serp_segments: [],
+            recall_ledger: [{ keyword_text: "vmfs recovery mac", status: "accepted" }],
+            serp_competitor_candidates: [
+              {
+                keyword_text: "vmfs repair on mac",
+                competitor_expansion_endpoint: "dataforseo_content_parsing",
+              },
+            ],
+            competitor_expansion_debug: {
+              source_counts: { serp_competitor: 2 },
+              endpoint_counts: {
+                dataforseo_ranked_keywords: 1,
+                dataforseo_content_parsing: 1,
+              },
+              result_type_counts: { heading: 1, ranked_keyword: 1 },
+            },
           },
           cost: {
             total_estimated: 1.23,
@@ -501,8 +589,87 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
     );
 
     expect(result.content).toContain("\"status\": \"validated\"");
+    expect(result.content).toContain("dataforseo_content_parsing");
+    expect(result.content).toContain("\"recall_ledger_count\": 1");
     expect(harness.costs).toHaveLength(1);
     expect(harness.costs[0]?.provider).toBe("semantic-core-builder");
+  });
+
+  it("shows competitor expansion evidence summary when import payload includes recall artifacts", async () => {
+    const harness = createTestHarness({ manifest });
+    await plugin.definition.setup(harness.ctx);
+
+    callSemanticCoreMcpToolMock.mockResolvedValueOnce({
+      content: JSON.stringify({
+        schema_version: "paperclip_import.v1",
+        run_id: "run_competitor",
+        artifacts: {
+          accepted_keywords: [
+            {
+              keyword_text: "натальна карта онлайн",
+              serp_result_classification_reason: "product SERP page matched layer owner rules",
+              competitor_expansion_endpoint: "dataforseo_url_ranked_keywords",
+            },
+            {
+              keyword_text: "розшифровка натальної карти",
+              competitor_expansion_endpoint: "dataforseo_content_parsing",
+            },
+          ],
+          review_keywords: [
+            {
+              keyword_text: "астрологічний прогноз по даті народження",
+              serp_result_classification_reason: "parsed content term requires layer review",
+              competitor_expansion_endpoint: "dataforseo_content_parsing",
+            },
+          ],
+          clusters: [],
+          serp_segments: [],
+          recall_ledger: [],
+          serp_competitor_candidates: [],
+          competitor_expansion_debug: {
+            source_counts: { serp_competitor: 3 },
+            endpoint_counts: {
+              dataforseo_url_ranked_keywords: 1,
+              dataforseo_content_parsing: 2,
+            },
+            result_type_counts: {
+              ranked_keyword: 1,
+              content_term: 2,
+            },
+          },
+        },
+        cost: {
+          events: [],
+        },
+      }),
+      data: {
+        structuredContent: null,
+        content: [],
+      },
+      isError: false,
+    });
+
+    const result = await harness.executeTool(
+      TOOL_NAMES.preparePaperclipImport,
+      { run_id: "run_competitor" },
+      toolRunCtx,
+    );
+    const content = JSON.parse(result.content ?? "{}") as Record<string, unknown>;
+    expect(content.competitor_expansion).toMatchObject({
+      keyword_rows_with_serp_result_classification_reason: 2,
+      keyword_rows_with_competitor_expansion_endpoint: 3,
+      recall_ledger_present: true,
+      serp_competitor_candidates_present: true,
+      competitor_expansion_debug_present: true,
+      endpoint_counts: {
+        dataforseo_url_ranked_keywords: 1,
+        dataforseo_content_parsing: 2,
+      },
+      result_type_counts: {
+        ranked_keyword: 1,
+        content_term: 2,
+      },
+    });
   });
 
   it("rejects malformed import payloads", () => {

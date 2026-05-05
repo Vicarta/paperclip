@@ -128,6 +128,10 @@ function readString(value: unknown) {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
 }
 
+function readArray(value: unknown) {
+  return Array.isArray(value) ? value : null;
+}
+
 async function getConfig(ctx: PluginSetupContext) {
   return (await ctx.config.get()) as SemanticCoreMcpPluginConfig;
 }
@@ -239,6 +243,89 @@ async function maybeRecordImportCost(input: {
   );
 }
 
+const keywordArrayKeys = [
+  "keywords",
+  "items",
+  "accepted_keywords",
+  "review_keywords",
+  "parked_keywords",
+  "rejected_keywords",
+  "accepted",
+  "review",
+  "parked",
+  "rejected",
+  "serp_competitor_candidates",
+] as const;
+
+function collectKeywordLikeRows(value: unknown, depth = 0): Record<string, unknown>[] {
+  if (depth > 5) return [];
+  if (typeof value === "string") {
+    try {
+      return collectKeywordLikeRows(JSON.parse(value) as unknown, depth + 1);
+    } catch {
+      return [];
+    }
+  }
+  if (Array.isArray(value)) {
+    return value.flatMap((entry) => collectKeywordLikeRows(entry, depth + 1));
+  }
+  if (!isRecord(value)) return [];
+
+  const rows: Record<string, unknown>[] = [];
+  const looksLikeKeyword = readString(value.keyword_text)
+    ?? readString(value.normalized_keyword)
+    ?? readString(value.keyword)
+    ?? readString(value.query);
+  if (looksLikeKeyword) rows.push(value);
+
+  for (const key of keywordArrayKeys) {
+    const candidate = readArray(value[key]);
+    if (candidate) rows.push(...candidate.filter(isRecord));
+  }
+
+  const artifacts = isRecord(value.artifacts) ? value.artifacts : null;
+  if (artifacts) rows.push(...collectKeywordLikeRows(artifacts, depth + 1));
+  return rows;
+}
+
+function summarizeCompetitorExpansion(importPayload: Record<string, unknown>) {
+  const artifacts = isRecord(importPayload.artifacts) ? importPayload.artifacts : {};
+  const debug = isRecord(artifacts.competitor_expansion_debug)
+    ? artifacts.competitor_expansion_debug
+    : null;
+  const rows = collectKeywordLikeRows(artifacts);
+  const endpointValues = Array.from(new Set(
+    rows
+      .map((row) => readString(row.competitor_expansion_endpoint))
+      .filter((value): value is string => Boolean(value)),
+  )).sort();
+
+  return {
+    keyword_rows_with_serp_result_classification_reason: rows.filter((row) =>
+      readString(row.serp_result_classification_reason),
+    ).length,
+    keyword_rows_with_competitor_expansion_endpoint: rows.filter((row) =>
+      readString(row.competitor_expansion_endpoint),
+    ).length,
+    competitor_expansion_endpoint_values: endpointValues,
+    recall_ledger_present: Object.prototype.hasOwnProperty.call(artifacts, "recall_ledger"),
+    recall_ledger_count: Array.isArray(artifacts.recall_ledger)
+      ? artifacts.recall_ledger.length
+      : null,
+    serp_competitor_candidates_present: Object.prototype.hasOwnProperty.call(
+      artifacts,
+      "serp_competitor_candidates",
+    ),
+    serp_competitor_candidate_count: Array.isArray(artifacts.serp_competitor_candidates)
+      ? artifacts.serp_competitor_candidates.length
+      : null,
+    competitor_expansion_debug_present: debug != null,
+    source_counts: isRecord(debug?.source_counts) ? debug.source_counts : null,
+    endpoint_counts: isRecord(debug?.endpoint_counts) ? debug.endpoint_counts : null,
+    result_type_counts: isRecord(debug?.result_type_counts) ? debug.result_type_counts : null,
+  };
+}
+
 async function handlePrepareImport(input: {
   ctx: PluginSetupContext;
   args: unknown;
@@ -254,6 +341,7 @@ async function handlePrepareImport(input: {
   });
   const importPayload = extractResultObject(result);
   const validation = validatePaperclipImportPayload(importPayload);
+  const competitorExpansion = summarizeCompetitorExpansion(importPayload);
   const runId = readString(importPayload.run_id)
     ?? (isRecord(input.args) ? readString(input.args.run_id) : null)
     ?? `unknown-${Date.now()}`;
@@ -268,6 +356,7 @@ async function handlePrepareImport(input: {
     data: {
       runId,
       validation,
+      competitorExpansion,
       importPayload,
     },
   });
@@ -288,6 +377,7 @@ async function handlePrepareImport(input: {
         cluster_count: validation.clusterCount,
         serp_segment_count: validation.serpSegmentCount,
         cost_event_count: validation.costEventCount,
+        competitor_expansion: competitorExpansion,
       },
       null,
       2,
@@ -295,6 +385,7 @@ async function handlePrepareImport(input: {
     data: {
       ...result.data,
       validation,
+      competitorExpansion,
       importPayload,
     },
   };
