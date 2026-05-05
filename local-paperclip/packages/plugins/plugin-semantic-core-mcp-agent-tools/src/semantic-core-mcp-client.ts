@@ -780,6 +780,7 @@ export function validatePaperclipImportPayload(payload: unknown): PaperclipImpor
   if (!costEvents) {
     throw new Error("Semantic Core import payload cost.events must be an array");
   }
+  assertNoProviderErrorKeywordEvidence(artifacts);
   for (const key of KEYWORD_ARRAY_KEYS) {
     const keywordRows = readArray(artifacts[key]);
     if (!keywordRows) continue;
@@ -801,6 +802,11 @@ const KEYWORD_ARRAY_KEYS = [
   "keywords",
   "items",
   "accepted_keywords",
+  "review_candidates",
+  "parked_outside_layer",
+  "rejected_noise",
+  "serp_competitor_candidates",
+  "recall_ledger",
   "review_keywords",
   "parked_keywords",
   "rejected_keywords",
@@ -809,6 +815,39 @@ const KEYWORD_ARRAY_KEYS = [
   "parked",
   "rejected",
 ] as const;
+
+const FORBIDDEN_KEYWORD_EVIDENCE_PATTERNS = [
+  /\binvalid\s+field\b/i,
+  /\benable_browser_rendering\b/i,
+  /\bstatus_message\b/i,
+  /^\s*\d+(?:[.,]\d+)?\s*sec(?:onds?)?\s*$/i,
+  /^\s*\d{3,4}\s*sec(?:onds?)?\s*$/i,
+] as const;
+
+function readKeywordEvidenceText(keyword: Record<string, unknown>) {
+  return readNonEmptyString(keyword.keyword_text)
+    ?? readNonEmptyString(keyword.normalized_keyword)
+    ?? readNonEmptyString(keyword.keyword)
+    ?? readNonEmptyString(keyword.query);
+}
+
+function isForbiddenKeywordEvidenceText(value: string) {
+  return FORBIDDEN_KEYWORD_EVIDENCE_PATTERNS.some((pattern) => pattern.test(value));
+}
+
+function assertNoProviderErrorKeywordEvidence(artifacts: Record<string, unknown>) {
+  for (const key of KEYWORD_ARRAY_KEYS) {
+    const keywordRows = readArray(artifacts[key]);
+    if (!keywordRows) continue;
+    for (const [index, keyword] of keywordRows.filter(isRecord).entries()) {
+      const text = readKeywordEvidenceText(keyword);
+      if (!text || !isForbiddenKeywordEvidenceText(text)) continue;
+      throw new Error(
+        `Semantic Core import payload artifacts.${key}[${index}] contains provider error text instead of keyword evidence: ${text}`,
+      );
+    }
+  }
+}
 
 function collectKeywordItems(value: unknown, depth = 0): Record<string, unknown>[] {
   if (depth > 5) return [];
@@ -841,10 +880,7 @@ function collectKeywordItems(value: unknown, depth = 0): Record<string, unknown>
 
 function isKeywordRecord(value: unknown): value is Record<string, unknown> {
   if (!isRecord(value)) return false;
-  return readNonEmptyString(value.keyword_text) != null
-    || readNonEmptyString(value.normalized_keyword) != null
-    || readNonEmptyString(value.keyword) != null
-    || readNonEmptyString(value.query) != null;
+  return readKeywordEvidenceText(value) != null;
 }
 
 function readMcpErrorContent(result: NormalizedMcpToolResult) {

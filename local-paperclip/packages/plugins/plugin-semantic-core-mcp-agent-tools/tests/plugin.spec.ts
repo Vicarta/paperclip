@@ -733,6 +733,64 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
     });
   });
 
+  it("does not treat native clusters or SERP segments as keyword artifact rows", async () => {
+    const harness = createTestHarness({ manifest });
+    await plugin.definition.setup(harness.ctx);
+
+    callSemanticCoreMcpToolMock.mockResolvedValueOnce({
+      content: JSON.stringify({
+        schema_version: "paperclip_import.v1",
+        run_id: "run_native_schema",
+        artifacts: {
+          accepted_keywords: [
+            {
+              keyword_text: "натальна карта",
+              competitor_expansion_endpoint: "dataforseo_url_ranked_keywords",
+            },
+          ],
+          review_candidates: [],
+          parked_outside_layer: [],
+          rejected_noise: [],
+          recall_ledger: [],
+          serp_competitor_candidates: [],
+          clusters: [
+            {
+              cluster_id: "cluster_1",
+              keyword_text: "native cluster label must not be counted as a keyword row",
+              competitor_expansion_endpoint: "not_a_keyword_endpoint",
+            },
+          ],
+          serp_segments: [
+            {
+              serp_segment_id: "serp_1",
+              query: "native SERP segment query must not be counted as a keyword row",
+              competitor_expansion_endpoint: "not_a_keyword_endpoint",
+            },
+          ],
+        },
+        cost: {
+          events: [],
+        },
+      }),
+      data: {
+        structuredContent: null,
+        content: [],
+      },
+      isError: false,
+    });
+
+    const result = await harness.executeTool(
+      TOOL_NAMES.preparePaperclipImport,
+      { run_id: "run_native_schema" },
+      toolRunCtx,
+    );
+    const content = JSON.parse(result.content ?? "{}") as Record<string, unknown>;
+    expect(content.competitor_expansion).toMatchObject({
+      keyword_rows_with_competitor_expansion_endpoint: 1,
+      competitor_expansion_endpoint_values: ["dataforseo_url_ranked_keywords"],
+    });
+  });
+
   it("rejects malformed import payloads", () => {
     expect(() =>
       validatePaperclipImportPayload({
@@ -770,6 +828,65 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
       serpSegmentCount: 1,
       costEventCount: 1,
     });
+  });
+
+  it("validates current keyword-like import artifact names and preserves null volume as unknown", () => {
+    const reviewCandidate = { keyword_text: "натальна карта онлайн" };
+    const validation = validatePaperclipImportPayload({
+      schema_version: "paperclip_import.v1",
+      run_id: "run_current_artifacts",
+      artifacts: {
+        accepted_keywords: [],
+        review_candidates: [reviewCandidate],
+        parked_outside_layer: [{ keyword_text: "гороскоп на тиждень" }],
+        rejected_noise: [{ keyword_text: "нерелевантний запит" }],
+        serp_competitor_candidates: [{ keyword_text: "натальна карта українською" }],
+        recall_ledger: [{ keyword_text: "астроген", status: "accepted" }],
+        clusters: [{ cluster_id: "cluster_1", label: "Натальна карта" }],
+        serp_segments: [{ serp_segment_id: "serp_1", segment_label: "product_core" }],
+      },
+      cost: {
+        events: [],
+      },
+    });
+
+    expect(validation).toMatchObject({
+      schemaVersion: "paperclip_import.v1",
+      acceptedKeywordCount: 0,
+      clusterCount: 1,
+      serpSegmentCount: 1,
+      costEventCount: 0,
+    });
+    expect(reviewCandidate).toMatchObject({
+      geo_search_volume: null,
+      search_volume: null,
+      global_search_volume: null,
+      global_search_volume_status: "unavailable",
+      global_search_volume_source: null,
+      global_search_volume_country_distribution: [],
+    });
+  });
+
+  it("rejects provider error text inside keyword-like import artifacts", () => {
+    expect(() =>
+      validatePaperclipImportPayload({
+        schema_version: "paperclip_import.v1",
+        run_id: "run_bad_provider_text",
+        artifacts: {
+          accepted_keywords: [],
+          review_candidates: [],
+          parked_outside_layer: [{ keyword_text: "Invalid Field: enable_browser_rendering must be enabled" }],
+          rejected_noise: [{ keyword_text: "0842 sec" }],
+          serp_competitor_candidates: [],
+          recall_ledger: [],
+          clusters: [],
+          serp_segments: [],
+        },
+        cost: {
+          events: [],
+        },
+      }),
+    ).toThrow(/provider error text/);
   });
 
   it("validates import payloads returned as stringified JSON inside MCP wrapper objects", () => {

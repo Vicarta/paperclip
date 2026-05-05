@@ -247,6 +247,11 @@ const keywordArrayKeys = [
   "keywords",
   "items",
   "accepted_keywords",
+  "review_candidates",
+  "parked_outside_layer",
+  "rejected_noise",
+  "serp_competitor_candidates",
+  "recall_ledger",
   "review_keywords",
   "parked_keywords",
   "rejected_keywords",
@@ -254,7 +259,6 @@ const keywordArrayKeys = [
   "review",
   "parked",
   "rejected",
-  "serp_competitor_candidates",
 ] as const;
 
 function collectKeywordLikeRows(value: unknown, depth = 0): Record<string, unknown>[] {

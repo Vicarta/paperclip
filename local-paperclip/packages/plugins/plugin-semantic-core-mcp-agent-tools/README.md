@@ -31,6 +31,17 @@ legacy alias for `geo_search_volume`; it must not be treated as global demand.
 When available, `global_search_volume` and its status/source fields carry native
 worldwide demand.
 
+`prepare-paperclip-import` treats these artifact names as keyword-like artifacts:
+`accepted_keywords`, `review_candidates`, `parked_outside_layer`,
+`rejected_noise`, `serp_competitor_candidates`, and `recall_ledger`. The adapter
+fills missing volume contract fields on those rows and rejects provider error
+text such as `Invalid Field`, `enable_browser_rendering`, `status_message`, or
+standalone timing strings like `0 sec`.
+
+`clusters` and `serp_segments` are native non-keyword artifacts. Do not render or
+import them through keyword CSV columns; use their own schema from
+`prepare_paperclip_import().artifacts`, `get_clusters`, or `get_serp_segments`.
+
 ## Ownership Boundary
 
 The MCP server owns raw generation, provider evidence, run artifacts, validation
@@ -167,6 +178,9 @@ Use `provider_cache_mode: "read_write"` for normal production runs,
 provider data must be refreshed, and `bypass` only for provider debugging.
 Cache is scoped by `project_id`, not shared across companies or projects. Cache
 hits are not ranking, intent, or layer-membership acceptance evidence.
+Invalid cached provider responses are provider/cache telemetry, not keyword
+evidence. If MCP returns a provider or task error, the adapter must not pass that
+error text downstream as a keyword row.
 
 Normal agent live workflow uses `run-layer-and-wait` or `run-layer` with
 `async_job: true` and polling through `get-job-status`. After each live run,
