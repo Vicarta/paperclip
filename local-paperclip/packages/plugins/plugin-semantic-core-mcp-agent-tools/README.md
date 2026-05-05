@@ -46,6 +46,57 @@ Agents must use `project_id`, `run_id`, and `job_id` as server-side identifiers.
 Do not pass local client filesystem paths to the remote MCP server during normal
 agent workflows.
 
+## Required Agent Workflow
+
+Normal agent flow:
+
+1. Call `list-tools` or `smoke-test` to confirm connectivity.
+2. Call `register-project`.
+3. Call `validate-project` and continue only when validation returns `status = ok`.
+4. Use `mode: "mock"` for adapter smoke tests.
+5. Use `mode: "live"` with `provider_cache_mode: "read_write"` for production semantic-core runs.
+6. Poll with `get-job-status` or use `run-layer-and-wait`.
+7. Call `get-run-costs` before another live provider run.
+8. Read keywords, clusters, SERP segments, review queue, and import payloads with pagination.
+9. Submit review decisions as append-only input; completed run artifacts are immutable.
+10. Import accepted output into Paperclip DB before downstream planning or monitoring.
+
+Do not generate content plans directly from MCP outputs. Content planning is downstream Paperclip work.
+
+## Policy-Driven Layer Decisions
+
+The MCP layer decision engine is policy-driven. Agents must not assume hardcoded
+allowed/forbidden words.
+
+Project-specific niche terms belong in `project_config`, seed catalog, entity
+inputs, or `semantic_expansion`. High-demand conflicts should be routed to review
+rather than silently parked or rejected.
+
+When broad or ambiguous keywords may be commercially important, register a review
+escalation policy in project config:
+
+```json
+{
+  "semantic_expansion": {
+    "review_escalation_policy": {
+      "enabled": true,
+      "geo_volume_threshold": 100,
+      "fallback_low_volume_threshold": 10,
+      "use_project_volume_percentile": true,
+      "percentile_threshold": 0.8,
+      "use_global_volume": true,
+      "use_gsc_impressions": true,
+      "blocked_reasons": ["duplicate_cluster", "unsupported_locale"]
+    }
+  }
+}
+```
+
+When this policy fires, MCP returns `candidate_review` with
+`parked_reason = high_demand_conflict`. This is not auto-acceptance; it is a
+safeguard against losing high-demand keywords silently. Inspect `decision_trace`
+when explaining membership decisions.
+
 ## Competitor SERP Recall
 
 The Semantic Core MCP supports opt-in competitor SERP expansion. The adapter
@@ -150,6 +201,7 @@ reflected in a new artifact set.
 - `list-tools`
 - `get-paperclip-import-schema`
 - `register-project`
+- `validate-project`
 - `run-layer`
 - `run-layer-and-wait`
 - `get-job-status`

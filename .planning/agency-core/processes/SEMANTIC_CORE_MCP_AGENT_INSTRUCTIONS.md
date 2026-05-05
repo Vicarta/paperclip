@@ -6,6 +6,54 @@ This document records the current Paperclip-facing operating contract for Semant
 
 MCP Semantic Core owns semantic-core generation, raw provenance, debug artifacts, recall ledger, and provider evidence. Paperclip owns operational use: review decisions, content planning, page targeting, rank monitoring, budget attribution, and downstream tasks.
 
+MCP output is evidence and import material, not a content plan. Content planning, page briefs, monitoring targets, and implementation tasks belong to Paperclip after accepted import.
+
+## Required Agent Workflow
+
+For normal runs, agents must use this sequence:
+
+1. Confirm MCP connectivity through the Paperclip plugin.
+2. Call `register-project` with full project inputs.
+3. Call `validate-project` and continue only when validation returns `status = ok`.
+4. For smoke tests, run `core_product_intent` with `mode = mock`.
+5. For production, run semantic layers in order with `mode = live` and `provider_cache_mode = read_write`.
+6. Poll `get-job-status` or use `run-layer-and-wait`.
+7. Call `get-run-costs` before initiating another live run.
+8. Read accepted/review/parked/rejected keywords, clusters, SERP segments, recall ledger, and competitor expansion debug artifacts.
+9. Submit review decisions as append-only input when needed.
+10. Prepare Paperclip import and persist accepted operational state in Paperclip DB.
+
+Do not pass local filesystem paths to MCP during normal agent workflows. Use `project_id`, `run_id`, and `job_id`.
+
+## Policy-Driven Layer Decisions
+
+Agents must not assume that specific words are hardcoded as allowed or forbidden by the MCP server. Layer membership is policy-driven.
+
+Project or niche terms belong in `register-project.inputs.project_config`, entity packs, seed catalog, or `semantic_expansion` config. Production code must not contain site-specific lexical vetoes.
+
+High-demand conflicts should be routed to review instead of silently parked or rejected. Configure review escalation in project config when broad terms may be commercially important:
+
+```json
+{
+  "semantic_expansion": {
+    "review_escalation_policy": {
+      "enabled": true,
+      "geo_volume_threshold": 100,
+      "fallback_low_volume_threshold": 10,
+      "use_project_volume_percentile": true,
+      "percentile_threshold": 0.8,
+      "use_global_volume": true,
+      "use_gsc_impressions": true,
+      "blocked_reasons": ["duplicate_cluster", "unsupported_locale"]
+    }
+  }
+}
+```
+
+When escalation fires, MCP returns the keyword as `candidate_review` with `parked_reason = high_demand_conflict`. This is not auto-acceptance; it means silent loss is unsafe and downstream review is required.
+
+When explaining keyword membership, inspect `decision_trace` when it is present.
+
 ## Competitor SERP Recall Modes
 
 MCP supports competitor SERP recall in two modes:
@@ -41,15 +89,44 @@ For quick, smoke, or budget-sensitive runs, keep `enable_content_parsing: false`
 
 Do not send `semantic_expansion` directly to `run_layer`. Current live MCP reads this configuration from the registered `project_config`; sending it on `run_layer` is not a valid way to enable expansion.
 
+## Provider Cache
+
+Use project-scoped provider cache for live runs:
+
+```json
+{
+  "provider_cache": {
+    "enabled": true,
+    "mode": "read_write",
+    "default_ttl_days": 30,
+    "endpoint_ttl_days": {
+      "dataforseo_labs/google/search_intent/live": 60,
+      "dataforseo_labs/google/keyword_overview/live": 30,
+      "keywords_data/clickstream_data/global_search_volume/live": 30,
+      "serp/google/organic/live/advanced": 7,
+      "dataforseo_labs/google/ranked_keywords/live": 14,
+      "on_page/content_parsing/live": 30
+    }
+  }
+}
+```
+
+Use `provider_cache_mode = read_write` for normal production runs, `read_only` for no-spend reruns when enough cache is expected, `refresh` for intentional fresh provider data, and `bypass` only for debugging provider behavior.
+
+Cache is scoped by `project_id`, not shared across companies or projects. Cache hits are not ranking, intent, or layer-membership acceptance evidence.
+
 ## Agent Rules
 
 - Parsed content terms are candidate evidence, not accepted keywords.
 - Accepted/review/parked/rejected status must come from normal MCP gates.
 - Do not accept a candidate unless `layer_membership` and status justify it.
+- Do not treat unavailable volume as zero.
+- Do not treat `search_volume` as global demand; it is a legacy alias for `geo_search_volume`.
 - Import `recall_ledger` even when candidates are not accepted.
 - Preserve parked and rejected candidates because later semantic layers or human review may use them.
 - Show `competitor_expansion_endpoint` to reviewers when present, so they can distinguish ranked-keyword SEO evidence from parsed page-content evidence.
 - Show `serp_result_classification_reason` when present, so reviewers can understand why a competitor result was considered relevant.
+- Do not use `editorial_growth_intent` as a semantic-core layer.
 
 ## Output Fields To Preserve
 
