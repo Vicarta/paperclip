@@ -2,6 +2,11 @@
 
 ## 2026-05-05
 
+- Analyzed Astrogen Semantic Core MCP run `run_20260505_163254_core_product_intent_9b8d4983` after MCP query-shape gate fixes.
+- Confirmed query-shape gates removed provider/UI junk from keyword-like artifacts: no email, legal/UI labels, price/count snippets, numbered UI labels, or provider error/timing rows in accepted/review/parked/competitor/recall artifacts.
+- Recorded a remaining quality issue: `high_demand_conflict` review escalation still promotes high-volume off-topic competitor content terms, such as unrelated marketplace/service/banking/app-store phrases, when topical/domain confidence is too low.
+- Confirmed `natal_chart` must not be added as a canonical product binding because that product is not canonized yet. Natal-card terms should remain brand/core-topic/review/opportunity evidence until Product Discovery or human approval.
+- Updated agency-core Semantic Core MCP instructions and Astrogen SEO requirements so review escalation must consider topical fit and domain/result-type confidence, not volume alone.
 - Re-ran Astrogen Semantic Core MCP layer 1 `core_product_intent` with policy-driven review escalation, competitor content parsing, and explicit `brand_astrogen` seed variants.
 - New run `run_20260505_124618_core_product_intent_304990fe` completed with 32 accepted keywords, 36 review candidates, 79 parked keywords, 31 clusters, and 4 SERP segments.
 - Brand check passed for first-layer inclusion: `Astrogen`, `астроген`, `astrogen україна`, `астроген натальна карта`, and `astrogen натальна карта` landed in accepted keywords; `astrogen com ua` landed in review as ambiguous intent.

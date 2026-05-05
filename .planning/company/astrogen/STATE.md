@@ -13,7 +13,7 @@ See: `.planning/company/astrogen/README.md`
 
 Phase: Astrogen growth/content operating system hardening
 Status: Active
-Last activity: 2026-05-05 - Re-ran Astrogen Semantic Core MCP layer 1 with explicit brand seeds and policy-driven review escalation; implemented the shared agency-core `seo_ops` Postgres schema for SEO Performance Loop storage.
+Last activity: 2026-05-05 - Re-ran Astrogen Semantic Core MCP layer 1 after MCP query-shape fixes; analyzed accepted/review/parked output and recorded that review escalation must consider topical/domain confidence, not volume alone.
 
 ## Current Focus
 
@@ -26,8 +26,9 @@ Last activity: 2026-05-05 - Re-ran Astrogen Semantic Core MCP layer 1 with expli
 - SEO content generation contracts for Ukrainian articles.
 - Blog image generation requirements and one-article correction/test workflow.
 - Semantic core planning for Ukrainian-language Astrogen content.
-- Latest Astrogen Semantic Core layer 1 run: `run_20260505_124618_core_product_intent_304990fe`; accepted 32, review 36, parked 79, clusters 31, SERP segments 4. Brand queries are represented in accepted/review instead of being silently lost.
+- Latest Astrogen Semantic Core layer 1 run: `run_20260505_163254_core_product_intent_9b8d4983`; accepted 38, review 51, parked 257, clusters 38, SERP segments 5. Query-shape gates removed email/legal/UI/price/count/numbered-label junk, but review escalation still needs topical/domain confidence to avoid high-volume off-topic review noise.
 - Semantic Core MCP competitor SERP recall now supports opt-in competitor page content parsing; production Astrogen semantic-core runs should enable it for maximum recall, while smoke/quick/budget-sensitive runs should leave it disabled.
+- Semantic-core generation must not create a `natal_chart` product binding because that product is not canonized yet; natal-card terms should remain brand/core-topic/review/opportunity evidence until Product Discovery or human approval.
 - Google Search Console MCP integration for Astrogen site data.
 - SEO monitoring and article performance loop planning.
 - Paperclip Telegram/HIA communication quality for human-facing Ukrainian updates.

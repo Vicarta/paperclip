@@ -54,6 +54,10 @@ When escalation fires, MCP returns the keyword as `candidate_review` with `parke
 
 When explaining keyword membership, inspect `decision_trace` when it is present.
 
+Review escalation must not be volume-only. High demand can promote a borderline keyword to review only when there is enough topical or domain confidence to justify human attention. If a keyword has high volume but no entity anchor, no product/topic fit, and comes from an off-topic competitor/domain/result type, it should remain parked or be rejected as noise instead of entering the human review queue. For example, generic marketplace service terms, banking/institution names, app-store UI labels, household service queries, and unrelated jobs/services should not be escalated only because they have demand.
+
+Do not create a canonical product binding only because a keyword is commercially important. If a product does not exist yet, represent the keyword as a core topic, brand topic, review candidate, or parked opportunity until Product Discovery or a human decision explicitly canonizes it.
+
 ## Competitor SERP Recall Modes
 
 MCP supports competitor SERP recall in two modes:

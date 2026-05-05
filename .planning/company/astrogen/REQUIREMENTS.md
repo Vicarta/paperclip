@@ -32,6 +32,8 @@
 - `AST-SEO-04`: SEO monitoring should combine GSC, rank position, SERP competitor analysis, and content refresh decisions.
 - `AST-SEO-05`: Production semantic-core runs should use Semantic Core MCP competitor SERP recall with content parsing enabled when maximum recall matters; smoke, quick, and budget-sensitive runs should leave content parsing disabled.
 - `AST-SEO-06`: Competitor parsed content terms are candidates only; acceptance still depends on normal MCP gates, layer membership, review status, and relevance.
+- `AST-SEO-07`: Semantic Core review escalation must consider topical fit and domain/result-type confidence, not only search volume. High-volume off-topic terms should be parked or rejected rather than routed to human review.
+- `AST-SEO-08`: Do not canonize a new product binding during semantic-core generation. If a product does not exist yet, keep the term as a topic/review/opportunity until Product Discovery or a human decision approves product canonization.
 
 ## Growth Strategy
 
