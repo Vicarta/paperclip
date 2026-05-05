@@ -61,8 +61,11 @@ Recent decisions affecting current work:
 - Phase 9 Winning Structure MCP adapter is deployed live, configured with encrypted token secret, and smoke-tested through Paperclip plugin tools.
 - Phase 10 Semantic Core MCP adapter is deployed live, configured with encrypted token secret, and smoke-tested through Paperclip plugin tools.
 - Semantic Core MCP production runs should enable competitor SERP expansion with content parsing for maximum recall; quick/smoke/budget-sensitive runs may leave content parsing disabled.
+- Semantic Core MCP production live runs should use project-scoped provider cache with `read_write` mode; agents must read `get_run_costs` before additional live provider runs.
+- Semantic Core MCP result reads should be paginated, should use `project_id`/`run_id`/`job_id`, and should not pass local filesystem paths to the remote MCP server.
+- Semantic Core MCP output is generation/provenance evidence only; content plans, page briefs, Perfex tasks, and monitoring targets are downstream Paperclip workflows.
 - Semantic Core import artifacts should preserve recall/debug evidence, including `recall_ledger`, `serp_competitor_candidates`, `competitor_expansion_debug`, `competitor_expansion_endpoint`, and `serp_result_classification_reason`.
-- Live `CMO`, `CTO`, `SEO Semantic Core Strategist`, and `SEO Semantic Core Validator` instructions include the competitor SERP recall rule.
+- Live `CMO`, `CTO`, `SEO Semantic Core Strategist`, and `SEO Semantic Core Validator` instructions include the competitor SERP recall and provider-cache/cost/pagination rules.
 - Follow-up: audit and, if needed, update live DiskInternals SEO Performance Analyst and SEO Internal Linking Indexation Agent contracts for explicit SEO/MCP lane separation language. Do this as a separate live-agent contract change, not as part of the planning-only governance overlay.
 - Phase 1-10 readiness plans are complete. Phase 7 live BigQuery now has initial sitemap URL inventory, GA4/GSC fact ingestion, opportunity marts, and crawl smoke snapshots.
 - Phase 11 is planned to add a Perfex CRM MCP plugin so approved Paperclip opportunities become human implementation tasks.

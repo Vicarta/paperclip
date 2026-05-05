@@ -2,6 +2,20 @@
 
 ## 2026-05-05
 
+Aligned DiskInternals Semantic Core MCP rules with the canonical MCP agent guide at `/Users/savitsky/CodexProjects/seo-semantic-core/docs/AI_AGENT_MCP_USAGE.md`.
+
+Planning/code changes:
+- Added `SEO-MCP-06` through `SEO-MCP-10` for provider cache, `get_run_costs`, pagination, server-side MCP IDs, and the MCP/Paperclip ownership boundary.
+- Updated Phase 10 roadmap and state notes so production live runs use project-scoped provider cache, retrieve run costs before further live provider spend, use pagination, and do not pass local file paths to the remote MCP server.
+- Updated the Semantic Core MCP plugin README with the canonical ownership boundary, provider cache behavior, result-read rules, review-decision immutability, and security rules.
+- Updated the Semantic Core MCP plugin adapter so flat `register-project` payloads preserve top-level `provider_cache` inside `project_config` and keep `display_name`.
+- Added regression coverage for preserving `display_name`, `semantic_expansion`, and `provider_cache` in registered project payloads.
+
+Live contract changes:
+- Updated DiskInternals `CMO`, `CTO`, `SEO Semantic Core Strategist`, and `SEO Semantic Core Validator` live instructions with the provider-cache, run-cost, pagination, server-ID, and MCP/Paperclip boundary rules.
+
+## 2026-05-05
+
 Updated DiskInternals Semantic Core MCP competitor recall contract.
 
 Planning/code changes:

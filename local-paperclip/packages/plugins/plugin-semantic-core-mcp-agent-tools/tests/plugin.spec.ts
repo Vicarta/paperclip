@@ -503,11 +503,12 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
     expect(projectConfig).not.toHaveProperty("market_matrix");
   });
 
-  it("preserves top-level semantic expansion options inside the registered project config", () => {
+  it("preserves top-level project display, semantic expansion, and provider cache options", () => {
     const result = prepareSemanticCoreMcpArguments({
       toolName: "register_project",
       args: {
         project_id: "diskinternals-vmfs-mac-production",
+        display_name: "DiskInternals VMFS Mac Production",
         project_config: {
           target_domain: "diskinternals.com",
           language_code: "en",
@@ -526,10 +527,18 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
             content_term_max_words: 8,
           },
         },
+        provider_cache: {
+          enabled: true,
+          mode: "read_write",
+          default_ttl_days: 30,
+        },
         seed_catalog: [],
       },
     });
 
+    expect((result as { payload: Record<string, unknown> }).payload.display_name).toBe(
+      "DiskInternals VMFS Mac Production",
+    );
     const projectConfig = (result as { payload: { inputs: { project_config: Record<string, unknown> } } })
       .payload.inputs.project_config;
     expect(projectConfig.semantic_expansion).toEqual({
@@ -544,6 +553,11 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
         content_term_min_words: 2,
         content_term_max_words: 8,
       },
+    });
+    expect(projectConfig.provider_cache).toEqual({
+      enabled: true,
+      mode: "read_write",
+      default_ttl_days: 30,
     });
   });
 

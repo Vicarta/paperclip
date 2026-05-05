@@ -30,6 +30,11 @@
 - [x] **SEO-MCP-03**: Production semantic-core runs enable competitor SERP expansion with content parsing through `semantic_expansion.serp_competitor_expansion.enable_content_parsing=true`; quick/smoke/budget-sensitive runs can keep content parsing disabled.
 - [x] **SEO-MCP-04**: Semantic-core imports preserve `recall_ledger`, `serp_competitor_candidates`, `competitor_expansion_debug`, `serp_result_classification_reason`, and `competitor_expansion_endpoint` when MCP returns them.
 - [x] **SEO-MCP-05**: Parsed competitor content terms are never treated as accepted keywords unless the MCP output passes normal status, owner-fit, and `layer_membership` gates.
+- [x] **SEO-MCP-06**: Production live runs use project-scoped provider cache with `provider_cache.mode=read_write` and `provider_cache_mode=read_write` unless a task explicitly requests `read_only`, `refresh`, or `bypass`.
+- [x] **SEO-MCP-07**: Agents must call `get_run_costs` after each live Semantic Core run and before initiating additional live provider runs.
+- [x] **SEO-MCP-08**: Keyword, review, cluster, and SERP result reads must be paginated; agents must not request thousands of rows in one MCP call.
+- [x] **SEO-MCP-09**: Agents use MCP server-side `project_id`, `run_id`, and `job_id`; they must not pass local filesystem paths to the remote MCP server.
+- [x] **SEO-MCP-10**: MCP outputs are generation and evidence artifacts only. Content plans, page briefs, Perfex tasks, and monitoring targets are downstream Paperclip workflows, not MCP responsibilities.
 
 ### Data Contracts And Attribution
 

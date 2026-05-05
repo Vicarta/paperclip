@@ -16,20 +16,40 @@ The MCP server expects the current project config contract:
 - `thresholds`
 - `intent_rules`
 - `title_meta_policy`
+- optional `semantic_expansion`
+- optional `provider_cache`
 
 For agent compatibility, `register-project` also accepts older Paperclip brief fields such as `target_domain`, `geo_targets`, `language_code`, `location_code`, `market_matrix`, `site_mode`, and `business_rules`. The adapter translates those fields before sending the payload to MCP so live runs do not fail config validation on stale agent-facing schema names.
+If agents send top-level `semantic_expansion` or `provider_cache` beside a flat
+legacy `project_config`, the adapter preserves those objects inside the
+registered project config.
 
 Keyword demand values returned in import payloads use `search_volume` as a
 legacy alias for `geo_search_volume`; it must not be treated as global demand.
 When available, `global_search_volume` and its status/source fields carry native
 worldwide demand.
 
+## Ownership Boundary
+
+The MCP server owns raw generation, provider evidence, run artifacts, validation
+output, review queue, cost/cache telemetry, and Paperclip import payloads.
+Paperclip owns operational SEO state for agents, pages, issues, monitoring,
+budgets, and accepted business decisions. Agents must import accepted MCP output
+into Paperclip state before using it for downstream operational workflows.
+
+MCP output is not a content plan. Page briefs, article briefs, implementation
+tasks, monitoring targets, and content plans are downstream Paperclip work.
+
+Agents must use `project_id`, `run_id`, and `job_id` as server-side identifiers.
+Do not pass local client filesystem paths to the remote MCP server during normal
+agent workflows.
+
 ## Competitor SERP Recall
 
 The Semantic Core MCP supports opt-in competitor SERP expansion. The adapter
-passes `semantic_expansion` through direct `run_layer` calls, so production
-semantic-core runs can request both competitor URL ranked keywords and parsed
-page-content terms:
+preserves `semantic_expansion` inside registered project config and passes it
+through direct `run_layer` calls, so production semantic-core runs can request
+both competitor URL ranked keywords and parsed page-content terms:
 
 ```json
 {
@@ -66,11 +86,62 @@ When `prepare-paperclip-import` receives competitor expansion artifacts, the too
 - `competitor_expansion_debug.endpoint_counts`;
 - `competitor_expansion_debug.result_type_counts`.
 
+## Provider Cache And Live Runs
+
+Live runs should normally use project-scoped DataForSEO cache:
+
+```json
+{
+  "provider_cache": {
+    "enabled": true,
+    "mode": "read_write",
+    "default_ttl_days": 30,
+    "endpoint_ttl_days": {
+      "dataforseo_labs/google/search_intent/live": 60,
+      "dataforseo_labs/google/keyword_overview/live": 30,
+      "keywords_data/clickstream_data/global_search_volume/live": 30,
+      "serp/google/organic/live/advanced": 7,
+      "dataforseo_labs/google/ranked_keywords/live": 14,
+      "on_page/content_parsing/live": 30
+    }
+  }
+}
+```
+
+Use `provider_cache_mode: "read_write"` for normal production runs,
+`read_only` for no-spend reruns when enough cache is expected, `refresh` when
+provider data must be refreshed, and `bypass` only for provider debugging.
+Cache is scoped by `project_id`, not shared across companies or projects. Cache
+hits are not ranking, intent, or layer-membership acceptance evidence.
+
+Normal agent live workflow uses `run-layer-and-wait` or `run-layer` with
+`async_job: true` and polling through `get-job-status`. After each live run,
+call `get-run-costs` before initiating another live provider run.
+
+## Reading Results
+
+Use paginated result reads. Do not request thousands of rows in a single call.
+Typical page size is 100.
+
+Read:
+
+- accepted/review/parked/rejected keywords with `get-keywords`;
+- review queue with `get-review-queue`;
+- clusters with `get-clusters`;
+- SERP similarity/segments with `get-serp-segments`;
+- run history with `list-runs`;
+- cost/cache telemetry with `get-run-costs`.
+
+Review decisions are append-only input through `submit-review-decisions`. They
+do not mutate completed run artifacts; rerun the layer when decisions should be
+reflected in a new artifact set.
+
 ## Security
 
 - Do not store the bearer token in source, prompts, UI text, logs, or docs.
 - Store the token as a Paperclip secret and reference it via `semanticCoreMcpTokenSecretRef`.
 - Agents can pass semantic project inputs, but cannot override the configured MCP endpoint or token.
+- Agents should use this Paperclip plugin rather than raw MCP URLs or desktop-local connectors.
 
 ## Tools
 

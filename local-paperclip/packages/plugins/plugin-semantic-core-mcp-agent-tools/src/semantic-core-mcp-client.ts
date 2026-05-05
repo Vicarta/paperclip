@@ -406,25 +406,32 @@ function normalizeProjectConfig(value: unknown, projectId: unknown) {
   };
 }
 
-function mergeTopLevelSemanticExpansion(
+const TOP_LEVEL_PROJECT_CONFIG_KEYS = [
+  "semantic_expansion",
+  "provider_cache",
+] as const;
+
+function mergeTopLevelProjectConfigOptions(
   projectConfig: unknown,
   payload: Record<string, unknown>,
 ) {
   if (!isRecord(projectConfig)) return projectConfig;
-  if (Object.prototype.hasOwnProperty.call(projectConfig, "semantic_expansion")) {
-    return projectConfig;
+  let merged = projectConfig;
+  for (const key of TOP_LEVEL_PROJECT_CONFIG_KEYS) {
+    if (Object.prototype.hasOwnProperty.call(merged, key)) continue;
+    if (!isRecord(payload[key])) continue;
+    merged = {
+      ...merged,
+      [key]: payload[key],
+    };
   }
-  if (!isRecord(payload.semantic_expansion)) return projectConfig;
-  return {
-    ...projectConfig,
-    semantic_expansion: payload.semantic_expansion,
-  };
+  return merged;
 }
 
 function normalizeRegisterProjectPayload(payload: Record<string, unknown>) {
   const existingInputs = isRecord(payload.inputs) ? payload.inputs : null;
   if (existingInputs) {
-    const projectConfig = mergeTopLevelSemanticExpansion(
+    const projectConfig = mergeTopLevelProjectConfigOptions(
       existingInputs.project_config,
       payload,
     );
@@ -445,9 +452,12 @@ function normalizeRegisterProjectPayload(payload: Record<string, unknown>) {
 
   return {
     project_id: payload.project_id,
+    ...(readNonEmptyString(payload.display_name)
+      ? { display_name: readNonEmptyString(payload.display_name) }
+      : {}),
     inputs: {
       project_config: normalizeProjectConfig(
-        mergeTopLevelSemanticExpansion(payload.project_config, payload),
+        mergeTopLevelProjectConfigOptions(payload.project_config, payload),
         payload.project_id,
       ),
       seed_catalog: normalizeSeedCatalog(payload.seed_catalog),
