@@ -555,6 +555,13 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
               keyword_text: "vmfs recovery mac",
               competitor_expansion_endpoint: "dataforseo_ranked_keywords",
               serp_result_classification_reason: "Relevant product recovery result.",
+              decision_trace: [
+                {
+                  step: "layer_policy",
+                  decision: "accepted",
+                  reason: "core product recovery intent matched owner policy",
+                },
+              ],
             },
           ],
           clusters: [],
@@ -590,6 +597,13 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
                 keyword_text: "vmfs recovery mac",
                 competitor_expansion_endpoint: "dataforseo_ranked_keywords",
                 serp_result_classification_reason: "Relevant product recovery result.",
+                decision_trace: [
+                  {
+                    step: "layer_policy",
+                    decision: "accepted",
+                    reason: "core product recovery intent matched owner policy",
+                  },
+                ],
               },
             ],
             clusters: [],
@@ -629,6 +643,7 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
     expect(result.content).toContain("\"status\": \"validated\"");
     expect(result.content).toContain("dataforseo_content_parsing");
     expect(result.content).toContain("\"recall_ledger_count\": 1");
+    expect(result.content).toContain("\"keyword_rows_with_decision_trace\": 1");
     expect(harness.costs).toHaveLength(1);
     expect(harness.costs[0]?.provider).toBe("semantic-core-builder");
   });
@@ -658,6 +673,13 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
               keyword_text: "астрологічний прогноз по даті народження",
               serp_result_classification_reason: "parsed content term requires layer review",
               competitor_expansion_endpoint: "dataforseo_content_parsing",
+              decision_trace: [
+                {
+                  step: "review_escalation_policy",
+                  decision: "candidate_review",
+                  parked_reason: "high_demand_conflict",
+                },
+              ],
             },
           ],
           clusters: [],
@@ -696,6 +718,7 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
     expect(content.competitor_expansion).toMatchObject({
       keyword_rows_with_serp_result_classification_reason: 2,
       keyword_rows_with_competitor_expansion_endpoint: 3,
+      keyword_rows_with_decision_trace: 1,
       recall_ledger_present: true,
       serp_competitor_candidates_present: true,
       competitor_expansion_debug_present: true,

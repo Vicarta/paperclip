@@ -2,6 +2,20 @@
 
 ## 2026-05-05
 
+Updated DiskInternals Semantic Core MCP rules after the canonical MCP agent guide added policy-driven layer decisions.
+
+Planning/code changes:
+- Added `SEO-MCP-11` so agents treat layer membership as policy-driven instead of relying on hardcoded lexical allow/deny assumptions.
+- Updated Phase 10 roadmap and state notes so high-demand conflicts must be routed to review and explained through `decision_trace`.
+- Updated the Semantic Core MCP plugin import summary to count keyword rows that include `decision_trace`, giving agents a quick signal that accepted/review/parked/rejected explanations are available.
+- Updated plugin README/tests to keep `decision_trace` visible alongside competitor expansion evidence.
+
+Live contract changes:
+- Updated DiskInternals `CMO`, `CTO`, `SEO Semantic Core Strategist`, and `SEO Semantic Core Validator` live instructions with the policy-driven layer decision rule.
+- The live rule tells agents to configure niche terms through project inputs/entity packs/`semantic_expansion`, route high-demand conflicts to review, and inspect `decision_trace` before explaining keyword outcomes.
+
+## 2026-05-05
+
 Aligned DiskInternals Semantic Core MCP rules with the canonical MCP agent guide at `/Users/savitsky/CodexProjects/seo-semantic-core/docs/AI_AGENT_MCP_USAGE.md`.
 
 Planning/code changes:

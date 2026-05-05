@@ -35,6 +35,7 @@
 - [x] **SEO-MCP-08**: Keyword, review, cluster, and SERP result reads must be paginated; agents must not request thousands of rows in one MCP call.
 - [x] **SEO-MCP-09**: Agents use MCP server-side `project_id`, `run_id`, and `job_id`; they must not pass local filesystem paths to the remote MCP server.
 - [x] **SEO-MCP-10**: MCP outputs are generation and evidence artifacts only. Content plans, page briefs, Perfex tasks, and monitoring targets are downstream Paperclip workflows, not MCP responsibilities.
+- [x] **SEO-MCP-11**: Semantic-core layer decisions are policy-driven. Agents must not hardcode site-specific lexical allow/deny rules, must configure niche terms through project inputs/entity packs/`semantic_expansion`, must route high-demand conflicts to review instead of silent loss, and must inspect `decision_trace` when explaining accepted/review/parked/rejected keywords.
 
 ### Data Contracts And Attribution
 

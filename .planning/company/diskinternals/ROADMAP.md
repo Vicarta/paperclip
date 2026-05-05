@@ -183,7 +183,7 @@ Plans:
 ### Phase 10: Semantic Core MCP Adapter
 **Goal**: Paperclip agents can call the Semantic Core MCP server through a server-side adapter that keeps endpoint credentials private, orchestrates semantic layers, validates `paperclip_import.v1`, and stores operational import state for follow-up SEO work.
 **Depends on**: Phase 9
-**Requirements**: SEO-MCP-01, SEO-MCP-02, SEO-MCP-03, SEO-MCP-04, SEO-MCP-05, SEO-MCP-06, SEO-MCP-07, SEO-MCP-08, SEO-MCP-09, SEO-MCP-10
+**Requirements**: SEO-MCP-01, SEO-MCP-02, SEO-MCP-03, SEO-MCP-04, SEO-MCP-05, SEO-MCP-06, SEO-MCP-07, SEO-MCP-08, SEO-MCP-09, SEO-MCP-10, SEO-MCP-11
 **Success Criteria**:
   1. MCP endpoint and bearer token are configured only in backend plugin settings/secrets.
   2. Agents can register projects, run semantic layers, poll jobs, and prepare Paperclip import payloads.
@@ -194,6 +194,7 @@ Plans:
   7. Production live runs use project-scoped provider cache and retrieve `get_run_costs` before additional live provider spend.
   8. Result reads are paginated and MCP server IDs are used instead of local file paths.
   9. Agents treat MCP output as generation/provenance evidence; content planning and implementation routing remain Paperclip workflows.
+  10. Agents treat layer membership as policy-driven, inspect `decision_trace`, and route high-demand conflicts to review instead of silent keyword loss.
 **Plans**: 1 plan
 
 Plans:

@@ -133,6 +133,7 @@ When `prepare-paperclip-import` receives competitor expansion artifacts, the too
 
 - `serp_result_classification_reason`;
 - `competitor_expansion_endpoint`;
+- `decision_trace`;
 - `recall_ledger`;
 - `serp_competitor_candidates`;
 - `competitor_expansion_debug.source_counts`;

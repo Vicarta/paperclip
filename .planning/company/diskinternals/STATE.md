@@ -89,6 +89,7 @@ Recent decisions affecting current work:
 - Phase 9 implementation completed locally and live on 2026-04-29; Docker build now includes the plugin and live registry has the tools enabled.
 - Phase 10 added and completed: Semantic Core MCP Adapter. It bridges Paperclip to the private semantic-core MCP server, validates `paperclip_import.v1`, and stores import candidates in plugin state/entities until native SEO semantic tables are implemented.
 - Phase 10 semantic-core adapter is extended for competitor SERP recall: production project config can pass `semantic_expansion.serp_competitor_expansion.enable_content_parsing=true`, and import summaries expose competitor expansion evidence for review.
+- Semantic Core layer membership is policy-driven. DiskInternals agents should configure project/niche markers through project inputs, entity packs, or `semantic_expansion`; they must not rely on hardcoded lexical vetoes, and high-demand conflicts should surface as review candidates with `decision_trace` instead of being silently parked or rejected.
 - BigQuery-first growth operations algorithm added: `deliverables/BIGQUERY_GROWTH_OPERATING_ALGORITHM.md`.
 - Phase 7 planned as BigQuery Growth Automation with six executable GSD plans in `phases/07-bigquery-growth-automation-portfolio-expansion/`.
 - Plan `07-06` covers the live operational bootstrap: applying `dre-di.diskinternals_growth` schema/views, storing the BigQuery service account as a Paperclip encrypted company secret, wiring the live plugin config, and smoke-checking the resulting surface.

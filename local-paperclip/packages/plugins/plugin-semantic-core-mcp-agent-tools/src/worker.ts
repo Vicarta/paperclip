@@ -307,6 +307,7 @@ function summarizeCompetitorExpansion(importPayload: Record<string, unknown>) {
     keyword_rows_with_competitor_expansion_endpoint: rows.filter((row) =>
       readString(row.competitor_expansion_endpoint),
     ).length,
+    keyword_rows_with_decision_trace: rows.filter((row) => row.decision_trace != null).length,
     competitor_expansion_endpoint_values: endpointValues,
     recall_ledger_present: Object.prototype.hasOwnProperty.call(artifacts, "recall_ledger"),
     recall_ledger_count: Array.isArray(artifacts.recall_ledger)
