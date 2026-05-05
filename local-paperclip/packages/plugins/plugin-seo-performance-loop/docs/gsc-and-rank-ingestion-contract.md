@@ -7,8 +7,8 @@ It covers:
 
 - Google Search Console credential and property mapping;
 - page and query telemetry dimensions;
-- weekly collection windows;
-- rank-provider abstraction and fallback order;
+- configurable collection windows;
+- Serper-backed Google SERP rank collection;
 - error handling, retries, and idempotency;
 - how snapshots are persisted for downstream decision jobs.
 
@@ -19,8 +19,8 @@ This is a contract only. It does not contain live secrets, live API calls, or pr
 The first version of the plugin must treat the following as governed inputs:
 
 1. a single canonical Google Search Console property mapping;
-2. one primary rank provider chosen from the providers already connected in Paperclip, with a stable extension point for new providers;
-3. weekly telemetry collection and weekly decision evaluation;
+2. Serper plugin as the first Google SERP rank provider;
+3. configurable telemetry/rank collection cadence and decision evaluation;
 4. persisted snapshots that can be queried later by agents and tools.
 
 The plugin must not embed external auth logic inside free-form prompts.
@@ -32,8 +32,10 @@ The plugin instance settings must expose these configuration values:
 - `googleSearchConsoleCredentialSecretRef`
 - `googleSearchConsolePropertyUrl`
 - `defaultRankProvider`
+- `defaultSearchEngine`
 - `defaultRankGeo`
 - `defaultRankLanguage`
+- `defaultRankDevice`
 - `defaultPolicyId`
 - `weeklyCollectionEnabled`
 - `weeklyCollectionDay`
@@ -51,7 +53,7 @@ Recommended secret shape:
 - OAuth client credentials or equivalent Google access material;
 - refresh token or delegated access material if that is the chosen auth path;
 - token metadata required to refresh access;
-- no page telemetry, no article metadata, no rank data.
+- no page telemetry, no page metadata, no rank data.
 
 The plugin must reject missing or empty credential refs before any scheduled job starts.
 
@@ -72,7 +74,7 @@ The ingestion layer must derive a stable `property_key` from the configured prop
 
 ## Telemetry Windows
 
-The first implementation must run on a weekly cadence.
+The first implementation may default to a weekly cadence for GSC performance collection, but rank and AI visibility checks must be driven by policy/target rows and can be daily, weekly, or another configured interval.
 
 Default schedule:
 
@@ -139,32 +141,35 @@ Required metrics:
 
 ### Collection Rules
 
-- page-level telemetry is mandatory for every eligible published article;
+- page-level telemetry is mandatory for every eligible project page;
 - query-level telemetry is mandatory when the property exposes query data for that page;
 - if GSC returns no data for a page or query, that is a successful zero-data observation, not an error;
-- page-level and query-level snapshots must be tied back to the same `published_article_id`;
+- page-level and query-level snapshots must be tied back to the same `project_page_id` when the page is project-owned, and to `page_id` when it is only discovered but not yet project-owned;
 - the raw payload must be stored for auditability.
 
-## Rank-Provider Abstraction
+## Serper SERP Rank Collection
 
-The rank side must use the providers already connected in Paperclip first.
-New providers may be added later, but the plugin contract must not assume that a specific external rank vendor is always present.
+Google SERP rank collection must use the existing Serper plugin first. The SEO Performance Loop must not store Serper credentials or call Serper internals directly; it should dispatch through Paperclip plugin tooling and persist normalized results.
+
+New providers may be added later, but they must fit the same SERP snapshot / rank observation storage contract.
 
 ### Provider Selection Order
 
-1. use `defaultRankProvider` when it can satisfy the request;
-2. if it cannot provide a valid snapshot for the requested geo/language/window, fall back to another eligible provider already connected in Paperclip;
-3. if no provider can satisfy the request, persist the failure and continue the rest of the batch.
+1. use `serper` for Google SERP rank checks;
+2. if Serper is unavailable, persist the provider failure for the specific target and continue the rest of the batch;
+3. do not silently switch to another provider unless a policy explicitly allows fallback.
 
 ### Rank Snapshot Inputs
 
 Rank snapshot requests must be built from:
 
-- canonical article URL;
-- primary keyword;
+- rank tracking target;
+- keyword;
+- expected canonical page/domain;
+- search engine, default `google`;
 - geo;
 - language;
-- optional device;
+- device;
 - collection window start and end;
 - provider identifier.
 
@@ -175,15 +180,17 @@ Every rank snapshot must record:
 - `rank_position`
 - `rank_url`
 - `rank_keyword`
+- `rank_search_engine`
 - `rank_geo`
 - `rank_language`
+- `rank_device`
 - `rank_provider`
 - `observed_at`
 - `snapshot_window_start`
 - `snapshot_window_end`
 - provider raw payload
 
-The plugin should preserve the provider response shape in `raw_payload_json` so that a new provider can be added later without losing source fidelity.
+The plugin should preserve the provider response shape in `raw_payload_json` and persist top-result rows separately so agents can inspect competitor movement, not only the owned-page position.
 
 ### Extension Point For New Providers
 
@@ -221,13 +228,15 @@ This run ledger is the idempotency anchor for retries.
 
 The canonical snapshot tables should be able to represent:
 
-- one page-level GSC snapshot per article per weekly window;
+- one page-level GSC snapshot per project page per collection window;
 - zero or more query-level rows linked to that page-level snapshot;
-- one rank snapshot per article per weekly window, per provider and geo/language tuple.
+- one SERP snapshot per rank tracking target per policy window;
+- one rank observation per keyword/search engine/provider/geo/language/device/date.
 
 Snapshot rows must include:
 
-- `published_article_id`
+- `page_id`
+- `project_page_id`
 - `source_kind`
 - `snapshot_window_start`
 - `snapshot_window_end`
@@ -236,14 +245,14 @@ Snapshot rows must include:
 - contextual dimensions
 - `raw_payload_json`
 
-The same weekly window must never produce duplicate canonical rows.
-Upserts should be keyed by article id, source kind, window bounds, and provider/dimension tuple where relevant.
+The same collection window must never produce duplicate canonical rows.
+Upserts should be keyed by page/project-page id, source kind, window bounds, and provider/dimension tuple where relevant.
 
 ### 3. Decision Rows
 
-The decision job must persist one row per article per decision window with:
+The decision job must persist one row per project page per decision window with:
 
-- `published_article_id`
+- `project_page_id`
 - `decision_window_end`
 - `decision_status`
 - `decision_reason`
@@ -288,13 +297,13 @@ Recommended retry policy:
 
 ### Partial Failures
 
-The job must continue processing the rest of the article batch if one article or one provider fails.
+The job must continue processing the rest of the project-page batch if one page or one provider fails.
 
 Rules:
 
-- one failed article must not cancel the entire weekly run;
-- one failed rank provider must not cancel the GSC snapshot for the same article;
-- a failure must be recorded per article and per provider so that the next run can retry only the missing piece.
+- one failed page must not cancel the entire run;
+- one failed rank provider must not cancel the GSC snapshot for the same page;
+- a failure must be recorded per page and per provider so that the next run can retry only the missing piece.
 
 ### No-Data Handling
 
@@ -304,23 +313,23 @@ Do not convert empty data into an error.
 - zero impressions is still valid data;
 - a page with no query rows is still a successful telemetry snapshot if the page-level request succeeded.
 
-## Weekly Job Behavior
+## Scheduled Job Behavior
 
-### `collect-weekly-search-telemetry`
+### `collect-search-telemetry`
 
-For each eligible published article:
+For each eligible project page:
 
 1. resolve the canonical registry row;
 2. resolve the GSC property mapping;
-3. fetch page-level GSC metrics for the closed weekly window;
+3. fetch page-level GSC metrics for the closed telemetry window;
 4. fetch query-level GSC rows when available;
-5. fetch a rank snapshot for the primary keyword in the configured geo/language;
+5. fetch rank snapshots for active rank tracking targets due under policy;
 6. persist normalized snapshots and raw payloads;
 7. mark the run ledger with success or a structured failure state.
 
-### `evaluate-weekly-seo-decisions`
+### `evaluate-seo-decisions`
 
-For each article with a fresh telemetry window:
+For each project page with a fresh telemetry window:
 
 1. load the latest page-level and rank snapshots;
 2. load the active policy parameters;
@@ -335,7 +344,7 @@ Human review may happen later, but the ingestion and decision ledger must remain
 
 The first version of the plugin should expose deterministic tools for downstream roles:
 
-- `seo_published_article_get`
+- `seo_project_page_get`
 - `seo_search_telemetry_get`
 - `seo_rank_snapshot_get`
 - `seo_performance_decision_get`
