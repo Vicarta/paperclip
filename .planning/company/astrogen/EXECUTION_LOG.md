@@ -2,6 +2,10 @@
 
 ## 2026-05-05
 
+- Re-ran Astrogen Semantic Core MCP layer 1 `core_product_intent` with policy-driven review escalation, competitor content parsing, and explicit `brand_astrogen` seed variants.
+- New run `run_20260505_124618_core_product_intent_304990fe` completed with 32 accepted keywords, 36 review candidates, 79 parked keywords, 31 clusters, and 4 SERP segments.
+- Brand check passed for first-layer inclusion: `Astrogen`, `астроген`, `astrogen україна`, `астроген натальна карта`, and `astrogen натальна карта` landed in accepted keywords; `astrogen com ua` landed in review as ambiguous intent.
+- Exported local inspection CSVs under `.tmp/astrogen-semantic-core/csv-run_20260505_124618_core_product_intent_304990fe/`.
 - Updated Semantic Core MCP competitor SERP recall contract for Astrogen and agency-core.
 - Added agency-core instructions for production semantic-core runs to enable competitor content parsing when maximum recall matters.
 - Clarified that parsed competitor content terms are candidate evidence only and still require normal MCP gates/layer membership.

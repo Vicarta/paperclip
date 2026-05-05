@@ -13,7 +13,7 @@ See: `.planning/company/astrogen/README.md`
 
 Phase: Astrogen growth/content operating system hardening
 Status: Active
-Last activity: 2026-05-02 - Deployed the runtime silent-noop guard and Telegram operational alerts after `AST-708` proved an agent assignment run could exit successfully without moving the issue forward.
+Last activity: 2026-05-05 - Re-ran Astrogen Semantic Core MCP layer 1 with explicit brand seeds and policy-driven review escalation; implemented the shared agency-core `seo_ops` Postgres schema for SEO Performance Loop storage.
 
 ## Current Focus
 
@@ -26,6 +26,7 @@ Last activity: 2026-05-02 - Deployed the runtime silent-noop guard and Telegram 
 - SEO content generation contracts for Ukrainian articles.
 - Blog image generation requirements and one-article correction/test workflow.
 - Semantic core planning for Ukrainian-language Astrogen content.
+- Latest Astrogen Semantic Core layer 1 run: `run_20260505_124618_core_product_intent_304990fe`; accepted 32, review 36, parked 79, clusters 31, SERP segments 4. Brand queries are represented in accepted/review instead of being silently lost.
 - Semantic Core MCP competitor SERP recall now supports opt-in competitor page content parsing; production Astrogen semantic-core runs should enable it for maximum recall, while smoke/quick/budget-sensitive runs should leave it disabled.
 - Google Search Console MCP integration for Astrogen site data.
 - SEO monitoring and article performance loop planning.
@@ -58,7 +59,7 @@ Last activity: 2026-05-02 - Deployed the runtime silent-noop guard and Telegram 
 - Decide whether Semantic Core MCP should be enabled for Astrogen immediately or after the next semantic-core workflow pass.
 - Keep future commits scoped and documented.
 - Add direct references to agency-core execution governance in live CEO/CMO/CTO/HIA/Observability contracts during the next live contract maintenance pass.
-- Convert `SEO_PERFORMANCE_LOOP` into concrete Astrogen Phase 5 implementation tasks when SEO monitoring work resumes.
+- Build SEO Performance Loop ingestion/runners on top of the implemented shared `seo_ops` schema when SEO monitoring work resumes.
 - Recover [AST-708](/AST/issues/AST-708): the system now detects the validator no-op, but the Stage 54 validation result still needs to be produced by a corrected contract or a different working agent.
 
 ## Blockers/Concerns

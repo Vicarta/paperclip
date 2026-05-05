@@ -351,6 +351,13 @@
       "when": 1776787200000,
       "tag": "0049_heartbeat_runs_company_created_idx",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1777985590262,
+      "tag": "0050_stale_black_cat",
+      "breakpoints": true
     }
   ]
 }

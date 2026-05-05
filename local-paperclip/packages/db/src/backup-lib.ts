@@ -46,6 +46,7 @@ type TableDefinition = {
 };
 
 const DRIZZLE_SCHEMA = "drizzle";
+const SEO_OPS_SCHEMA = "seo_ops";
 const DRIZZLE_MIGRATIONS_TABLE = "__drizzle_migrations";
 const DEFAULT_BACKUP_WRITE_BUFFER_BYTES = 1024 * 1024;
 
@@ -276,6 +277,7 @@ export async function runDatabaseBackup(opts: RunDatabaseBackupOptions): Promise
       WHERE table_type = 'BASE TABLE'
         AND (
           table_schema = 'public'
+          OR table_schema = ${SEO_OPS_SCHEMA}
           OR (${includeMigrationJournal}::boolean AND table_schema = ${DRIZZLE_SCHEMA} AND table_name = ${DRIZZLE_MIGRATIONS_TABLE})
         )
       ORDER BY table_schema, table_name
@@ -290,6 +292,7 @@ export async function runDatabaseBackup(opts: RunDatabaseBackupOptions): Promise
       JOIN pg_enum e ON t.oid = e.enumtypid
       JOIN pg_namespace n ON t.typnamespace = n.oid
       WHERE n.nspname = 'public'
+         OR n.nspname = ${SEO_OPS_SCHEMA}
       GROUP BY t.typname
       ORDER BY t.typname
     `;
@@ -321,6 +324,7 @@ export async function runDatabaseBackup(opts: RunDatabaseBackupOptions): Promise
       LEFT JOIN pg_namespace tblns ON tblns.oid = tbl.relnamespace
       LEFT JOIN pg_attribute attr ON attr.attrelid = tbl.oid AND attr.attnum = dep.refobjsubid
       WHERE s.sequence_schema = 'public'
+         OR s.sequence_schema = ${SEO_OPS_SCHEMA}
          OR (${includeMigrationJournal}::boolean AND s.sequence_schema = ${DRIZZLE_SCHEMA})
       ORDER BY s.sequence_schema, s.sequence_name
     `;
@@ -466,6 +470,7 @@ export async function runDatabaseBackup(opts: RunDatabaseBackupOptions): Promise
       JOIN pg_attribute ta ON ta.attrelid = tgt.oid AND ta.attnum = ANY(c.confkey)
       WHERE c.contype = 'f' AND (
         srcn.nspname = 'public'
+        OR srcn.nspname = ${SEO_OPS_SCHEMA}
         OR (${includeMigrationJournal}::boolean AND srcn.nspname = ${DRIZZLE_SCHEMA})
       )
       GROUP BY c.conname, srcn.nspname, src.relname, tgtn.nspname, tgt.relname, c.confupdtype, c.confdeltype
@@ -505,6 +510,7 @@ export async function runDatabaseBackup(opts: RunDatabaseBackupOptions): Promise
       JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = ANY(c.conkey)
       WHERE c.contype = 'u' AND (
         n.nspname = 'public'
+        OR n.nspname = ${SEO_OPS_SCHEMA}
         OR (${includeMigrationJournal}::boolean AND n.nspname = ${DRIZZLE_SCHEMA})
       )
       GROUP BY c.conname, n.nspname, t.relname
@@ -527,6 +533,7 @@ export async function runDatabaseBackup(opts: RunDatabaseBackupOptions): Promise
       FROM pg_indexes
       WHERE (
           schemaname = 'public'
+          OR schemaname = ${SEO_OPS_SCHEMA}
           OR (${includeMigrationJournal}::boolean AND schemaname = ${DRIZZLE_SCHEMA})
         )
         AND indexname NOT IN (

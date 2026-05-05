@@ -100,6 +100,23 @@ describeEmbeddedPostgres("runDatabaseBackup", () => {
             "created_at" timestamptz NOT NULL DEFAULT now()
           );
         `);
+        await sourceSql.unsafe(`
+          CREATE SCHEMA IF NOT EXISTS "seo_ops";
+        `);
+        await sourceSql.unsafe(`
+          CREATE TABLE "seo_ops"."backup_test_pages" (
+            "id" serial PRIMARY KEY,
+            "canonical_url" text NOT NULL,
+            "metadata" jsonb NOT NULL DEFAULT '{}'::jsonb
+          );
+        `);
+        await sourceSql`
+          INSERT INTO "seo_ops"."backup_test_pages" ("canonical_url", "metadata")
+          VALUES (
+            ${"https://example.com/manual-page"},
+            ${JSON.stringify({ source: "sitemap" })}::jsonb
+          )
+        `;
 
         const payload = "x".repeat(8192);
         for (let index = 0; index < 160; index += 1) {
@@ -132,6 +149,7 @@ describeEmbeddedPostgres("runDatabaseBackup", () => {
         expect(result.backupFile).toMatch(/paperclip-test-.*\.sql$/);
         expect(result.sizeBytes).toBeGreaterThan(1024 * 1024);
         expect(fs.existsSync(result.backupFile)).toBe(true);
+        expect(fs.readFileSync(result.backupFile, "utf8")).toContain('CREATE SCHEMA IF NOT EXISTS "seo_ops";');
 
         await runDatabaseRestore({
           connectionString: restoreConnectionString,
@@ -167,6 +185,17 @@ describeEmbeddedPostgres("runDatabaseBackup", () => {
             payload,
             state: "done",
             metadata: { index: 159, even: false },
+          },
+        ]);
+
+        const seoOpsRows = await restoreSql.unsafe<{ canonical_url: string; metadata: { source: string } }[]>(`
+          SELECT "canonical_url", "metadata"
+          FROM "seo_ops"."backup_test_pages"
+        `);
+        expect(seoOpsRows).toEqual([
+          {
+            canonical_url: "https://example.com/manual-page",
+            metadata: { source: "sitemap" },
           },
         ]);
       } finally {

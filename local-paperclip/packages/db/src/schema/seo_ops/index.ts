@@ -1,0 +1,1008 @@
+import { sql } from "drizzle-orm";
+import {
+  boolean,
+  date,
+  index,
+  integer,
+  jsonb,
+  numeric,
+  pgSchema,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+} from "drizzle-orm/pg-core";
+import { agents } from "../agents.js";
+import { companies } from "../companies.js";
+import { costEvents } from "../cost_events.js";
+import { heartbeatRuns } from "../heartbeat_runs.js";
+import { issues } from "../issues.js";
+import { pluginJobRuns } from "../plugin_jobs.js";
+import { projects } from "../projects.js";
+
+const seoOps = pgSchema("seo_ops");
+
+type JsonRecord = Record<string, unknown>;
+
+export const seoOpsSites = seoOps.table(
+  "sites",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    companyId: uuid("company_id").notNull().references(() => companies.id),
+    domain: text("domain").notNull(),
+    canonicalHost: text("canonical_host"),
+    defaultUrlScheme: text("default_url_scheme").notNull().default("https"),
+    gscSiteUrl: text("gsc_site_url"),
+    bingSiteUrl: text("bing_site_url"),
+    status: text("status").notNull().default("active"),
+    metadata: jsonb("metadata").$type<JsonRecord>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyDomainUq: uniqueIndex("seo_ops_sites_company_domain_uq").on(table.companyId, table.domain),
+    companyStatusIdx: index("seo_ops_sites_company_status_idx").on(table.companyId, table.status),
+  }),
+);
+
+export const seoOpsProjectScopes = seoOps.table(
+  "project_scopes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    companyId: uuid("company_id").notNull().references(() => companies.id),
+    projectId: uuid("project_id").notNull().references(() => projects.id),
+    siteId: uuid("site_id").notNull().references(() => seoOpsSites.id),
+    domain: text("domain").notNull(),
+    siteScopePrefix: text("site_scope_prefix"),
+    includePathPatterns: jsonb("include_path_patterns").$type<string[]>().notNull().default([]),
+    excludePathPatterns: jsonb("exclude_path_patterns").$type<string[]>().notNull().default([]),
+    languageCode: text("language_code").notNull(),
+    locationCode: text("location_code").notNull(),
+    deviceContext: text("device_context").notNull().default("desktop"),
+    pageTypeFilter: text("page_type_filter"),
+    ownershipMode: text("ownership_mode").notNull().default("owned"),
+    conflictPolicy: text("conflict_policy").notNull().default("flag_conflict"),
+    priority: integer("priority").notNull().default(100),
+    status: text("status").notNull().default("active"),
+    settings: jsonb("settings").$type<JsonRecord>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyProjectStatusIdx: index("seo_ops_project_scopes_company_project_status_idx").on(
+      table.companyId,
+      table.projectId,
+      table.status,
+    ),
+    companySiteStatusPriorityIdx: index("seo_ops_project_scopes_company_site_status_priority_idx").on(
+      table.companyId,
+      table.siteId,
+      table.status,
+      table.priority,
+    ),
+  }),
+);
+
+export const seoOpsDiscoveryRuns = seoOps.table(
+  "discovery_runs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    companyId: uuid("company_id").notNull().references(() => companies.id),
+    projectId: uuid("project_id").references(() => projects.id),
+    siteId: uuid("site_id").references(() => seoOpsSites.id),
+    source: text("source").notNull(),
+    status: text("status").notNull().default("running"),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+    input: jsonb("input").$type<JsonRecord>().notNull().default({}),
+    summary: jsonb("summary").$type<JsonRecord>().notNull().default({}),
+    error: text("error"),
+    pluginJobRunId: uuid("plugin_job_run_id").references(() => pluginJobRuns.id),
+    heartbeatRunId: uuid("heartbeat_run_id").references(() => heartbeatRuns.id),
+    costEventId: uuid("cost_event_id").references(() => costEvents.id),
+  },
+  (table) => ({
+    companySourceStartedIdx: index("seo_ops_discovery_runs_company_source_started_idx").on(
+      table.companyId,
+      table.source,
+      table.startedAt,
+    ),
+    companySiteStartedIdx: index("seo_ops_discovery_runs_company_site_started_idx").on(
+      table.companyId,
+      table.siteId,
+      table.startedAt,
+    ),
+  }),
+);
+
+export const seoOpsPages = seoOps.table(
+  "pages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    companyId: uuid("company_id").notNull().references(() => companies.id),
+    siteId: uuid("site_id").notNull().references(() => seoOpsSites.id),
+    canonicalUrl: text("canonical_url").notNull(),
+    canonicalUrlNormalized: text("canonical_url_normalized").notNull(),
+    path: text("path").notNull(),
+    urlHash: text("url_hash").notNull(),
+    firstSeenAt: timestamp("first_seen_at", { withTimezone: true }).notNull().defaultNow(),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+    lastDiscoveryRunId: uuid("last_discovery_run_id").references(() => seoOpsDiscoveryRuns.id),
+    discoveryStatus: text("discovery_status").notNull().default("seen"),
+    discoverySources: jsonb("discovery_sources").$type<string[]>().notNull().default([]),
+    sitemapLastmod: timestamp("sitemap_lastmod", { withTimezone: true }),
+    httpStatus: integer("http_status"),
+    redirectTargetUrl: text("redirect_target_url"),
+    declaredCanonicalUrl: text("declared_canonical_url"),
+    robotsStatus: text("robots_status"),
+    indexabilityStatus: text("indexability_status"),
+    title: text("title"),
+    h1: text("h1"),
+    metaDescription: text("meta_description"),
+    detectedLanguageCode: text("detected_language_code"),
+    schemaTypes: jsonb("schema_types").$type<string[]>().notNull().default([]),
+    pageType: text("page_type"),
+    contentHash: text("content_hash"),
+    enrichment: jsonb("enrichment").$type<JsonRecord>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companySiteCanonicalUq: uniqueIndex("seo_ops_pages_company_site_canonical_uq").on(
+      table.companyId,
+      table.siteId,
+      table.canonicalUrlNormalized,
+    ),
+    companySiteUrlHashUq: uniqueIndex("seo_ops_pages_company_site_url_hash_uq").on(
+      table.companyId,
+      table.siteId,
+      table.urlHash,
+    ),
+    companySiteLastSeenIdx: index("seo_ops_pages_company_site_last_seen_idx").on(
+      table.companyId,
+      table.siteId,
+      table.lastSeenAt,
+    ),
+    companySiteDiscoveryStatusIdx: index("seo_ops_pages_company_site_discovery_status_idx").on(
+      table.companyId,
+      table.siteId,
+      table.discoveryStatus,
+    ),
+  }),
+);
+
+export const seoOpsProjectPages = seoOps.table(
+  "project_pages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    companyId: uuid("company_id").notNull().references(() => companies.id),
+    projectId: uuid("project_id").notNull().references(() => projects.id),
+    siteId: uuid("site_id").notNull().references(() => seoOpsSites.id),
+    pageId: uuid("page_id").notNull().references(() => seoOpsPages.id),
+    projectScopeId: uuid("project_scope_id").references(() => seoOpsProjectScopes.id),
+    ownershipStatus: text("ownership_status").notNull().default("candidate"),
+    ownershipMode: text("ownership_mode").notNull().default("owned"),
+    primaryPageType: text("primary_page_type"),
+    seoState: text("seo_state").notNull().default("new"),
+    priority: integer("priority").notNull().default(100),
+    monitoringStatus: text("monitoring_status").notNull().default("active"),
+    firstOwnedAt: timestamp("first_owned_at", { withTimezone: true }),
+    lastEvaluatedAt: timestamp("last_evaluated_at", { withTimezone: true }),
+    lastChangedAt: timestamp("last_changed_at", { withTimezone: true }),
+    settings: jsonb("settings").$type<JsonRecord>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyProjectPageUq: uniqueIndex("seo_ops_project_pages_company_project_page_uq").on(
+      table.companyId,
+      table.projectId,
+      table.pageId,
+    ),
+    companyProjectMonitoringIdx: index("seo_ops_project_pages_company_project_monitoring_idx").on(
+      table.companyId,
+      table.projectId,
+      table.monitoringStatus,
+      table.seoState,
+    ),
+    companySitePageIdx: index("seo_ops_project_pages_company_site_page_idx").on(
+      table.companyId,
+      table.siteId,
+      table.pageId,
+    ),
+  }),
+);
+
+export const seoOpsKeywords = seoOps.table(
+  "keywords",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    normalizedKeyword: text("normalized_keyword").notNull(),
+    displayKeyword: text("display_keyword").notNull(),
+    languageCode: text("language_code").notNull(),
+    locationCode: text("location_code").notNull(),
+    deviceContext: text("device_context").notNull().default("desktop"),
+    keywordHash: text("keyword_hash").notNull(),
+    status: text("status").notNull().default("candidate"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    identityUq: uniqueIndex("seo_ops_keywords_identity_uq").on(
+      table.normalizedKeyword,
+      table.languageCode,
+      table.locationCode,
+      table.deviceContext,
+    ),
+    hashUq: uniqueIndex("seo_ops_keywords_hash_uq").on(table.keywordHash),
+    localeStatusIdx: index("seo_ops_keywords_locale_status_idx").on(
+      table.languageCode,
+      table.locationCode,
+      table.status,
+    ),
+  }),
+);
+
+export const seoOpsKeywordObservations = seoOps.table(
+  "keyword_observations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    companyId: uuid("company_id").notNull().references(() => companies.id),
+    projectId: uuid("project_id").references(() => projects.id),
+    siteId: uuid("site_id").references(() => seoOpsSites.id),
+    pageId: uuid("page_id").references(() => seoOpsPages.id),
+    projectPageId: uuid("project_page_id").references(() => seoOpsProjectPages.id),
+    keywordId: uuid("keyword_id").references(() => seoOpsKeywords.id),
+    rawQuery: text("raw_query"),
+    normalizedQuery: text("normalized_query"),
+    source: text("source").notNull(),
+    sourceRunId: text("source_run_id"),
+    discoveryRunId: uuid("discovery_run_id").references(() => seoOpsDiscoveryRuns.id),
+    dateFrom: date("date_from"),
+    dateTo: date("date_to"),
+    country: text("country"),
+    device: text("device"),
+    searchAppearance: text("search_appearance"),
+    clicks: integer("clicks"),
+    impressions: integer("impressions"),
+    ctr: numeric("ctr"),
+    averagePosition: numeric("average_position"),
+    geoSearchVolume: integer("geo_search_volume"),
+    globalSearchVolume: integer("global_search_volume"),
+    globalSearchVolumeStatus: text("global_search_volume_status"),
+    intentLabel: text("intent_label"),
+    intentProbability: numeric("intent_probability"),
+    membership: text("membership"),
+    reason: text("reason"),
+    evidenceStatus: text("evidence_status").notNull().default("raw"),
+    payload: jsonb("payload").$type<JsonRecord>().notNull().default({}),
+    observedAt: timestamp("observed_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyProjectObservedIdx: index("seo_ops_keyword_observations_company_project_observed_idx").on(
+      table.companyId,
+      table.projectId,
+      table.observedAt,
+    ),
+    companyProjectPageObservedIdx: index("seo_ops_keyword_observations_company_project_page_observed_idx").on(
+      table.companyId,
+      table.projectPageId,
+      table.observedAt,
+    ),
+    companyKeywordSourceObservedIdx: index("seo_ops_keyword_observations_company_keyword_source_observed_idx").on(
+      table.companyId,
+      table.keywordId,
+      table.source,
+      table.observedAt,
+    ),
+    gscDedupeUq: uniqueIndex("seo_ops_keyword_observations_gsc_dedupe_uq")
+      .on(
+        table.companyId,
+        table.projectId,
+        table.pageId,
+        table.normalizedQuery,
+        table.source,
+        table.dateFrom,
+        table.dateTo,
+        table.country,
+        table.device,
+      )
+      .where(sql`${table.source} = 'gsc'`),
+  }),
+);
+
+export const seoOpsSemanticCoreRuns = seoOps.table(
+  "semantic_core_runs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    companyId: uuid("company_id").notNull().references(() => companies.id),
+    projectId: uuid("project_id").notNull().references(() => projects.id),
+    clientKey: text("client_key").notNull(),
+    mcpProjectId: text("mcp_project_id").notNull(),
+    mcpRunId: text("mcp_run_id").notNull(),
+    layer: text("layer").notNull(),
+    runMode: text("run_mode"),
+    schemaVersion: text("schema_version"),
+    providerVersions: jsonb("provider_versions").$type<JsonRecord>().notNull().default({}),
+    artifactManifestUri: text("artifact_manifest_uri"),
+    sourceHashes: jsonb("source_hashes").$type<unknown[]>().notNull().default([]),
+    cost: jsonb("cost").$type<JsonRecord>().notNull().default({}),
+    status: text("status").notNull().default("imported"),
+    generatedAt: timestamp("generated_at", { withTimezone: true }),
+    importedAt: timestamp("imported_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyProjectRunUq: uniqueIndex("seo_ops_semantic_core_runs_company_project_run_uq").on(
+      table.companyId,
+      table.projectId,
+      table.mcpRunId,
+    ),
+    companyProjectLayerImportedIdx: index("seo_ops_semantic_core_runs_company_project_layer_imported_idx").on(
+      table.companyId,
+      table.projectId,
+      table.layer,
+      table.importedAt,
+    ),
+  }),
+);
+
+export const seoOpsSemanticCoreMemberships = seoOps.table(
+  "semantic_core_memberships",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    companyId: uuid("company_id").notNull().references(() => companies.id),
+    projectId: uuid("project_id").notNull().references(() => projects.id),
+    semanticCoreRunId: uuid("semantic_core_run_id").references(() => seoOpsSemanticCoreRuns.id),
+    keywordId: uuid("keyword_id").notNull().references(() => seoOpsKeywords.id),
+    clusterId: text("cluster_id"),
+    layer: text("layer").notNull(),
+    membership: text("membership").notNull().default("candidate"),
+    parkedReason: text("parked_reason"),
+    rejectedReason: text("rejected_reason"),
+    reviewDecision: text("review_decision"),
+    reviewedByAgentId: uuid("reviewed_by_agent_id").references(() => agents.id),
+    reviewedByUserId: text("reviewed_by_user_id"),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    payload: jsonb("payload").$type<JsonRecord>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyProjectKeywordLayerUq: uniqueIndex("seo_ops_semantic_core_memberships_company_project_keyword_layer_uq").on(
+      table.companyId,
+      table.projectId,
+      table.keywordId,
+      table.layer,
+    ),
+    companyProjectLayerMembershipIdx: index("seo_ops_semantic_core_memberships_company_project_layer_membership_idx").on(
+      table.companyId,
+      table.projectId,
+      table.layer,
+      table.membership,
+    ),
+  }),
+);
+
+export const seoOpsClusters = seoOps.table(
+  "clusters",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    companyId: uuid("company_id").notNull().references(() => companies.id),
+    projectId: uuid("project_id").notNull().references(() => projects.id),
+    externalClusterId: text("external_cluster_id"),
+    label: text("label").notNull(),
+    layer: text("layer"),
+    intentLabel: text("intent_label"),
+    status: text("status").notNull().default("candidate"),
+    payload: jsonb("payload").$type<JsonRecord>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyProjectExternalClusterUq: uniqueIndex("seo_ops_clusters_company_project_external_cluster_uq")
+      .on(table.companyId, table.projectId, table.externalClusterId)
+      .where(sql`${table.externalClusterId} is not null`),
+    companyProjectLayerStatusIdx: index("seo_ops_clusters_company_project_layer_status_idx").on(
+      table.companyId,
+      table.projectId,
+      table.layer,
+      table.status,
+    ),
+  }),
+);
+
+export const seoOpsSemanticSegments = seoOps.table(
+  "semantic_segments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    companyId: uuid("company_id").notNull().references(() => companies.id),
+    projectId: uuid("project_id").notNull().references(() => projects.id),
+    semanticCoreRunId: uuid("semantic_core_run_id").references(() => seoOpsSemanticCoreRuns.id),
+    externalSegmentId: text("external_segment_id"),
+    segmentType: text("segment_type").notNull(),
+    label: text("label"),
+    layer: text("layer"),
+    intentLabel: text("intent_label"),
+    ownerTypeFinal: text("owner_type_final"),
+    productBindings: jsonb("product_bindings").$type<unknown[]>().notNull().default([]),
+    primaryKeywords: jsonb("primary_keywords").$type<unknown[]>().notNull().default([]),
+    clusterIds: jsonb("cluster_ids").$type<unknown[]>().notNull().default([]),
+    evidenceSummary: jsonb("evidence_summary").$type<JsonRecord>().notNull().default({}),
+    status: text("status").notNull().default("candidate"),
+    payload: jsonb("payload").$type<JsonRecord>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyProjectExternalSegmentUq: uniqueIndex("seo_ops_semantic_segments_company_project_external_segment_uq")
+      .on(table.companyId, table.projectId, table.externalSegmentId)
+      .where(sql`${table.externalSegmentId} is not null`),
+    companyProjectSegmentTypeStatusIdx: index("seo_ops_semantic_segments_company_project_type_status_idx").on(
+      table.companyId,
+      table.projectId,
+      table.segmentType,
+      table.status,
+    ),
+    companyProjectLayerIntentIdx: index("seo_ops_semantic_segments_company_project_layer_intent_idx").on(
+      table.companyId,
+      table.projectId,
+      table.layer,
+      table.intentLabel,
+    ),
+  }),
+);
+
+export const seoOpsSemanticSegmentKeywords = seoOps.table(
+  "semantic_segment_keywords",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    companyId: uuid("company_id").notNull().references(() => companies.id),
+    projectId: uuid("project_id").notNull().references(() => projects.id),
+    semanticSegmentId: uuid("semantic_segment_id").notNull().references(() => seoOpsSemanticSegments.id),
+    keywordId: uuid("keyword_id").notNull().references(() => seoOpsKeywords.id),
+    relationshipType: text("relationship_type").notNull().default("member"),
+    source: text("source"),
+    payload: jsonb("payload").$type<JsonRecord>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyProjectSegmentKeywordTypeUq: uniqueIndex("seo_ops_semantic_segment_keywords_segment_keyword_type_uq").on(
+      table.companyId,
+      table.projectId,
+      table.semanticSegmentId,
+      table.keywordId,
+      table.relationshipType,
+    ),
+    companyProjectKeywordIdx: index("seo_ops_semantic_segment_keywords_company_project_keyword_idx").on(
+      table.companyId,
+      table.projectId,
+      table.keywordId,
+    ),
+  }),
+);
+
+export const seoOpsKeywordClusterMemberships = seoOps.table(
+  "keyword_cluster_memberships",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    companyId: uuid("company_id").notNull().references(() => companies.id),
+    projectId: uuid("project_id").notNull().references(() => projects.id),
+    clusterId: uuid("cluster_id").notNull().references(() => seoOpsClusters.id),
+    keywordId: uuid("keyword_id").notNull().references(() => seoOpsKeywords.id),
+    membershipStatus: text("membership_status").notNull().default("candidate"),
+    source: text("source"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyProjectClusterKeywordUq: uniqueIndex("seo_ops_keyword_cluster_memberships_cluster_keyword_uq").on(
+      table.companyId,
+      table.projectId,
+      table.clusterId,
+      table.keywordId,
+    ),
+    companyProjectKeywordIdx: index("seo_ops_keyword_cluster_memberships_company_project_keyword_idx").on(
+      table.companyId,
+      table.projectId,
+      table.keywordId,
+    ),
+  }),
+);
+
+export const seoOpsPageKeywordTargets = seoOps.table(
+  "page_keyword_targets",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    companyId: uuid("company_id").notNull().references(() => companies.id),
+    projectId: uuid("project_id").notNull().references(() => projects.id),
+    projectPageId: uuid("project_page_id").notNull().references(() => seoOpsProjectPages.id),
+    keywordId: uuid("keyword_id").notNull().references(() => seoOpsKeywords.id),
+    targetType: text("target_type").notNull(),
+    status: text("status").notNull().default("candidate"),
+    tier: text("tier").notNull().default("tier_3"),
+    source: text("source").notNull(),
+    priority: integer("priority").notNull().default(100),
+    isPrimary: boolean("is_primary").notNull().default(false),
+    acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+    parkedReason: text("parked_reason"),
+    rejectedReason: text("rejected_reason"),
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyProjectPageKeywordTypeUq: uniqueIndex("seo_ops_page_keyword_targets_page_keyword_type_uq").on(
+      table.companyId,
+      table.projectId,
+      table.projectPageId,
+      table.keywordId,
+      table.targetType,
+    ),
+    acceptedPrimaryUq: uniqueIndex("seo_ops_page_keyword_targets_accepted_primary_uq")
+      .on(table.companyId, table.projectId, table.projectPageId)
+      .where(sql`${table.isPrimary} = true and ${table.status} = 'accepted'`),
+    companyProjectTierStatusIdx: index("seo_ops_page_keyword_targets_company_project_tier_status_idx").on(
+      table.companyId,
+      table.projectId,
+      table.tier,
+      table.status,
+    ),
+  }),
+);
+
+export const seoOpsRankTrackingPolicies = seoOps.table(
+  "rank_tracking_policies",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    companyId: uuid("company_id").notNull().references(() => companies.id),
+    projectId: uuid("project_id").references(() => projects.id),
+    scopeLevel: text("scope_level").notNull(),
+    tier: text("tier").notNull(),
+    provider: text("provider").notNull(),
+    searchEngine: text("search_engine").notNull().default("google"),
+    geo: text("geo").notNull(),
+    languageCode: text("language_code").notNull(),
+    deviceContext: text("device_context").notNull().default("desktop"),
+    frequency: text("frequency").notNull(),
+    intervalDays: integer("interval_days"),
+    scheduleCron: text("schedule_cron"),
+    jitterMinutes: integer("jitter_minutes").notNull().default(0),
+    maxKeywords: integer("max_keywords"),
+    maxCostCentsPerPeriod: integer("max_cost_cents_per_period"),
+    escalationThreshold: jsonb("escalation_threshold").$type<JsonRecord>().notNull().default({}),
+    temporaryWatchDurationDays: integer("temporary_watch_duration_days"),
+    stopConditions: jsonb("stop_conditions").$type<JsonRecord>().notNull().default({}),
+    status: text("status").notNull().default("active"),
+    identityKey: text("identity_key").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    identityUq: uniqueIndex("seo_ops_rank_tracking_policies_identity_uq").on(table.identityKey),
+    companyProjectStatusIdx: index("seo_ops_rank_tracking_policies_company_project_status_idx").on(
+      table.companyId,
+      table.projectId,
+      table.status,
+    ),
+  }),
+);
+
+export const seoOpsRankTrackingTargets = seoOps.table(
+  "rank_tracking_targets",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    companyId: uuid("company_id").notNull().references(() => companies.id),
+    projectId: uuid("project_id").notNull().references(() => projects.id),
+    projectPageId: uuid("project_page_id").references(() => seoOpsProjectPages.id),
+    pageKeywordTargetId: uuid("page_keyword_target_id").references(() => seoOpsPageKeywordTargets.id),
+    keywordId: uuid("keyword_id").notNull().references(() => seoOpsKeywords.id),
+    policyId: uuid("policy_id").references(() => seoOpsRankTrackingPolicies.id),
+    provider: text("provider").notNull(),
+    searchEngine: text("search_engine").notNull().default("google"),
+    geo: text("geo").notNull(),
+    languageCode: text("language_code").notNull(),
+    deviceContext: text("device_context").notNull(),
+    trackingStatus: text("tracking_status").notNull().default("active"),
+    nextCheckAt: timestamp("next_check_at", { withTimezone: true }),
+    lastCheckAt: timestamp("last_check_at", { withTimezone: true }),
+    temporaryWatchUntil: timestamp("temporary_watch_until", { withTimezone: true }),
+    identityKey: text("identity_key").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    identityUq: uniqueIndex("seo_ops_rank_tracking_targets_identity_uq").on(table.identityKey),
+    trackingNextCheckIdx: index("seo_ops_rank_tracking_targets_tracking_next_check_idx").on(
+      table.trackingStatus,
+      table.nextCheckAt,
+    ),
+    companyProjectTrackingIdx: index("seo_ops_rank_tracking_targets_company_project_tracking_idx").on(
+      table.companyId,
+      table.projectId,
+      table.trackingStatus,
+    ),
+  }),
+);
+
+export const seoOpsSerpSnapshots = seoOps.table(
+  "serp_snapshots",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    companyId: uuid("company_id").notNull().references(() => companies.id),
+    projectId: uuid("project_id").notNull().references(() => projects.id),
+    siteId: uuid("site_id").references(() => seoOpsSites.id),
+    rankTrackingTargetId: uuid("rank_tracking_target_id").references(() => seoOpsRankTrackingTargets.id),
+    keywordId: uuid("keyword_id").notNull().references(() => seoOpsKeywords.id),
+    provider: text("provider").notNull().default("serper"),
+    searchEngine: text("search_engine").notNull().default("google"),
+    geo: text("geo").notNull(),
+    languageCode: text("language_code").notNull(),
+    deviceContext: text("device_context").notNull().default("desktop"),
+    requestedQuery: text("requested_query").notNull(),
+    requestedNumResults: integer("requested_num_results"),
+    observedAt: timestamp("observed_at", { withTimezone: true }).notNull(),
+    snapshotDate: date("snapshot_date").notNull(),
+    status: text("status").notNull().default("ok"),
+    requestFingerprint: text("request_fingerprint").notNull(),
+    rawPayload: jsonb("raw_payload").$type<JsonRecord>().notNull().default({}),
+    pluginJobRunId: uuid("plugin_job_run_id").references(() => pluginJobRuns.id),
+    heartbeatRunId: uuid("heartbeat_run_id").references(() => heartbeatRuns.id),
+    costEventId: uuid("cost_event_id").references(() => costEvents.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    requestFingerprintUq: uniqueIndex("seo_ops_serp_snapshots_request_fingerprint_uq").on(table.requestFingerprint),
+    companyProjectSnapshotDateIdx: index("seo_ops_serp_snapshots_company_project_date_idx").on(
+      table.companyId,
+      table.projectId,
+      table.snapshotDate,
+    ),
+    companyProjectKeywordObservedIdx: index("seo_ops_serp_snapshots_company_project_keyword_observed_idx").on(
+      table.companyId,
+      table.projectId,
+      table.keywordId,
+      table.observedAt,
+    ),
+    contextDateIdx: index("seo_ops_serp_snapshots_context_date_idx").on(
+      table.companyId,
+      table.projectId,
+      table.provider,
+      table.searchEngine,
+      table.geo,
+      table.languageCode,
+      table.deviceContext,
+      table.snapshotDate,
+    ),
+  }),
+);
+
+export const seoOpsSerpSnapshotResults = seoOps.table(
+  "serp_snapshot_results",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    companyId: uuid("company_id").notNull().references(() => companies.id),
+    projectId: uuid("project_id").notNull().references(() => projects.id),
+    serpSnapshotId: uuid("serp_snapshot_id").notNull().references(() => seoOpsSerpSnapshots.id),
+    resultPosition: integer("result_position").notNull(),
+    resultType: text("result_type").notNull().default("organic"),
+    resultUrl: text("result_url"),
+    resultUrlNormalized: text("result_url_normalized"),
+    resultDomain: text("result_domain"),
+    title: text("title"),
+    snippet: text("snippet"),
+    isOwnedDomain: boolean("is_owned_domain").notNull().default(false),
+    matchedSiteId: uuid("matched_site_id").references(() => seoOpsSites.id),
+    matchedPageId: uuid("matched_page_id").references(() => seoOpsPages.id),
+    payload: jsonb("payload").$type<JsonRecord>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    snapshotPositionTypeUq: uniqueIndex("seo_ops_serp_snapshot_results_snapshot_position_type_uq").on(
+      table.serpSnapshotId,
+      table.resultPosition,
+      table.resultType,
+    ),
+    companyProjectDomainIdx: index("seo_ops_serp_snapshot_results_company_project_domain_idx").on(
+      table.companyId,
+      table.projectId,
+      table.resultDomain,
+    ),
+    companyProjectMatchedPageIdx: index("seo_ops_serp_snapshot_results_company_project_matched_page_idx").on(
+      table.companyId,
+      table.projectId,
+      table.matchedPageId,
+      table.serpSnapshotId,
+    ),
+  }),
+);
+
+export const seoOpsSerpRankObservations = seoOps.table(
+  "serp_rank_observations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    companyId: uuid("company_id").notNull().references(() => companies.id),
+    projectId: uuid("project_id").notNull().references(() => projects.id),
+    siteId: uuid("site_id").references(() => seoOpsSites.id),
+    projectPageId: uuid("project_page_id").references(() => seoOpsProjectPages.id),
+    pageKeywordTargetId: uuid("page_keyword_target_id").references(() => seoOpsPageKeywordTargets.id),
+    rankTrackingTargetId: uuid("rank_tracking_target_id").references(() => seoOpsRankTrackingTargets.id),
+    keywordId: uuid("keyword_id").notNull().references(() => seoOpsKeywords.id),
+    serpSnapshotId: uuid("serp_snapshot_id").references(() => seoOpsSerpSnapshots.id),
+    provider: text("provider").notNull().default("serper"),
+    searchEngine: text("search_engine").notNull().default("google"),
+    geo: text("geo").notNull(),
+    languageCode: text("language_code").notNull(),
+    deviceContext: text("device_context").notNull(),
+    observedAt: timestamp("observed_at", { withTimezone: true }).notNull(),
+    snapshotDate: date("snapshot_date").notNull(),
+    rankPosition: numeric("rank_position"),
+    rankUrl: text("rank_url"),
+    rankUrlNormalized: text("rank_url_normalized"),
+    rankResultType: text("rank_result_type"),
+    ownedResultCount: integer("owned_result_count").notNull().default(0),
+    bestOwnedPosition: numeric("best_owned_position"),
+    visibilityState: text("visibility_state").notNull().default("observed"),
+    payload: jsonb("payload").$type<JsonRecord>().notNull().default({}),
+    identityKey: text("identity_key").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    identityUq: uniqueIndex("seo_ops_serp_rank_observations_identity_uq").on(table.identityKey),
+    companyProjectKeywordObservedIdx: index("seo_ops_serp_rank_observations_company_project_keyword_observed_idx").on(
+      table.companyId,
+      table.projectId,
+      table.keywordId,
+      table.observedAt,
+    ),
+    companyProjectPageObservedIdx: index("seo_ops_serp_rank_observations_company_project_page_observed_idx").on(
+      table.companyId,
+      table.projectPageId,
+      table.observedAt,
+    ),
+    companyProjectVisibilityDateIdx: index("seo_ops_serp_rank_observations_company_project_visibility_date_idx").on(
+      table.companyId,
+      table.projectId,
+      table.visibilityState,
+      table.snapshotDate,
+    ),
+  }),
+);
+
+export const seoOpsPerformanceSnapshots = seoOps.table(
+  "performance_snapshots",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    companyId: uuid("company_id").notNull().references(() => companies.id),
+    projectId: uuid("project_id").notNull().references(() => projects.id),
+    siteId: uuid("site_id").references(() => seoOpsSites.id),
+    projectPageId: uuid("project_page_id").references(() => seoOpsProjectPages.id),
+    keywordId: uuid("keyword_id").references(() => seoOpsKeywords.id),
+    pageKeywordTargetId: uuid("page_keyword_target_id").references(() => seoOpsPageKeywordTargets.id),
+    snapshotDate: date("snapshot_date").notNull(),
+    source: text("source").notNull(),
+    clicks: integer("clicks"),
+    impressions: integer("impressions"),
+    ctr: numeric("ctr"),
+    averagePosition: numeric("average_position"),
+    provider: text("provider"),
+    classification: text("classification"),
+    payload: jsonb("payload").$type<JsonRecord>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyProjectSnapshotDateIdx: index("seo_ops_performance_snapshots_company_project_date_idx").on(
+      table.companyId,
+      table.projectId,
+      table.snapshotDate,
+    ),
+    companyProjectPageSnapshotDateIdx: index("seo_ops_performance_snapshots_company_project_page_date_idx").on(
+      table.companyId,
+      table.projectPageId,
+      table.snapshotDate,
+    ),
+    companyKeywordSnapshotDateIdx: index("seo_ops_performance_snapshots_company_keyword_date_idx").on(
+      table.companyId,
+      table.keywordId,
+      table.snapshotDate,
+    ),
+  }),
+);
+
+export const seoOpsNewPageOpportunities = seoOps.table(
+  "new_page_opportunities",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    companyId: uuid("company_id").notNull().references(() => companies.id),
+    projectId: uuid("project_id").notNull().references(() => projects.id),
+    siteId: uuid("site_id").references(() => seoOpsSites.id),
+    keywordId: uuid("keyword_id").references(() => seoOpsKeywords.id),
+    sourceObservationId: uuid("source_observation_id").references(() => seoOpsKeywordObservations.id),
+    currentPageId: uuid("current_page_id").references(() => seoOpsPages.id),
+    currentProjectPageId: uuid("current_project_page_id").references(() => seoOpsProjectPages.id),
+    landingFitState: text("landing_fit_state").notNull(),
+    intentLabel: text("intent_label"),
+    audienceRelevance: text("audience_relevance"),
+    topicalAuthorityFit: text("topical_authority_fit"),
+    productRelation: text("product_relation"),
+    businessValue: text("business_value"),
+    proposedPageType: text("proposed_page_type"),
+    suggestedPriority: integer("suggested_priority").notNull().default(100),
+    validationStatus: text("validation_status").notNull().default("candidate"),
+    decision: text("decision"),
+    linkedIssueId: uuid("linked_issue_id").references(() => issues.id),
+    payload: jsonb("payload").$type<JsonRecord>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyProjectValidationPriorityIdx: index("seo_ops_new_page_opportunities_company_project_validation_priority_idx").on(
+      table.companyId,
+      table.projectId,
+      table.validationStatus,
+      table.suggestedPriority,
+    ),
+    companyKeywordIdx: index("seo_ops_new_page_opportunities_company_keyword_idx").on(
+      table.companyId,
+      table.keywordId,
+    ),
+  }),
+);
+
+export const seoOpsAiVisibilityTargets = seoOps.table(
+  "ai_visibility_targets",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    companyId: uuid("company_id").notNull().references(() => companies.id),
+    projectId: uuid("project_id").notNull().references(() => projects.id),
+    siteId: uuid("site_id").references(() => seoOpsSites.id),
+    keywordId: uuid("keyword_id").references(() => seoOpsKeywords.id),
+    projectPageId: uuid("project_page_id").references(() => seoOpsProjectPages.id),
+    promptText: text("prompt_text").notNull(),
+    promptNormalized: text("prompt_normalized").notNull(),
+    answerEngine: text("answer_engine").notNull(),
+    engineVariant: text("engine_variant"),
+    geo: text("geo"),
+    languageCode: text("language_code").notNull(),
+    deviceContext: text("device_context"),
+    targetDomain: text("target_domain"),
+    targetUrl: text("target_url"),
+    frequency: text("frequency").notNull(),
+    intervalDays: integer("interval_days"),
+    nextCheckAt: timestamp("next_check_at", { withTimezone: true }),
+    lastCheckAt: timestamp("last_check_at", { withTimezone: true }),
+    trackingStatus: text("tracking_status").notNull().default("active"),
+    priority: integer("priority").notNull().default(100),
+    settings: jsonb("settings").$type<JsonRecord>().notNull().default({}),
+    identityKey: text("identity_key").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    identityUq: uniqueIndex("seo_ops_ai_visibility_targets_identity_uq").on(table.identityKey),
+    trackingNextCheckIdx: index("seo_ops_ai_visibility_targets_tracking_next_check_idx").on(
+      table.trackingStatus,
+      table.nextCheckAt,
+    ),
+    companyProjectEngineTrackingIdx: index("seo_ops_ai_visibility_targets_company_project_engine_tracking_idx").on(
+      table.companyId,
+      table.projectId,
+      table.answerEngine,
+      table.trackingStatus,
+    ),
+  }),
+);
+
+export const seoOpsAiVisibilityObservations = seoOps.table(
+  "ai_visibility_observations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    companyId: uuid("company_id").notNull().references(() => companies.id),
+    projectId: uuid("project_id").notNull().references(() => projects.id),
+    siteId: uuid("site_id").references(() => seoOpsSites.id),
+    aiVisibilityTargetId: uuid("ai_visibility_target_id").notNull().references(() => seoOpsAiVisibilityTargets.id),
+    keywordId: uuid("keyword_id").references(() => seoOpsKeywords.id),
+    projectPageId: uuid("project_page_id").references(() => seoOpsProjectPages.id),
+    answerEngine: text("answer_engine").notNull(),
+    engineVariant: text("engine_variant"),
+    geo: text("geo"),
+    languageCode: text("language_code").notNull(),
+    observedAt: timestamp("observed_at", { withTimezone: true }).notNull(),
+    snapshotDate: date("snapshot_date").notNull(),
+    promptText: text("prompt_text").notNull(),
+    answerHash: text("answer_hash").notNull(),
+    targetDomainMentioned: boolean("target_domain_mentioned").notNull().default(false),
+    brandMentioned: boolean("brand_mentioned").notNull().default(false),
+    targetUrlMentioned: boolean("target_url_mentioned").notNull().default(false),
+    mentionedUrls: jsonb("mentioned_urls").$type<unknown[]>().notNull().default([]),
+    mentionRank: integer("mention_rank"),
+    visibilityScore: numeric("visibility_score"),
+    sentimentLabel: text("sentiment_label"),
+    citationCount: integer("citation_count"),
+    rawAnswerExcerpt: text("raw_answer_excerpt"),
+    rawPayload: jsonb("raw_payload").$type<JsonRecord>().notNull().default({}),
+    provider: text("provider"),
+    pluginJobRunId: uuid("plugin_job_run_id").references(() => pluginJobRuns.id),
+    heartbeatRunId: uuid("heartbeat_run_id").references(() => heartbeatRuns.id),
+    costEventId: uuid("cost_event_id").references(() => costEvents.id),
+    identityKey: text("identity_key").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    identityUq: uniqueIndex("seo_ops_ai_visibility_observations_identity_uq").on(table.identityKey),
+    companyProjectEngineSnapshotIdx: index("seo_ops_ai_visibility_observations_company_project_engine_snapshot_idx").on(
+      table.companyId,
+      table.projectId,
+      table.answerEngine,
+      table.snapshotDate,
+    ),
+    companyProjectDomainMentionedIdx: index("seo_ops_ai_visibility_observations_company_project_domain_mentioned_idx").on(
+      table.companyId,
+      table.projectId,
+      table.targetDomainMentioned,
+      table.snapshotDate,
+    ),
+    companyProjectPageSnapshotIdx: index("seo_ops_ai_visibility_observations_company_project_page_snapshot_idx").on(
+      table.companyId,
+      table.projectPageId,
+      table.snapshotDate,
+    ),
+  }),
+);
+
+export const seoOpsPageActionEvents = seoOps.table(
+  "page_action_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    companyId: uuid("company_id").notNull().references(() => companies.id),
+    projectId: uuid("project_id").notNull().references(() => projects.id),
+    projectPageId: uuid("project_page_id").notNull().references(() => seoOpsProjectPages.id),
+    issueId: uuid("issue_id").references(() => issues.id),
+    agentId: uuid("agent_id").references(() => agents.id),
+    eventType: text("event_type").notNull(),
+    eventPayload: jsonb("event_payload").$type<JsonRecord>().notNull().default({}),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyProjectPageOccurredIdx: index("seo_ops_page_action_events_company_project_page_occurred_idx").on(
+      table.companyId,
+      table.projectId,
+      table.projectPageId,
+      table.occurredAt,
+    ),
+    companyIssueIdx: index("seo_ops_page_action_events_company_issue_idx").on(table.companyId, table.issueId),
+  }),
+);
+
+export const seoOpsScopeConflicts = seoOps.table(
+  "scope_conflicts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    companyId: uuid("company_id").notNull().references(() => companies.id),
+    siteId: uuid("site_id").notNull().references(() => seoOpsSites.id),
+    pageId: uuid("page_id").notNull().references(() => seoOpsPages.id),
+    conflictType: text("conflict_type").notNull(),
+    conflictingProjectPageIds: jsonb("conflicting_project_page_ids").$type<string[]>().notNull().default([]),
+    status: text("status").notNull().default("open"),
+    resolution: text("resolution"),
+    resolvedByAgentId: uuid("resolved_by_agent_id").references(() => agents.id),
+    resolvedByUserId: text("resolved_by_user_id"),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    linkedIssueId: uuid("linked_issue_id").references(() => issues.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyStatusCreatedIdx: index("seo_ops_scope_conflicts_company_status_created_idx").on(
+      table.companyId,
+      table.status,
+      table.createdAt,
+    ),
+    companySitePageIdx: index("seo_ops_scope_conflicts_company_site_page_idx").on(
+      table.companyId,
+      table.siteId,
+      table.pageId,
+    ),
+  }),
+);
