@@ -2,6 +2,20 @@
 
 ## 2026-05-06
 
+- Updated Paperclip Semantic Core MCP agent workflow for Phase 23:
+  - `prepare-paperclip-import` now surfaces `import_readiness`, `unsafe_reasons`, `policy_version`, accepted/review/parked counts, and `accepted_import_allowed` in the Paperclip tool response;
+  - agency-core instructions now require layer-by-layer human review workbooks before advancing to the next production layer;
+  - live Paperclip app was rebuilt/restarted and verified healthy; `paperclip.semantic-core-mcp-agent-tools` activated with 16 tools.
+- Re-ran Astrogen layer 1 under the Phase 23 contract:
+  - Project: `astrogen-ukraine-layer1-paperclip-review-20260506T102100Z`
+  - Run: `run_20260506_102105_core_product_intent_5c87d989`
+  - Import readiness: `ready_after_review`
+  - Policy version: `conservative_acceptance_v1`
+  - Accepted: 28; review: 11; parked: 207; clusters: 27; SERP segments: 3; SERP competitor candidates: 163; recall ledger: 163.
+- Generated the first human review workbook:
+  - `outputs/astrogen-semantic-core-review/run_20260506_102105_core_product_intent_5c87d989/astrogen_core_product_intent_run_20260506_102105_core_product_intent_5c87d989_human_review.xlsx`
+  - Sheets: `Run Summary`, `Accepted`, `Review Queue`, `Parked`, `SERP Evidence`, and `Decision Guide`.
+- Stopped before layer 2 as required. Next layer should wait for human review decisions on the layer 1 workbook.
 - Critically reviewed Semantic Core MCP layer membership policy for Astrogen layer 2 before any new live run.
 - Fixed and deployed systemic MCP policy changes:
   - adjacent acquisition terms can be accepted from topical/domain confidence instead of being flattened into `high_demand_conflict`;

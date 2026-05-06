@@ -549,6 +549,9 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
       content: JSON.stringify({
         schema_version: "paperclip_import.v1",
         run_id: "run_1",
+        import_readiness: "ready_after_review",
+        unsafe_reasons: [],
+        policy_version: "semantic-core-policy.v23",
         artifacts: {
           accepted_keywords: [
             {
@@ -591,6 +594,9 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
         structuredContent: {
           schema_version: "paperclip_import.v1",
           run_id: "run_1",
+          import_readiness: "ready_after_review",
+          unsafe_reasons: [],
+          policy_version: "semantic-core-policy.v23",
           artifacts: {
             accepted_keywords: [
               {
@@ -641,11 +647,66 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
     );
 
     expect(result.content).toContain("\"status\": \"validated\"");
+    expect(result.content).toContain("\"import_readiness\": \"ready_after_review\"");
+    expect(result.content).toContain("\"accepted_import_allowed\": true");
+    expect(result.content).toContain("\"policy_version\": \"semantic-core-policy.v23\"");
     expect(result.content).toContain("dataforseo_content_parsing");
     expect(result.content).toContain("\"recall_ledger_count\": 1");
     expect(result.content).toContain("\"keyword_rows_with_decision_trace\": 1");
     expect(harness.costs).toHaveLength(1);
     expect(harness.costs[0]?.provider).toBe("semantic-core-builder");
+  });
+
+  it("surfaces unsafe import readiness without marking accepted import as allowed", async () => {
+    const harness = createTestHarness({ manifest });
+    await plugin.definition.setup(harness.ctx);
+
+    callSemanticCoreMcpToolMock.mockResolvedValueOnce({
+      content: JSON.stringify({
+        schema_version: "paperclip_import.v1",
+        run_id: "run_policy_fix",
+        import_readiness: "needs_policy_fix",
+        unsafe_reasons: ["accepted_contains_topic_only_competitor_content"],
+        quality_report: {
+          accepted_count: 1,
+          review_count: 12,
+          import_readiness: "needs_policy_fix",
+        },
+        policy_version: "semantic-core-policy.v23",
+        artifacts: {
+          accepted_keywords: [{ keyword_text: "vmfs recovery mac" }],
+          review_candidates: [{ keyword_text: "vmfs repair mac" }],
+          parked_outside_layer: [],
+          clusters: [],
+          serp_segments: [],
+        },
+        cost: {
+          events: [],
+        },
+      }),
+      data: {
+        structuredContent: null,
+        content: [],
+      },
+      isError: false,
+    });
+
+    const result = await harness.executeTool(
+      TOOL_NAMES.preparePaperclipImport,
+      { run_id: "run_policy_fix" },
+      toolRunCtx,
+    );
+    const content = JSON.parse(result.content ?? "{}") as Record<string, unknown>;
+
+    expect(content).toMatchObject({
+      status: "validated",
+      import_readiness: "needs_policy_fix",
+      accepted_import_allowed: false,
+      unsafe_reasons: ["accepted_contains_topic_only_competitor_content"],
+      policy_version: "semantic-core-policy.v23",
+      accepted_keyword_count: 1,
+      review_candidate_count: 1,
+    });
   });
 
   it("shows competitor expansion evidence summary when import payload includes recall artifacts", async () => {
@@ -823,7 +884,13 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
 
     expect(validation).toEqual({
       schemaVersion: "paperclip_import.v1",
+      importReadiness: "ready_accepted_only",
+      unsafeReasons: [],
+      policyVersion: null,
+      acceptedImportAllowed: true,
       acceptedKeywordCount: 1,
+      reviewCandidateCount: 0,
+      parkedOutsideLayerCount: 0,
       clusterCount: 1,
       serpSegmentCount: 1,
       costEventCount: 1,
@@ -852,7 +919,11 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
 
     expect(validation).toMatchObject({
       schemaVersion: "paperclip_import.v1",
+      importReadiness: "ready_accepted_only",
+      acceptedImportAllowed: true,
       acceptedKeywordCount: 0,
+      reviewCandidateCount: 1,
+      parkedOutsideLayerCount: 1,
       clusterCount: 1,
       serpSegmentCount: 1,
       costEventCount: 0,
@@ -911,7 +982,13 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
 
     expect(validation).toEqual({
       schemaVersion: "paperclip_import.v1",
+      importReadiness: "ready_accepted_only",
+      unsafeReasons: [],
+      policyVersion: null,
+      acceptedImportAllowed: true,
       acceptedKeywordCount: 1,
+      reviewCandidateCount: 0,
+      parkedOutsideLayerCount: 0,
       clusterCount: 1,
       serpSegmentCount: 1,
       costEventCount: 1,

@@ -38,6 +38,13 @@ fills missing volume contract fields on those rows and rejects provider error
 text such as `Invalid Field`, `enable_browser_rendering`, `status_message`, or
 standalone timing strings like `0 sec`.
 
+For Phase 23 and newer MCP payloads, `prepare-paperclip-import` also surfaces
+`import_readiness`, `unsafe_reasons`, `quality_report`, and `policy_version`.
+Agents must treat `unsafe_for_import` and `needs_policy_fix` as hard no-import
+states. `ready_accepted_only` and `ready_after_review` allow accepted-keyword
+import, but `ready_after_review` still requires review queue processing before
+the next semantic layer or downstream content planning.
+
 `clusters` and `serp_segments` are native non-keyword artifacts. Do not render or
 import them through keyword CSV columns; use their own schema from
 `prepare_paperclip_import().artifacts`, `get_clusters`, or `get_serp_segments`.
@@ -68,9 +75,12 @@ Normal agent flow:
 5. Use `mode: "live"` with `provider_cache_mode: "read_write"` for production semantic-core runs.
 6. Poll with `get-job-status` or use `run-layer-and-wait`.
 7. Call `get-run-costs` before another live provider run.
-8. Read keywords, clusters, SERP segments, review queue, and import payloads with pagination.
-9. Submit review decisions as append-only input; completed run artifacts are immutable.
-10. Import accepted output into Paperclip DB before downstream planning or monitoring.
+8. Call `prepare-paperclip-import` and inspect import readiness before importing or using the run.
+9. Read keywords, clusters, SERP segments, review queue, and import payloads with pagination.
+10. Produce a human review workbook for the completed layer.
+11. Submit review decisions as append-only input; completed run artifacts are immutable.
+12. Rerun the layer when review decisions or policy changes should affect artifacts.
+13. Import accepted output into Paperclip DB before downstream planning or monitoring.
 
 Do not generate content plans directly from MCP outputs. Content planning is downstream Paperclip work.
 

@@ -19,11 +19,75 @@ For normal runs, agents must use this sequence:
 5. For production, run semantic layers in order with `mode = live` and `provider_cache_mode = read_write`.
 6. Poll `get-job-status` or use `run-layer-and-wait`.
 7. Call `get-run-costs` before initiating another live run.
-8. Read accepted/review/parked/rejected keywords, clusters, SERP segments, recall ledger, and competitor expansion debug artifacts.
-9. Submit review decisions as append-only input when needed.
-10. Prepare Paperclip import and persist accepted operational state in Paperclip DB.
+8. Call `prepare-paperclip-import` for the completed `run_id` before importing or using the layer operationally.
+9. Read `import_readiness`, `unsafe_reasons`, `quality_report`, and `policy_version`.
+10. Generate a human review workbook for the layer before moving to the next production layer.
+11. Submit human review decisions as append-only input when needed.
+12. Rerun the same layer if review decisions or policy changes should be reflected in new artifacts.
+13. Only after the current layer is approved/importable, run the next layer.
+14. After the last approved layer, build the downstream traffic/content plan in Paperclip.
 
 Do not pass local filesystem paths to MCP during normal agent workflows. Use `project_id`, `run_id`, and `job_id`.
+
+## Phase 23 Import Readiness
+
+`prepare-paperclip-import` is the required import boundary. New runs expose:
+
+```text
+import_readiness
+unsafe_reasons
+quality_report
+policy_version
+```
+
+Interpret `import_readiness` strictly:
+
+- `ready_accepted_only`: accepted keywords may be imported automatically, but a layer review workbook is still the standard Astrogen/Paperclip handoff.
+- `ready_after_review`: accepted keywords may be imported, and the review queue must be processed before moving to the next layer.
+- `unsafe_for_import`: do not import; create a blocker with `unsafe_reasons` and inspect the run.
+- `needs_policy_fix`: do not import; adjust project config or MCP policy, then rerun the layer.
+
+Accepted keywords are machine-safe, not "maybe useful". Competitor SERP/content-parsing terms normally belong in review, parked, or recall artifacts unless normal policy gates accepted them.
+
+Agents must preserve and display these keyword fields when present:
+
+```text
+domain_topic_match
+domain_topic_match_score
+product_binding_status
+acceptance_confidence
+review_priority
+human_review_required
+human_review_reason
+recommended_human_decision
+evidence_summary
+policy_version
+```
+
+`product_binding_status` values are:
+
+```text
+canonized_product
+brand_binding
+topic_only
+proposed_product
+unknown
+```
+
+Human-added keywords are not privileged. Submit them through review decisions or the configured human-add flow, then validate/rerun so provider validation and policy gates still apply.
+
+## Human Review Workbook
+
+For each production layer, create one Excel workbook with multiple sheets:
+
+- `Run Summary`: project id, run id, layer, mode, import readiness, unsafe reasons, policy version, counts, cost summary, and quality report.
+- `Accepted`: accepted keywords with a default human decision of `import`.
+- `Review Queue`: review candidates with editable `human_decision`, `human_notes`, and optional binding override columns.
+- `Parked`: parked/outside-layer terms for context and later-layer recall.
+- `SERP Evidence`: SERP competitor candidates or recall evidence when present.
+- `Decision Guide`: allowed review decisions and short instructions.
+
+Keep source evidence columns intact. Put editable human columns at the beginning of each review sheet so accidental edits to evidence are easier to detect.
 
 ## Policy-Driven Layer Decisions
 

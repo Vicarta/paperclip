@@ -53,7 +53,13 @@ export type NormalizedMcpToolResult = {
 
 export type PaperclipImportValidation = {
   schemaVersion: string;
+  importReadiness: string;
+  unsafeReasons: string[];
+  policyVersion: string | null;
+  acceptedImportAllowed: boolean;
   acceptedKeywordCount: number;
+  reviewCandidateCount: number;
+  parkedOutsideLayerCount: number;
   clusterCount: number;
   serpSegmentCount: number;
   costEventCount: number;
@@ -762,7 +768,19 @@ export function validatePaperclipImportPayload(payload: unknown): PaperclipImpor
     throw new Error("Semantic Core import payload artifacts object is required");
   }
 
+  const importReadiness = readNonEmptyString(importPayload.import_readiness)
+    ?? "ready_accepted_only";
+  const unsafeReasons = readArray(importPayload.unsafe_reasons)?.filter(
+    (reason): reason is string => typeof reason === "string",
+  ) ?? [];
+  const policyVersion = readNonEmptyString(importPayload.policy_version);
   const acceptedKeywords = readArray(artifacts.accepted_keywords);
+  const reviewCandidates = readArray(artifacts.review_candidates)
+    ?? readArray(artifacts.review_keywords)
+    ?? [];
+  const parkedOutsideLayer = readArray(artifacts.parked_outside_layer)
+    ?? readArray(artifacts.parked_keywords)
+    ?? [];
   const clusters = readArray(artifacts.clusters);
   const serpSegments = readArray(artifacts.serp_segments);
   const cost = readNestedRecord(importPayload, "cost");
@@ -791,7 +809,14 @@ export function validatePaperclipImportPayload(payload: unknown): PaperclipImpor
 
   return {
     schemaVersion: PAPERCLIP_IMPORT_SCHEMA_VERSION,
+    importReadiness,
+    unsafeReasons,
+    policyVersion,
+    acceptedImportAllowed: importReadiness === "ready_accepted_only"
+      || importReadiness === "ready_after_review",
     acceptedKeywordCount: acceptedKeywords.length,
+    reviewCandidateCount: reviewCandidates.length,
+    parkedOutsideLayerCount: parkedOutsideLayer.length,
     clusterCount: clusters.length,
     serpSegmentCount: serpSegments.length,
     costEventCount: costEvents.length,
