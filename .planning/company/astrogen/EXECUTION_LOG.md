@@ -1,5 +1,19 @@
 # Execution Log: Astrogen
 
+## 2026-05-06
+
+- Critically reviewed Semantic Core MCP layer membership policy for Astrogen layer 2 before any new live run.
+- Fixed and deployed systemic MCP policy changes:
+  - adjacent acquisition terms can be accepted from topical/domain confidence instead of being flattened into `high_demand_conflict`;
+  - Ukrainian mixed-language accepted candidates are routed to `unsupported_locale` review;
+  - competitor SERP/content-parsing terms are candidate evidence only and cannot directly become accepted keywords.
+- Added regression tests in `seo-semantic-core` for broad on-domain adjacent acceptance, off-domain high-demand review, mixed-language locale review, and competitor content evidence routing.
+- Verified locally with full test suite, ruff, and compileall; redeployed live MCP twice with no-cache Docker rebuilds and confirmed healthy runtime plus 13 MCP tools.
+- First post-policy live run was intentionally aborted because the project payload lacked `max_serp_clusters` and began unbounded SERP validation after the accepted set expanded.
+- Restored bounded live-run thresholds in the ignored helper runner (`max_discovered_keywords=120`, `max_serp_clusters=35`) and re-ran layer 2 with content parsing enabled.
+- Final layer 2 run `run_20260506_073240_adjacent_use_case_intent_19554b8c` completed under project `astrogen-ukraine-layer2-policyfix-contentgate-20260506T073239Z` with accepted 53, review 93, parked 488, clusters 50, SERP segments 3, SERP competitor candidates 571, and recall ledger 571.
+- Inspection result: accepted keywords are now seed/direct-provider only; competitor content terms such as unrelated school/task snippets are parked or review evidence, not accepted. High-value adjacent terms including `гороскоп`, `натальна карта`, `гороскоп на сьогодні`, and product-bound horoscope/natal terms are accepted. Remaining review contains useful `generic_topic` competitor evidence plus some `high_demand_conflict` noise that should be reviewed before layer 3 or downstream planning.
+
 ## 2026-05-05
 
 - Continued Astrogen Semantic Core generation to layer 2 `adjacent_use_case_intent`.

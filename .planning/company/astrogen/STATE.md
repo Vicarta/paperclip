@@ -13,7 +13,7 @@ See: `.planning/company/astrogen/README.md`
 
 Phase: Astrogen growth/content operating system hardening
 Status: Active
-Last activity: 2026-05-05 - Ran Astrogen Semantic Core MCP layer 2 (`adjacent_use_case_intent`) after MCP provider/sanitation fixes; artifacts are technically clean but not ready for operational import because acceptance logic leaves nearly all useful adjacent terms in review/parked.
+Last activity: 2026-05-06 - Fixed and redeployed Semantic Core MCP layer 2 decision policy, then re-ran Astrogen `adjacent_use_case_intent` with competitor content parsing and bounded SERP validation.
 
 ## Current Focus
 
@@ -27,10 +27,10 @@ Last activity: 2026-05-05 - Ran Astrogen Semantic Core MCP layer 2 (`adjacent_us
 - Blog image generation requirements and one-article correction/test workflow.
 - Semantic core planning for Ukrainian-language Astrogen content.
 - Latest Astrogen Semantic Core layer 1 run: `run_20260505_163254_core_product_intent_9b8d4983`; accepted 38, review 51, parked 257, clusters 38, SERP segments 5. Query-shape gates removed email/legal/UI/price/count/numbered-label junk, but review escalation still needs topical/domain confidence to avoid high-volume off-topic review noise.
-- Latest Astrogen Semantic Core layer 2 run: `run_20260505_183226_adjacent_use_case_intent_3fd352ec`; accepted 1, review 465, parked 2297, clusters 1, SERP segments 1, SERP competitor candidates 91, recall ledger 91. Query-shape gates are clean after MCP sanitation fix, but the run should not be imported as an accepted operational layer because useful `гороскоп` / `натальна карта` adjacent terms are mostly routed to `candidate_review` by `high_demand_conflict`, while broad low-anchor terms are parked as `no_entity_anchor`.
+- Latest Astrogen Semantic Core layer 2 run: `run_20260506_073240_adjacent_use_case_intent_19554b8c`; accepted 53, review 93, parked 488, clusters 50, SERP segments 3, SERP competitor candidates 571, recall ledger 571. This supersedes the unusable 2026-05-05 layer 2 run: high-value adjacent terms such as `гороскоп`, `натальна карта`, and `гороскоп на сьогодні` now land in accepted, mixed-language `astrogen натальна карта` is held for `unsupported_locale` review, and competitor content-parsing terms are review/parked evidence instead of direct accepted keywords.
 - Semantic Core MCP competitor SERP recall now supports opt-in competitor page content parsing; production Astrogen semantic-core runs should enable it for maximum recall, while smoke/quick/budget-sensitive runs should leave it disabled.
 - Semantic-core generation must not create a `natal_chart` product binding because that product is not canonized yet; natal-card terms should remain brand/core-topic/review/opportunity evidence until Product Discovery or human approval.
-- Semantic-core layer 2 acceptance requires a systemic policy pass before continuing to layer 3: review escalation should account for topical/domain confidence and layer-specific opportunity classes, and mixed-language Ukrainian/Russian terms should not become accepted Ukrainian SEO keywords without explicit locale review.
+- Semantic-core layer 2 policy pass is complete enough for human review/import planning, but layer 3 has not been run yet. Before downstream content planning, review the 93 layer 2 candidates, especially `generic_topic` competitor-content evidence and remaining `high_demand_conflict` noise, and decide whether to import accepted-only or accepted+review evidence.
 - Google Search Console MCP integration for Astrogen site data.
 - SEO monitoring and article performance loop planning.
 - Paperclip Telegram/HIA communication quality for human-facing Ukrainian updates.
@@ -64,7 +64,7 @@ Last activity: 2026-05-05 - Ran Astrogen Semantic Core MCP layer 2 (`adjacent_us
 - Add direct references to agency-core execution governance in live CEO/CMO/CTO/HIA/Observability contracts during the next live contract maintenance pass.
 - Build SEO Performance Loop ingestion/runners on top of the implemented shared `seo_ops` schema when SEO monitoring work resumes.
 - Recover [AST-708](/AST/issues/AST-708): the system now detects the validator no-op, but the Stage 54 validation result still needs to be produced by a corrected contract or a different working agent.
-- Fix/adjust Semantic Core MCP layer 2 acceptance policy before importing `adjacent_use_case_intent` or running downstream content planning from it.
+- Review/import Astrogen Semantic Core layer 2 `run_20260506_073240_adjacent_use_case_intent_19554b8c`; do not run layer 3 until the accepted/review import choice is made.
 
 ## Blockers/Concerns
 
