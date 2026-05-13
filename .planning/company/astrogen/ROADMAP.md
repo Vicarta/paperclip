@@ -34,12 +34,12 @@ Human-facing Astrogen communication remains Ukrainian and should not expose inte
 - [x] **Phase 12: Live Semantic Core Portal Pilot** - Implemented the living semantic-core portal lifecycle for Astrogen V1: complete inventory, separate current review queue, cross-layer deduplication, accepted-key visibility, manual add/remove/restore, and client-safe Paperclip API.
 - [x] **Phase 13: Traffic-First Semantic Core Agent Settings** - Updated Astrogen semantic-core operating policy so broad astrology traffic is valid target-audience demand without direct product binding in broad layers.
 - [x] **Phase 14: SEO Blog Content Waves** - Defined the blog-only workflow that converts validated semantic-core clusters into SERP-checked article opportunities, human-adjustable priorities, paced publication waves, validation, and performance feedback.
+- [x] **Live Blog Agent Contract Update** - Applied Phase 14 rules to live Astrogen CMO, semantic-core, SEO blog planning, article, and performance-loop agent/process contracts on `ubuntu-oc`.
 
 ## In Progress
 
 - [ ] **Phase 11: Client Portal Pilot** - Continue the standalone client portal work in `/Users/savitsky/CodexProjects/paperclip-cs-portal`. Paperclip now owns the client-safe semantic-core API; the separate portal owns auth/session/access and UI. Public Nginx/Let's Encrypt activation remains a portal-project/server-network task.
 - [ ] **Layer 3 Client Review** - Complete human review of active grouped Layer 3 candidates in the client portal, then run Paperclip internal validation/import-readiness before using the result for blog planning.
-- [ ] **Live Blog Agent Contract Update** - Apply Phase 14 rules to the live `SEO Blog Content Strategist` and `SEO Blog Content Plan Validator` before creating the first Astrogen blog wave.
 
 ## Deferred / Future Tracks
 
@@ -52,7 +52,7 @@ Human-facing Astrogen communication remains Ukrainian and should not expose inte
 
 ## Current Next Step
 
-Finish Layer 3 client review for batch `a5a0fb0e-eb6d-4e1b-8997-b4fba43f394d`, run internal validation/import-readiness, then use Phase 14 to create the first small blog content wave:
+Finish Layer 3 client review for batch `a5a0fb0e-eb6d-4e1b-8997-b4fba43f394d`, run internal validation/import-readiness, then use the live-updated Phase 14 agent contracts to create the first small blog content wave:
 
 ```text
 validated semantic core

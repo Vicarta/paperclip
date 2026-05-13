@@ -42,6 +42,10 @@
 | Growth Strategy Architect agent instructions | `/home/paperclip/astrogen/agents/growth-strategy-architect/AGENTS.md` |
 | Stage 15 Strategic Opportunity Brief process | `/home/paperclip/astrogen/docs/process/15-strategic-opportunity-brief.md` |
 | CMO routing rule | `/home/paperclip/astrogen/agents/cmo/AGENTS.md` |
+| SEO Blog Content Strategist instructions | `/home/paperclip/astrogen/agents/seo-blog-content-strategist/AGENTS.md` |
+| SEO Blog Content Plan Validator instructions | `/home/paperclip/astrogen/agents/seo-blog-content-plan-validator/AGENTS.md` |
+| SEO Blog Content Plan process | `/home/paperclip/astrogen/docs/process/56-seo-blog-content-plan.md` |
+| SEO Blog Content Plan Validation process | `/home/paperclip/astrogen/docs/process/58-seo-blog-content-plan-validation.md` |
 
 ## Validation Issues
 

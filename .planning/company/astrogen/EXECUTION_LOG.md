@@ -21,6 +21,16 @@
 - Updated agency-core `SEO_PERFORMANCE_LOOP` with article opportunity, wave mix, SERP shortlist grouping, and blog role contracts for `SEO Blog Content Strategist` and `SEO Blog Content Plan Validator`.
 - Updated agency-core `SEMANTIC_CORE_MCP_AGENT_INSTRUCTIONS` so Paperclip-side LLM evaluation of keyword rows is batch-first and uses stable row IDs, compact evidence, deterministic chunking, and failed-row retries only.
 - No live MCP run or live Paperclip agent setting update was triggered in this local phase.
+- Applied Phase 14 to live Astrogen contracts on `ubuntu-oc` without starting a new MCP run:
+  - `cmo/AGENTS.md`: manager rule for bounded blog waves instead of mass article creation.
+  - `seo-semantic-core-strategist/AGENTS.md`: handoff boundary from semantic core to blog planning, with batch-first LLM review.
+  - `seo-semantic-core-validator/AGENTS.md`: Phase 14 readiness gate before Stage 56.
+  - `seo-blog-content-strategist/AGENTS.md`: article opportunities, normalized cluster demand, SERP shortlist grouping, paced waves, human priorities.
+  - `seo-blog-content-plan-validator/AGENTS.md`: wave validation, role mix, pacing, cannibalization, template repetition, human priority checks.
+  - `seo-blog-article-writer/AGENTS.md` and `seo-blog-article-validator/AGENTS.md`: article scope/validation boundaries tied to approved Phase 14 opportunities.
+  - `seo-performance-analyst/AGENTS.md`: performance feedback into article opportunity status, cluster demand confidence, next-wave priorities, and GSC candidate suggestions.
+  - process docs `56-seo-blog-content-plan.md`, `58-seo-blog-content-plan-validation.md`, and `66-published-page-seo-decision-loop.md` received Phase 14 addenda.
+- Live backup and before/after hash ledger: `/home/paperclip/astrogen/backups/agent-contracts-phase14-20260513T093510Z`.
 
 ## 2026-05-06
 
