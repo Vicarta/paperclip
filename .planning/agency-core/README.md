@@ -17,5 +17,6 @@ Use this scope for reusable agency-level assets only:
 - `governance/AGENT_EXECUTION_GOVERNANCE.md` - shared Paperclip task execution rules for parent/child hierarchy, blockers, assignees, plugin usage, SEO/MCP lanes, provenance, and human-facing updates.
 - `phases/02-seo-ops-postgres-schema/PLAN.md` - implemented `seo_ops` Postgres schema for durable SEO Performance Loop state.
 - `phases/02-seo-ops-postgres-schema/SUMMARY.md` - Phase 2 implementation summary and verification record.
+- `phases/04-seo-ops-operational-memory-decision-windows/PLAN.md` - planned refinement for page-level SERP targets, decision windows, action history, bounded GSC/GA4 digests, and semantic-core review artifact handoff.
 
 Do not put Astrogen- or DiskInternals-specific execution state here.

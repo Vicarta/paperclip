@@ -134,6 +134,43 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
     ).toThrow(/layer must be one of/);
   });
 
+  it("defaults live run_layer calls to DataForSEO provider cache read_write mode", () => {
+    expect(
+      prepareSemanticCoreMcpArguments({
+        toolName: "run_layer",
+        args: {
+          project_id: "astrogen-ukraine",
+          layer: "audience_need_intent",
+          mode: "live",
+        },
+      }),
+    ).toEqual({
+      payload: {
+        project_id: "astrogen-ukraine",
+        layer: "audience_need_intent",
+        mode: "live",
+        provider_cache_mode: "read_write",
+      },
+      async_job: true,
+    });
+
+    expect(
+      prepareSemanticCoreMcpArguments({
+        toolName: "run_layer",
+        args: {
+          project_id: "astrogen-ukraine",
+          layer: "audience_need_intent",
+          mode: "live",
+          provider_cache_mode: "refresh",
+        },
+      }),
+    ).toMatchObject({
+      payload: {
+        provider_cache_mode: "refresh",
+      },
+    });
+  });
+
   it("can fall back from legacy payload-wrapped run_layer args to direct MCP args", () => {
     const prepared = prepareSemanticCoreMcpArguments({
       toolName: "run_layer",
@@ -151,6 +188,7 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
         project_id: "diskinternals-us",
         layer: "core_product_intent",
         mode: "live",
+        provider_cache_mode: "read_write",
       },
       async_job: true,
     });
@@ -163,6 +201,7 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
       project_id: "diskinternals-us",
       layer: "core_product_intent",
       mode: "live",
+      provider_cache_mode: "read_write",
       async_job: true,
     });
   });
@@ -467,6 +506,11 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
               description_length_range: [120, 160],
               examples_are_editorial_only: true,
             },
+            provider_cache: {
+              enabled: true,
+              mode: "read_write",
+              default_ttl_days: 30,
+            },
           },
           seed_catalog: { products: [] },
           existing_pages: [],
@@ -483,7 +527,7 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
     expect(projectConfig).not.toHaveProperty("market_matrix");
   });
 
-  it("preserves top-level project display, semantic expansion, and provider cache options", () => {
+  it("preserves top-level project display, traffic strategy, semantic expansion, and provider cache options", () => {
     const result = prepareSemanticCoreMcpArguments({
       toolName: "register_project",
       args: {
@@ -494,7 +538,28 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
           language_code: "en",
           location_code: 2840,
         },
+        traffic_strategy: {
+          primary_goal: "qualified_organic_traffic_growth",
+          funnel_scope: "all_stages",
+        },
         semantic_expansion: {
+          layer_policies: {
+            audience_need_intent: {
+              requires_product_binding: false,
+              requires_service_pathway: false,
+              requires_topic_domain_match: true,
+              review_uncertain_topic_matches: true,
+              allowed_topic_domains: [
+                {
+                  domain_id: "project_defined_topic",
+                  labels: ["астрологія"],
+                  include_terms: ["гороскоп", "знак зодіаку"],
+                  exclude_terms: [],
+                  semantic_profiles: ["astrology_core"],
+                },
+              ],
+            },
+          },
           serp_competitor_expansion: {
             enabled: true,
             enable_content_parsing: true,
@@ -521,7 +586,28 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
     );
     const projectConfig = (result as { payload: { inputs: { project_config: Record<string, unknown> } } })
       .payload.inputs.project_config;
+    expect(projectConfig.traffic_strategy).toEqual({
+      primary_goal: "qualified_organic_traffic_growth",
+      funnel_scope: "all_stages",
+    });
     expect(projectConfig.semantic_expansion).toEqual({
+      layer_policies: {
+        audience_need_intent: {
+          requires_product_binding: false,
+          requires_service_pathway: false,
+          requires_topic_domain_match: true,
+          review_uncertain_topic_matches: true,
+          allowed_topic_domains: [
+            {
+              domain_id: "project_defined_topic",
+              labels: ["астрологія"],
+              include_terms: ["гороскоп", "знак зодіаку"],
+              exclude_terms: [],
+              semantic_profiles: ["astrology_core"],
+            },
+          ],
+        },
+      },
       serp_competitor_expansion: {
         enabled: true,
         enable_content_parsing: true,
@@ -891,6 +977,10 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
       acceptedKeywordCount: 1,
       reviewCandidateCount: 0,
       parkedOutsideLayerCount: 0,
+      rejectedNoiseCount: 0,
+      notSearchQueryCount: 0,
+      clientVisibleReviewCandidateCount: 0,
+      clientVisibleParkedOutsideLayerCount: 0,
       clusterCount: 1,
       serpSegmentCount: 1,
       costEventCount: 1,
@@ -924,6 +1014,10 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
       acceptedKeywordCount: 0,
       reviewCandidateCount: 1,
       parkedOutsideLayerCount: 1,
+      rejectedNoiseCount: 1,
+      notSearchQueryCount: 0,
+      clientVisibleReviewCandidateCount: 1,
+      clientVisibleParkedOutsideLayerCount: 1,
       clusterCount: 1,
       serpSegmentCount: 1,
       costEventCount: 0,
@@ -934,8 +1028,8 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
       global_search_volume: null,
       global_search_volume_status: "unavailable",
       global_search_volume_source: null,
-      global_search_volume_country_distribution: [],
     });
+    expect(reviewCandidate).not.toHaveProperty("global_search_volume_country_distribution");
   });
 
   it("rejects provider error text inside keyword-like import artifacts", () => {
@@ -989,13 +1083,71 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
       acceptedKeywordCount: 1,
       reviewCandidateCount: 0,
       parkedOutsideLayerCount: 0,
+      rejectedNoiseCount: 0,
+      notSearchQueryCount: 0,
+      clientVisibleReviewCandidateCount: 0,
+      clientVisibleParkedOutsideLayerCount: 0,
       clusterCount: 1,
       serpSegmentCount: 1,
       costEventCount: 1,
     });
   });
 
-  it("requires geo and global volume fields on get_keywords rows", () => {
+  it("separates not-search-query diagnostics from client-visible import counts", () => {
+    const validation = validatePaperclipImportPayload({
+      schema_version: "paperclip_import.v1",
+      run_id: "run_not_search_queries",
+      artifacts: {
+        accepted_keywords: [{ keyword_text: "як розрахувати натальну карту" }],
+        review_candidates: [
+          {
+            keyword_text: "як трактувати будинки в натальній карті",
+            search_query_eligibility: "search_query",
+            query_shape_score: 0.82,
+          },
+          {
+            keyword_text: "потреба у впевненості перед консультацією",
+            layer_membership: "rejected_noise",
+            rejected_reason: "not_search_query",
+            search_query_eligibility: "not_search_query",
+            query_shape_score: 0.12,
+          },
+        ],
+        parked_outside_layer: [
+          {
+            keyword_text: "невизначеність у стосунках",
+            rejected_reason: "not_search_query",
+            search_query_eligibility: "not_search_query",
+          },
+        ],
+        rejected_noise: [
+          {
+            keyword_text: "потреба зрозуміти себе",
+            layer_membership: "rejected_noise",
+            rejected_reason: "not_search_query",
+            search_query_eligibility: "not_search_query",
+          },
+        ],
+        clusters: [],
+        serp_segments: [],
+      },
+      cost: {
+        events: [],
+      },
+    });
+
+    expect(validation).toMatchObject({
+      acceptedKeywordCount: 1,
+      reviewCandidateCount: 2,
+      parkedOutsideLayerCount: 1,
+      rejectedNoiseCount: 1,
+      notSearchQueryCount: 3,
+      clientVisibleReviewCandidateCount: 1,
+      clientVisibleParkedOutsideLayerCount: 0,
+    });
+  });
+
+  it("normalizes keyword volume fields without requiring legacy country distribution", () => {
     expect(
       validateKeywordVolumeContract({
         keywords: [
@@ -1003,21 +1155,20 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
             keyword_text: "vmfs recovery mac",
             search_volume: 49500,
             geo_search_volume: 49500,
-            global_search_volume: 9781,
+            global_search_volume: 97810,
             global_search_volume_status: "known",
-            global_search_volume_source: "dataforseo_clickstream_global_search_volume",
-            global_search_volume_country_distribution: [],
+            global_search_volume_source: "dataforseo_keywords_search_volume_live",
           },
         ],
       }),
     ).toEqual({
       keywordCount: 1,
       requiredFields: [
+        "search_volume",
         "geo_search_volume",
         "global_search_volume",
         "global_search_volume_status",
         "global_search_volume_source",
-        "global_search_volume_country_distribution",
       ],
     });
 
@@ -1028,11 +1179,11 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
     expect(validateKeywordVolumeContract({ keywords: [legacyKeyword] })).toEqual({
       keywordCount: 1,
       requiredFields: [
+        "search_volume",
         "geo_search_volume",
         "global_search_volume",
         "global_search_volume_status",
         "global_search_volume_source",
-        "global_search_volume_country_distribution",
       ],
     });
     expect(legacyKeyword).toMatchObject({
@@ -1041,7 +1192,27 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
       global_search_volume: null,
       global_search_volume_status: "unavailable",
       global_search_volume_source: null,
+    });
+    expect(legacyKeyword).not.toHaveProperty("global_search_volume_country_distribution");
+
+    const legacyDistributionKeyword = {
+      keyword_text: "vmfs recovery mac",
+      search_volume: 49500,
+      geo_search_volume: 49500,
+      global_search_volume: 97810,
+      global_search_volume_status: "known",
+      global_search_volume_source: "dataforseo_keywords_search_volume_live",
       global_search_volume_country_distribution: [],
+    };
+    expect(validateKeywordVolumeContract({ keywords: [legacyDistributionKeyword] })).toEqual({
+      keywordCount: 1,
+      requiredFields: [
+        "search_volume",
+        "geo_search_volume",
+        "global_search_volume",
+        "global_search_volume_status",
+        "global_search_volume_source",
+      ],
     });
 
     expect(() =>

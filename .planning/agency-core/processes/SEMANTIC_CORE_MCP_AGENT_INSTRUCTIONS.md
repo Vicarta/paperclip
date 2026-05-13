@@ -19,15 +19,73 @@ For normal runs, agents must use this sequence:
 5. For production, run semantic layers in order with `mode = live` and `provider_cache_mode = read_write`.
 6. Poll `get-job-status` or use `run-layer-and-wait`.
 7. Call `get-run-costs` before initiating another live run.
-8. Call `prepare-paperclip-import` for the completed `run_id` before importing or using the layer operationally.
-9. Read `import_readiness`, `unsafe_reasons`, `quality_report`, and `policy_version`.
-10. Generate a human review workbook for the layer before moving to the next production layer.
-11. Submit human review decisions as append-only input when needed.
-12. Rerun the same layer if review decisions or policy changes should be reflected in new artifacts.
-13. Only after the current layer is approved/importable, run the next layer.
-14. After the last approved layer, build the downstream traffic/content plan in Paperclip.
+8. After any MCP server contract update, call `get-paperclip-import-schema` before changing import or review behavior.
+9. Call `prepare-paperclip-import` for the completed `run_id` before importing or using the layer operationally.
+10. Read `import_readiness`, `unsafe_reasons`, `quality_report`, `policy_version`, `search_query_eligibility`, and `query_shape_score`.
+11. Generate a human review workbook or client-portal review queue for the layer before moving to the next production layer.
+12. Submit human review decisions as append-only input when needed.
+13. Rerun the same layer if review decisions or policy changes should be reflected in new artifacts.
+14. When running later layers, pass `prior_final_keywords` with previous final statuses (`accepted`, `rejected`, `deferred`, `removed`) unless an explicit `force_re_review_keywords` list is required.
+15. Only after the current layer is approved/importable, run the next layer.
+16. After the last approved layer, build the downstream traffic/content plan in Paperclip.
 
 Do not pass local filesystem paths to MCP during normal agent workflows. Use `project_id`, `run_id`, and `job_id`.
+
+## Traffic Strategy And Layer Policy Contract
+
+Paperclip agents own the company-specific traffic strategy. MCP must receive that strategy through `register-project` / project config instead of inferring a company's business goal from generic product bindings.
+
+Every production semantic-core layer issue must define:
+- primary traffic goal;
+- funnel scope;
+- target audience definition;
+- allowed topical domains;
+- excluded topical domains;
+- whether broad top-of-funnel traffic is valuable;
+- whether the layer requires product binding, service pathway, topical match, or editorial bridge;
+- prior final keyword source for accepted/rejected/deferred/removed keywords.
+
+For broad layers, Paperclip must send the layer policy through `register-project`
+inside `project_config.semantic_expansion.layer_policies`. Agents should not
+send these project-level options only on `run-layer`, because the MCP server
+uses registered project config as the source of truth. The broad layer config
+must include or preserve:
+
+```json
+{
+  "requires_product_binding": false,
+  "requires_service_pathway": false,
+  "requires_topic_domain_match": true,
+  "review_uncertain_topic_matches": true,
+  "allowed_topic_domains": [
+    {
+      "domain_id": "project_defined_topic",
+      "labels": ["configured per company"],
+      "include_terms": ["configured per company"],
+      "exclude_terms": [],
+      "semantic_profiles": []
+    }
+  ]
+}
+```
+
+`audience_need_intent` must use this contract directly. `audience_interest_intent`
+may additionally require `requires_editorial_bridge = true`, but it still needs
+the same project-defined topic-domain guard so broad-interest traffic remains
+connected to the company strategy.
+
+Use this shared layer model unless a company brief explicitly overrides it:
+
+| Layer | Business Meaning | Required Fit |
+|---|---|---|
+| `core_product_intent` | Direct brand/product/service demand | product or brand binding |
+| `adjacent_use_case_intent` | Adjacent use cases that can map to products/pages | service or landing pathway |
+| `audience_need_intent` | Broad topical search demand from the target audience | search query + traffic evidence + allowed topic-domain match |
+| `audience_interest_intent` | Broader audience interests that can attract the target audience | search query + traffic evidence + configured editorial bridge |
+
+`no_entity_anchor` and `product_binding_status = unknown` are not universal blockers. They block a keyword only when the active layer policy requires product/entity binding.
+
+Broad top-of-funnel search demand can be valid semantic-core material when it is a real search query, fits the configured target audience, has evidence, and can be served honestly by the company. Do not judge every layer by immediate purchase intent.
 
 ## Phase 23 Import Readiness
 
@@ -75,6 +133,31 @@ unknown
 ```
 
 Human-added keywords are not privileged. Submit them through review decisions or the configured human-add flow, then validate/rerun so provider validation and policy gates still apply.
+
+## Search-Query-Only Contract
+
+Semantic-core keywords must be plausible search queries. Audience notes, JTBD
+phrases, product-planning phrases, and content-plan topics are not semantic-core
+keywords unless MCP marks them as real query candidates.
+
+MCP may return diagnostic rows with:
+
+```text
+layer_membership = rejected_noise
+rejected_reason = not_search_query
+search_query_eligibility = not_search_query
+query_shape_score
+```
+
+Paperclip agents must preserve these rows for diagnostics, but must not show
+them to clients as review items and must not import them into the active
+semantic core. Client-visible review should include only `accepted_keywords`,
+`review_candidates`, and relevant `parked_outside_layer` opportunities that are
+eligible search queries.
+
+`query_shape_score`, `evidence_summary`, and `decision_trace` are agent
+diagnostics. Use them to debug MCP behavior; do not expose raw diagnostic labels
+or not-search-query rows in the client portal.
 
 ## Human Review Workbook
 
@@ -170,7 +253,7 @@ Use project-scoped provider cache for live runs:
     "endpoint_ttl_days": {
       "dataforseo_labs/google/search_intent/live": 60,
       "dataforseo_labs/google/keyword_overview/live": 30,
-      "keywords_data/clickstream_data/global_search_volume/live": 30,
+      "keywords_data/google/search_volume/live": 30,
       "serp/google/organic/live/advanced": 7,
       "dataforseo_labs/google/ranked_keywords/live": 14,
       "on_page/content_parsing/live": 30
@@ -179,7 +262,13 @@ Use project-scoped provider cache for live runs:
 }
 ```
 
-Use `provider_cache_mode = read_write` for normal production runs, `read_only` for no-spend reruns when enough cache is expected, `refresh` for intentional fresh provider data, and `bypass` only for debugging provider behavior.
+This `provider_cache` block belongs in `register_project.inputs.project_config`.
+Use `provider_cache_mode = read_write` on `run_layer` for normal production runs,
+`read_only` for no-spend reruns when enough cache is expected, `refresh` for
+intentional fresh provider data, and `bypass` only for debugging provider
+behavior. The Paperclip adapter defaults live `run_layer` calls to
+`provider_cache_mode = read_write` when agents omit it, but agents should still
+set it explicitly in task handoffs and execution notes.
 
 Cache is scoped by `project_id`, not shared across companies or projects. Cache hits are not ranking, intent, or layer-membership acceptance evidence.
 
@@ -190,6 +279,11 @@ Cache is scoped by `project_id`, not shared across companies or projects. Cache 
 - Do not accept a candidate unless `layer_membership` and status justify it.
 - Do not treat unavailable volume as zero.
 - Do not treat `search_volume` as global demand; it is a legacy alias for `geo_search_volume`.
+- Treat `geo_search_volume` and `global_search_volume` as the same DataForSEO
+  metric family from `keywords_data/google/search_volume/live`; geo uses the
+  configured locale, global omits locale targeting.
+- Do not expect `global_search_volume_country_distribution` in new runs; keep it
+  only as legacy/backward-compatible evidence when already present.
 - Import `recall_ledger` even when candidates are not accepted.
 - Preserve parked and rejected candidates because later semantic layers or human review may use them.
 - Show `competitor_expansion_endpoint` to reviewers when present, so they can distinguish ranked-keyword SEO evidence from parsed page-content evidence.

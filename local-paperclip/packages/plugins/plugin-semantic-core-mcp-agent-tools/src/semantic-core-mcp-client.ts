@@ -60,6 +60,10 @@ export type PaperclipImportValidation = {
   acceptedKeywordCount: number;
   reviewCandidateCount: number;
   parkedOutsideLayerCount: number;
+  rejectedNoiseCount: number;
+  notSearchQueryCount: number;
+  clientVisibleReviewCandidateCount: number;
+  clientVisibleParkedOutsideLayerCount: number;
   clusterCount: number;
   serpSegmentCount: number;
   costEventCount: number;
@@ -386,6 +390,13 @@ function normalizeProjectConfig(value: unknown, projectId: unknown) {
 
   return {
     ...base,
+    provider_cache: isRecord(value.provider_cache)
+      ? value.provider_cache
+      : {
+          enabled: true,
+          mode: "read_write",
+          default_ttl_days: 30,
+        },
     site_id: readNonEmptyString(value.site_id) ?? fallbackSiteId(projectId, domain),
     domain,
     locale_matrix: normalizeLocaleMatrix(value),
@@ -413,6 +424,7 @@ function normalizeProjectConfig(value: unknown, projectId: unknown) {
 }
 
 const TOP_LEVEL_PROJECT_CONFIG_KEYS = [
+  "traffic_strategy",
   "semantic_expansion",
   "provider_cache",
 ] as const;
@@ -554,10 +566,13 @@ export function prepareSemanticCoreMcpArguments(input: {
     }
     const layer = normalizeLayer(payload.layer);
     const asyncJob = typeof args.async_job === "boolean" ? args.async_job : true;
+    const providerCacheMode = readNonEmptyString(payload.provider_cache_mode)
+      ?? (payload.mode === "live" ? "read_write" : null);
     return {
       payload: {
         ...payload,
         layer,
+        ...(providerCacheMode ? { provider_cache_mode: providerCacheMode } : {}),
       },
       async_job: asyncJob,
     };
@@ -674,20 +689,17 @@ function ensureKeywordVolumeContractFields(keyword: Record<string, unknown>) {
   }
   if (!Object.prototype.hasOwnProperty.call(keyword, "global_search_volume_source")) {
     keyword.global_search_volume_source = typeof keyword.global_search_volume === "number"
-      ? "dataforseo_clickstream_global_search_volume"
+      ? "dataforseo_keywords_search_volume_live"
       : null;
-  }
-  if (!Object.prototype.hasOwnProperty.call(keyword, "global_search_volume_country_distribution")) {
-    keyword.global_search_volume_country_distribution = [];
   }
 }
 
 const KEYWORD_VOLUME_CONTRACT_FIELDS = [
+  "search_volume",
   "geo_search_volume",
   "global_search_volume",
   "global_search_volume_status",
   "global_search_volume_source",
-  "global_search_volume_country_distribution",
 ] as const;
 
 const IMPORT_PAYLOAD_WRAPPER_KEYS = [
@@ -781,6 +793,17 @@ export function validatePaperclipImportPayload(payload: unknown): PaperclipImpor
   const parkedOutsideLayer = readArray(artifacts.parked_outside_layer)
     ?? readArray(artifacts.parked_keywords)
     ?? [];
+  const rejectedNoise = readArray(artifacts.rejected_noise) ?? [];
+  const notSearchQueryCount = KEYWORD_ARRAY_KEYS
+    .flatMap((key) => readArray(artifacts[key])?.filter(isRecord) ?? [])
+    .filter(isNotSearchQueryKeyword)
+    .length;
+  const clientVisibleReviewCandidates = reviewCandidates.filter((row) =>
+    !isRecord(row) || !isNotSearchQueryKeyword(row),
+  );
+  const clientVisibleParkedOutsideLayer = parkedOutsideLayer.filter((row) =>
+    !isRecord(row) || !isNotSearchQueryKeyword(row),
+  );
   const clusters = readArray(artifacts.clusters);
   const serpSegments = readArray(artifacts.serp_segments);
   const cost = readNestedRecord(importPayload, "cost");
@@ -817,6 +840,10 @@ export function validatePaperclipImportPayload(payload: unknown): PaperclipImpor
     acceptedKeywordCount: acceptedKeywords.length,
     reviewCandidateCount: reviewCandidates.length,
     parkedOutsideLayerCount: parkedOutsideLayer.length,
+    rejectedNoiseCount: rejectedNoise.length,
+    notSearchQueryCount,
+    clientVisibleReviewCandidateCount: clientVisibleReviewCandidates.length,
+    clientVisibleParkedOutsideLayerCount: clientVisibleParkedOutsideLayer.length,
     clusterCount: clusters.length,
     serpSegmentCount: serpSegments.length,
     costEventCount: costEvents.length,
@@ -854,6 +881,12 @@ function readKeywordEvidenceText(keyword: Record<string, unknown>) {
     ?? readNonEmptyString(keyword.normalized_keyword)
     ?? readNonEmptyString(keyword.keyword)
     ?? readNonEmptyString(keyword.query);
+}
+
+function isNotSearchQueryKeyword(keyword: Record<string, unknown>) {
+  return readNonEmptyString(keyword.search_query_eligibility) === "not_search_query"
+    || readNonEmptyString(keyword.rejected_reason) === "not_search_query"
+    || readNonEmptyString(keyword.layer_membership) === "rejected_noise";
 }
 
 function isForbiddenKeywordEvidenceText(value: string) {

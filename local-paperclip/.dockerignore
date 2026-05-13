@@ -8,3 +8,5 @@ coverage
 data
 tmp
 *.log
+._*
+**/._*

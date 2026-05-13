@@ -14,7 +14,12 @@ This roadmap keeps Astrogen work separate from other client companies while reus
 - [ ] **Phase 6: Human Interaction And Telegram Quality** - Keep Telegram/HIA messages short, Ukrainian, human-readable, and action-oriented.
 - [ ] **Phase 7: Strategic Growth Review Layer** - Use Product Discovery outputs to generate human-reviewable growth strategy options before execution on new/free products and routes.
 - [ ] **Phase 8: Publication And CMS Integration** - Pause until CMS selection is clear, then add publication adapter and content deployment workflow.
+- [x] **Phase 9: Semantic Core Review GUI** - Replace Excel review with a database-backed Astrogen-style web interface for accepted/review/parked/rejected decisions, policy warnings, product binding, MCP reruns, and next-layer approval.
+- [x] **Phase 10: Human-Usable Semantic Core Review** - Make the review interface owner-friendly with stage context, accepted-core vs decision-queue views, Ukrainian decision explanations, resizable columns, dark mode, and persisted human service/brand connection review.
+- [ ] **Phase 11: Client Portal Pilot** - Use agency-core Client Portal Foundation to expose Astrogen dashboard, semantic-core review, keyword/page monitoring, content-plan review, and decision history outside the internal Paperclip UI.
+- [ ] **Phase 12: Live Semantic Core Portal Pilot** - Pilot the living semantic-core lifecycle for Astrogen: complete accepted-core inventory, separate current review queue, cross-layer deduplication, manual add/remove/restore, and future GSC candidate suggestions.
+- [x] **Phase 13: Traffic-First Semantic Core Agent Settings** - Update Astrogen Paperclip agent settings so CMO/SEO/Validator/CTO/HIA run semantic-core generation from an explicit traffic-growth strategy where all astrology-related search demand can be valuable target-audience traffic, regardless of funnel stage.
 
 ## Current Next Step
 
-Continue Phase 7 for real `/free-horoscope` work only after the requester authorizes execution beyond the current plan-only test.
+Wait for MCP server readiness, then run controlled Astrogen layer 3 with the updated traffic-first policy, fresh import schema, prior final keyword exclusions, and validator handoff before client portal exposure.

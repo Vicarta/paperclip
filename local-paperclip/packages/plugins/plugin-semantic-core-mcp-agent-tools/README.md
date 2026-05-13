@@ -25,11 +25,40 @@ legacy `project_config` during `register-project`, the adapter preserves those
 objects inside the registered project config. Do not send these options to
 `run-layer`: live MCP reads them only from the registered `project_config`, so
 the adapter rejects them on `run-layer` instead of allowing a silent no-op.
+The same applies to `traffic_strategy`: agent-facing tasks may pass it beside a
+legacy flat `project_config`, but the adapter registers it inside
+`project_config` before calling MCP.
+
+Broad traffic layers must keep their policy in
+`project_config.semantic_expansion.layer_policies`, for example:
+
+```json
+{
+  "audience_need_intent": {
+    "requires_product_binding": false,
+    "requires_service_pathway": false,
+    "requires_topic_domain_match": true,
+    "review_uncertain_topic_matches": true,
+    "allowed_topic_domains": [
+      {
+        "domain_id": "project_defined_topic",
+        "labels": ["configured per company"],
+        "include_terms": ["configured per company"],
+        "exclude_terms": [],
+        "semantic_profiles": []
+      }
+    ]
+  }
+}
+```
 
 Keyword demand values returned in import payloads use `search_volume` as a
 legacy alias for `geo_search_volume`; it must not be treated as global demand.
-When available, `global_search_volume` and its status/source fields carry native
-worldwide demand.
+Both `geo_search_volume` and `global_search_volume` come from
+`keywords_data/google/search_volume/live`: geo uses the configured
+`location_code`/`language_code`, while global omits location/language targeting.
+Do not expect `global_search_volume_country_distribution` in new runs; preserve
+it only when reading legacy artifacts.
 
 `prepare-paperclip-import` treats these artifact names as keyword-like artifacts:
 `accepted_keywords`, `review_candidates`, `parked_outside_layer`,
@@ -44,6 +73,15 @@ Agents must treat `unsafe_for_import` and `needs_policy_fix` as hard no-import
 states. `ready_accepted_only` and `ready_after_review` allow accepted-keyword
 import, but `ready_after_review` still requires review queue processing before
 the next semantic layer or downstream content planning.
+
+For search-query-only MCP payloads, `prepare-paperclip-import` also preserves
+`search_query_eligibility` and `query_shape_score` on keyword rows and reports
+`not_search_query_count`. Rows with `layer_membership = rejected_noise`,
+`rejected_reason = not_search_query`, or
+`search_query_eligibility = not_search_query` are internal diagnostics only.
+Do not expose them to the client review queue, do not treat them as semantic-core
+keywords, and do not use audience/JTBD/content-plan phrases as keyword seeds
+unless MCP marks them as real search-query candidates.
 
 `clusters` and `serp_segments` are native non-keyword artifacts. Do not render or
 import them through keyword CSV columns; use their own schema from
@@ -75,12 +113,14 @@ Normal agent flow:
 5. Use `mode: "live"` with `provider_cache_mode: "read_write"` for production semantic-core runs.
 6. Poll with `get-job-status` or use `run-layer-and-wait`.
 7. Call `get-run-costs` before another live provider run.
-8. Call `prepare-paperclip-import` and inspect import readiness before importing or using the run.
-9. Read keywords, clusters, SERP segments, review queue, and import payloads with pagination.
-10. Produce a human review workbook for the completed layer.
-11. Submit review decisions as append-only input; completed run artifacts are immutable.
-12. Rerun the layer when review decisions or policy changes should affect artifacts.
-13. Import accepted output into Paperclip DB before downstream planning or monitoring.
+8. Call `get-paperclip-import-schema` after MCP updates and before changing import behavior.
+9. Call `prepare-paperclip-import` and inspect import readiness before importing or using the run.
+10. Read keywords, clusters, SERP segments, review queue, and import payloads with pagination.
+11. Produce a human review workbook or portal review queue for the completed layer.
+12. Submit review decisions as append-only input; completed run artifacts are immutable.
+13. Rerun the layer when review decisions or policy changes should affect artifacts.
+14. Pass `prior_final_keywords` when running later layers so previously accepted/rejected/deferred/removed terms are not returned as new client work unless explicitly forced for re-review.
+15. Import accepted output into Paperclip DB before downstream planning or monitoring.
 
 Do not generate content plans directly from MCP outputs. Content planning is downstream Paperclip work.
 
@@ -174,7 +214,7 @@ Live runs should normally use project-scoped DataForSEO cache:
     "endpoint_ttl_days": {
       "dataforseo_labs/google/search_intent/live": 60,
       "dataforseo_labs/google/keyword_overview/live": 30,
-      "keywords_data/clickstream_data/global_search_volume/live": 30,
+      "keywords_data/google/search_volume/live": 30,
       "serp/google/organic/live/advanced": 7,
       "dataforseo_labs/google/ranked_keywords/live": 14,
       "on_page/content_parsing/live": 30
@@ -183,9 +223,13 @@ Live runs should normally use project-scoped DataForSEO cache:
 }
 ```
 
-Use `provider_cache_mode: "read_write"` for normal production runs,
+Register this block inside `project_config`. Use
+`provider_cache_mode: "read_write"` on `run_layer` for normal production runs,
 `read_only` for no-spend reruns when enough cache is expected, `refresh` when
 provider data must be refreshed, and `bypass` only for provider debugging.
+The adapter adds the default `provider_cache` block during `register-project`
+normalization when agents omit it, and defaults live `run-layer` calls to
+`provider_cache_mode: "read_write"` when no mode is supplied.
 Cache is scoped by `project_id`, not shared across companies or projects. Cache
 hits are not ranking, intent, or layer-membership acceptance evidence.
 Invalid cached provider responses are provider/cache telemetry, not keyword

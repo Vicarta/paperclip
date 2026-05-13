@@ -2,6 +2,34 @@
 
 ## 2026-05-06
 
+- Planned and completed Phase 10 `Human-Usable Semantic Core Review`.
+- Updated the Semantic Core Review data model and API so a human can persist whether a keyword clearly relates to an Astrogen service, Astrogen brand, the general topic, no match, or is uncertain.
+- Reworked the `/AST/seo/semantic-core-review` page for owner review:
+  - mouse-resizable table columns;
+  - Ukrainian stage explanation for the current semantic-core layer;
+  - separate tabs for the decision queue, automatically accepted core, and all keywords;
+  - human-readable decision names and explanations;
+  - Paperclip dark mode support;
+  - hidden raw MCP payloads from the default human view.
+- Added migration `0053_semantic_review_human_connection.sql`, verified DB/server/UI typechecks, redeployed live Paperclip, and confirmed the route returns HTTP 200, health returns `status=ok`, and live PostgreSQL includes the new human-connection columns.
+- Added click-to-sort behavior to the Semantic Core Review table headers and redeployed live Paperclip; verified UI typecheck, live health, and `/AST/seo/semantic-core-review` HTTP 200.
+- Critically reviewed the client-facing review/reporting boundary and planned agency-core Phase 5 `Client Portal Foundation`: separate portal app, Resend email-code auth, hash-only code/session storage, 14-day configurable sessions, DB-only email access, user-company access binding hash, Ukrainian-first localization, sanitized client API boundary, dashboard/keywords pages based on the SEO dashboard references, and Astrogen as the first pilot.
+- Updated the portal deployment plan for public access: `cs.digital-r-evolution.com` should expose only the client portal over HTTPS, while Paperclip internal UI/API stays private behind Tailscale/local network; portal-to-Paperclip access must use a private server-side URL and server-only credential.
+- Tightened the public portal deployment plan to Nginx + Let's Encrypt via Certbot. Local `.env` contains a redacted `RESEND_API_KEY` source, but production still needs server-side env values for sender email, portal base URL, auth/session peppers, private Paperclip client API URL, and service token; secrets must not be copied into planning, Git, logs, or issue comments.
+- Earlier Client Portal Foundation work temporarily touched the dashboard reference project; that has been reverted and portal ownership is now `/Users/savitsky/CodexProjects/paperclip-cs-portal`:
+  - added user-company access binding hash support;
+  - added and applied BigQuery migration `006_portal_access_binding.sql`;
+  - deployed the updated portal app to `seodash_ubuntu_oc` with app HTTP still loopback-only;
+  - prepared Nginx + Let's Encrypt config for `cs.digital-r-evolution.com`;
+  - verified private route HTTP 200 and generic request-code behavior.
+- Public activation is blocked because `cs.digital-r-evolution.com` currently points to `185.104.45.43` / `2a06:6440:0:2d2b::1`, while `seodash_ubuntu_oc` reports `89.167.61.146` / `2a01:4f9:c014:aa9a::1`.
+
+- Updated Paperclip Semantic Core MCP adapter for the Volume Contract update:
+  - `search_volume` is treated only as a backward-compatible alias of `geo_search_volume`;
+  - `geo_search_volume` and `global_search_volume` now map to DataForSEO `keywords_data/google/search_volume/live`;
+  - new runs no longer require `global_search_volume_country_distribution`; legacy rows preserve it only when present.
+- Verified adapter tests, typecheck, and build; redeployed live Paperclip app and confirmed health plus `paperclip.semantic-core-mcp-agent-tools` activation with 16 tools.
+- Restarted semantic-core execution task [AST-708](/AST/issues/AST-708) for [AST-705](/AST/issues/AST-705) with a fresh on-demand run under the Phase 23 + Volume Contract workflow. The task instruction now requires layer 1 `core_product_intent`, `prepare-paperclip-import`, a human review workbook, and a stop before layer 2.
 - Updated Paperclip Semantic Core MCP agent workflow for Phase 23:
   - `prepare-paperclip-import` now surfaces `import_readiness`, `unsafe_reasons`, `policy_version`, accepted/review/parked counts, and `accepted_import_allowed` in the Paperclip tool response;
   - agency-core instructions now require layer-by-layer human review workbooks before advancing to the next production layer;
@@ -27,6 +55,53 @@
 - Restored bounded live-run thresholds in the ignored helper runner (`max_discovered_keywords=120`, `max_serp_clusters=35`) and re-ran layer 2 with content parsing enabled.
 - Final layer 2 run `run_20260506_073240_adjacent_use_case_intent_19554b8c` completed under project `astrogen-ukraine-layer2-policyfix-contentgate-20260506T073239Z` with accepted 53, review 93, parked 488, clusters 50, SERP segments 3, SERP competitor candidates 571, and recall ledger 571.
 - Inspection result: accepted keywords are now seed/direct-provider only; competitor content terms such as unrelated school/task snippets are parked or review evidence, not accepted. High-value adjacent terms including `гороскоп`, `натальна карта`, `гороскоп на сьогодні`, and product-bound horoscope/natal terms are accepted. Remaining review contains useful `generic_topic` competitor evidence plus some `high_demand_conflict` noise that should be reviewed before layer 3 or downstream planning.
+- Fresh Volume Contract layer 1 run `run_20260506_111721_core_product_intent_454bf24d` completed under project `astrogen-ukraine-layer1-volume-contract-review-20260506T111800Z` after deploying the MCP provider sanitization fix for DataForSEO search-volume requests.
+- `prepare-paperclip-import` returned `import_readiness=ready_after_review`, `policy_version=conservative_acceptance_v1`, no unsafe reasons, accepted 28, review 13, parked 252, rejected 1, clusters 27, SERP segments 3, SERP competitor candidates 210, and recall ledger 210.
+- Provider cache metadata confirmed the new Volume Contract path: `keywords_data/google/search_volume/live` was used for volume, with no clickstream endpoint in the run metadata.
+- Generated fresh human review workbook at `outputs/astrogen-semantic-core-review/run_20260506_111721_core_product_intent_454bf24d/astrogen_core_product_intent_run_20260506_111721_core_product_intent_454bf24d_human_review.xlsx` with sheets `Run Summary`, `Accepted`, `Review Queue`, `Parked`, `SERP Evidence`, and `Decision Guide`.
+- Marked [AST-708](/AST/issues/AST-708) as the active layer 1 human-review gate. Layer 2 must not be rerun until the workbook decisions are approved or accepted-only import is explicitly authorized.
+- Processed the edited owner workbook from `/Users/savitsky/Downloads/astrogen_core_product_intent_run_20260506_111721_core_product_intent_454bf24d_human_review.xlsx`.
+- Extracted 29 changed `human_decision` cells and deduplicated them to 25 MCP review decisions, all `accept`.
+- Submitted MCP review decision artifact `review_20260506_125938_5845be3c` for source run `run_20260506_111721_core_product_intent_454bf24d`.
+- Re-ran layer 1 with the submitted decisions. New reviewed run `run_20260506_130019_core_product_intent_8fa5e715` completed with accepted 34, review 11, parked 288, and policy version `conservative_acceptance_v1`.
+- Stopped before layer 2 because `prepare-paperclip-import` returned `import_readiness=unsafe_for_import` with `unsafe_reasons=["accepted_contains_locale_review_terms"]`. The unsafe accepted terms are the human-accepted rows that still carry locale review warnings: `astrogen україна`, `astrogen натальна карта`, `астролог онлайн консультація`, and `синастрія онлайн`.
+
+## 2026-05-06
+
+- Implemented the planned database-backed Semantic Core Review GUI/API path so Excel is no longer the canonical review mechanism.
+- Extended shared `seo_ops` schema with:
+  - Phase 23 semantic-core run/membership fields;
+  - `semantic_core_review_batches`, `semantic_core_review_items`, and `semantic_core_review_decisions`;
+  - page-level `page_serp_targets` for `project_page + keyword + geo + language + device + search_engine`;
+  - `metric_windows` and append-only `seo_decisions`;
+  - page action cooldown/effect fields.
+- Added migration `0051_seo_ops_semantic_review_gui.sql`.
+- Added API route group under `/api/seo/semantic-core/...`:
+  - import `prepare_paperclip_import` payloads into review batches;
+  - group duplicate keywords across artifacts;
+  - store single/bulk human decisions with audit log;
+  - apply policy guardrails before accepting risky rows;
+  - store rerun/import gate metadata.
+- Added UI route `/seo/semantic-core-review` and sidebar entry `SEO Review`.
+- UI uses Astrogen operational styling: Montserrat stack, burgundy `#810e2b`, gold `#C69C6D`, dense filters/table, and detail drawer for raw MCP evidence.
+- Added focused server tests for duplicate grouping and unsafe human-accept guardrails.
+- Verified locally:
+  - `pnpm --filter @paperclipai/db typecheck`
+  - `pnpm --filter @paperclipai/server typecheck`
+  - `pnpm --filter @paperclipai/ui typecheck`
+  - `pnpm --filter @paperclipai/server exec vitest run src/__tests__/seo-ops-semantic-review.test.ts`
+- Deployed the GUI/API to live Paperclip, applied migration `0051_seo_ops_semantic_review_gui.sql`, and verified:
+  - `/api/health` returns `status=ok`;
+  - `/seo/semantic-core-review` returns HTTP 200;
+  - new `seo_ops` tables exist in PostgreSQL;
+  - `paperclip.semantic-core-mcp-agent-tools` activates with 16 tools.
+- Imported current Astrogen layer 1 payload `run_20260506_111721_core_product_intent_454bf24d` into live review batch `921494a2-3bf8-4aa5-9e4b-2685fea6f890`: accepted 28, review 13, parked 252, unresolved review 13.
+- Updated the deployed Semantic Core Review API/UI for MCP locale warning import policy v2:
+  - stores `locale_warning_severity`, `accepted_locale_warning_overridden`, `locale_override_reason`, `human_decision_applied`, and `human_decision_blocked_reason`;
+  - stores `source_precision_class` for override validation;
+  - blocks accepted locale warnings unless the row qualifies as an explainable edge case with high topic match, canonized/brand binding, high/medium source precision, and non-competitor/non-content source;
+  - fixed the externally usable GUI route to `/AST/seo/semantic-core-review` and added an unprefixed redirect for `/seo/semantic-core-review`.
+- Verified locally with DB/server/UI typecheck and 4 semantic-review helper tests, then redeployed live Paperclip and confirmed health, the `/AST/seo/semantic-core-review` route, and new live PostgreSQL columns.
 
 ## 2026-05-05
 
@@ -115,3 +190,113 @@
 - Deployed the updated Paperclip app to live `paperclip-app-1` and verified `/api/health` returned `ok`.
 - Re-ran [AST-708](/AST/issues/AST-708) after deployment. The new guard correctly marked replacement run `63d44d5c-a4d1-4d72-9e03-f4d6de1968a6` as `failed/silent_noop`, added a diagnostic issue comment, released the issue execution lock, and sent a Telegram operational alert (`messageId=477`).
 - Existing issue-done Telegram messages now include the responsible agent name when available.
+
+## 2026-05-06
+
+- Corrected Client Portal Foundation storage direction after review: portal control-plane data must live in PostgreSQL, not BigQuery.
+- Portal implementation ownership has moved to `/Users/savitsky/CodexProjects/paperclip-cs-portal`; the Postgres control-plane work should be re-applied there, not in the dashboard reference project.
+- Added PostgreSQL migration `migrations/postgres/001_portal_control.sql`, deployment migration runner, and one-time legacy BigQuery-to-Postgres company/user backfill script.
+- Deployed the updated portal stack to `seodash_ubuntu_oc`; `portal-db` is healthy, app remains loopback-only on `127.0.0.1:3000`, migration applied, and backfill completed with `companies=1`, `users=1`.
+- Verified locally: `npm run lint`, `npm run typecheck`, `npm run build`, `npm run verify:v1`.
+- Verified live private route: `http://127.0.0.1:3000/diskinternals/login` returned HTTP 200 and request-code for unknown email returned the generic non-enumerating success response.
+- Confirmed `cs.digital-r-evolution.com` DNS now points to `89.167.61.146` / `2a01:4f9:c014:aa9a::1`.
+- Attempted public Nginx + Let's Encrypt activation. Certbot failed because external TCP 80 to `89.167.61.146` times out. UFW was missing 80/443 rules, so added only `80/tcp` and `443/tcp`; the external timeout remained.
+- Confirmed blocker is upstream/cloud firewall: Nginx listens on server `:80`, local server curl to `89.167.61.146:80` reaches Nginx, but external probe times out and server-side `tcpdump` captures zero packets.
+
+## 2026-05-07
+
+- Corrected the client-portal data ownership boundary: Paperclip/`seo_ops` remains the semantic-core review source of truth; the separate portal must consume client-safe Paperclip DTOs and submit user decisions back to Paperclip instead of owning semantic-core review state.
+- Added Paperclip portal API routes under `/api/portal` protected by `PAPERCLIP_PORTAL_SERVICE_TOKEN`:
+  - `GET /api/portal/companies/:companySlug/semantic-core/review` returns a client-safe review projection without raw MCP payloads, artifact row pointers, source occurrences, plugin settings, or internal issue URLs.
+  - `POST /api/portal/semantic-core/review-items/:itemId/decision` validates and stores portal decisions through the same `seo_ops` policy guardrails used by the internal Semantic Core Review UI.
+- Refactored the semantic-core decision application helper so internal Paperclip routes and portal routes share validation/write behavior.
+- Verified with targeted tests and server typecheck.
+- Deployed the portal API to live Paperclip and set live `PAPERCLIP_PORTAL_SERVICE_TOKEN` without exposing the token in logs.
+- First deploy briefly returned 502 because macOS AppleDouble files (`._*.sql`) entered the Docker build context and were treated as pending SQL migrations. Removed those files from the live build context, rebuilt, and added `.dockerignore` rules for `._*` / `**/._*`.
+- Verified live Paperclip health at `https://ubuntu-oc.tailbd4e1c.ts.net:4447/api/health` returns HTTP 200.
+- Verified from the portal host that `http://127.0.0.1:3200/api/portal/companies/astrogen/semantic-core/review` returns `ok=true`, `items=293`, `batches=1`, `company=astrogen` with the service token, and returns HTTP 401 without the token.
+- Portal live configuration should use `PAPERCLIP_PORTAL_API_URL=http://127.0.0.1:3200` on this host, because MagicDNS `ubuntu-oc.tailbd4e1c.ts.net` does not resolve from the same server environment.
+- Tightened the Paperclip portal semantic-core boundary so client portal review only receives client-reviewable Astrogen items:
+  - hidden from portal: parked/rejected/internal-only candidates, `unknown + none` product/topic rows, `no_entity_anchor`, competitor/content/UI-noise warnings, unsafe/non-reviewable locale warnings, and obvious app/system/store fragments such as `settings Налаштування`, `Google Store`, and `play_apps Бібліотека та пристрої`;
+  - preserved internally useful noisy candidates in the internal Paperclip semantic-core review data/API;
+  - added route-helper tests for noisy examples, locale edge cases, and valid service/topic rows.
+- Redeployed live Paperclip and verified from both the Tailscale endpoint and the portal host loopback URL that the Astrogen portal semantic-core response now returns `items=30`, all pending, with 28 accepted and 2 review rows, and none of the known app/system/store examples.
+- Added client-safe Ukrainian `reviewContext` to the Paperclip portal semantic-core API with `title`, `description`, `clientTask`, `nextStep`, `stageLabel`, and progress counts.
+- The context explains that review is mandatory and blocks further semantic-core/content preparation until every visible request has a decision, uses respectful `ви` language, and does not mention Paperclip or internal workflow labels.
+- Sanitized the portal batch DTO to remove `sourceRunId`, `projectId`, `siteId`, raw `layer`, raw `status`, `importReadiness`, `warningCounts`, and parked counts from the client API surface.
+- Redeployed live Paperclip and verified the Astrogen response includes `reviewContext`, `items=30`, `progress.pending=0`, `stageLabel="Клієнтський розгляд завершено"`, and no `Paperclip`, `core_product_intent`, `unsafe_blocked`, `parked`, `unsupported_locale`, or `no_entity_anchor` labels in the client context/batch/warnings surface.
+
+## 2026-05-10
+
+- Fixed the Paperclip portal semantic-core inventory lifecycle contract:
+  - `status` remains backward-compatible, but the DTO now also exposes explicit `lifecycleMembership`.
+  - `accepted`/`lifecycleMembership=accepted` means an item is actually in the active semantic core.
+  - Machine triage is now exposed separately as `recommendation.sourceSignal`, `recommendation.machineMembership`, and a client-safe recommendation label.
+  - Machine `currentMachineMembership=accepted` in a candidate row is labeled `Рекомендовано до погодження`, not `Автоматично погоджено`.
+- Added route-helper tests proving active-batch machine-accepted items stay `candidate`, completed accepted items stay `accepted`, and the old misleading label is absent.
+- Verified locally with `pnpm vitest run server/src/__tests__/portal-routes.test.ts` and `pnpm typecheck`.
+- Redeployed live Paperclip and verified `/api/portal/companies/astrogen/semantic-core` returns summary `total=618`, `accepted=27`, `candidate=588`, `deferred=1`, `rejected=2`, `removed=0`; the known noisy keyword `гороскоп на тиждень 4 10 квітня` is `candidate` with `recommendation.sourceSignal=machine_recommended_accept` and label `Рекомендовано до погодження`.
+- Planned and completed agency-core Phase 6.1 `Semantic Core Visible Completion Alignment` after discovering that Astrogen layer 2 was complete in the portal but still `in_review` in Paperclip because backend completion counted hidden historical duplicate `Astrogen`.
+- Updated Paperclip completion sync so it uses the same client-visible semantics as the portal review endpoint:
+  - historical accepted duplicates are excluded from client-visible completion;
+  - explicit `re_review` / `force_client_review` rows remain visible and can still block completion;
+  - hidden/internal rows do not block client review completion.
+- Added focused tests for hidden historical duplicates and explicit re-review duplicates; verified with:
+  - `pnpm vitest run server/src/__tests__/seo-ops-semantic-review.test.ts server/src/__tests__/portal-routes.test.ts`
+  - `pnpm typecheck`
+- Redeployed live Paperclip and ran completion sync for layer 2 batch `53c2c939-a23a-4a86-87e3-da6371feecf1`.
+- Live result: batch status is `client_review_completed`, `client_review_status=completed`, progress is `82/82`, accepted `76`, rejected `6`, deferred `0`. Handoff comments were posted to [AST-710](/AST/issues/AST-710) and [AST-705](/AST/issues/AST-705), and [AST-705](/AST/issues/AST-705) moved from `blocked` to `todo` for internal validation/next-layer continuation.
+
+## 2026-05-11
+
+- Executed Astrogen Phase 13 / agency-core Phase 8 contract update before any further broad semantic-core generation.
+- Updated live Astrogen agent instructions on `ubuntu-oc`:
+  - CMO now owns the traffic-first semantic-core strategy and must include layer policy, prior final keyword source, and validation handoff before delegating live MCP generation.
+  - SEO Semantic Core Strategist now must pass Astrogen traffic strategy/layer policy to MCP, call `get-paperclip-import-schema` after MCP contract changes, preserve new diagnostics, pass prior final keywords, and avoid live MCP runs while the MCP server is still being updated.
+  - SEO Semantic Core Validator now validates broad layers against traffic strategy instead of universal product binding, including explicit checks for `no_entity_anchor` misuse, `not_search_query` exposure, stale prior decisions, and raw content-plan phrases.
+  - CTO is limited to technical enablement and explicitly forbidden from keyword lifecycle decisions or semantic overrides.
+  - HIA must explain broad Astrogen traffic in Ukrainian business language without raw MCP/Paperclip labels.
+- Updated live Astrogen Stage 53/54 process docs with traffic-first layer policy and layer-aware validation rules.
+- Added live handoff template `/home/paperclip/astrogen/docs/records/2026-05-11-semantic-core-layer-handoff-template.md`.
+- Backups and after-hashes are stored on the server under `/home/paperclip/astrogen/backups/agent-contracts-20260511T160709Z`.
+- Did not run a new MCP layer or live MCP test, because the MCP server is still implementing the matching contract changes.
+- After operator approval to proceed, created CMO-managed launch issue [AST-716](/AST/issues/AST-716) with the updated `AI_AGENT_MCP_USAGE.md` contract summarized in the brief.
+- CMO accepted the manager path and created execution child [AST-717](/AST/issues/AST-717) for `SEO Semantic Core Strategist`.
+- [AST-717](/AST/issues/AST-717) started an active strategist run and launched fresh Layer 3 `audience_need_intent` generation:
+  - MCP job: `job_11e1130b64a8`
+  - MCP run: `run_20260511_163753_audience_need_intent_6b089606`
+  - `prepare_paperclip_import` preliminary state from strategist run log: `import_readiness=ready_after_review`, `policy_version=conservative_acceptance_v4_traffic_strategy_policy`, `prior_final_keyword_suppressed_count=98`, `net_new_review_count=3490`.
+- Current concern: the fresh Layer 3 run produced a very large net-new review set. It must go through strategist/validator quality gating before any client portal exposure.
+- After the MCP-side broad-layer config update, updated the Paperclip MCP adapter and planning contracts so `traffic_strategy` is preserved into registered `project_config`, and broad layers keep `requires_product_binding=false`, `requires_service_pathway=false`, `requires_topic_domain_match=true`, `review_uncertain_topic_matches=true`, and `allowed_topic_domains` with project-defined topic labels/include terms.
+- Verified the adapter change with `pnpm --filter @paperclipai/plugin-semantic-core-mcp-agent-tools test` and `pnpm --filter @paperclipai/plugin-semantic-core-mcp-agent-tools typecheck`.
+- Added and deployed Paperclip-owned semantic-core review group API for the client portal:
+  - `GET /api/portal/companies/:companySlug/semantic-core/review-groups`
+  - `POST /api/portal/semantic-core/review-groups/:groupId/decision`
+- Added `seo_ops.semantic_core_review_group_decisions` migration/table so group-level decisions have an audit summary while per-item decisions remain authoritative.
+- Verified locally with server route tests, server typecheck, and DB migration numbering check.
+- Deployed live Paperclip on `ubuntu-oc`; migration `0057_semantic_core_review_group_decisions.sql` applied, app health returns HTTP 200, and the Astrogen review-groups endpoint returns `ok=true`.
+- Current live Astrogen group endpoint state: active batch `007e6e91-1632-4d54-a6d1-b8ea5833f9fa`, stage `Третій етап: потреби аудиторії`, `groupCount=0`, because the current active batch has no client-visible pending review items.
+- Fixed Paperclip import handling for the completed AST-721 Layer 3 run without repeating MCP generation:
+  - Added import guards that keep prior-final duplicates and obvious language-lane leakage internal-only before portal exposure.
+  - Added Paperclip-side review grouping metadata during import so the client portal can render authoritative grouped review.
+  - Fixed `candidate_review` counting in imported batch summaries.
+  - Fixed portal review-group aggregate Ukraine/Global volume to sum variants in the group.
+- Verified locally with `pnpm --filter @paperclipai/server exec vitest run src/__tests__/portal-routes.test.ts src/__tests__/seo-ops-semantic-review.test.ts` and `pnpm --filter @paperclipai/server typecheck`.
+- Deployed live Paperclip twice: first for import guards/grouping, then for the group-volume DTO fix.
+- Existing MCP artifact was too large for the API body limit (`~150 MB` vs `10 MB`), so created a compact import payload from the same generated result without rerunning MCP:
+  - Full artifact: `/home/paperclip/astrogen/work/53-seo-semantic-core/active/ast-721-prepare-paperclip-import-2026-05-11.json`
+  - Compact payload: `/home/paperclip/astrogen/work/53-seo-semantic-core/active/ast-721-prepare-paperclip-import-2026-05-11.compact.json`
+- Imported source run `run_20260511_190540_audience_need_intent_06e6a500` into review batch `a5a0fb0e-eb6d-4e1b-8997-b4fba43f394d`.
+- Live import result: `accepted=0`, `review=3251`, `parked=261`, `rejected=26`, `unresolved=3251`, status `in_review`, client review status `in_review`.
+- Live portal review-groups result for Astrogen now returns active batch `a5a0fb0e-eb6d-4e1b-8997-b4fba43f394d`, stage `Третій етап: потреби аудиторії`, `13` groups, `3077` client-visible pending variants.
+- Spot checks confirmed `Gemini AI`, `Gemini Google`, Russian `гороскоп на сегодня`, and prior-final `Astrogen` are not in the client-visible review group queue.
+- Updated [AST-721](/AST/issues/AST-721) to `done` with the import details and next step: client review in the portal.
+- Investigated why `gemini ai` and `gemini google` still appeared in the client portal Candidates inventory.
+- Root cause was Paperclip-side lifecycle mapping, not MCP:
+  - MCP correctly returned both rows as `parked_outside_layer` / `off_topic_entity_conflict`, `domain_topic_match=none`, `product_binding_status=unknown`, `human_review_required=false`, recommended reject.
+  - Paperclip `review-groups` correctly hid them, but the general `/semantic-core` inventory endpoint still fell through parked internal diagnostics to `candidate`.
+- Fixed `buildSemanticCoreInventory` to exclude no-human-decision parked `off_topic_entity_conflict` diagnostics from client inventory while preserving potentially useful parked candidates.
+- Verified locally with `pnpm --filter @paperclipai/server exec vitest run src/__tests__/portal-routes.test.ts` and `pnpm --filter @paperclipai/server typecheck`.
+- Deployed live Paperclip and verified:
+  - `/api/portal/companies/astrogen/semantic-core` has `gemini_ai_count=0`, `gemini_google_count=0`, summary `total=3882`, `accepted=183`, `candidate=3690`, `deferred=1`, `rejected=8`.
+  - `/api/portal/companies/astrogen/semantic-core/review-groups` still has `gemini_ai_count=0`, `gemini_google_count=0`, active batch `a5a0fb0e-eb6d-4e1b-8997-b4fba43f394d`, `13` groups / `3077` pending variants.

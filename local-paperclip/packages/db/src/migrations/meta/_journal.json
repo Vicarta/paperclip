@@ -358,6 +358,55 @@
       "when": 1777985590262,
       "tag": "0050_stale_black_cat",
       "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1778040000000,
+      "tag": "0051_seo_ops_semantic_review_gui",
+      "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1778061000000,
+      "tag": "0052_seo_ops_locale_edge_case_policy",
+      "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1778065200000,
+      "tag": "0053_semantic_review_human_connection",
+      "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1778217600000,
+      "tag": "0054_semantic_core_client_review_completion",
+      "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1778256000000,
+      "tag": "0055_semantic_core_keyword_lifecycle",
+      "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1778486400000,
+      "tag": "0056_semantic_core_search_query_eligibility",
+      "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1778529600000,
+      "tag": "0057_semantic_core_review_group_decisions",
+      "breakpoints": true
     }
   ]
 }
