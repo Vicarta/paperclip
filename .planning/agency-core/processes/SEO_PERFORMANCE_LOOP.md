@@ -317,6 +317,175 @@ Possible decisions:
 - park for later;
 - reject as noise.
 
+## Blog Article Opportunities And Waves
+
+For blog-only SEO work, Paperclip should not convert every accepted keyword into
+an article. The planning unit is an article opportunity:
+
+```text
+validated semantic-core keywords
+-> article opportunities
+-> shortlisted SERP-checked clusters
+-> paced content waves
+-> published articles
+-> performance feedback
+```
+
+An article opportunity should include:
+
+- primary keyword;
+- supporting keywords;
+- source semantic-core layers and GSC observations;
+- SERP grouping status;
+- normalized geo/global cluster demand;
+- raw per-keyword volume evidence for transparency;
+- content role;
+- proposed article type;
+- internal-linking target;
+- human priority;
+- lifecycle status;
+- validation notes.
+
+Do not treat cluster demand as a naive sum of all keyword volumes. Close
+variants often share the same demand. Use a normalized score such as:
+
+```text
+cluster_demand_score =
+  primary_keyword_geo_volume
+  + weighted_unique_variant_volume
+  + GSC evidence boost
+  + seasonality boost
+  + strategic priority boost
+```
+
+Human-facing output should show demand classes and evidence, for example:
+
+- Ukraine demand: high / medium / low / unknown;
+- global demand: high / medium / low / unknown;
+- primary keyword volume;
+- supporting keyword volume table;
+- note that cluster demand is normalized, not a raw sum.
+
+Human priority belongs at the opportunity or topic-family level. Recommended
+states:
+
+- `high`;
+- `normal`;
+- `low`;
+- `do_not_plan`;
+- `pin_next_wave`;
+- `pause_temporarily`.
+
+## Content Roles And Wave Mix
+
+Blog waves should build a traffic portfolio rather than only selecting the
+largest-volume topics.
+
+Use these content roles:
+
+| Role | Purpose |
+|---|---|
+| `reach` | broad traffic and awareness |
+| `trust` | trust-building and expectation setting |
+| `expertise` | deeper topical authority |
+| `objection_handling` | answers to doubts, risks, and objections |
+| `conversion_support` | supports later applications, consultations, products, signups, or purchases |
+
+The strategic order is:
+
+```text
+reach -> trust -> expertise -> objection_handling -> conversion_support
+```
+
+But the operational mix should be progressive, not strictly single-role. Early
+waves can be reach-heavy, then gradually add trust, expertise, objections, and
+conversion support.
+
+Recommended default mix:
+
+| Stage | Reach | Trust | Expertise | Objections | Conversion |
+|---|---:|---:|---:|---:|---:|
+| Early | 70% | 20% | 10% | 0% | 0% |
+| Middle | 50% | 25% | 15% | 10% | 0% |
+| Mature | 35% | 20% | 20% | 15% | 10% |
+
+Default wave settings should be company-configurable:
+
+```json
+{
+  "cadence": "weekly",
+  "new_articles_per_wave": 3,
+  "refreshes_per_wave": 1,
+  "brief_buffer_weeks": 2,
+  "selection_pool_multiplier": 4,
+  "max_same_template_family_per_wave": 2,
+  "min_monitoring_weeks_before_refresh": 4,
+  "planning_horizon_weeks": 8
+}
+```
+
+Suggested wave score:
+
+```text
+wave_score =
+  cluster_demand_score
+  + strategic_stage_fit
+  + topical_authority_value
+  + internal_linking_value
+  + human_priority_boost
+  + seasonality_boost
+  - cannibalization_risk
+  - similarity_penalty
+  - operational_repetition_penalty
+```
+
+## SERP-Based Grouping Boundary
+
+SERP-overlap checks are valuable but should be bounded by cost and operational
+need. Do not run expensive SERP similarity analysis for the entire semantic core
+by default.
+
+Recommended flow:
+
+1. Treat MCP semantic-core clusters as preliminary groups.
+2. Build a shortlist for the next wave pool, usually
+   `new_articles_per_wave * selection_pool_multiplier`.
+3. Run SERP similarity for shortlisted candidates and ambiguous cluster
+   boundaries.
+4. Split or merge opportunities based on SERP overlap, user intent, expected
+   page type, and template-family policy.
+5. Store SERP evidence with the article opportunity.
+
+One article cluster is appropriate only when:
+
+- SERP top results overlap enough;
+- search intent is the same;
+- expected page type is the same;
+- one article can satisfy the user;
+- no template policy requires separate pages.
+
+Textual similarity is insufficient. Date-specific, location-specific, or
+template-series queries may need separate pages even when the words look almost
+identical.
+
+## Batch-First LLM Evaluation
+
+When agents evaluate keyword sets, article opportunities, or wave candidates
+with an LLM, they must use batch-first prompting.
+
+Rules:
+
+- send the largest safe batch per prompt;
+- include stable row IDs;
+- include compact evidence fields only;
+- request structured output keyed by row ID;
+- chunk only when token limits require it;
+- retry only failed or ambiguous rows;
+- avoid per-keyword LLM calls except for narrow exception handling.
+
+This improves consistency, lowers cost, and lets the model compare candidates
+against each other inside one decision context.
+
 ## Rank Tracking Policy
 
 Rank tracking must be controlled by parameters.
@@ -517,6 +686,39 @@ Must:
 - classify planned pages by type: beginner, SEO traffic, product support, pillar/cluster, FAQ/tool;
 - prioritize by evidence, business value, topical authority, and internal-linking value.
 
+For companies with dedicated SEO blog roles, blog content planning should be
+routed to `SEO Blog Content Strategist` instead of a generic content planner.
+
+### SEO Blog Content Strategist
+
+Must:
+
+- convert validated semantic-core and GSC opportunity evidence into article
+  opportunities;
+- normalize cluster demand instead of summing duplicate keyword variants;
+- apply human priority controls;
+- select a bounded wave pool;
+- run or request SERP grouping only for the shortlist and ambiguous boundaries;
+- produce paced blog waves with content roles and internal-linking targets.
+
+Must not:
+
+- create a page for every accepted keyword;
+- run unbounded SERP checks for the whole semantic core by default;
+- bypass content-plan validation for high-volume topics.
+
+### SEO Blog Content Plan Validator
+
+Must validate:
+
+- article opportunity grouping;
+- SERP evidence for the wave shortlist;
+- role mix and publication pacing;
+- cannibalization and template-family repetition risk;
+- human priority override handling;
+- whether reach articles still support topical authority and future conversion
+  paths.
+
 ### Product Discovery Analyst
 
 Must:
@@ -565,5 +767,6 @@ Validation promotes candidates into semantic core or page targets.
 Rank tracking follows configurable tier policy.
 Performance loop creates refresh or new-page opportunities.
 Product launches create beginner + SEO traffic packages.
+Blog plans are released as paced waves, not as all possible pages at once.
 Every new or changed page enters monitoring.
 ```

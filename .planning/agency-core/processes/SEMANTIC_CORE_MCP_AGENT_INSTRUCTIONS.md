@@ -159,6 +159,29 @@ eligible search queries.
 diagnostics. Use them to debug MCP behavior; do not expose raw diagnostic labels
 or not-search-query rows in the client portal.
 
+## Paperclip Batch-First LLM Evaluation
+
+MCP does not perform final AI judgment for Paperclip business decisions. When a
+Paperclip agent uses an LLM to evaluate keyword rows, review candidates, article
+opportunities, or cluster boundaries after MCP output, the agent must use
+batch-first prompting.
+
+Required behavior:
+
+- evaluate the largest safe batch per prompt instead of calling an LLM once per
+  keyword;
+- include stable row IDs and require structured output keyed by row ID;
+- include only compact evidence needed for the decision: keyword, normalized
+  keyword, layer, lifecycle state, geo/global volume, GSC evidence, topic/domain
+  flags, human priority, and short evidence summary;
+- chunk deterministically when context limits require it;
+- retry only failed, malformed, or explicitly ambiguous rows;
+- preserve the batch prompt, model, policy version, and output summary as
+  audit/debug evidence when the decision affects lifecycle or content planning.
+
+Per-keyword LLM calls are allowed only for narrow exception handling after a
+batch result fails validation. They must not be the normal review strategy.
+
 ## Human Review Workbook
 
 For each production layer, create one Excel workbook with multiple sheets:

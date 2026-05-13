@@ -1,5 +1,27 @@
 # Execution Log: Astrogen
 
+## 2026-05-13
+
+- Planned and executed Astrogen Phase 14 `SEO Blog Content Waves`.
+- Defined the blog-only downstream workflow after semantic-core validation:
+  - semantic core;
+  - article opportunities;
+  - SERP-checked shortlist clusters;
+  - human-adjustable priorities;
+  - paced waves;
+  - content-plan validation;
+  - article production;
+  - performance feedback into later waves.
+- Updated Astrogen requirements with:
+  - article opportunity planning instead of keyword-by-keyword page creation;
+  - normalized cluster demand;
+  - human priority states;
+  - paced wave planning;
+  - batch-first LLM evaluation for keyword/opportunity sets.
+- Updated agency-core `SEO_PERFORMANCE_LOOP` with article opportunity, wave mix, SERP shortlist grouping, and blog role contracts for `SEO Blog Content Strategist` and `SEO Blog Content Plan Validator`.
+- Updated agency-core `SEMANTIC_CORE_MCP_AGENT_INSTRUCTIONS` so Paperclip-side LLM evaluation of keyword rows is batch-first and uses stable row IDs, compact evidence, deterministic chunking, and failed-row retries only.
+- No live MCP run or live Paperclip agent setting update was triggered in this local phase.
+
 ## 2026-05-06
 
 - Planned and completed Phase 10 `Human-Usable Semantic Core Review`.

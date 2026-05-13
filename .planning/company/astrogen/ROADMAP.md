@@ -19,7 +19,8 @@ This roadmap keeps Astrogen work separate from other client companies while reus
 - [ ] **Phase 11: Client Portal Pilot** - Use agency-core Client Portal Foundation to expose Astrogen dashboard, semantic-core review, keyword/page monitoring, content-plan review, and decision history outside the internal Paperclip UI.
 - [ ] **Phase 12: Live Semantic Core Portal Pilot** - Pilot the living semantic-core lifecycle for Astrogen: complete accepted-core inventory, separate current review queue, cross-layer deduplication, manual add/remove/restore, and future GSC candidate suggestions.
 - [x] **Phase 13: Traffic-First Semantic Core Agent Settings** - Update Astrogen Paperclip agent settings so CMO/SEO/Validator/CTO/HIA run semantic-core generation from an explicit traffic-growth strategy where all astrology-related search demand can be valuable target-audience traffic, regardless of funnel stage.
+- [x] **Phase 14: SEO Blog Content Waves** - Define the blog-only workflow that converts validated semantic-core clusters into SERP-checked article opportunities, human-adjustable priorities, paced publication waves, validation, and performance feedback.
 
 ## Current Next Step
 
-Wait for MCP server readiness, then run controlled Astrogen layer 3 with the updated traffic-first policy, fresh import schema, prior final keyword exclusions, and validator handoff before client portal exposure.
+Use the Phase 14 blog-wave contract when turning the validated Astrogen semantic core into blog article opportunities: first build SERP-checked clusters, then pick a small human-prioritizable wave, validate it, publish gradually, and feed GSC/rank performance back into later waves.

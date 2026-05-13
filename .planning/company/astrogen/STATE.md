@@ -13,14 +13,14 @@ See: `.planning/company/astrogen/README.md`
 
 Phase: Astrogen growth/content operating system hardening
 Status: Active
-Last activity: 2026-05-11 - Launched fresh Astrogen semantic-core Layer 3 through CMO after the MCP contract update. CMO created [AST-717](/AST/issues/AST-717) for SEO Semantic Core Strategist; fresh MCP run `run_20260511_163753_audience_need_intent_6b089606` completed and is under strategist quality/import review.
+Last activity: 2026-05-13 - Defined Astrogen Phase 14 for converting a validated semantic core into paced SEO blog content waves with SERP-checked clusters, human-adjustable priorities, batch-first LLM evaluation, validation, and performance feedback.
 
 ## Current Focus
 
 - Keep Astrogen planning, SEO/content work, image generation work, and Paperclip entity notes inside `.planning/company/astrogen/`.
 - Keep reusable agent templates, shared plugins, and cross-client architecture inside `.planning/agency-core/`.
 - Use shared Paperclip plugins where applicable, but configure Astrogen with its own company scope, secrets, budgets, project IDs, and data access.
-- Current semantic-core focus: let [AST-717](/AST/issues/AST-717) finish strategist quality/import review for fresh Layer 3 before any client portal exposure or Stage 56 continuation.
+- Current semantic-core/content focus: after Layer 3 validation, do not turn every accepted keyword into a page. Convert the semantic core into article opportunities, validate SERP-based clusters for the shortlist, then publish small continuous waves that feed performance data back into the backlog.
 
 ## Known Active Workstreams
 
@@ -38,6 +38,8 @@ Last activity: 2026-05-11 - Launched fresh Astrogen semantic-core Layer 3 throug
 - Astrogen needs manual semantic-core lifecycle controls in the portal: add keyword, soft-remove/exclude keyword, restore keyword, and change status with audit history. Future Google Search Console query suggestions should enter as deduplicated candidates, not as automatic accepted-core items.
 - Semantic-core portal lifecycle V1 is live. Paperclip endpoint `/api/portal/companies/astrogen/semantic-core/review` returns 82 current review items and does not include `Astrogen`. Paperclip endpoint `/api/portal/companies/astrogen/semantic-core` returns 618 inventory items with lifecycle counts: accepted 27, candidate 588, deferred 1, rejected 2, removed 0. `status`/`lifecycleMembership=accepted` means active semantic core only; machine triage such as `currentMachineMembership=accepted` is exposed separately as `recommendation.sourceSignal=machine_recommended_accept` with the client label `Рекомендовано до погодження`.
 - Astrogen traffic strategy clarification: all funnel stages are in scope. Broad astrology-related search demand, including daily horoscope and zodiac/date-sign queries, is target-audience traffic when it is a real query with demand. Layer 3 must not require product binding; layer 4 requires an astrology editorial bridge for broader audience interests. Live Astrogen CMO, SEO Semantic Core Strategist, SEO Semantic Core Validator, CTO, HIA, and Stage 53/54 process docs now carry this policy.
+- Astrogen blog planning should follow Phase 14: semantic core -> article opportunities -> SERP-checked clusters for the shortlist -> human-adjustable priorities -> paced waves -> content plan validation -> article production -> performance loop feedback. The strategic sequence is reach first, then trust, then expertise, then objection handling, then conversion support; waves should mix roles progressively instead of producing only one role for months.
+- Keyword/cluster LLM review must be batch-first. Agents should send the largest safe batch of keyword rows or article opportunities per prompt with stable IDs, compact evidence, and structured output; per-keyword LLM calls are allowed only for failed-row retries or exceptional ambiguity.
 - The next owner-facing direction is to move review/reporting out of internal Paperclip into a separate client portal. Agency-core Phase 5 now plans this as a reusable portal with Resend email-code auth, hash-only code/session storage, Ukrainian-first localization, sanitized dashboard views, and Astrogen as the first pilot.
 - Previous Astrogen Semantic Core layer 1 run: `run_20260506_102105_core_product_intent_5c87d989`; accepted 28, review 11, parked 207, clusters 27, SERP segments 3, SERP competitor candidates 163, recall ledger 163. Treat this as structurally useful but stale for final import because it predates the Volume Contract update.
 - Latest Astrogen Semantic Core layer 2 run: `run_20260506_073240_adjacent_use_case_intent_19554b8c`; accepted 53, review 93, parked 488, clusters 50, SERP segments 3, SERP competitor candidates 571, recall ledger 571. This supersedes the unusable 2026-05-05 layer 2 run: high-value adjacent terms such as `гороскоп`, `натальна карта`, and `гороскоп на сьогодні` now land in accepted, mixed-language `astrogen натальна карта` is held for `unsupported_locale` review, and competitor content-parsing terms are review/parked evidence instead of direct accepted keywords.
@@ -80,6 +82,7 @@ Last activity: 2026-05-11 - Launched fresh Astrogen semantic-core Layer 3 throug
 - Execute the Client Portal Foundation before making owner review a regular process outside Paperclip.
 - Execute agency-core Phase 7 and Astrogen Phase 12 so the client portal becomes the canonical living semantic-core management surface, not only a layer review form.
 - Monitor [AST-717](/AST/issues/AST-717) through strategist result and validator handoff. Fresh Layer 3 run `run_20260511_163753_audience_need_intent_6b089606` preliminarily returned `import_readiness=ready_after_review`, `prior_final_keyword_suppressed_count=98`, and `net_new_review_count=3490`; do not expose that full set to the client portal without validation/filtering.
+- Update live `SEO Blog Content Strategist` and `SEO Blog Content Plan Validator` contracts from Phase 14 before creating the first Astrogen blog wave from the validated semantic core.
 
 ## Blockers/Concerns
 

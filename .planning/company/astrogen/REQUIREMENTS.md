@@ -38,6 +38,10 @@
 - `AST-SEO-10`: Astrogen semantic-core work is traffic-first across all funnel stages. Broad astrology, horoscope, zodiac, natal-chart, synastry, compatibility, and other astrology-related search demand can be valid target-audience traffic even without direct product binding.
 - `AST-SEO-11`: Astrogen layer 3 broad astrology traffic must not be filtered out solely because of missing product/entity anchor. Product binding is required for direct product layers, not for configured broad traffic layers.
 - `AST-SEO-12`: Astrogen layer 4 can include broader audience interests only when the query is a real search query and has a credible astrology editorial bridge; raw content-plan topics remain non-keywords.
+- `AST-SEO-13`: Blog planning must work from article opportunities, not individual keywords. Each opportunity should include a primary query, SERP-checked supporting query cluster, normalized Ukraine/global cluster demand, content role, internal-linking role, and lifecycle status.
+- `AST-SEO-14`: Blog content should be released in paced waves rather than creating all possible pages at once. Wave selection must balance reach, trust, expertise, objection handling, conversion support, seasonality, topical authority, cannibalization risk, and human priority.
+- `AST-SEO-15`: Human priority controls must be available at the article opportunity or topic-family level: high, normal, low, do not plan, pinned to next wave, or temporarily paused. Humans should steer rules and exceptions, not manually sort thousands of keywords.
+- `AST-SEO-16`: LLM evaluation of keyword sets must be batch-first. Agents must evaluate the largest safe batch of keywords/clusters per prompt with stable row IDs and compact evidence, and must not call an LLM once per keyword unless a narrow retry or exception explicitly requires it.
 
 ## Growth Strategy
 
