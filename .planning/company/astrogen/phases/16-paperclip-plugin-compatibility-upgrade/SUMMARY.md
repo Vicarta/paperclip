@@ -25,10 +25,13 @@ The failed Phase 15 update was caused by real plugin/runtime incompatibilities, 
 - Staging Astrogen review endpoint: 200.
 - Staging Astrogen review-groups endpoint: 200.
 - Production was promoted to `paperclip-app:v2026.513.0-phase16`.
+- Production was then promoted to `paperclip-app:v2026.513.0-phase16.1` with a persistent local-agent API URL fix.
 - Production health now reports `build.releaseTag=v2026.513.0`.
 - Production plugin loader reports `12/12`.
+- CTO release-check routine [AST-729](/AST/issues/AST-729) completed: running release equals latest GitHub release, so no Telegram notification was sent.
+- CTO follow-up [AST-730](/AST/issues/AST-730) confirmed and resolved the local heartbeat `PAPERCLIP_API_URL` mismatch.
 - Temporary staging resources and copied env/DB artifacts were removed.
 
 ## Next Step
 
-Run the CTO release-check routine again against the live health provenance and keep the rollback backup until the next stable maintenance window.
+Keep the rollback backups until the next stable maintenance window and reuse the agent-local API URL invariant in future release updates.

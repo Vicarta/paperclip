@@ -40,6 +40,23 @@ Production health evidence after cutover:
 {"status":"ok","version":"0.3.1","build":{"releaseTag":"v2026.513.0","gitRevision":"f4bed4a70f34551ffd4c7c76cf8d8be2ae761d74","buildTime":"20260514T192917Z","sourceUrl":"https://github.com/paperclipai/paperclip/releases/tag/v2026.513.0"},"deploymentMode":"authenticated","bootstrapStatus":"ready","bootstrapInviteActive":false}
 ```
 
+## Production State After Agent API URL Fix
+
+The CTO release-check routine found a local heartbeat URL mismatch after the production promotion. A follow-up fix was built into `paperclip-app:v2026.513.0-phase16.1`.
+
+- Live app image: `paperclip-app:v2026.513.0-phase16.1`
+- Live app image digest: `sha256:d74930d4412cc8cc19701eead60e75050614319a6020f10b6372c906a316c6a2`
+- Live health release tag: `v2026.513.0`
+- Agent-local API override: `PAPERCLIP_AGENT_API_URL=http://127.0.0.1:3100`
+- Plugin registry after cutover: `12` total, `12` ready, `0` not ready
+- Backup directory: `/home/oc/paperclip-backups/phase16-agent-api-url-20260514T195650Z`
+
+Production health evidence after the agent API URL fix:
+
+```text
+{"status":"ok","version":"0.3.1","build":{"releaseTag":"v2026.513.0","gitRevision":"f4bed4a70f34551ffd4c7c76cf8d8be2ae761d74","buildTime":"20260514T195650Z","sourceUrl":"https://github.com/paperclipai/paperclip/releases/tag/v2026.513.0"},"deploymentMode":"authenticated","bootstrapStatus":"ready","bootstrapInviteActive":false}
+```
+
 ## Live Plugin Inventory
 
 | Plugin key | Package | Status |

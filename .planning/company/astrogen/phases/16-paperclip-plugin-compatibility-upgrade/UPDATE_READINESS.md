@@ -2,7 +2,7 @@
 
 Date: 2026-05-14  
 Target release: `v2026.513.0`  
-Candidate tag: `paperclip-app:v2026.513.0-phase16`
+Candidate tag: `paperclip-app:v2026.513.0-phase16.1`
 
 ## Status
 
@@ -13,6 +13,15 @@ Phase 16 compatibility gate is green in staging and the candidate image has been
 ```text
 Image ID: sha256:035cdccbc45c52b304f9425d3a61b1c5bdaeb4c506c9466e8194d1a7c5066daf
 org.opencontainers.image.version: v2026.513.0-phase16
+org.opencontainers.image.revision: f4bed4a70f34551ffd4c7c76cf8d8be2ae761d74
+org.opencontainers.image.source: https://github.com/paperclipai/paperclip/releases/tag/v2026.513.0
+```
+
+Final production image after agent API URL follow-up:
+
+```text
+Image ID: sha256:d74930d4412cc8cc19701eead60e75050614319a6020f10b6372c906a316c6a2
+org.opencontainers.image.version: v2026.513.0-phase16.1
 org.opencontainers.image.revision: f4bed4a70f34551ffd4c7c76cf8d8be2ae761d74
 org.opencontainers.image.source: https://github.com/paperclipai/paperclip/releases/tag/v2026.513.0
 ```
@@ -29,6 +38,7 @@ org.opencontainers.image.source: https://github.com/paperclipai/paperclip/releas
 - Unauthenticated/private health now exposes deterministic build provenance.
 - Temporary staging DB/env/volume were removed after smoke.
 - Production app was promoted to `paperclip-app:v2026.513.0-phase16`.
+- Production app was then patched and promoted to `paperclip-app:v2026.513.0-phase16.1` so local agent runs use `PAPERCLIP_AGENT_API_URL=http://127.0.0.1:3100`.
 - Production health now exposes `build.releaseTag=v2026.513.0`.
 - Production plugin loader reports `12` total, `12` succeeded, `0` failed.
 - Production Astrogen portal semantic-core endpoints return 200.
@@ -39,6 +49,7 @@ org.opencontainers.image.source: https://github.com/paperclipai/paperclip/releas
 - The `ctx.costs.createEvent` compatibility bridge is intentionally temporary.
 - The app package version still reports `version=0.3.1`; release comparison should use `build.releaseTag`, not package version.
 - CTO weekly release checks can now use `build.releaseTag`, `build.gitRevision`, and `build.sourceUrl` instead of Docker timestamps.
+- CTO follow-up [AST-730](/AST/issues/AST-730) confirmed the local heartbeat URL mismatch and was closed after the agent-local API URL fix.
 
 ## Production Deploy Completed
 

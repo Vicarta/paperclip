@@ -13,7 +13,7 @@ See: `.planning/company/astrogen/README.md`
 
 Phase: Astrogen growth/content operating system hardening
 Status: Active
-Last activity: 2026-05-14 - Executed Astrogen Phase 16 `Paperclip Plugin Compatibility Upgrade` and promoted the compatible candidate to production. Live app runs `paperclip-app:v2026.513.0-phase16`, health exposes `build.releaseTag=v2026.513.0`, all 12 live plugins are ready, Telegram plugin boots, and Astrogen portal semantic-core endpoints return 200.
+Last activity: 2026-05-14 - Executed Astrogen Phase 16 `Paperclip Plugin Compatibility Upgrade` and promoted the compatible candidate to production. Live app now runs `paperclip-app:v2026.513.0-phase16.1`, health exposes `build.releaseTag=v2026.513.0`, all 12 live plugins are ready, Telegram plugin boots, and Astrogen portal semantic-core endpoints return 200. CTO release-check [AST-729](/AST/issues/AST-729) completed successfully; [AST-730](/AST/issues/AST-730) fixed the local heartbeat API URL mismatch.
 
 ## Current Focus
 
@@ -72,13 +72,13 @@ Last activity: 2026-05-14 - Executed Astrogen Phase 16 `Paperclip Plugin Compati
 - Paperclip runtime now treats issue-assigned successful runs with no meaningful issue-side effect as `failed/silent_noop`, writes a diagnostic comment, releases the issue lock, and sends a Telegram alert with responsible agent attribution.
 - Paperclip release-check routine exists for Astrogen CTO and is scheduled weekly on Tuesday at 06:00 Europe/Kiev. Manual test created `[AST-725](/AST/issues/AST-725)`, which was blocked because live `/api/health` exposes only `version=0.3.1` and no Git tag/commit provenance. CTO opened `[AST-726](/AST/issues/AST-726)` for deterministic runtime provenance. Phase 15 now plans the full server update to upstream `v2026.513.0` or a newer owner-approved release.
 - Phase 15 update attempt proved that `v2026.513.0` cannot be deployed safely over the current live runtime without a plugin compatibility phase. The release omits local/custom plugin package roots, disables plugin secret references, and rejects at least one legacy plugin capability shape. The app runtime has been rolled back; do not retry the release directly until plugin packaging, secret config migration/compatibility, manifest capability migration, and provenance are solved together.
-- Phase 16 compatibility gate and production cutover are complete. Deliverables are in `.planning/company/astrogen/phases/16-paperclip-plugin-compatibility-upgrade/`: `PLUGIN_BASELINE.md`, `PLUGIN_COMPATIBILITY_MATRIX.md`, `PLUGIN_PACKAGING_DECISION.md`, `UPDATE_READINESS.md`, and `SUMMARY.md`. Backup and rollback evidence are on the server at `/home/oc/paperclip-backups/phase16-prod-deploy-20260514T192917Z`.
+- Phase 16 compatibility gate and production cutover are complete. Deliverables are in `.planning/company/astrogen/phases/16-paperclip-plugin-compatibility-upgrade/`: `PLUGIN_BASELINE.md`, `PLUGIN_COMPATIBILITY_MATRIX.md`, `PLUGIN_PACKAGING_DECISION.md`, `UPDATE_READINESS.md`, and `SUMMARY.md`. Backup and rollback evidence are on the server at `/home/oc/paperclip-backups/phase16-prod-deploy-20260514T192917Z` and `/home/oc/paperclip-backups/phase16-agent-api-url-20260514T195650Z`.
 
 ## Roadmap Evolution
 
 - Phase 15 executed with rollback: Paperclip Server Release Update.
 - Phase 16 executed: Paperclip Plugin Compatibility Upgrade staging gate and production cutover.
-- Next follow-up: rerun/verify CTO weekly release-check routine against live `build.releaseTag`.
+- CTO weekly release-check routine verified against live `build.releaseTag`; no newer release was found.
 
 ## Pending Todos
 

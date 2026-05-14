@@ -31,7 +31,7 @@ Human-facing Astrogen communication remains Ukrainian and should not expose inte
   - latest GitHub release observed on 2026-05-14 is `v2026.513.0`;
   - live deployment lacks deterministic release provenance, tracked by `[AST-726](/AST/issues/AST-726)`.
 - Phase 15 attempted the update and rolled app runtime back after proving the current live plugin ecosystem is not compatible with the newer upstream runtime as-is. Phase 16 is now the required compatibility gate before another production deploy attempt.
-- Phase 16 compatibility gate is now complete and promoted to production. Live app runs `paperclip-app:v2026.513.0-phase16`, health exposes `build.releaseTag=v2026.513.0`, all 12 live plugins booted, and Astrogen portal semantic-core endpoints returned 200.
+- Phase 16 compatibility gate is now complete and promoted to production. Live app runs `paperclip-app:v2026.513.0-phase16.1`, health exposes `build.releaseTag=v2026.513.0`, all 12 live plugins booted, and Astrogen portal semantic-core endpoints returned 200. CTO release-check [AST-729](/AST/issues/AST-729) confirmed there is no newer GitHub release. Agent-local API URL mismatch [AST-730](/AST/issues/AST-730) is fixed with `PAPERCLIP_AGENT_API_URL=http://127.0.0.1:3100`.
 
 ## Completed
 
@@ -75,4 +75,4 @@ validated semantic core
 
 Do not create pages for every accepted keyword. Do not run SERP similarity for the entire semantic core by default. LLM evaluation of keyword/opportunity sets must be batch-first with stable row IDs, not one LLM call per keyword.
 
-Next server-side follow-up: rerun the CTO release-check routine against live health provenance and keep the Phase 16 rollback backup until the next stable maintenance window. Future upstream release updates must reuse the Phase 16 packaging/compatibility approach, not raw release cutovers.
+Next server-side follow-up: keep the Phase 16 rollback backups until the next stable maintenance window. Future upstream release updates must reuse the Phase 16 packaging/compatibility approach and preserve the local-agent API URL invariant.

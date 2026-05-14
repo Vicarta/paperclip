@@ -88,3 +88,21 @@ plugin-loader: loadAll complete {"total":12,"succeeded":12,"failed":0}
 /api/portal/companies/astrogen/semantic-core/review ok=true count=1918
 /api/portal/companies/astrogen/semantic-core/review-groups ok=true count=12
 ```
+
+## CTO Routine Follow-Up
+
+After the production cutover, the CTO weekly release-check routine was run manually:
+
+- [AST-725](/AST/issues/AST-725) closed after provenance became available.
+- [AST-726](/AST/issues/AST-726) closed with live health evidence.
+- [AST-729](/AST/issues/AST-729) completed successfully.
+- Latest GitHub release: `v2026.513.0`.
+- Running server release tag: `v2026.513.0`.
+- Result: no newer release, so no Telegram notification was sent.
+
+The routine identified a local heartbeat API URL mismatch:
+
+- [AST-730](/AST/issues/AST-730) reproduced that local runs were receiving a non-resolvable `PAPERCLIP_API_URL`.
+- The persistent production image was rebuilt as `paperclip-app:v2026.513.0-phase16.1`.
+- `PAPERCLIP_AGENT_API_URL=http://127.0.0.1:3100` is now configured for local agent API calls.
+- Public/auth URL remains `https://ubuntu-oc.tailbd4e1c.ts.net:4447`.
