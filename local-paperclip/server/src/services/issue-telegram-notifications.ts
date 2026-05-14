@@ -10,8 +10,7 @@ import { logActivity, type LogActivityInput } from "./activity-log.js";
 const TELEGRAM_PLUGIN_PACKAGE_NAME = "paperclip-plugin-telegram";
 const TELEGRAM_DOCUMENT_CAPTION_LIMIT = 1024;
 const TELEGRAM_MESSAGE_TEXT_LIMIT = 4096;
-const COMPLETION_SUMMARY_MIN_WORDS = 150;
-const COMPLETION_SUMMARY_MAX_WORDS = 250;
+const COMPLETION_SUMMARY_MAX_WORDS = 90;
 
 type TelegramPluginConfig = {
   telegramBotTokenRef: string | null;
@@ -113,8 +112,8 @@ function buildCaption(
 ): string {
   const identifier = issue.identifier ?? issue.id;
   const title = summarizeIssueTitleForTelegram(issue.title);
-  const summary = summarizeCompletionBriefForTelegram(completionSummary, issue.title);
-  const parts = [`✅ Готово: ${identifier}`];
+  void completionSummary;
+  const parts = [`Файл до ${identifier}`];
   if (company?.name) {
     parts.push(`Компанія: ${company.name}`);
   }
@@ -124,7 +123,7 @@ function buildCaption(
   if (agentName) {
     parts.push(`Агент: ${agentName}`);
   }
-  parts.push(`Задача: ${title}`, `Що зроблено: ${summary}`);
+  parts.push(`Задача: ${title}`);
   if (publicUrl) {
     const trimmed = publicUrl.replace(/\/+$/, "");
     const issuePath = issue.identifier && company?.issuePrefix
@@ -404,15 +403,12 @@ function ensureHumanCompletionSummaryQuality(
   title: string,
   context?: { companyName?: string | null; projectName?: string | null },
 ): string {
-  const normalizedBrief = truncateForTelegramLine(brief, 700);
+  const normalizedBrief = truncateForTelegramLine(brief, 420);
   const stats = textStats(normalizedBrief);
   const hasHumanLanguage = stats.cyrillicRatio >= 0.35;
-  const needsExpansion =
-    wordCount(normalizedBrief) < COMPLETION_SUMMARY_MIN_WORDS ||
-    !hasHumanLanguage ||
-    isGenericCompletionSummary(normalizedBrief);
+  const needsRewrite = !hasHumanLanguage || isGenericCompletionSummary(normalizedBrief);
 
-  if (!needsExpansion) {
+  if (!needsRewrite) {
     return trimToWordLimit(normalizedBrief, COMPLETION_SUMMARY_MAX_WORDS);
   }
 
@@ -426,10 +422,10 @@ function expandCompletionSummaryForHuman(
   context?: { companyName?: string | null; projectName?: string | null },
 ): string {
   const companyName = context?.companyName?.trim() || "компанії";
-  const projectName = context?.projectName?.trim();
   const issueTitle = summarizeIssueTitleForTelegram(title);
   const evidence = splitReadableSentences(rawSummary)
     .filter((sentence) => !/https?:\/\/|\b\/(?:companies|clients|paperclip)\//i.test(sentence))
+    .filter((sentence) => !/(?:artifact|schema|payload|migration|docker|postgres|checksum|rollback|deploy)/i.test(sentence))
     .join(" ");
   const evidenceStats = textStats(evidence);
   const evidenceLooksAgentFacing =
@@ -440,23 +436,16 @@ function expandCompletionSummaryForHuman(
     ? evidence
     : null;
   const opening = isGenericCompletionSummary(brief)
-    ? `Задачу "${issueTitle}" завершено і зафіксовано як готову до наступного кроку.`
+    ? `Задачу "${issueTitle}" завершено.`
     : brief;
   const parts = [
     opening,
-    usefulEvidence ? `У фінальному коментарі агент зафіксував таку суть: ${usefulEvidence}` : null,
-    `Для ${companyName} це означає, що робота не просто закрита формальним статусом, а доведена до контрольної точки, з якої зрозуміло, що саме можна використовувати далі.`,
-    projectName ? `У межах проєкту "${projectName}" цей результат потрібно читати як частину ширшого ланцюжка: підготовка, перевірка, рішення менеджера, можливий Perfex handoff, індексація або подальший моніторинг.` : `Цей результат потрібно читати як частину робочого ланцюжка: підготовка, перевірка, рішення менеджера, можливий Perfex handoff, індексація або подальший моніторинг.`,
-    "Якщо в задачі були файли, артефакти, дочірні задачі або технічні деталі, вони залишаються в Paperclip як джерело правди. Telegram-повідомлення передає людську суть: що завершено, чому це має значення, і який наступний операційний крок не варто загубити.",
-    "Якщо результат передбачає зміни на сайті, саме повідомлення не є дозволом на публікацію. Потрібна перевірка affected URLs, acceptance criteria, QA-нотаток і, за потреби, створення або перевірка задачі для людського впровадження.",
+    usefulEvidence ? `Суть: ${trimToWordLimit(usefulEvidence, 38)}` : null,
+    `Для ${companyName}: деталі й файли лишились у Paperclip.`,
+    "Якщо потрібна дія людини, вона має бути окремо вказана в задачі.",
   ].filter(Boolean) as string[];
 
-  let expanded = parts.join(" ");
-  if (wordCount(expanded) < COMPLETION_SUMMARY_MIN_WORDS) {
-    expanded +=
-      " Після впровадження результат має бути пов'язаний з вимірюванням: показами, кліками, позиціями, trial downloads, переходами на order page або покупками, залежно від типу задачі. Якщо цих даних ще немає, наступний крок має бути сформульований як очікуване спостереження, а не як доведений бізнес-ефект.";
-  }
-  return trimToWordLimit(expanded, COMPLETION_SUMMARY_MAX_WORDS);
+  return trimToWordLimit(parts.join(" "), COMPLETION_SUMMARY_MAX_WORDS);
 }
 
 async function streamToBuffer(stream: NodeJS.ReadableStream): Promise<Buffer> {

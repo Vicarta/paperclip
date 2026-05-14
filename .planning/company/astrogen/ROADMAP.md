@@ -31,7 +31,8 @@ Human-facing Astrogen communication remains Ukrainian and should not expose inte
   - latest GitHub release observed on 2026-05-14 is `v2026.513.0`;
   - live deployment lacks deterministic release provenance, tracked by `[AST-726](/AST/issues/AST-726)`.
 - Phase 15 attempted the update and rolled app runtime back after proving the current live plugin ecosystem is not compatible with the newer upstream runtime as-is. Phase 16 is now the required compatibility gate before another production deploy attempt.
-- Phase 16 compatibility gate is now complete and promoted to production. Live app runs `paperclip-app:v2026.513.0-phase16.1`, health exposes `build.releaseTag=v2026.513.0`, all 12 live plugins booted, and Astrogen portal semantic-core endpoints returned 200. CTO release-check [AST-729](/AST/issues/AST-729) confirmed there is no newer GitHub release. Agent-local API URL mismatch [AST-730](/AST/issues/AST-730) is fixed with `PAPERCLIP_AGENT_API_URL=http://127.0.0.1:3100`.
+- Phase 16 compatibility gate is complete and promoted to production. Live app now runs `paperclip-app:v2026.513.0-phase16.2`, all 12 live plugins boot, and Astrogen portal semantic-core endpoints returned 200 in the Phase 16 smoke. CTO release-check [AST-729](/AST/issues/AST-729) confirmed there is no newer GitHub release. Agent-local API URL mismatch [AST-730](/AST/issues/AST-730) is fixed with `PAPERCLIP_AGENT_API_URL=http://127.0.0.1:3100`.
+- Telegram issue-done notifications now use the Astrogen HIA style rule: shorter Ukrainian text, no long technical explanation in the chat, and no repeated long caption when an attachment is sent. Attachments now get a short `Файл до ...` caption, while the actual summary stays in the main message.
 
 ## Completed
 
@@ -48,6 +49,7 @@ Human-facing Astrogen communication remains Ukrainian and should not expose inte
 - [ ] **Layer 3 Client Review** - Complete human review of active grouped Layer 3 candidates in the client portal, then run Paperclip internal validation/import-readiness before using the result for blog planning.
 - [ ] **Phase 15: Paperclip Server Release Update** - Attempted and rolled back. Keep as evidence of the controlled update attempt, backup, failure mode, and rollback state.
 - [x] **Phase 16: Paperclip Plugin Compatibility Upgrade** - Compatibility gate and production cutover are complete for `v2026.513.0`: plugin packaging, manifest migration, secret/config smoke, worker dependency resolution, deterministic provenance, Astrogen portal endpoint smoke, and production plugin boot check all passed.
+- [x] **Telegram Notification Style Fix** - Done-message summaries are capped and rewritten into short Ukrainian operator text; document captions no longer duplicate the full completion summary.
 
 ## Deferred / Future Tracks
 

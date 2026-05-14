@@ -59,5 +59,5 @@
 
 ## Human Communication
 
-- `AST-HIA-01`: Human-facing Telegram messages must be Ukrainian, simple, concise, and explain the useful outcome rather than internal technical details.
+- `AST-HIA-01`: Human-facing Telegram messages must be Ukrainian, simple, concise, no-nonsense, and explain the useful outcome rather than internal technical details. Prefer short sentences and reduce verbose update text by at least 30% versus internal Paperclip comments.
 - `AST-HIA-02`: Human approval flows should use Paperclip task cards when Telegram interactive reply is unreliable.

@@ -201,7 +201,7 @@ describeEmbeddedPostgres("issueTelegramNotificationService", () => {
     expect(textBody.text).toContain("✅ Готово: AST-456");
     expect(textBody.text).toContain("Агент: SEO Blog Writer (SEO Blog Writer)");
     expect(textBody.text).toContain("Що зроблено:");
-    expect(wordCount(String(textBody.text).split("Що зроблено:")[1] ?? "")).toBeGreaterThanOrEqual(150);
+    expect(wordCount(String(textBody.text).split("Що зроблено:")[1] ?? "")).toBeLessThanOrEqual(90);
     expect(textBody.reply_markup).toEqual({
       inline_keyboard: [[{ text: "Відкрити задачу", url: "https://paperclip.example.test/AST/issues/AST-456" }]],
     });
@@ -212,11 +212,11 @@ describeEmbeddedPostgres("issueTelegramNotificationService", () => {
 
     const form = documentInit.body as FormData;
     expect(form.get("chat_id")).toBe("-5154906793");
-    expect(form.get("caption")).toContain("✅ Готово: AST-456");
+    expect(form.get("caption")).toContain("Файл до AST-456");
     expect(form.get("caption")).toContain("Компанія: Astrogen");
     expect(form.get("caption")).toContain("Агент: SEO Blog Writer (SEO Blog Writer)");
     expect(form.get("caption")).toContain("Задача: Налаштування Telegram-повідомлень");
-    expect(form.get("caption")).toContain("Що зроблено: Статтю підготовлено й надіслано в Telegram.");
+    expect(form.get("caption")).not.toContain("Що зроблено:");
     expect(form.get("caption")).toContain("Відкрити в Paperclip: https://paperclip.example.test/AST/issues/AST-456");
     const document = form.get("document");
     expect(document).toBeInstanceOf(File);
@@ -388,13 +388,13 @@ describeEmbeddedPostgres("issueTelegramNotificationService", () => {
     expect(fetchMock).toHaveBeenCalledTimes(3);
     const textBody = getTelegramTextBody(fetchMock);
     expect(String(textBody.text)).toContain("Що зроблено:");
-    expect(wordCount(String(textBody.text).split("Що зроблено:")[1] ?? "")).toBeGreaterThanOrEqual(150);
+    expect(wordCount(String(textBody.text).split("Що зроблено:")[1] ?? "")).toBeLessThanOrEqual(90);
     const firstForm = getTelegramDocumentForm(fetchMock, 1);
     const secondForm = getTelegramDocumentForm(fetchMock, 2);
-    expect(firstForm.get("caption")).toContain("✅ Готово: AST-457");
+    expect(firstForm.get("caption")).toContain("Файл до AST-457");
     expect(firstForm.get("caption")).toContain("Компанія: Astrogen");
     expect(firstForm.get("caption")).toContain("Задача: Налаштування Telegram-повідомлень");
-    expect(firstForm.get("caption")).toContain("Що зроблено: Пакет статті підготовлено у Markdown та HTML.");
+    expect(firstForm.get("caption")).not.toContain("Що зроблено:");
     expect(firstForm.get("caption")).toContain("Відкрити в Paperclip: https://paperclip.example.test/AST/issues/AST-457");
     expect(secondForm.get("caption")).toBeNull();
   });
@@ -510,16 +510,14 @@ describeEmbeddedPostgres("issueTelegramNotificationService", () => {
     expect(storage.getObject).toHaveBeenCalledWith(companyId, attachment.objectKey);
     const textBody = getTelegramTextBody(fetchMock);
     expect(String(textBody.text)).toContain("Що зроблено:");
-    expect(wordCount(String(textBody.text).split("Що зроблено:")[1] ?? "")).toBeGreaterThanOrEqual(150);
+    expect(wordCount(String(textBody.text).split("Що зроблено:")[1] ?? "")).toBeLessThanOrEqual(90);
     expect(String(textBody.text)).not.toContain("interim proxy attribution policy");
     const form = getTelegramDocumentForm(fetchMock);
     const caption = String(form.get("caption"));
-    expect(caption).toContain("✅ Готово: DIS-28");
+    expect(caption).toContain("Файл до DIS-28");
     expect(caption).toContain("Компанія: DiskInternals");
     expect(caption).toContain("Задача: Налаштування роботи агентів");
-    expect(caption).toContain(
-      "Що зроблено: Зафіксовано тимчасове правило для звітів по продуктах",
-    );
+    expect(caption).not.toContain("Що зроблено:");
     expect(caption).toContain("Відкрити в Paperclip: https://paperclip.example.test/DIS/issues/DIS-28");
     expect(caption).not.toContain("interim proxy attribution policy");
     expect(caption).not.toContain("ecommerce product attribution");
@@ -645,16 +643,15 @@ describeEmbeddedPostgres("issueTelegramNotificationService", () => {
     expect(storage.getObject).toHaveBeenCalledWith(companyId, attachment.objectKey);
     const textBody = getTelegramTextBody(fetchMock);
     expect(String(textBody.text)).toContain("Що зроблено:");
-    expect(wordCount(String(textBody.text).split("Що зроблено:")[1] ?? "")).toBeGreaterThanOrEqual(150);
+    expect(wordCount(String(textBody.text).split("Що зроблено:")[1] ?? "")).toBeLessThanOrEqual(90);
     expect(String(textBody.text)).not.toContain("Review Decision");
     const form = getTelegramDocumentForm(fetchMock);
     const caption = String(form.get("caption"));
-    expect(caption).toContain("✅ Готово: DIS-50");
+    expect(caption).toContain("Файл до DIS-50");
     expect(caption).toContain("Компанія: DiskInternals");
     expect(caption).toContain("Проєкт: Growth OS Launch");
     expect(caption).toContain("Задача: Проаналізуй продукт");
-    expect(caption).toContain("Що зроблено: Результат перевірено й прийнято.");
-    expect(caption).toContain("Пов'язані задачі: DIS-53, DIS-54.");
+    expect(caption).not.toContain("Що зроблено:");
     expect(caption).toContain("Відкрити в Paperclip: https://paperclip.example.test/DIS/issues/DIS-50");
     expect(caption).not.toContain("Review Decision");
     expect(caption).not.toContain("Accepted draft lane");
@@ -791,15 +788,14 @@ Manager review:
     expect(storage.getObject).toHaveBeenCalledWith(companyId, attachment.objectKey);
     const textBody = getTelegramTextBody(fetchMock);
     expect(String(textBody.text)).toContain("Що зроблено:");
-    expect(wordCount(String(textBody.text).split("Що зроблено:")[1] ?? "")).toBeGreaterThanOrEqual(150);
+    expect(wordCount(String(textBody.text).split("Що зроблено:")[1] ?? "")).toBeLessThanOrEqual(90);
     expect(String(textBody.text)).not.toContain("Final Manager Decision");
     const form = getTelegramDocumentForm(fetchMock);
     const caption = String(form.get("caption"));
-    expect(caption).toContain("✅ Готово: DIS-55");
+    expect(caption).toContain("Файл до DIS-55");
     expect(caption).toContain("Компанія: DiskInternals");
     expect(caption).toContain("Проєкт: Growth OS Launch");
-    expect(caption).toContain("Що зроблено: CMO прийняв фінальний результат");
-    expect(caption).toContain("live native-worldwide перезапуск прийнято тільки як вузьку перевірку");
+    expect(caption).not.toContain("Що зроблено:");
     expect(caption).not.toContain("Задачу завершено. Деталі можна відкрити в Paperclip.");
     expect(caption).not.toContain("Final Manager Decision");
     expect(caption).not.toContain("global_search_volume");
@@ -930,7 +926,7 @@ Manager review:
     const textBody = getTelegramTextBody(fetchMock);
     expect(String(textBody.text)).toContain("Семантичне ядро для VMFS Recovery на Mac перевірено");
     expect(String(textBody.text)).toContain("geo і global volume");
-    expect(wordCount(String(textBody.text).split("Що зроблено:")[1] ?? "")).toBeGreaterThanOrEqual(150);
+    expect(wordCount(String(textBody.text).split("Що зроблено:")[1] ?? "")).toBeLessThanOrEqual(90);
     const form = getTelegramDocumentForm(fetchMock);
     expect(String(form.get("caption"))).not.toContain("Що зроблено: Done");
   });

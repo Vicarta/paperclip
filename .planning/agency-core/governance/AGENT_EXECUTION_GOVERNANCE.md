@@ -168,7 +168,7 @@ Telegram or other human notification channels should include:
 - short useful result or question;
 - one link to the Paperclip task for details.
 
-Avoid raw agent-to-agent summaries, English status boilerplate in non-English companies, provider jargon, and long implementation logs in human notifications.
+Avoid raw agent-to-agent summaries, English status boilerplate in non-English companies, provider jargon, and long implementation logs in human notifications. Telegram text should be no-nonsense, mostly short sentences, and materially shorter than the internal task comment.
 
 ## Manager / Observability Expectations
 
