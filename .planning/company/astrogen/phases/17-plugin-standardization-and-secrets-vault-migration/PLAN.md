@@ -1,7 +1,7 @@
 # Phase 17: Plugin Standardization And Secrets Vault Migration
 
 Date: 2026-05-15  
-Status: Planned
+Status: Completed first production pass
 
 ## Goal
 
@@ -11,16 +11,15 @@ This phase must not change semantic-core business policy, client portal UX, or c
 
 ## Context
 
-Phase 16 made the `v2026.513.0` runtime safe for production by forward-porting live code and adding compatibility bridges:
+Phase 16 made the `v2026.513.0` runtime safe for production by forward-porting live code and validating live plugin compatibility:
 
 - live/custom plugin packages were included in the production image build;
-- legacy `costs.write` manifests were migrated to `metrics.write`;
-- a temporary `ctx.costs.createEvent(...)` bridge preserved old plugin behavior;
+- live plugins that write provider costs still use canonical `costs.write`;
 - Bright Data tool shape was adjusted for the new runtime;
 - portal and SEO ops code was forward-ported into the release source;
 - all 12 live plugins booted successfully.
 
-That is compatibility, not full modernization. Phase 17 should remove avoidable compatibility debt.
+That is compatibility, not full modernization. Phase 17 should remove avoidable compatibility debt without weakening cost attribution.
 
 ## Scope
 
@@ -45,7 +44,7 @@ Do not print or store secret values.
 
 Define the target standard for live plugins:
 
-- use current capability names such as `metrics.write` instead of legacy `costs.write`;
+- use current capability names correctly: `costs.write` for canonical cost ledger rows, `metrics.write` for operational plugin metrics;
 - use documented SDK worker entrypoints and validators;
 - declare scoped API/UI/database surfaces explicitly;
 - use plugin-managed resources where the plugin owns agents, routines, folders, or local project folders;
@@ -131,9 +130,9 @@ Production rollout requires:
 
 - Current plugin inventory exists and does not contain plaintext secrets.
 - Every live plugin has a target-standard decision.
-- Legacy `costs.write` and `ctx.costs.createEvent(...)` bridge dependencies are either removed or explicitly documented with owner and expiry condition.
+- Cost ledger writes are explicitly classified: keep `costs.write`/`ctx.costs.createEvent(...)` where the plugin reports billable provider spend; use `metrics.write` only for non-billing operational metrics.
 - Astrogen provider and notification secrets have a Paperclip Secrets/provider-vault migration plan.
-- Staging proves plugin boot `12/12` and secret resolution smoke without exposing values.
+- Staging or production smoke, depending on mutation risk, proves plugin boot `12/12` and secret metadata/config resolution without exposing values. Separate staging remains mandatory before config model, schema, or secret-reference mutations.
 - Production rollout checklist is ready before any live mutation.
 - CTO/Observability contracts do not manually push stalled work; they rely on system recovery actions and create only technical remediation issues when needed.
 
@@ -157,3 +156,9 @@ Rollback must restore:
 - prior AGENTS.md contracts only if the new contract blocks valid technical work.
 
 Do not roll back by editing secrets into plaintext env files unless explicitly approved as emergency remediation.
+
+## Execution Notes
+
+The first Phase 17 pass did not migrate provider vaults or company-scoped plugin settings. It completed the inventory, standardization decision, source cleanup, production deploy, and smoke checks.
+
+Production image after this pass: `paperclip-app:v2026.513.0-phase17`.
