@@ -321,3 +321,64 @@ Do not start deployment until the owner explicitly approves:
 - backup location;
 - rollback approach.
 
+## Execution Result - 2026-05-14
+
+Status: attempted and rolled back.
+
+Selected release:
+
+```text
+v2026.513.0
+https://github.com/paperclipai/paperclip/releases/tag/v2026.513.0
+commit: f4bed4a70f34551ffd4c7c76cf8d8be2ae761d74
+```
+
+Backup created before deployment:
+
+```text
+/home/paperclip/backups/paperclip-update-20260514T180948Z/
+```
+
+Backup contains the previous Compose file, app image/container inspect output, source archive, PostgreSQL custom dump, schema dump, verified `pg_restore --list` output, and SQL snapshots for companies, agents, routines, plugins, open issues, plugin jobs, and semantic-core batches. The `.env` was not copied into planning or Git; only checksum metadata was recorded.
+
+What was done:
+
+- built `paperclip-app:v2026.513.0` from a clean release source directory;
+- added a local health/provenance patch to expose release tag, commit, build time, and source URL;
+- deployed the new app container against the existing Postgres container;
+- allowed the new app to apply migrations `0049` through `0084`;
+- audited all Paperclip plugins after startup;
+- attempted a compatibility fix for legacy plugin package roots and plugin secret references;
+- rolled the app runtime back to the previous image and Compose configuration after plugin compatibility remained unsafe.
+
+Why the release was not kept live:
+
+- upstream `v2026.513.0` source does not include the local/custom plugin package roots that the live Paperclip deployment depends on;
+- the release disables plugin secret references until company-scoped plugin config lands, which breaks the live Telegram/plugin secret model;
+- copied legacy plugin roots still hit new plugin runtime incompatibilities:
+  - legacy manifests use capability values not accepted by the new schema, for example `costs.write`;
+  - copied built workers cannot resolve `@paperclipai/plugin-sdk` in the new image layout.
+
+Rollback evidence:
+
+- app is back on previous image `paperclip-app`;
+- `/api/health` returns `status=ok`, `version=0.3.1`;
+- no queued/running heartbeat runs were left active after rollback;
+- plugin registry is clean: 12 plugins, all `ready`, empty `last_error`;
+- app logs confirm `plugin-loader: loadAll complete {"total":12,"succeeded":12,"failed":0}`;
+- Telegram plugin started successfully after rollback;
+- Astrogen portal `review-groups` endpoint returns a client-safe payload with `reviewContext` and groups.
+
+Residual risk:
+
+- database migrations `0049` through `0084` remain applied because the app runtime rollback did not restore Postgres. The old app is currently running against the migrated schema. No immediate smoke regression was observed, but this should be treated as a compatibility risk until the next update plan resolves the release/plugin gap or a full DB rollback is explicitly chosen.
+
+Next required engineering step:
+
+Before another deploy attempt, create a plugin compatibility/update phase that solves the release packaging contract instead of patching it ad hoc:
+
+- decide how local/custom Paperclip plugins are packaged into release images or mounted at runtime;
+- migrate plugin manifests away from unsupported capability values such as `costs.write`;
+- replace or migrate plugin secret references to the new company-scoped plugin config model, or carry a deliberate compatibility layer;
+- add deterministic runtime provenance in a way that survives normal release updates;
+- run plugin boot tests before deploying a new app container to production.

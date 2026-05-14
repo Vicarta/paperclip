@@ -13,7 +13,7 @@ See: `.planning/company/astrogen/README.md`
 
 Phase: Astrogen growth/content operating system hardening
 Status: Active
-Last activity: 2026-05-14 - Planned Astrogen Phase 15 for a controlled live Paperclip server update after confirming the server reports `version=0.3.1` while GitHub latest is `v2026.513.0`; update must include deterministic runtime provenance, backups, rollback, smoke tests, and CTO release-check validation.
+Last activity: 2026-05-14 - Executed Astrogen Phase 15 live Paperclip update attempt to GitHub release `v2026.513.0`, created verified backup `/home/paperclip/backups/paperclip-update-20260514T180948Z/`, discovered release/plugin incompatibilities, and rolled the app runtime back to the previous image. Current live app is healthy on `version=0.3.1`; all 12 plugins are `ready`; database migrations `0049`-`0084` remain applied and should be treated as residual compatibility risk.
 
 ## Current Focus
 
@@ -71,10 +71,11 @@ Last activity: 2026-05-14 - Planned Astrogen Phase 15 for a controlled live Pape
 - Live Astrogen workspace permissions must follow `ops/paperclip/company-workspace-permissions.md`: `/home/paperclip/astrogen` is shared by Paperclip app/agents (`oc`/uid 1000) and File Browser (`paperclip`/uid 1002), so ACL/default ACL must keep both runtimes writable.
 - Paperclip runtime now treats issue-assigned successful runs with no meaningful issue-side effect as `failed/silent_noop`, writes a diagnostic comment, releases the issue lock, and sends a Telegram alert with responsible agent attribution.
 - Paperclip release-check routine exists for Astrogen CTO and is scheduled weekly on Tuesday at 06:00 Europe/Kiev. Manual test created `[AST-725](/AST/issues/AST-725)`, which was blocked because live `/api/health` exposes only `version=0.3.1` and no Git tag/commit provenance. CTO opened `[AST-726](/AST/issues/AST-726)` for deterministic runtime provenance. Phase 15 now plans the full server update to upstream `v2026.513.0` or a newer owner-approved release.
+- Phase 15 update attempt proved that `v2026.513.0` cannot be deployed safely over the current live runtime without a plugin compatibility phase. The release omits local/custom plugin package roots, disables plugin secret references, and rejects at least one legacy plugin capability shape. The app runtime has been rolled back; do not retry the release directly until plugin packaging, secret config migration/compatibility, manifest capability migration, and provenance are solved together.
 
 ## Roadmap Evolution
 
-- Phase 15 added: Paperclip Server Release Update.
+- Phase 15 executed with rollback: Paperclip Server Release Update.
 
 ## Pending Todos
 
