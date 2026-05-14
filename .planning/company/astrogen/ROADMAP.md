@@ -30,6 +30,7 @@ Human-facing Astrogen communication remains Ukrainian and should not expose inte
   - live `/api/health` reports `version=0.3.1`;
   - latest GitHub release observed on 2026-05-14 is `v2026.513.0`;
   - live deployment lacks deterministic release provenance, tracked by `[AST-726](/AST/issues/AST-726)`.
+- Phase 15 attempted the update and rolled app runtime back after proving the current live plugin ecosystem is not compatible with the newer upstream runtime as-is. Phase 16 is now the required compatibility gate before another production deploy attempt.
 
 ## Completed
 
@@ -44,7 +45,8 @@ Human-facing Astrogen communication remains Ukrainian and should not expose inte
 
 - [ ] **Phase 11: Client Portal Pilot** - Continue the standalone client portal work in `/Users/savitsky/CodexProjects/paperclip-cs-portal`. Paperclip now owns the client-safe semantic-core API; the separate portal owns auth/session/access and UI. Public Nginx/Let's Encrypt activation remains a portal-project/server-network task.
 - [ ] **Layer 3 Client Review** - Complete human review of active grouped Layer 3 candidates in the client portal, then run Paperclip internal validation/import-readiness before using the result for blog planning.
-- [ ] **Phase 15: Paperclip Server Release Update** - Update live Paperclip from the current non-provenanced `0.3.1` deployment to the selected upstream release, with deterministic provenance, backups, rollback, smoke tests, and CTO release-check routine validation.
+- [ ] **Phase 15: Paperclip Server Release Update** - Attempted and rolled back. Keep as evidence of the controlled update attempt, backup, failure mode, and rollback state.
+- [ ] **Phase 16: Paperclip Plugin Compatibility Upgrade** - Make the live plugin ecosystem compatible with the newer Paperclip runtime before another production update attempt: plugin packaging, manifest migration, secret/config model, worker dependency resolution, deterministic provenance, and staging plugin boot smoke.
 
 ## Deferred / Future Tracks
 
@@ -72,4 +74,4 @@ validated semantic core
 
 Do not create pages for every accepted keyword. Do not run SERP similarity for the entire semantic core by default. LLM evaluation of keyword/opportunity sets must be batch-first with stable row IDs, not one LLM call per keyword.
 
-Before executing server-dependent automation such as the weekly CTO release-check routine, execute Phase 15 or at minimum complete its provenance gate so the running Paperclip deployment can be compared against GitHub releases without inference.
+Before executing server-dependent automation such as the weekly CTO release-check routine as a source of truth, complete Phase 16 and then rerun the production update with deterministic provenance. Do not retry the upstream release directly until the plugin compatibility gate is green.

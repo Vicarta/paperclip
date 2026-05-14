@@ -13,7 +13,7 @@ See: `.planning/company/astrogen/README.md`
 
 Phase: Astrogen growth/content operating system hardening
 Status: Active
-Last activity: 2026-05-14 - Executed Astrogen Phase 15 live Paperclip update attempt to GitHub release `v2026.513.0`, created verified backup `/home/paperclip/backups/paperclip-update-20260514T180948Z/`, discovered release/plugin incompatibilities, and rolled the app runtime back to the previous image. Current live app is healthy on `version=0.3.1`; all 12 plugins are `ready`; database migrations `0049`-`0084` remain applied and should be treated as residual compatibility risk.
+Last activity: 2026-05-14 - Planned Astrogen Phase 16 `Paperclip Plugin Compatibility Upgrade` after the controlled Phase 15 update attempt proved that the current live plugin ecosystem is not compatible with upstream `v2026.513.0` as-is. Phase 16 now gates any new production update attempt on plugin packaging, manifest migration, secret/config compatibility, worker dependency resolution, deterministic provenance, and staging plugin boot smoke.
 
 ## Current Focus
 
@@ -72,10 +72,12 @@ Last activity: 2026-05-14 - Executed Astrogen Phase 15 live Paperclip update att
 - Paperclip runtime now treats issue-assigned successful runs with no meaningful issue-side effect as `failed/silent_noop`, writes a diagnostic comment, releases the issue lock, and sends a Telegram alert with responsible agent attribution.
 - Paperclip release-check routine exists for Astrogen CTO and is scheduled weekly on Tuesday at 06:00 Europe/Kiev. Manual test created `[AST-725](/AST/issues/AST-725)`, which was blocked because live `/api/health` exposes only `version=0.3.1` and no Git tag/commit provenance. CTO opened `[AST-726](/AST/issues/AST-726)` for deterministic runtime provenance. Phase 15 now plans the full server update to upstream `v2026.513.0` or a newer owner-approved release.
 - Phase 15 update attempt proved that `v2026.513.0` cannot be deployed safely over the current live runtime without a plugin compatibility phase. The release omits local/custom plugin package roots, disables plugin secret references, and rejects at least one legacy plugin capability shape. The app runtime has been rolled back; do not retry the release directly until plugin packaging, secret config migration/compatibility, manifest capability migration, and provenance are solved together.
+- Phase 16 is now planned as the required compatibility gate. It must produce a plugin compatibility matrix, packaging decision, manifest migration, secret/config resolution model, worker import smoke, deterministic provenance, staging plugin boot evidence, and final update readiness checklist before any further production deploy.
 
 ## Roadmap Evolution
 
 - Phase 15 executed with rollback: Paperclip Server Release Update.
+- Phase 16 added: Paperclip Plugin Compatibility Upgrade.
 
 ## Pending Todos
 
