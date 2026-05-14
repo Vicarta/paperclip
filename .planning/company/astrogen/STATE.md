@@ -13,7 +13,7 @@ See: `.planning/company/astrogen/README.md`
 
 Phase: Astrogen growth/content operating system hardening
 Status: Active
-Last activity: 2026-05-13 - Applied Astrogen Phase 14 to live Paperclip agent/process contracts on `ubuntu-oc`, so the next blog wave can use paced article opportunities, SERP shortlist grouping, human priorities, and batch-first LLM evaluation.
+Last activity: 2026-05-14 - Planned Astrogen Phase 15 for a controlled live Paperclip server update after confirming the server reports `version=0.3.1` while GitHub latest is `v2026.513.0`; update must include deterministic runtime provenance, backups, rollback, smoke tests, and CTO release-check validation.
 
 ## Current Focus
 
@@ -70,6 +70,11 @@ Last activity: 2026-05-13 - Applied Astrogen Phase 14 to live Paperclip agent/pr
 - Semantic-core agents should follow agency-core `SEMANTIC_CORE_MCP_AGENT_INSTRUCTIONS`: parsed competitor content terms are candidate evidence only, `recall_ledger` should be preserved, and `competitor_expansion_endpoint`/`serp_result_classification_reason` should be visible in review when returned.
 - Live Astrogen workspace permissions must follow `ops/paperclip/company-workspace-permissions.md`: `/home/paperclip/astrogen` is shared by Paperclip app/agents (`oc`/uid 1000) and File Browser (`paperclip`/uid 1002), so ACL/default ACL must keep both runtimes writable.
 - Paperclip runtime now treats issue-assigned successful runs with no meaningful issue-side effect as `failed/silent_noop`, writes a diagnostic comment, releases the issue lock, and sends a Telegram alert with responsible agent attribution.
+- Paperclip release-check routine exists for Astrogen CTO and is scheduled weekly on Tuesday at 06:00 Europe/Kiev. Manual test created `[AST-725](/AST/issues/AST-725)`, which was blocked because live `/api/health` exposes only `version=0.3.1` and no Git tag/commit provenance. CTO opened `[AST-726](/AST/issues/AST-726)` for deterministic runtime provenance. Phase 15 now plans the full server update to upstream `v2026.513.0` or a newer owner-approved release.
+
+## Roadmap Evolution
+
+- Phase 15 added: Paperclip Server Release Update.
 
 ## Pending Todos
 

@@ -26,6 +26,10 @@ Human-facing Astrogen communication remains Ukrainian and should not expose inte
   - client-visible pending variants: `3077`;
   - inventory summary after internal filtering: total `3882`, accepted `183`, candidate `3690`, deferred `1`, rejected `8`.
 - Known bad diagnostic rows such as `gemini ai` and `gemini google` were removed from client-visible review groups and inventory.
+- Paperclip server update planning is now required before relying on automated weekly release checks:
+  - live `/api/health` reports `version=0.3.1`;
+  - latest GitHub release observed on 2026-05-14 is `v2026.513.0`;
+  - live deployment lacks deterministic release provenance, tracked by `[AST-726](/AST/issues/AST-726)`.
 
 ## Completed
 
@@ -40,6 +44,7 @@ Human-facing Astrogen communication remains Ukrainian and should not expose inte
 
 - [ ] **Phase 11: Client Portal Pilot** - Continue the standalone client portal work in `/Users/savitsky/CodexProjects/paperclip-cs-portal`. Paperclip now owns the client-safe semantic-core API; the separate portal owns auth/session/access and UI. Public Nginx/Let's Encrypt activation remains a portal-project/server-network task.
 - [ ] **Layer 3 Client Review** - Complete human review of active grouped Layer 3 candidates in the client portal, then run Paperclip internal validation/import-readiness before using the result for blog planning.
+- [ ] **Phase 15: Paperclip Server Release Update** - Update live Paperclip from the current non-provenanced `0.3.1` deployment to the selected upstream release, with deterministic provenance, backups, rollback, smoke tests, and CTO release-check routine validation.
 
 ## Deferred / Future Tracks
 
@@ -66,3 +71,5 @@ validated semantic core
 ```
 
 Do not create pages for every accepted keyword. Do not run SERP similarity for the entire semantic core by default. LLM evaluation of keyword/opportunity sets must be batch-first with stable row IDs, not one LLM call per keyword.
+
+Before executing server-dependent automation such as the weekly CTO release-check routine, execute Phase 15 or at minimum complete its provenance gate so the running Paperclip deployment can be compared against GitHub releases without inference.
