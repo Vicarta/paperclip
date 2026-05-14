@@ -41,7 +41,7 @@ describeEmbeddedPostgres("plugin job scheduler", () => {
 
   it("auto-pauses a scheduled job after a missing handler error and does not retry it on the next tick", async () => {
     const pluginId = randomUUID();
-    const jobKey = "telegram-daily-digest";
+    const jobKey = "missing-scheduled-handler";
     const startedAt = new Date("2026-04-15T00:00:00.000Z");
     const jobStore = pluginJobStore(db);
     const scheduler = createPluginJobScheduler({

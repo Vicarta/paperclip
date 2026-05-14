@@ -170,6 +170,8 @@ Telegram or other human notification channels should include:
 
 Avoid raw agent-to-agent summaries, English status boilerplate in non-English companies, provider jargon, and long implementation logs in human notifications. Telegram text should be no-nonsense, mostly short sentences, and materially shorter than the internal task comment.
 
+Each human notification event should have one owner. Do not deliver the same lifecycle event through parallel server-side and plugin-side senders.
+
 ## Manager / Observability Expectations
 
 Managers and observability routines should detect:

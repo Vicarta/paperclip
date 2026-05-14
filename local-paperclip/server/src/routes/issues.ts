@@ -47,7 +47,6 @@ import { shouldWakeAssigneeOnCheckout } from "./issues-checkout-wakeup.js";
 import { isAllowedContentType, MAX_ATTACHMENT_BYTES } from "../attachment-types.js";
 import { queueIssueAssignmentWakeup } from "../services/issue-assignment-wakeup.js";
 import { issueNotificationContractService } from "../services/issue-notification-contracts.js";
-import { issueTelegramNotificationService } from "../services/issue-telegram-notifications.js";
 
 const MAX_ISSUE_COMMENT_LIMIT = 500;
 const updateIssueRouteSchema = updateIssueSchema.extend({
@@ -82,7 +81,6 @@ export function issueRoutes(
   const workProductsSvc = workProductService(db);
   const documentsSvc = documentService(db);
   const issueNotificationContractsSvc = issueNotificationContractService(db);
-  const issueTelegramNotifications = issueTelegramNotificationService(db, storage);
   const routinesSvc = routineService(db);
   const feedbackExportService = opts?.feedbackExportService;
   const upload = multer({
@@ -1228,15 +1226,6 @@ export function issueRoutes(
           trackAgentTaskCompleted(tc, { agentRole: actorAgent.role });
         }
       }
-      void issueTelegramNotifications.sendIssueDoneNotification(issue.id, {
-        actorType: actor.actorType,
-        actorId: actor.actorId,
-        agentId: actor.agentId,
-        runId: actor.runId,
-        completionSummary: commentBody,
-      }).catch((err) => {
-        logger.warn({ err, issueId: issue.id }, "failed to send issue-done telegram notification");
-      });
     }
 
     let comment = null;

@@ -48,13 +48,13 @@ The installed plugin contributes:
 - Telegram bot commands such as `/status`, `/issues`, `/agents`, `/approve`
 - reply routing back into Paperclip issue comments
 - escalation, handoff, discuss, and watch tools
-- scheduled digest jobs
+- scheduled operational checks
 
 Host safeguard now in place:
 
 - manifest-declared scheduled jobs that fail with `No handler registered for job ...`
   are auto-paused by the scheduler instead of continuing to fail on every tick
-- `telegram-daily-digest` remains paused until a real handler is shipped
+- manifest-declared jobs without handlers should stay out of production manifests
 
 ## Live Activation Status
 
