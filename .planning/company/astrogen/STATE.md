@@ -13,7 +13,7 @@ See: `.planning/company/astrogen/README.md`
 
 Phase: Astrogen growth/content operating system hardening
 Status: Active
-Last activity: 2026-05-15 - Live app now runs `paperclip-app:v2026.513.0-phase17`; Telegram issue lifecycle notifications use a single plugin-owned path; Astrogen CTO/Observability/CMO/SEO contracts prevent manual nudges that duplicate system recovery; Phase 17 first production pass completed plugin inventory, secret metadata audit, source cleanup, deploy, and smoke.
+Last activity: 2026-05-15 - Live app now runs `paperclip-app:v2026.513.0-phase17.1`; Telegram issue lifecycle notifications use a single plugin-owned path; Astrogen CTO/Observability/CMO/SEO contracts prevent manual nudges that duplicate system recovery; Phase 17 first production pass completed plugin inventory, secret metadata audit, source cleanup, deploy, and smoke.
 
 ## Current Focus
 
@@ -75,7 +75,7 @@ Last activity: 2026-05-15 - Live app now runs `paperclip-app:v2026.513.0-phase17
 - Phase 16 compatibility gate and production cutover are complete. Deliverables are in `.planning/company/astrogen/phases/16-paperclip-plugin-compatibility-upgrade/`: `PLUGIN_BASELINE.md`, `PLUGIN_COMPATIBILITY_MATRIX.md`, `PLUGIN_PACKAGING_DECISION.md`, `UPDATE_READINESS.md`, and `SUMMARY.md`. Backup and rollback evidence are on the server at `/home/oc/paperclip-backups/phase16-prod-deploy-20260514T192917Z` and `/home/oc/paperclip-backups/phase16-agent-api-url-20260514T195650Z`.
 - Phase 17 first production pass completed. Deliverables are in `.planning/company/astrogen/phases/17-plugin-standardization-and-secrets-vault-migration/`: `PLUGIN_INVENTORY.md`, `STANDARDIZATION_DECISIONS.md`, `SECRET_MIGRATION_PLAN.md`, `SMOKE.md`, and `SUMMARY.md`.
 - Live Astrogen CTO, Observability, CMO, SEO Semantic Core Strategist, and SEO Semantic Core Validator contracts were updated so CTO/Observability do not manually push stalled work as a substitute for Paperclip recovery actions, and CMO/SEO agents use company search before creating duplicate semantic-core/content/remediation issues.
-- Production now runs `paperclip-app:v2026.513.0-phase17`; old server-side issue completion Telegram sender source/tests were removed; health, plugin loader `12/12`, Telegram jobs, and Astrogen portal semantic-core endpoints were smoke-checked.
+- Production now runs `paperclip-app:v2026.513.0-phase17.1`; old server-side issue completion Telegram sender source/tests were removed; health, plugin loader `12/12`, Telegram jobs, and Astrogen portal semantic-core endpoints were smoke-checked.
 
 ## Roadmap Evolution
 

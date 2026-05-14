@@ -11,7 +11,7 @@ Phase 17 completed the first standardization pass:
 - confirmed Paperclip Secrets are already used for most Astrogen provider credentials;
 - found one company-scope issue for Semantic Core MCP token usage;
 - removed the unused server-side issue completion Telegram sender from source so lifecycle notifications have one path;
-- deployed `paperclip-app:v2026.513.0-phase17`;
+- deployed `paperclip-app:v2026.513.0-phase17.1`;
 - corrected the standardization decision around `costs.write`: it is still the canonical cost ledger capability, not a generic metric.
 
 ## Important Correction
@@ -36,5 +36,6 @@ Priority:
 - Plugins ready: `12/12`.
 - Telegram lifecycle notifications are plugin-owned.
 - Telegram daily digest remains absent.
+- Old Telegram plugin backup files containing removed digest code were removed from the live plugin volume.
 - Astrogen portal semantic-core endpoints returned HTTP 200 after deploy.
 - No semantic-core rerun was started.

@@ -161,4 +161,4 @@ Do not roll back by editing secrets into plaintext env files unless explicitly a
 
 The first Phase 17 pass did not migrate provider vaults or company-scoped plugin settings. It completed the inventory, standardization decision, source cleanup, production deploy, and smoke checks.
 
-Production image after this pass: `paperclip-app:v2026.513.0-phase17`.
+Production image after this pass: `paperclip-app:v2026.513.0-phase17.1`.

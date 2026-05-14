@@ -30,7 +30,9 @@ These checks did not mutate production secrets or run semantic-core generation.
 
 ## Production Deploy Smoke
 
-Image deployed: `paperclip-app:v2026.513.0-phase17`
+Image deployed: `paperclip-app:v2026.513.0-phase17.1`
+
+Note: the first `phase17` image exposed stale compiled `dist` output from the removed server-side Telegram sender. `phase17.1` rebuilt after adding `pnpm run clean` to the server build script and removing the stale live backup files from the Telegram plugin volume.
 
 | Check | Result |
 | --- | --- |
@@ -39,6 +41,7 @@ Image deployed: `paperclip-app:v2026.513.0-phase17`
 | Plugin DB status | `12/12` ready |
 | Telegram jobs | `check-escalation-timeouts`, `check-watches` only |
 | Old server-side issue Telegram service in image | absent |
+| Old Telegram plugin backup files containing removed digest handler | removed |
 | Astrogen semantic-core portal inventory endpoint | HTTP 200 |
 | Astrogen semantic-core portal review endpoint | HTTP 200 |
 | Astrogen semantic-core portal review-groups endpoint | HTTP 200 |
