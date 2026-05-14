@@ -49,6 +49,7 @@ Human-facing Astrogen communication remains Ukrainian and should not expose inte
 - [ ] **Layer 3 Client Review** - Complete human review of active grouped Layer 3 candidates in the client portal, then run Paperclip internal validation/import-readiness before using the result for blog planning.
 - [ ] **Phase 15: Paperclip Server Release Update** - Attempted and rolled back. Keep as evidence of the controlled update attempt, backup, failure mode, and rollback state.
 - [x] **Phase 16: Paperclip Plugin Compatibility Upgrade** - Compatibility gate and production cutover are complete for `v2026.513.0`: plugin packaging, manifest migration, secret/config smoke, worker dependency resolution, deterministic provenance, Astrogen portal endpoint smoke, and production plugin boot check all passed.
+- [ ] **Phase 17: Plugin Standardization And Secrets Vault Migration** - Move live plugins from compatibility patches to the current Paperclip plugin standard, and plan/migrate provider secrets into Paperclip Secrets/provider-vault records without exposing plaintext values.
 - [x] **Telegram Notification Style Fix** - Done-message summaries are capped and rewritten into short Ukrainian operator text; document captions no longer duplicate the full completion summary. Telegram issue lifecycle delivery now goes through one path: the Telegram plugin.
 
 ## Deferred / Future Tracks
@@ -77,4 +78,4 @@ validated semantic core
 
 Do not create pages for every accepted keyword. Do not run SERP similarity for the entire semantic core by default. LLM evaluation of keyword/opportunity sets must be batch-first with stable row IDs, not one LLM call per keyword.
 
-Next server-side follow-up: keep the Phase 16 rollback backups until the next stable maintenance window. Future upstream release updates must reuse the Phase 16 packaging/compatibility approach, preserve the local-agent API URL invariant, and keep human Telegram lifecycle messages owned by one sender path.
+Next server-side follow-up: execute Phase 17 before treating the plugin layer as fully modernized. Future upstream release updates must reuse the Phase 16 packaging/compatibility approach, preserve the local-agent API URL invariant, keep human Telegram lifecycle messages owned by one sender path, and avoid manual CTO/Observability nudges that duplicate Paperclip recovery actions.

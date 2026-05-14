@@ -56,9 +56,12 @@
 - `AST-INT-01`: MCP/GSC/Semantic Core tokens must remain server-side secrets.
 - `AST-INT-02`: Paperclip plugins may be shared, but Astrogen enablement must be verified in Astrogen company context.
 - `AST-INT-03`: CMS adapter work remains paused until the CMS is selected.
+- `AST-INT-04`: Live Astrogen plugins should use the current Paperclip plugin contract rather than long-lived compatibility bridges, unless a bridge has an explicit owner and expiry condition.
+- `AST-INT-05`: Provider, notification, portal, and MCP credentials should be migrated to Paperclip Secrets/provider-vault records where supported, with auditability and without plaintext values in Git, planning docs, issue comments, Telegram, or logs.
 
 ## Human Communication
 
 - `AST-HIA-01`: Human-facing Telegram messages must be Ukrainian, simple, concise, no-nonsense, and explain the useful outcome rather than internal technical details. Prefer short sentences and reduce verbose update text by at least 30% versus internal Paperclip comments.
 - `AST-HIA-02`: Human approval flows should use Paperclip task cards when Telegram interactive reply is unreliable.
 - `AST-HIA-03`: Issue lifecycle Telegram notifications must have one canonical delivery path owned by the Telegram plugin. Do not run a parallel server-side issue notification sender for the same lifecycle event.
+- `AST-HIA-04`: CTO and Observability must not manually push, wake, reopen, reassign, unblock, or complete another agent's work as a substitute for Paperclip system recovery actions.
