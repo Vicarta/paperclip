@@ -31,6 +31,7 @@ Human-facing Astrogen communication remains Ukrainian and should not expose inte
   - latest GitHub release observed on 2026-05-14 is `v2026.513.0`;
   - live deployment lacks deterministic release provenance, tracked by `[AST-726](/AST/issues/AST-726)`.
 - Phase 15 attempted the update and rolled app runtime back after proving the current live plugin ecosystem is not compatible with the newer upstream runtime as-is. Phase 16 is now the required compatibility gate before another production deploy attempt.
+- Phase 16 compatibility gate is now complete and promoted to production. Live app runs `paperclip-app:v2026.513.0-phase16`, health exposes `build.releaseTag=v2026.513.0`, all 12 live plugins booted, and Astrogen portal semantic-core endpoints returned 200.
 
 ## Completed
 
@@ -46,7 +47,7 @@ Human-facing Astrogen communication remains Ukrainian and should not expose inte
 - [ ] **Phase 11: Client Portal Pilot** - Continue the standalone client portal work in `/Users/savitsky/CodexProjects/paperclip-cs-portal`. Paperclip now owns the client-safe semantic-core API; the separate portal owns auth/session/access and UI. Public Nginx/Let's Encrypt activation remains a portal-project/server-network task.
 - [ ] **Layer 3 Client Review** - Complete human review of active grouped Layer 3 candidates in the client portal, then run Paperclip internal validation/import-readiness before using the result for blog planning.
 - [ ] **Phase 15: Paperclip Server Release Update** - Attempted and rolled back. Keep as evidence of the controlled update attempt, backup, failure mode, and rollback state.
-- [ ] **Phase 16: Paperclip Plugin Compatibility Upgrade** - Make the live plugin ecosystem compatible with the newer Paperclip runtime before another production update attempt: plugin packaging, manifest migration, secret/config model, worker dependency resolution, deterministic provenance, and staging plugin boot smoke.
+- [x] **Phase 16: Paperclip Plugin Compatibility Upgrade** - Compatibility gate and production cutover are complete for `v2026.513.0`: plugin packaging, manifest migration, secret/config smoke, worker dependency resolution, deterministic provenance, Astrogen portal endpoint smoke, and production plugin boot check all passed.
 
 ## Deferred / Future Tracks
 
@@ -74,4 +75,4 @@ validated semantic core
 
 Do not create pages for every accepted keyword. Do not run SERP similarity for the entire semantic core by default. LLM evaluation of keyword/opportunity sets must be batch-first with stable row IDs, not one LLM call per keyword.
 
-Before executing server-dependent automation such as the weekly CTO release-check routine as a source of truth, complete Phase 16 and then rerun the production update with deterministic provenance. Do not retry the upstream release directly until the plugin compatibility gate is green.
+Next server-side follow-up: rerun the CTO release-check routine against live health provenance and keep the Phase 16 rollback backup until the next stable maintenance window. Future upstream release updates must reuse the Phase 16 packaging/compatibility approach, not raw release cutovers.
