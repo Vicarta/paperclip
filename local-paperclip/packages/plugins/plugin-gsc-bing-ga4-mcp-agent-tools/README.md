@@ -116,10 +116,10 @@ Operational constraints:
 - `paperclip.gsc-bing-ga4-mcp-agent-tools` has a hardcoded allowlist for exactly `100.98.5.50:3002` and `172.21.0.1:3002`.
 - Do not add broader private-network access without a new explicit review.
 
-Local plaintext token location for manual setup only:
+Manual token setup:
 
 ```text
-/Users/savitsky/CodexProjects/mcp-gsc/.secrets/search-console-mcp-astrogen-token.txt
+Use a local operator-only secret file outside this repository, then store the value in Paperclip Secrets.
 ```
 
 Do not commit this token or paste it into prompts/issues.
