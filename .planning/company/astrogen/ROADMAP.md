@@ -33,6 +33,7 @@ Human-facing Astrogen communication remains Ukrainian and should not expose inte
 - Phase 15 attempted the update and rolled app runtime back after proving the current live plugin ecosystem is not compatible with the newer upstream runtime as-is. Phase 16 is now the required compatibility gate before another production deploy attempt.
 - Phase 16 compatibility gate is complete and promoted to production. Phase 17 first pass is now live as `paperclip-app:v2026.513.0-phase17.1`, all 12 live plugins boot, and Astrogen portal semantic-core endpoints returned 200 after the Phase 17 smoke. CTO release-check [AST-729](/AST/issues/AST-729) confirmed there is no newer GitHub release. Agent-local API URL mismatch [AST-730](/AST/issues/AST-730) is fixed with `PAPERCLIP_AGENT_API_URL=http://127.0.0.1:3100`.
 - Telegram issue lifecycle notifications now have one canonical path: the Telegram plugin. The previous server-side issue-done sender is disabled, the old daily digest job is removed, and completion messages use the Astrogen HIA style rule: short Ukrainian text, no long technical explanation in chat, and no repeated long caption when an attachment is sent.
+- Phase 18 added `ops/paperclip-production/` as the sanitized Git source of truth for production compose shape, plugin/job/secret-reference manifests, and live drift export. Plaintext secrets and generated live exports remain excluded from Git.
 
 ## Completed
 
@@ -50,6 +51,7 @@ Human-facing Astrogen communication remains Ukrainian and should not expose inte
 - [ ] **Phase 15: Paperclip Server Release Update** - Attempted and rolled back. Keep as evidence of the controlled update attempt, backup, failure mode, and rollback state.
 - [x] **Phase 16: Paperclip Plugin Compatibility Upgrade** - Compatibility gate and production cutover are complete for `v2026.513.0`: plugin packaging, manifest migration, secret/config smoke, worker dependency resolution, deterministic provenance, Astrogen portal endpoint smoke, and production plugin boot check all passed.
 - [x] **Phase 17: Plugin Standardization And Secrets Vault Migration** - First production pass complete: plugin inventory, secret metadata audit, standardization decisions, dead server-side Telegram sender removal, production `phase17.1` deploy, and smoke. Company-scoped shared plugin config and external provider-vault migration remain future follow-ups.
+- [x] **Phase 18: Production Config Source Of Truth** - Added sanitized production templates/manifests under `ops/paperclip-production/` and a live export script for drift review without secret material.
 - [x] **Telegram Notification Style Fix** - Done-message summaries are capped and rewritten into short Ukrainian operator text; document captions no longer duplicate the full completion summary. Telegram issue lifecycle delivery now goes through one path: the Telegram plugin.
 
 ## Deferred / Future Tracks
@@ -78,4 +80,4 @@ validated semantic core
 
 Do not create pages for every accepted keyword. Do not run SERP similarity for the entire semantic core by default. LLM evaluation of keyword/opportunity sets must be batch-first with stable row IDs, not one LLM call per keyword.
 
-Next server-side follow-up: design company-scoped plugin settings for shared MCP/provider plugins before moving Semantic Core MCP and other shared tokens into strictly company-local refs. Future upstream release updates must reuse the Phase 16 packaging/compatibility approach, preserve the local-agent API URL invariant, keep human Telegram lifecycle messages owned by one sender path, and avoid manual CTO/Observability nudges that duplicate Paperclip recovery actions.
+Next server-side follow-up: keep `ops/paperclip-production/` updated after every production config change, then design company-scoped plugin settings for shared MCP/provider plugins before moving Semantic Core MCP and other shared tokens into strictly company-local refs. Future upstream release updates must reuse the Phase 16 packaging/compatibility approach, preserve the local-agent API URL invariant, keep human Telegram lifecycle messages owned by one sender path, and avoid manual CTO/Observability nudges that duplicate Paperclip recovery actions.
