@@ -42,7 +42,7 @@ local-paperclip/packages/plugins/plugin-diskinternals-bigquery-growth/tests/url-
 Implement URL normalization for DiskInternals: canonical protocol/host policy, `www` handling, tracking parameter removal, fragment removal, trailing slash policy, `/index.html` policy, redirect/final URL preservation fields, localized URL separation, and meaningful query-parameter preservation. Tests must cover GA4 page URLs, GSC URLs, sitemap URLs, redirects, tracking noise, and localized paths.
 </action>
 <verify>
-<automated>cd /Users/savitsky/CodexProjects/paper-clip/local-paperclip && pnpm --filter @paperclipai/plugin-diskinternals-bigquery-growth test -- url-normalization</automated>
+<automated>cd /path/to/paper-clip/local-paperclip && pnpm --filter @paperclipai/plugin-diskinternals-bigquery-growth test -- url-normalization</automated>
 </verify>
 <done>
 Normalization produces stable `normalized_url`/`url_id` candidates and never merges localized or meaningfully parameterized pages incorrectly.
@@ -59,7 +59,7 @@ local-paperclip/packages/plugins/plugin-diskinternals-bigquery-growth/tests/site
 Implement `sync_sitemap_snapshot` and `normalize_url_inventory` tool logic. Fetch sitemap index/nested sitemap XML, parse URLs and `lastmod`, upsert into BigQuery inventory, mark URLs missing from latest sitemap without immediate deletion, and report counts for added/updated/missing/invalid URLs. Do not fetch page HTML as part of sitemap sync.
 </action>
 <verify>
-<automated>cd /Users/savitsky/CodexProjects/paper-clip/local-paperclip && pnpm --filter @paperclipai/plugin-diskinternals-bigquery-growth test -- sitemap-sync</automated>
+<automated>cd /path/to/paper-clip/local-paperclip && pnpm --filter @paperclipai/plugin-diskinternals-bigquery-growth test -- sitemap-sync</automated>
 </verify>
 <done>
 Sitemap sync creates URL inventory snapshots and returns a safe summary suitable for Paperclip issue comments.
@@ -76,7 +76,7 @@ local-paperclip/packages/plugins/plugin-diskinternals-bigquery-growth/tests/prod
 Add product mapping rules that connect URL paths/download filenames/product routes to DiskInternals product families. Preserve ambiguity fields when one page supports multiple intents. Include Linux Reader read/view, Linux Writer write/edit, and recovery intent separation.
 </action>
 <verify>
-<automated>cd /Users/savitsky/CodexProjects/paper-clip/local-paperclip && pnpm --filter @paperclipai/plugin-diskinternals-bigquery-growth test -- product-mapping</automated>
+<automated>cd /path/to/paper-clip/local-paperclip && pnpm --filter @paperclipai/plugin-diskinternals-bigquery-growth test -- product-mapping</automated>
 </verify>
 <done>
 Product mapping can classify core pilot pages and explicitly flags ambiguous or missing product binding.

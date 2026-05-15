@@ -12,7 +12,7 @@
   },
   "notes": {
     "reason_commit_docs_false": "Planning docs are tracked from the top-level workspace root, but remain local until the operator chooses to commit them.",
-    "local_codex_planning_root": "/Users/savitsky/CodexProjects/paper-clip/.planning/company/diskinternals",
+    "local_codex_planning_root": "/path/to/paper-clip/.planning/company/diskinternals",
     "paperclip_canonical_company_artifact_root": "/companies/diskinternals",
     "paperclip_company_id": "969d66ff-d77e-4dbf-8759-1a17c2bb17c2",
     "paperclip_issue_prefix": "DIS"

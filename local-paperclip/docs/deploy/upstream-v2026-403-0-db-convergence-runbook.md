@@ -43,8 +43,8 @@ Before running any DB-changing action:
 
 Reference docs:
 
-- [Database deployment guide](/Users/savitsky/CodexProjects/paper-clip/local-paperclip/docs/deploy/database.md)
-- [DB reconciliation worksheet](/Users/savitsky/CodexProjects/paper-clip/local-paperclip/doc/plans/2026-04-14-db-reconciliation-worksheet.md)
+- [Database deployment guide](database.md)
+- [DB reconciliation worksheet](../../doc/plans/2026-04-14-db-reconciliation-worksheet.md)
 
 ## Target Schema Policy
 
@@ -204,7 +204,7 @@ This phase produces code, not live actions.
 
 Before upstream migrations are applied, run the idempotent bridge script:
 
-- [preflight schema bridge SQL](/Users/savitsky/CodexProjects/paper-clip/local-paperclip/docs/deploy/sql/upstream-v2026-403-0-preflight-schema-bridge.sql)
+- [preflight schema bridge SQL](sql/upstream-v2026-403-0-preflight-schema-bridge.sql)
 
 Bridge responsibilities:
 

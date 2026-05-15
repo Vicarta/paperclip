@@ -45,7 +45,7 @@ Out of scope:
 - changing Astrogen semantic-core policy or client decisions;
 - changing the standalone client portal except smoke-testing its Paperclip API reads;
 - updating MCP server behavior unless a plugin adapter contract requires a small compatibility change;
-- modifying `/Users/savitsky/CodexProjects/seo-dashboard`;
+- modifying `/path/to/seo-dashboard`;
 - storing plaintext secrets in Git, planning docs, logs, or issue comments.
 
 ## Current Plugin Inventory To Audit

@@ -46,7 +46,7 @@ ops/bigquery/diskinternals/schema/002_job_state_tables.sql
 Create BigQuery SQL definitions for raw/import tables, URL/product dimensions, crawl job state, facts, and marts listed in the canonical algorithm. Use date partitioning and clustering where useful for GA4/GSC facts, crawl snapshots, and follow-up measurements. Document required IAM roles, dataset location input, and that secrets/service account credentials are never committed.
 </action>
 <verify>
-<automated>cd /Users/savitsky/CodexProjects/paper-clip && test -f ops/bigquery/diskinternals/schema/001_core_tables.sql && test -f ops/bigquery/diskinternals/schema/002_job_state_tables.sql</automated>
+<automated>cd /path/to/paper-clip && test -f ops/bigquery/diskinternals/schema/001_core_tables.sql && test -f ops/bigquery/diskinternals/schema/002_job_state_tables.sql</automated>
 </verify>
 <done>
 Schema files cover URL identity, product mapping, sitemap snapshots, crawl jobs/items, GA4/GSC facts, scoring marts, experiment decisions, and follow-up measurements.
@@ -64,7 +64,7 @@ ops/bigquery/diskinternals/scripts/smoke.sh
 Create view SQL and shell scripts that use `bq` for ops-only setup and smoke tests. Scripts must accept project/dataset/location via flags or env vars, support dry-run where possible, and fail closed when inputs are missing. Include smoke queries for row counts, required columns, date partition filters, and sample report views.
 </action>
 <verify>
-<automated>cd /Users/savitsky/CodexProjects/paper-clip && bash -n ops/bigquery/diskinternals/scripts/apply.sh && bash -n ops/bigquery/diskinternals/scripts/smoke.sh</automated>
+<automated>cd /path/to/paper-clip && bash -n ops/bigquery/diskinternals/scripts/apply.sh && bash -n ops/bigquery/diskinternals/scripts/smoke.sh</automated>
 </verify>
 <done>
 Operators can bootstrap and validate BigQuery schema with `bq` without agents using CLI or raw SQL at runtime.
@@ -80,7 +80,7 @@ Operators can bootstrap and validate BigQuery schema with `bq` without agents us
 Update the planning docs with the actual table/view names, required environment variables, and the exact boundary: `bq` is for ops only; Paperclip runtime uses plugin tools from plan `07-02`.
 </action>
 <verify>
-<automated>cd /Users/savitsky/CodexProjects/paper-clip && rg -n "diskinternals_growth|bq.*ops|Paperclip plugin" .planning/company/diskinternals/deliverables/BIGQUERY_TRANSITION.md .planning/company/diskinternals/deliverables/DATA_CONTRACTS.md</automated>
+<automated>cd /path/to/paper-clip && rg -n "diskinternals_growth|bq.*ops|Paperclip plugin" .planning/company/diskinternals/deliverables/BIGQUERY_TRANSITION.md .planning/company/diskinternals/deliverables/DATA_CONTRACTS.md</automated>
 </verify>
 <done>
 Planning docs and ops scripts describe the same BigQuery dataset, tables, views, and runtime boundary.

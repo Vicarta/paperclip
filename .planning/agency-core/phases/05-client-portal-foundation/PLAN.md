@@ -9,7 +9,7 @@ The current Semantic Core Review page proved the workflow, but it still lives in
 The neighboring dashboard project is read-only prior art. The client portal implementation must live in:
 
 ```text
-/Users/savitsky/CodexProjects/paperclip-cs-portal
+/path/to/paperclip-cs-portal
 ```
 
 That prior art has useful lessons:
@@ -44,7 +44,7 @@ Build the portal as a separate deployed web application, not as another Papercli
 
 Recommended implementation path:
 
-1. Use `/Users/savitsky/CodexProjects/paperclip-cs-portal` as the reusable client-portal app surface owned by agency-core.
+1. Use `/path/to/paperclip-cs-portal` as the reusable client-portal app surface owned by agency-core.
 2. Treat the dashboard reference as read-only; do not modify it.
 3. Keep canonical SEO, semantic-core, rank, page, and decision data in Paperclip PostgreSQL schemas.
 4. Add a client-facing Paperclip API boundary, for example `/api/client/...`, that exposes only sanitized company-scoped DTOs and write actions.
@@ -103,7 +103,7 @@ Public deployment requirements:
 - Add `robots`/`noindex` for authenticated pages and avoid indexing login/verify pages unless there is an explicit marketing reason later.
 - Add public-rate-limit protection for login/code endpoints. If abuse appears, add Cloudflare Turnstile or equivalent after the first few failed attempts, not as a default UX blocker.
 - Resend sender domain must have SPF/DKIM/DMARC configured before production use.
-- Production secrets must live in a server-side `.env` or secret store outside Git. The local `/Users/savitsky/CodexProjects/paper-clip/.env` may be used as the source for `RESEND_API_KEY`, but the value must never be copied into planning files, logs, commits, screenshots, or issue comments.
+- Production secrets must live in a server-side `.env` or secret store outside Git. The local `/path/to/paper-clip/.env` may be used as the source for `RESEND_API_KEY`, but the value must never be copied into planning files, logs, commits, screenshots, or issue comments.
 - The production portal env must include all required non-secret config in addition to secrets, especially `RESEND_FROM_EMAIL`, `PORTAL_BASE_URL`, session/code peppers, and the private Paperclip client API settings.
 
 Do not point the public DNS record until:
@@ -346,7 +346,7 @@ Tracked keywords and candidates:
 - filters by topic/service/page/geo/language/device;
 - no provider raw dumps.
 
-Use the provided `semantics` screenshot and the new `/Users/savitsky/CodexProjects/paperclip-cs-portal` implementation as the structural base, with client-safe changes.
+Use the provided `semantics` screenshot and the new `/path/to/paperclip-cs-portal` implementation as the structural base, with client-safe changes.
 
 Page sections:
 
@@ -434,14 +434,14 @@ Responsive behavior:
 
 ## Implementation Steps
 
-1. Repository placement is decided: use `/Users/savitsky/CodexProjects/paperclip-cs-portal`.
+1. Repository placement is decided: use `/path/to/paperclip-cs-portal`.
 2. Replace BigQuery control/auth persistence with Paperclip PostgreSQL portal tables, or add a migration path if keeping the current standalone app temporarily.
 3. Add portal auth schema and migrations.
 4. Add Resend-backed request-code and verify-code flows with hash-only code persistence and database-only email/company eligibility.
 5. Add 14-day configurable session storage, hash-token validation, user-company binding hash validation, logout, audit, and rate limiting.
 6. Add typed localization dictionaries with Ukrainian as default.
 7. Add client-safe Paperclip API endpoints for dashboard summary and semantic-core review.
-8. Port/adapt the dashboard shell into a company-agnostic portal dashboard inside `/Users/savitsky/CodexProjects/paperclip-cs-portal`.
+8. Port/adapt the dashboard shell into a company-agnostic portal dashboard inside `/path/to/paperclip-cs-portal`.
 9. Build the client-facing Semantic Core Review page by reusing the current Paperclip review logic through sanitized DTOs.
 10. Build the Keywords page from the `semantics` screenshot structure: gaps, GSC opportunities, tracked keywords, pending sync, rejected/snoozed, and data collection status.
 11. Add placeholder navigation/routes for Pages, Content Plan, and Decisions, then fill the first useful data slices.
@@ -512,7 +512,7 @@ Responsive behavior:
 
 ## Open Decisions
 
-- Repository placement: resolved to `/Users/savitsky/CodexProjects/paperclip-cs-portal`; do not modify the read-only dashboard reference.
+- Repository placement: resolved to `/path/to/paperclip-cs-portal`; do not modify the read-only dashboard reference.
 - Auth data home: dedicated portal schema in Paperclip PostgreSQL is preferred; confirm whether any existing BigQuery control data must be migrated.
 - Deployment URL: `cs.digital-r-evolution.com` is the intended public hostname; use Nginx with Let's Encrypt via Certbot.
 - First pilot company: Astrogen appears to be the right pilot because the semantic-core review workflow is already active and Ukrainian-facing.

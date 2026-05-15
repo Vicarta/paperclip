@@ -21,7 +21,7 @@
   },
   "active_scope": null,
   "notes": {
-    "git_tracking": "Top-level /Users/savitsky/CodexProjects/paper-clip is not a git repository; the Paperclip code repository is nested at local-paperclip/.git.",
+    "git_tracking": "Top-level /path/to/paper-clip is not a git repository; the Paperclip code repository is nested at local-paperclip/.git.",
     "operator_rule": "If a chat starts client work, state the target scope before changing planning files."
   }
 }

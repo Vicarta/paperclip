@@ -25,7 +25,7 @@
 
 ## Source Files
 
-- `/Users/savitsky/Downloads/diskinternals_paperclip_growth_launch_recommendations.md`
+- `/path/to/local-downloads/diskinternals_paperclip_growth_launch_recommendations.md`
 - `.planning/research/AGENT_AUDIT.md`
 - `.planning/PROJECT.md`
 - `.planning/REQUIREMENTS.md`

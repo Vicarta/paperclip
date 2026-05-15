@@ -47,7 +47,7 @@ Out of scope:
 - changing client portal code unless smoke tests prove a Paperclip API contract regression;
 - changing Astrogen semantic-core lifecycle decisions;
 - auto-deploying future releases without explicit owner approval;
-- modifying `/Users/savitsky/CodexProjects/seo-dashboard`.
+- modifying `/path/to/seo-dashboard`.
 
 ## Release Target
 

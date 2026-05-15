@@ -37,7 +37,7 @@ Authentication is handled by the operator through `gcloud auth application-defau
 ## Usage
 
 ```sh
-cd /Users/savitsky/CodexProjects/paper-clip
+cd /path/to/paper-clip
 GCP_PROJECT_ID=dre-di BQ_DATASET=diskinternals_growth BQ_LOCATION=US \
   ops/bigquery/diskinternals/scripts/apply.sh
 

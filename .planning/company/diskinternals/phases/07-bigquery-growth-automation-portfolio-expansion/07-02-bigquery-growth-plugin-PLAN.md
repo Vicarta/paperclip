@@ -47,7 +47,7 @@ local-paperclip/packages/plugins/plugin-diskinternals-bigquery-growth/src/bigque
 Scaffold the plugin using existing Paperclip plugin patterns. Add backend-only config for project id, dataset id, location, credential secret reference, default date window, default row limit, and maximum bytes billed. Implement a BigQuery client wrapper that supports dry-run/query metadata and refuses arbitrary SQL from tool inputs.
 </action>
 <verify>
-<automated>cd /Users/savitsky/CodexProjects/paper-clip/local-paperclip && pnpm --filter @paperclipai/plugin-diskinternals-bigquery-growth typecheck</automated>
+<automated>cd /path/to/paper-clip/local-paperclip && pnpm --filter @paperclipai/plugin-diskinternals-bigquery-growth typecheck</automated>
 </verify>
 <done>
 Plugin package compiles and can resolve config without storing credentials in source, prompts, logs, or UI output.
@@ -64,7 +64,7 @@ local-paperclip/packages/plugins/plugin-diskinternals-bigquery-growth/tests/tool
 Implement allowlisted agent tools: `get_schema_status`, `get_site_url_inventory`, `get_product_funnel_metrics`, `get_gsc_url_query_opportunities`, `get_url_growth_opportunity_queue`, `get_product_priority_scores`, `get_cro_experiment_candidates`, `get_localization_candidates`, `get_internal_link_candidates`, `get_indexing_candidates`, `record_opportunity_decision`, `get_post_change_followup`, and `get_query_cost_summary`. Each tool must validate date range, row limit, product/url filters, and return source tables/views, row counts, bytes processed or cached result indicator, known limitations, and stable IDs.
 </action>
 <verify>
-<automated>cd /Users/savitsky/CodexProjects/paper-clip/local-paperclip && pnpm --filter @paperclipai/plugin-diskinternals-bigquery-growth test</automated>
+<automated>cd /path/to/paper-clip/local-paperclip && pnpm --filter @paperclipai/plugin-diskinternals-bigquery-growth test</automated>
 </verify>
 <done>
 All planned report tools exist, reject invalid/unbounded requests, and return provenance/cost metadata.
@@ -82,7 +82,7 @@ local-paperclip/pnpm-lock.yaml
 Wire the plugin into the Paperclip workspace build/registry using existing bundled plugin conventions. Add tests or update existing plugin registration coverage so the plugin can be discovered by DiskInternals agents through `/api/agents/me/plugin-tools`.
 </action>
 <verify>
-<automated>cd /Users/savitsky/CodexProjects/paper-clip/local-paperclip && pnpm --filter @paperclipai/plugin-diskinternals-bigquery-growth build && pnpm --filter @paperclipai/server typecheck</automated>
+<automated>cd /path/to/paper-clip/local-paperclip && pnpm --filter @paperclipai/plugin-diskinternals-bigquery-growth build && pnpm --filter @paperclipai/server typecheck</automated>
 </verify>
 <done>
 Plugin is buildable, registered, and discoverable through Paperclip plugin capabilities without live BigQuery credentials.

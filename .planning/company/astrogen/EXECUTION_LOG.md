@@ -48,7 +48,7 @@
 - Critically reviewed the client-facing review/reporting boundary and planned agency-core Phase 5 `Client Portal Foundation`: separate portal app, Resend email-code auth, hash-only code/session storage, 14-day configurable sessions, DB-only email access, user-company access binding hash, Ukrainian-first localization, sanitized client API boundary, dashboard/keywords pages based on the SEO dashboard references, and Astrogen as the first pilot.
 - Updated the portal deployment plan for public access: `cs.digital-r-evolution.com` should expose only the client portal over HTTPS, while Paperclip internal UI/API stays private behind Tailscale/local network; portal-to-Paperclip access must use a private server-side URL and server-only credential.
 - Tightened the public portal deployment plan to Nginx + Let's Encrypt via Certbot. Local `.env` contains a redacted `RESEND_API_KEY` source, but production still needs server-side env values for sender email, portal base URL, auth/session peppers, private Paperclip client API URL, and service token; secrets must not be copied into planning, Git, logs, or issue comments.
-- Earlier Client Portal Foundation work temporarily touched the dashboard reference project; that has been reverted and portal ownership is now `/Users/savitsky/CodexProjects/paperclip-cs-portal`:
+- Earlier Client Portal Foundation work temporarily touched the dashboard reference project; that has been reverted and portal ownership is now `/path/to/paperclip-cs-portal`:
   - added user-company access binding hash support;
   - added and applied BigQuery migration `006_portal_access_binding.sql`;
   - deployed the updated portal app to `seodash_ubuntu_oc` with app HTTP still loopback-only;
@@ -92,7 +92,7 @@
 - Provider cache metadata confirmed the new Volume Contract path: `keywords_data/google/search_volume/live` was used for volume, with no clickstream endpoint in the run metadata.
 - Generated fresh human review workbook at `outputs/astrogen-semantic-core-review/run_20260506_111721_core_product_intent_454bf24d/astrogen_core_product_intent_run_20260506_111721_core_product_intent_454bf24d_human_review.xlsx` with sheets `Run Summary`, `Accepted`, `Review Queue`, `Parked`, `SERP Evidence`, and `Decision Guide`.
 - Marked [AST-708](/AST/issues/AST-708) as the active layer 1 human-review gate. Layer 2 must not be rerun until the workbook decisions are approved or accepted-only import is explicitly authorized.
-- Processed the edited owner workbook from `/Users/savitsky/Downloads/astrogen_core_product_intent_run_20260506_111721_core_product_intent_454bf24d_human_review.xlsx`.
+- Processed the edited owner workbook from `/path/to/local-downloads/astrogen_core_product_intent_run_20260506_111721_core_product_intent_454bf24d_human_review.xlsx`.
 - Extracted 29 changed `human_decision` cells and deduplicated them to 25 MCP review decisions, all `accept`.
 - Submitted MCP review decision artifact `review_20260506_125938_5845be3c` for source run `run_20260506_111721_core_product_intent_454bf24d`.
 - Re-ran layer 1 with the submitted decisions. New reviewed run `run_20260506_130019_core_product_intent_8fa5e715` completed with accepted 34, review 11, parked 288, and policy version `conservative_acceptance_v1`.
@@ -226,7 +226,7 @@
 ## 2026-05-06
 
 - Corrected Client Portal Foundation storage direction after review: portal control-plane data must live in PostgreSQL, not BigQuery.
-- Portal implementation ownership has moved to `/Users/savitsky/CodexProjects/paperclip-cs-portal`; the Postgres control-plane work should be re-applied there, not in the dashboard reference project.
+- Portal implementation ownership has moved to `/path/to/paperclip-cs-portal`; the Postgres control-plane work should be re-applied there, not in the dashboard reference project.
 - Added PostgreSQL migration `migrations/postgres/001_portal_control.sql`, deployment migration runner, and one-time legacy BigQuery-to-Postgres company/user backfill script.
 - Deployed the updated portal stack to `seodash_ubuntu_oc`; `portal-db` is healthy, app remains loopback-only on `127.0.0.1:3000`, migration applied, and backfill completed with `companies=1`, `users=1`.
 - Verified locally: `npm run lint`, `npm run typecheck`, `npm run build`, `npm run verify:v1`.

@@ -43,7 +43,7 @@ local-paperclip/packages/plugins/plugin-diskinternals-bigquery-growth/tests/craw
 Implement `schedule_crawl_batch` and `get_crawl_job_status`. Scheduling must accept priority band, reason, URL/product filters, max items, and desired window. It must write BigQuery job state with `next_fetch_at`, `status`, `attempt_count`, and per-item priority. Reject unbounded full-site jobs unless explicitly marked and limited by job size.
 </action>
 <verify>
-<automated>cd /Users/savitsky/CodexProjects/paper-clip/local-paperclip && pnpm --filter @paperclipai/plugin-diskinternals-bigquery-growth test -- crawl-queue</automated>
+<automated>cd /path/to/paper-clip/local-paperclip && pnpm --filter @paperclipai/plugin-diskinternals-bigquery-growth test -- crawl-queue</automated>
 </verify>
 <done>
 Agents can schedule bounded crawl jobs and receive status/provenance without fetching pages themselves.
@@ -60,7 +60,7 @@ local-paperclip/packages/plugins/plugin-diskinternals-bigquery-growth/tests/craw
 Implement the worker loop with initial defaults: `max_concurrent_requests_per_host = 2`, `min_delay_between_requests_per_host = 2 seconds`, `max_pages_per_job = 200-500`, exponential backoff with jitter, max 3 attempts, no asset/binary fetching by default, response-size cap, robots allow/disallow checks, and `429/503/Retry-After` handling. Do not impersonate Googlebot.
 </action>
 <verify>
-<automated>cd /Users/savitsky/CodexProjects/paper-clip/local-paperclip && pnpm --filter @paperclipai/plugin-diskinternals-bigquery-growth test -- crawl-worker</automated>
+<automated>cd /path/to/paper-clip/local-paperclip && pnpm --filter @paperclipai/plugin-diskinternals-bigquery-growth test -- crawl-worker</automated>
 </verify>
 <done>
 Tests prove concurrency/delay/backoff/robots/Retry-After behavior and job-item transitions.
@@ -77,7 +77,7 @@ local-paperclip/packages/plugins/plugin-diskinternals-bigquery-growth/tests/page
 Extract and store safe page metadata: HTTP status, final URL, canonical, noindex, title, H1, content hash, response bytes, fetch timestamp, and error code. Document which data is intentionally not fetched or stored. Avoid storing full HTML unless a bounded debug mode is explicitly approved.
 </action>
 <verify>
-<automated>cd /Users/savitsky/CodexProjects/paper-clip/local-paperclip && pnpm --filter @paperclipai/plugin-diskinternals-bigquery-growth test -- page-snapshot</automated>
+<automated>cd /path/to/paper-clip/local-paperclip && pnpm --filter @paperclipai/plugin-diskinternals-bigquery-growth test -- page-snapshot</automated>
 </verify>
 <done>
 Crawl snapshots provide enough metadata for indexing/refresh decisions without creating large HTML storage or crawl pressure.

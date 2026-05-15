@@ -42,7 +42,7 @@ Provider reuse should happen through host-dispatched plugin tools, not direct im
 ```bash
 curl -X POST http://127.0.0.1:3100/api/plugins/install \
   -H "Content-Type: application/json" \
-  -d '{"packageName":"/Users/savitsky/CodexProjects/paper-clip/local-paperclip/packages/plugins/plugin-seo-performance-loop","isLocalPath":true}'
+  -d '{"packageName":"/path/to/paper-clip/local-paperclip/packages/plugins/plugin-seo-performance-loop","isLocalPath":true}'
 ```
 
 ## Build Options

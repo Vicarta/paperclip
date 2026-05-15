@@ -43,7 +43,7 @@ local-paperclip/packages/plugins/plugin-diskinternals-bigquery-growth/tests/scor
 Implement scoring marts and matching TypeScript helpers for Product Proxy Score, Product Growth Score, Page Action Score, Localization Opportunity Score, CRO candidates, internal-link candidates, indexing candidates, and follow-up candidates. Exclude Thank You pages from all scoring. Treat null/zero metrics as unknown/no measured signal rather than automatic rejection.
 </action>
 <verify>
-<automated>cd /Users/savitsky/CodexProjects/paper-clip/local-paperclip && pnpm --filter @paperclipai/plugin-diskinternals-bigquery-growth test -- scoring</automated>
+<automated>cd /path/to/paper-clip/local-paperclip && pnpm --filter @paperclipai/plugin-diskinternals-bigquery-growth test -- scoring</automated>
 </verify>
 <done>
 Scoring produces deterministic opportunity rows with score components, evidence summaries, and no Thank You scoring contribution.
@@ -61,7 +61,7 @@ local-paperclip/packages/plugins/plugin-diskinternals-bigquery-growth/tests/oppo
 Implement `record_opportunity_decision` and document the Growth Opportunity Strategist lane. Supported action types: `seo_refresh`, `new_page_or_article`, `internal_linking`, `cro_experiment`, `localization_experiment`, `product_page_update`, `indexing_followup`, `tracking_or_data_quality_issue`, and `park_no_action`. Decisions must record owner lane, reason, confidence, source opportunity IDs, and parent Paperclip issue ID when available.
 </action>
 <verify>
-<automated>cd /Users/savitsky/CodexProjects/paper-clip/local-paperclip && pnpm --filter @paperclipai/plugin-diskinternals-bigquery-growth test -- opportunity-decisions</automated>
+<automated>cd /path/to/paper-clip/local-paperclip && pnpm --filter @paperclipai/plugin-diskinternals-bigquery-growth test -- opportunity-decisions</automated>
 </verify>
 <done>
 Opportunities can be routed before CMO approval and are auditable back to BigQuery rows and Paperclip issues.
@@ -78,7 +78,7 @@ local-paperclip/packages/plugins/plugin-diskinternals-bigquery-growth/tests/foll
 Implement `get_post_change_followup` logic for 7/14/28 day checks. Join changed URLs to GSC, GA4, downloads, order visits, purchases when attributed, crawl/indexability state, and opportunity decisions. Flag invalid follow-up windows when the page changed again during the measurement period.
 </action>
 <verify>
-<automated>cd /Users/savitsky/CodexProjects/paper-clip/local-paperclip && pnpm --filter @paperclipai/plugin-diskinternals-bigquery-growth test -- followup</automated>
+<automated>cd /path/to/paper-clip/local-paperclip && pnpm --filter @paperclipai/plugin-diskinternals-bigquery-growth test -- followup</automated>
 </verify>
 <done>
 Released changes can be evaluated through BigQuery and fed back into future scoring/backlog decisions.

@@ -2,7 +2,7 @@
 
 ## Status
 
-Partially implemented. The client-portal code has been moved into a standalone project at `/Users/savitsky/CodexProjects/paperclip-cs-portal` on 2026-05-07.
+Partially implemented. The client-portal code has been moved into a standalone project at `/path/to/paperclip-cs-portal` on 2026-05-07.
 
 Public Nginx + Let's Encrypt activation must be redone from the standalone portal project after the server/firewall target is confirmed.
 
@@ -29,15 +29,15 @@ Public Nginx + Let's Encrypt activation must be redone from the standalone porta
   - public route isolation for internal Paperclip paths;
   - deployment script updated for `APP_BASE_URL=https://cs.digital-r-evolution.com`;
   - app container remains bound to `127.0.0.1:3000`.
-- Created the standalone portal workspace `/Users/savitsky/CodexProjects/paperclip-cs-portal` and verified the baseline locally.
+- Created the standalone portal workspace `/path/to/paperclip-cs-portal` and verified the baseline locally.
 - Applied the PostgreSQL migration and backfilled the current legacy company/user allowlist into Postgres.
 
 ## Verification
 
-- `/Users/savitsky/CodexProjects/paperclip-cs-portal`: `npm run lint`
-- `/Users/savitsky/CodexProjects/paperclip-cs-portal`: `npm run typecheck`
-- `/Users/savitsky/CodexProjects/paperclip-cs-portal`: `npm run build`
-- `/Users/savitsky/CodexProjects/paperclip-cs-portal`: `npm run verify:v1`
+- `/path/to/paperclip-cs-portal`: `npm run lint`
+- `/path/to/paperclip-cs-portal`: `npm run typecheck`
+- `/path/to/paperclip-cs-portal`: `npm run build`
+- `/path/to/paperclip-cs-portal`: `npm run verify:v1`
 - PostgreSQL migration applied:
   - `migrations/postgres/001_portal_control.sql`
 - PostgreSQL backfill:
@@ -61,7 +61,7 @@ Nginx is installed and listens on public `:80`; UFW now allows `80/tcp` and `443
 After the portal host and provider-level firewall are confirmed, deploy from:
 
 ```text
-/Users/savitsky/CodexProjects/paperclip-cs-portal
+/path/to/paperclip-cs-portal
 ```
 
 Then run the Nginx/Let's Encrypt activation from that project.

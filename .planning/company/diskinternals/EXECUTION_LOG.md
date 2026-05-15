@@ -16,7 +16,7 @@ Live contract changes:
 
 ## 2026-05-05
 
-Aligned DiskInternals Semantic Core MCP rules with the canonical MCP agent guide at `/Users/savitsky/CodexProjects/seo-semantic-core/docs/AI_AGENT_MCP_USAGE.md`.
+Aligned DiskInternals Semantic Core MCP rules with the canonical MCP agent guide at `/path/to/seo-semantic-core/docs/AI_AGENT_MCP_USAGE.md`.
 
 Planning/code changes:
 - Added `SEO-MCP-06` through `SEO-MCP-10` for provider cache, `get_run_costs`, pagination, server-side MCP IDs, and the MCP/Paperclip ownership boundary.
@@ -164,7 +164,7 @@ Safety:
 - No Perfex task/comment creation tool was executed during this phase.
 
 Read-only discovery:
-- Healthcheck returned 200 using the bearer token from `/Users/savitsky/CodexProjects/perfex-crm-mcp/.env`; the token value was not printed or stored.
+- Healthcheck returned 200 using the bearer token from `/path/to/perfex-crm-mcp/.env`; the token value was not printed or stored.
 - MCP tool discovery returned the expected read/write surface including `create_task`, `add_task_comment`, `get_task`, `get_task_comments`, `list_projects`, and `list_staff`.
 - Read-only project discovery found `DiskInternals.SEO` as `project_id=1`.
 - Read-only staff discovery found staff IDs `1`, `2`, `3`, `5`, `6`, and `13`; final manager/assignee mapping still needs owner approval.
