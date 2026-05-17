@@ -1,5 +1,24 @@
 # Execution Log: Astrogen
 
+## 2026-05-17
+
+- Owner approved all three proposed Wave 1 Astrogen blog articles.
+- Paperclip HIA captured the owner decision on [AST-705](/AST/issues/AST-705), and [AST-754](/AST/issues/AST-754) was completed.
+- CMO created [AST-755](/AST/issues/AST-755) for Stage 55 article briefs, assigned it to `MKT Blog Brief Strategist`, and the strategist completed it.
+- Stage 55 brief artifact on the live Astrogen workspace: `/astrogen/work/55-blog-article-briefs/active/blog-article-briefs-astrogen-wide-ua-ast-755-2026-05-17.md`.
+- Added a CMO wakeup request so CMO reviews the completed briefs and opens article-writing tasks for the approved Wave 1 articles.
+- Recovered the CMO follow-up after the first direct DB wakeup record did not create a heartbeat run and the service-created CMO run became a defunct process.
+- Cancelled the stale CMO run and opened Stage 59 article-drafting tasks directly for `SEO Blog Article Writer`:
+  - [AST-757](/AST/issues/AST-757) `Знак зодіаку: як визначити свій знак і не помилитися з межовою датою`;
+  - [AST-758](/AST/issues/AST-758) `Натальна карта: що це таке, як її читати і що дає персональний розбір`;
+  - [AST-759](/AST/issues/AST-759) `Сумісності знаків зодіаку: як читати таблицю, відсотки і межі такого прогнозу`.
+- [AST-757](/AST/issues/AST-757) has the first active writer run; [AST-758](/AST/issues/AST-758) and [AST-759](/AST/issues/AST-759) are queued for the same writer.
+- Seeded the live Postgres `seo_ops` page registry from `https://astrogen.com.ua/sitemap.xml`.
+- Registered 40 Astrogen blog-related URLs: 35 blog articles, 4 blog category pages, and the blog index.
+- Enriched all 35 blog article registry rows from the public site CMS data source with title, H1/title fallback, meta description, category, tags, author metadata, featured image, content text, content word count, content block count, and content hash.
+- Created discovery run `7e07491d-aecd-4e99-83fa-c5b6c65e10c2` with summary `{blogRelatedUrlCount: 40, blogArticleCount: 35, importedPageCount: 40, errorCount: 0}`.
+- Remaining registry gap: map existing blog pages to approved/target semantic-core keyword clusters and start GSC/rank monitoring after publication or page matching.
+
 ## 2026-05-13
 
 - Planned and executed Astrogen Phase 14 `SEO Blog Content Waves`.

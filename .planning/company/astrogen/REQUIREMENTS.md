@@ -42,6 +42,8 @@
 - `AST-SEO-14`: Blog content should be released in paced waves rather than creating all possible pages at once. Wave selection must balance reach, trust, expertise, objection handling, conversion support, seasonality, topical authority, cannibalization risk, and human priority.
 - `AST-SEO-15`: Human priority controls must be available at the article opportunity or topic-family level: high, normal, low, do not plan, pinned to next wave, or temporarily paused. Humans should steer rules and exceptions, not manually sort thousands of keywords.
 - `AST-SEO-16`: LLM evaluation of keyword sets must be batch-first. Agents must evaluate the largest safe batch of keywords/clusters per prompt with stable row IDs and compact evidence, and must not call an LLM once per keyword unless a narrow retry or exception explicitly requires it.
+- `AST-SEO-17`: Astrogen blog URLs discovered from the public sitemap must be registered in the Postgres `seo_ops` page registry, including canonical URL, page type, sitemap lastmod, live title/H1/meta, content snapshot when available, and monitoring status.
+- `AST-SEO-18`: After a human manually publishes a new article on the site, Paperclip must detect it through sitemap/page discovery, register the page, connect it to the approved article opportunity and keyword targets, and then start the post-publication telemetry/rank monitoring loop.
 
 ## Growth Strategy
 

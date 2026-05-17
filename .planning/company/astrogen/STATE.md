@@ -13,7 +13,7 @@ See: `.planning/company/astrogen/README.md`
 
 Phase: Astrogen growth/content operating system hardening
 Status: Active
-Last activity: 2026-05-15 - Live app now runs `paperclip-app:v2026.513.0-phase17.1`; Telegram issue lifecycle notifications use a single plugin-owned path; Astrogen CTO/Observability/CMO/SEO contracts prevent manual nudges that duplicate system recovery; Phase 18 added sanitized production source-of-truth templates/manifests under `ops/paperclip-production/`.
+Last activity: 2026-05-17 - Owner approved all three Wave 1 Astrogen blog articles; Stage 55 article briefs are complete in Paperclip; initial Astrogen blog page registry was seeded from the public sitemap into Postgres `seo_ops` and enriched from the site CMS data source.
 
 ## Current Focus
 
@@ -21,6 +21,8 @@ Last activity: 2026-05-15 - Live app now runs `paperclip-app:v2026.513.0-phase17
 - Keep reusable agent templates, shared plugins, and cross-client architecture inside `.planning/agency-core/`.
 - Use shared Paperclip plugins where applicable, but configure Astrogen with its own company scope, secrets, budgets, project IDs, and data access.
 - Current semantic-core/content focus: after Layer 3 validation, do not turn every accepted keyword into a page. Convert the semantic core into article opportunities, validate SERP-based clusters for the shortlist, then publish small continuous waves that feed performance data back into the backlog.
+- Current article-production focus: owner approved the three Wave 1 articles on [AST-705](/AST/issues/AST-705). [AST-755](/AST/issues/AST-755) completed the article briefs. Stage 59 drafting tasks are now open for `SEO Blog Article Writer`: [AST-757](/AST/issues/AST-757), [AST-758](/AST/issues/AST-758), and [AST-759](/AST/issues/AST-759). [AST-757](/AST/issues/AST-757) is the first active draft run; the other two are queued behind the same writer.
+- Current page-registry focus: Astrogen blog page registry is now seeded in live Postgres `seo_ops` from `https://astrogen.com.ua/sitemap.xml`. Initial import registered 40 blog-related URLs: 35 blog articles, 4 category pages, and 1 blog index page. The 35 article rows were enriched with title, meta description, category/tag metadata, content text, content hash, and content block counts from the public site data source. Keyword mapping remains pending.
 
 ## Known Active Workstreams
 
@@ -96,6 +98,7 @@ Last activity: 2026-05-15 - Live app now runs `paperclip-app:v2026.513.0-phase17
 - Keep future commits scoped and documented.
 - Add direct references to agency-core execution governance in live CEO/CMO/CTO/HIA/Observability contracts during the next live contract maintenance pass.
 - Build SEO Performance Loop ingestion/runners on top of the implemented shared `seo_ops` schema when SEO monitoring work resumes.
+- Add a scheduled Astrogen blog sitemap discovery job that detects manually published articles, registers new/changed/removed blog pages in `seo_ops`, enriches content snapshots, links the page to the approved article opportunity when possible, and starts the post-publication GSC/rank monitoring loop.
 - Review the Astrogen Semantic Core layer 1 GUI batch from [AST-708](/AST/issues/AST-708) in the deployed web UI; do not run layer 2 until accepted/review decisions are made or accepted-only import is explicitly approved.
 - Execute the Client Portal Foundation before making owner review a regular process outside Paperclip.
 - Execute agency-core Phase 7 and Astrogen Phase 12 so the client portal becomes the canonical living semantic-core management surface, not only a layer review form.

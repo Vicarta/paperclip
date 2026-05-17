@@ -18,13 +18,10 @@ Human-facing Astrogen communication remains Ukrainian and should not expose inte
 
 - Layer 1 client review is complete.
 - Layer 2 client review is complete.
-- Layer 3 has been regenerated/imported after the MCP contract update and is exposed as grouped client-review candidates.
-- Current active Layer 3 portal review batch: `a5a0fb0e-eb6d-4e1b-8997-b4fba43f394d`.
-- Current Layer 3 portal state from the latest execution log:
-  - stage: `Третій етап: потреби аудиторії`;
-  - review groups: `13`;
-  - client-visible pending variants: `3077`;
-  - inventory summary after internal filtering: total `3882`, accepted `183`, candidate `3690`, deferred `1`, rejected `8`.
+- Layer 3 has been regenerated/imported after the MCP contract update, reviewed in the client portal, validated, and converted into the first small blog content wave.
+- Owner approved all three proposed Wave 1 article topics on [AST-705](/AST/issues/AST-705).
+- Stage 55 article briefs are complete on [AST-755](/AST/issues/AST-755). Stage 59 drafting is now open for `SEO Blog Article Writer`: [AST-757](/AST/issues/AST-757), [AST-758](/AST/issues/AST-758), and [AST-759](/AST/issues/AST-759).
+- Initial Astrogen blog page registry is seeded in live Postgres `seo_ops` from `https://astrogen.com.ua/sitemap.xml`: 40 blog-related URLs, including 35 article pages enriched with title/meta/content snapshots from the public site data source.
 - Known bad diagnostic rows such as `gemini ai` and `gemini google` were removed from client-visible review groups and inventory.
 - Paperclip server update planning is now required before relying on automated weekly release checks:
   - live `/api/health` reports `version=0.3.1`;
@@ -43,11 +40,13 @@ Human-facing Astrogen communication remains Ukrainian and should not expose inte
 - [x] **Phase 13: Traffic-First Semantic Core Agent Settings** - Updated Astrogen semantic-core operating policy so broad astrology traffic is valid target-audience demand without direct product binding in broad layers.
 - [x] **Phase 14: SEO Blog Content Waves** - Defined the blog-only workflow that converts validated semantic-core clusters into SERP-checked article opportunities, human-adjustable priorities, paced publication waves, validation, and performance feedback.
 - [x] **Live Blog Agent Contract Update** - Applied Phase 14 rules to live Astrogen CMO, semantic-core, SEO blog planning, article, and performance-loop agent/process contracts on `ubuntu-oc`.
+- [x] **Initial Astrogen Blog Registry Seed** - Registered the current public sitemap blog URLs in `seo_ops` and enriched the existing article rows with content snapshots.
 
 ## In Progress
 
 - [ ] **Phase 11: Client Portal Pilot** - Continue the standalone client portal work in `/path/to/paperclip-cs-portal`. Paperclip now owns the client-safe semantic-core API; the separate portal owns auth/session/access and UI. Public Nginx/Let's Encrypt activation remains a portal-project/server-network task.
-- [ ] **Layer 3 Client Review** - Complete human review of active grouped Layer 3 candidates in the client portal, then run Paperclip internal validation/import-readiness before using the result for blog planning.
+- [ ] **Wave 1 Article Drafting** - `SEO Blog Article Writer` should produce the three approved Ukrainian article drafts from [AST-757](/AST/issues/AST-757), [AST-758](/AST/issues/AST-758), and [AST-759](/AST/issues/AST-759) for human review and manual publication.
+- [ ] **Phase 19: Blog Page Registry And Publication Monitor** - Turn the initial sitemap import into a scheduled publication monitor: detect new manually published blog URLs, enrich content snapshots, match them to approved article opportunities and keyword targets, and start the post-publication monitoring loop.
 - [ ] **Phase 15: Paperclip Server Release Update** - Attempted and rolled back. Keep as evidence of the controlled update attempt, backup, failure mode, and rollback state.
 - [x] **Phase 16: Paperclip Plugin Compatibility Upgrade** - Compatibility gate and production cutover are complete for `v2026.513.0`: plugin packaging, manifest migration, secret/config smoke, worker dependency resolution, deterministic provenance, Astrogen portal endpoint smoke, and production plugin boot check all passed.
 - [x] **Phase 17: Plugin Standardization And Secrets Vault Migration** - First production pass complete: plugin inventory, secret metadata audit, standardization decisions, dead server-side Telegram sender removal, production `phase17.1` deploy, and smoke. Company-scoped shared plugin config and external provider-vault migration remain future follow-ups.
@@ -65,16 +64,16 @@ Human-facing Astrogen communication remains Ukrainian and should not expose inte
 
 ## Current Next Step
 
-Finish Layer 3 client review for batch `a5a0fb0e-eb6d-4e1b-8997-b4fba43f394d`, run internal validation/import-readiness, then use the live-updated Phase 14 agent contracts to create the first small blog content wave:
+Complete Wave 1 article drafting from the approved Stage 55 briefs, then use Phase 19 to connect manual publication back into the page registry:
 
 ```text
-validated semantic core
--> article opportunities
--> SERP-checked shortlist clusters
--> human-adjustable priorities
--> paced blog wave
--> content-plan validation
--> article production
+approved article briefs
+-> article drafts
+-> human manual publication
+-> sitemap discovery
+-> page registry enrichment
+-> keyword target mapping
+-> weekly GSC/rank monitoring
 -> performance feedback
 ```
 
