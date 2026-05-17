@@ -8,10 +8,11 @@ Make `seo_ops` the operational page registry for Astrogen blog work, so publishe
 
 - Owner approved all three Wave 1 article topics.
 - [AST-755](/AST/issues/AST-755) completed the article briefs for those topics.
-- Stage 59 article-writing tasks are open:
+- First-pass Stage 59 drafts were produced:
   - [AST-757](/AST/issues/AST-757) for the zodiac-sign article;
   - [AST-758](/AST/issues/AST-758) for the natal-chart article;
   - [AST-759](/AST/issues/AST-759) for the zodiac-compatibility article.
+- Stage 61 validation returned all three for focused revision; revision tasks [AST-763](/AST/issues/AST-763), [AST-764](/AST/issues/AST-764), and [AST-765](/AST/issues/AST-765) are the active article-production boundary before owner editorial review.
 - Live Postgres `seo_ops` now contains the first Astrogen blog registry seed:
   - 40 blog-related sitemap URLs;
   - 35 blog article pages;

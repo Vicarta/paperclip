@@ -20,7 +20,7 @@ Human-facing Astrogen communication remains Ukrainian and should not expose inte
 - Layer 2 client review is complete.
 - Layer 3 has been regenerated/imported after the MCP contract update, reviewed in the client portal, validated, and converted into the first small blog content wave.
 - Owner approved all three proposed Wave 1 article topics on [AST-705](/AST/issues/AST-705).
-- Stage 55 article briefs are complete on [AST-755](/AST/issues/AST-755). Stage 59 drafting is now open for `SEO Blog Article Writer`: [AST-757](/AST/issues/AST-757), [AST-758](/AST/issues/AST-758), and [AST-759](/AST/issues/AST-759).
+- Stage 55 article briefs are complete on [AST-755](/AST/issues/AST-755). First-pass Stage 59 drafts were produced on [AST-757](/AST/issues/AST-757), [AST-758](/AST/issues/AST-758), and [AST-759](/AST/issues/AST-759), then Stage 61 validation returned all three for focused revision. Active revision tasks: [AST-763](/AST/issues/AST-763), [AST-764](/AST/issues/AST-764), and [AST-765](/AST/issues/AST-765).
 - Initial Astrogen blog page registry is seeded in live Postgres `seo_ops` from `https://astrogen.com.ua/sitemap.xml`: 40 blog-related URLs, including 35 article pages enriched with title/meta/content snapshots from the public site data source.
 - Known bad diagnostic rows such as `gemini ai` and `gemini google` were removed from client-visible review groups and inventory.
 - Paperclip server update planning is now required before relying on automated weekly release checks:
@@ -45,7 +45,7 @@ Human-facing Astrogen communication remains Ukrainian and should not expose inte
 ## In Progress
 
 - [ ] **Phase 11: Client Portal Pilot** - Continue the standalone client portal work in `/path/to/paperclip-cs-portal`. Paperclip now owns the client-safe semantic-core API; the separate portal owns auth/session/access and UI. Public Nginx/Let's Encrypt activation remains a portal-project/server-network task.
-- [ ] **Wave 1 Article Drafting** - `SEO Blog Article Writer` should produce the three approved Ukrainian article drafts from [AST-757](/AST/issues/AST-757), [AST-758](/AST/issues/AST-758), and [AST-759](/AST/issues/AST-759) for human review and manual publication.
+- [ ] **Wave 1 Article Drafting** - `SEO Blog Article Writer` should complete focused revisions [AST-763](/AST/issues/AST-763), [AST-764](/AST/issues/AST-764), and [AST-765](/AST/issues/AST-765), then Stage 61 should revalidate before owner editorial review and manual publication.
 - [ ] **Phase 19: Blog Page Registry And Publication Monitor** - Turn the initial sitemap import into a scheduled publication monitor: detect new manually published blog URLs, enrich content snapshots, match them to approved article opportunities and keyword targets, and start the post-publication monitoring loop.
 - [ ] **Phase 15: Paperclip Server Release Update** - Attempted and rolled back. Keep as evidence of the controlled update attempt, backup, failure mode, and rollback state.
 - [x] **Phase 16: Paperclip Plugin Compatibility Upgrade** - Compatibility gate and production cutover are complete for `v2026.513.0`: plugin packaging, manifest migration, secret/config smoke, worker dependency resolution, deterministic provenance, Astrogen portal endpoint smoke, and production plugin boot check all passed.

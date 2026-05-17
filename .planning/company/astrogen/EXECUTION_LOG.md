@@ -13,6 +13,19 @@
   - [AST-758](/AST/issues/AST-758) `Натальна карта: що це таке, як її читати і що дає персональний розбір`;
   - [AST-759](/AST/issues/AST-759) `Сумісності знаків зодіаку: як читати таблицю, відсотки і межі такого прогнозу`.
 - [AST-757](/AST/issues/AST-757) has the first active writer run; [AST-758](/AST/issues/AST-758) and [AST-759](/AST/issues/AST-759) are queued for the same writer.
+- First-pass drafts were produced and mirrored into the canonical Astrogen workspace:
+  - `/home/paperclip/astrogen/work/59-seo-blog-article-drafts/active/ast-757-zodiac-sign-ua-2026-05-17.md`;
+  - `/home/paperclip/astrogen/work/59-seo-blog-article-drafts/active/ast-758-natalna-karta-shcho-tse-take-ua-2026-05-17.md`;
+  - `/home/paperclip/astrogen/work/59-seo-blog-article-drafts/active/ast-759-sumisnist-znakiv-zodiaku-ua-2026-05-17.md`.
+- Opened Stage 61 validation tasks:
+  - [AST-760](/AST/issues/AST-760) for [AST-757](/AST/issues/AST-757);
+  - [AST-761](/AST/issues/AST-761) for [AST-758](/AST/issues/AST-758);
+  - [AST-762](/AST/issues/AST-762) for [AST-759](/AST/issues/AST-759).
+- Stage 61 returned all three first-pass drafts for revision:
+  - [AST-760](/AST/issues/AST-760): SEO lock drift, wrong `/free-horoscope` route/CTA framing, analytics mismatch;
+  - [AST-761](/AST/issues/AST-761): SEO lock drift, missing approved `/free-horoscope` implementation, incomplete analytics handoff;
+  - [AST-762](/AST/issues/AST-762): SEO lock drift, wrong product route/CTA surface, incomplete analytics/sanitizer blockers.
+- Opened focused Stage 59 revision tasks [AST-763](/AST/issues/AST-763), [AST-764](/AST/issues/AST-764), and [AST-765](/AST/issues/AST-765) for `SEO Blog Article Writer`; [AST-763](/AST/issues/AST-763) is the first running revision.
 - Seeded the live Postgres `seo_ops` page registry from `https://astrogen.com.ua/sitemap.xml`.
 - Registered 40 Astrogen blog-related URLs: 35 blog articles, 4 blog category pages, and the blog index.
 - Enriched all 35 blog article registry rows from the public site CMS data source with title, H1/title fallback, meta description, category, tags, author metadata, featured image, content text, content word count, content block count, and content hash.
