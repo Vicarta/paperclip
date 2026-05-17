@@ -50,6 +50,7 @@ Last activity: 2026-05-15 - Live app now runs `paperclip-app:v2026.513.0-phase17
 - Google Search Console MCP integration for Astrogen site data.
 - SEO monitoring and article performance loop planning.
 - Paperclip Telegram/HIA communication quality for human-facing Ukrainian updates.
+- Human Decision Needed cards now require self-contained owner-facing decision briefs. For Astrogen SEO/blog gates, the brief must explain the decision in Ukrainian without internal workflow labels and include proposed article titles, primary/supporting keywords, Ukraine/global demand, business role, next step, required inclusions, forbidden claims, and the exact answer format.
 - Stage 15 strategic opportunity review for new/changed products and routes before downstream execution.
 
 ## Guardrails
@@ -58,6 +59,7 @@ Last activity: 2026-05-15 - Live app now runs `paperclip-app:v2026.513.0-phase17
 - Do not reuse DiskInternals live agents, project IDs, budgets, or client config for Astrogen work.
 - Do not store MCP/GSC tokens in source, prompts, docs, or planning files.
 - Human-facing messages for Astrogen should be Ukrainian, simple, and understandable for a non-technical human.
+- Human Decision Needed comments must be complete enough for the owner to decide from the card itself. Do not ask the owner to infer meaning from stage numbers, agent names, MCP labels, run ids, or issue chains.
 - Human decision requests should stay on the blocked source issue: use the `Human Decision Needed` label and a clear Ukrainian comment. Do not create separate owner-assigned decision issues by default.
 - HIA liaison issues, when explicitly requested for internal tracking, must not carry `Human Decision Needed`; that label belongs only on the blocked source issue that needs the owner answer. Because Paperclip auto-labels blocked issues as `Human Decision Needed`, HIA liaison issues should be closed/cancelled after posting the source-issue question instead of remaining `blocked`.
 - Backlog must not contain execution-ready work. Old or obsolete backlog issues should be cancelled with a reason; current work should be `todo`, active work should have run evidence, and waiting work should be `blocked` with `Human Decision Needed` when owner input is required.

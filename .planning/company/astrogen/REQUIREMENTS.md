@@ -65,3 +65,4 @@
 - `AST-HIA-02`: Human approval flows should use Paperclip task cards when Telegram interactive reply is unreliable.
 - `AST-HIA-03`: Issue lifecycle Telegram notifications must have one canonical delivery path owned by the Telegram plugin. Do not run a parallel server-side issue notification sender for the same lifecycle event.
 - `AST-HIA-04`: CTO and Observability must not manually push, wake, reopen, reassign, unblock, or complete another agent's work as a substitute for Paperclip system recovery actions.
+- `AST-HIA-05`: Human Decision Needed cards must include a self-contained Ukrainian decision brief that assumes the owner knows nothing about Paperclip internals. For SEO/content choices, include titles, primary/supporting keywords, Ukraine/global demand, business role, next step, required inclusions, forbidden claims, and a simple answer format.

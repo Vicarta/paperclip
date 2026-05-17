@@ -332,3 +332,12 @@
 - Deployed live Paperclip and verified:
   - `/api/portal/companies/astrogen/semantic-core` has `gemini_ai_count=0`, `gemini_google_count=0`, summary `total=3882`, `accepted=183`, `candidate=3690`, `deferred=1`, `rejected=8`.
   - `/api/portal/companies/astrogen/semantic-core/review-groups` still has `gemini_ai_count=0`, `gemini_google_count=0`, active batch `a5a0fb0e-eb6d-4e1b-8997-b4fba43f394d`, `13` groups / `3077` pending variants.
+
+## 2026-05-17
+
+- Updated live Astrogen human-decision contract so owner-facing `Human Decision Needed` cards must be self-contained Ukrainian decision briefs, not terse internal workflow gates.
+- Updated live `/home/paperclip/astrogen/docs/foundation/HUMAN_DECISION_REQUEST.md`, CMO instructions, and HIA instructions:
+  - CMO must prepare a complete owner-facing decision brief before routing approval requests through HIA.
+  - HIA must reject or return under-specified requests that contain only stage names, option IDs, or internal labels.
+  - SEO/blog approval briefs must include article titles, primary/supporting keywords, Ukraine/global demand, cluster/family demand when available, business role, proposed page type, next step, required inclusions, forbidden claims, and a simple answer format.
+- Refreshed the active Astrogen owner decision request on [AST-705](/AST/issues/AST-705) with a plain-language Wave 1 article approval packet for the three proposed articles: `знак зодіаку`, `натальна карта`, and `сумісності знаків зодіаку`.
