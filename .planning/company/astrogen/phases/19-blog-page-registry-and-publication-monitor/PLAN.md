@@ -12,7 +12,8 @@ Make `seo_ops` the operational page registry for Astrogen blog work, so publishe
   - [AST-757](/AST/issues/AST-757) for the zodiac-sign article;
   - [AST-758](/AST/issues/AST-758) for the natal-chart article;
   - [AST-759](/AST/issues/AST-759) for the zodiac-compatibility article.
-- Stage 61 validation returned all three for focused revision; revision tasks [AST-763](/AST/issues/AST-763), [AST-764](/AST/issues/AST-764), and [AST-765](/AST/issues/AST-765) are the active article-production boundary before owner editorial review.
+- Stage 61 validation returned all three for focused revision; revision tasks [AST-763](/AST/issues/AST-763), [AST-764](/AST/issues/AST-764), and [AST-765](/AST/issues/AST-765) produced revised drafts.
+- Stage 61 revalidation [AST-766](/AST/issues/AST-766), [AST-767](/AST/issues/AST-767), and [AST-768](/AST/issues/AST-768) returned all three revised drafts again. These drafts should not enter owner editorial review or publication until a stricter corrective writing pass closes SEO lock, route/CTA, and analytics handoff blockers.
 - Live Postgres `seo_ops` now contains the first Astrogen blog registry seed:
   - 40 blog-related sitemap URLs;
   - 35 blog article pages;

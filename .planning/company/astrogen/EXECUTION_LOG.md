@@ -26,6 +26,12 @@
   - [AST-761](/AST/issues/AST-761): SEO lock drift, missing approved `/free-horoscope` implementation, incomplete analytics handoff;
   - [AST-762](/AST/issues/AST-762): SEO lock drift, wrong product route/CTA surface, incomplete analytics/sanitizer blockers.
 - Opened focused Stage 59 revision tasks [AST-763](/AST/issues/AST-763), [AST-764](/AST/issues/AST-764), and [AST-765](/AST/issues/AST-765) for `SEO Blog Article Writer`; [AST-763](/AST/issues/AST-763) is the first running revision.
+- Stage 59 revision tasks completed and produced revised artifacts:
+  - [AST-763](/AST/issues/AST-763): `/home/paperclip/astrogen/work/59-seo-blog-article-drafts/active/ast-763-zodiac-sign-ua-2026-05-17-rev1.md`;
+  - [AST-764](/AST/issues/AST-764): `/home/paperclip/astrogen/work/59-seo-blog-article-drafts/active/ast-764-natalna-karta-shcho-tse-take-ua-revised-2026-05-21.md`;
+  - [AST-765](/AST/issues/AST-765): `/home/paperclip/astrogen/work/59-seo-blog-article-drafts/active/ast-765-sumisnist-znakiv-zodiaku-ua-revised-2026-05-22.md`.
+- Opened Stage 61 revalidation tasks [AST-766](/AST/issues/AST-766), [AST-767](/AST/issues/AST-767), and [AST-768](/AST/issues/AST-768).
+- Revalidation returned all three revised drafts again. Current blocker is writer output failing the validator's accepted SEO/product route contract, not a new owner decision.
 - Seeded the live Postgres `seo_ops` page registry from `https://astrogen.com.ua/sitemap.xml`.
 - Registered 40 Astrogen blog-related URLs: 35 blog articles, 4 blog category pages, and the blog index.
 - Enriched all 35 blog article registry rows from the public site CMS data source with title, H1/title fallback, meta description, category, tags, author metadata, featured image, content text, content word count, content block count, and content hash.
