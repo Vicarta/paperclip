@@ -33,8 +33,32 @@ Behavior after the patch:
   `Що зроблено` into a 150-250 word Ukrainian explanation and filters raw
   phrases such as `Review Decision`, `Final Manager Decision`, artifact paths,
   and `global_search_volume` from the Telegram text.
+- 2026-05-18 update: `formatIssueDone` no longer exposes the raw issue title as
+  `Задача` for internal workflow issues. It now sends short Ukrainian
+  human-facing fields `Тема`, `Що сталося`, and `Далі`, with explicit mappings
+  for owner approval gates, article briefing, article draft, and article
+  validation issues. This prevents messages such as `HIA: owner approval gate
+  for Stage 55...` and `Stage 55 briefing...` from reaching Telegram.
 - `worker.js` enriches issue-done events from `ctx.companies.get(...)` and
   `ctx.issues.get(...)` so the formatter has `companyName` and `projectName`.
+
+Current smoke examples:
+
+```text
+✅ Готово: AST-754
+Компанія: Astrogen
+Тема: Погодження статей
+Що сталося: Ваше рішення зафіксовано. Погоджені теми можна передавати в роботу.
+Далі: Команда готує матеріали для написання статей. Від вас зараз нічого не потрібно.
+```
+
+```text
+✅ Готово: AST-755
+Компанія: Astrogen
+Тема: Підготовка статей
+Що сталося: Підготовлено робочі брифи для погоджених статей: що писати, під які запити, з якою логікою сторінки.
+Далі: Автори готують тексти, потім вони проходять перевірку перед вашим переглядом.
+```
 
 Deployment note:
 - This is a live installed-plugin override, not a change in the main Paperclip

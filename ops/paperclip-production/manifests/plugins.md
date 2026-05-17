@@ -1,7 +1,7 @@
 # Production Plugin Manifest
 
-Last verified: 2026-05-15
-Source: Phase 17 live production smoke and plugin inventory.
+Last verified: 2026-05-18
+Source: Phase 17 live production smoke, plugin inventory, and Telegram formatter smoke.
 Secret handling: config keys and secret refs only; no plaintext secret values.
 
 Expected status: all plugins `ready`.
@@ -24,6 +24,8 @@ Expected status: all plugins `ready`.
 ## Invariants
 
 - Telegram issue lifecycle notifications must have one path: `paperclip-plugin-telegram`.
+- Telegram issue-done messages must be human-facing Ukrainian operator text. They must not expose internal stage labels such as `HIA`, `Stage 55`, `Wave`, raw agent lane names, artifact paths, or fallback summaries like `Задачу ... завершено`.
+- Issue-done messages should use short fields: `Тема`, `Що сталося`, and `Далі`. The `Далі` line must say whether the owner needs to act now.
 - `telegram-daily-digest` must remain absent unless deliberately reintroduced with a new product decision.
 - DataForSEO and Semantic Core MCP cost attribution uses `costs.write` and `ctx.costs.createEvent(...)`; this is not replaced by `metrics.write`.
 - Shared MCP/provider plugins must not be switched to company-specific secrets through global instance config without company-aware secret resolution.

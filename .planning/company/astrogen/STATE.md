@@ -13,7 +13,7 @@ See: `.planning/company/astrogen/README.md`
 
 Phase: Astrogen growth/content operating system hardening
 Status: Active
-Last activity: 2026-05-17 - Owner approved all three Wave 1 Astrogen blog articles; Stage 55 article briefs are complete in Paperclip; initial Astrogen blog page registry was seeded from the public sitemap into Postgres `seo_ops` and enriched from the site CMS data source.
+Last activity: 2026-05-18 - Live Telegram issue-done formatter was patched so Astrogen notifications use short human-facing Ukrainian `Тема` / `Що сталося` / `Далі` fields instead of internal issue titles like `HIA`, `Stage 55`, and `Wave`.
 
 ## Current Focus
 
@@ -51,7 +51,7 @@ Last activity: 2026-05-17 - Owner approved all three Wave 1 Astrogen blog articl
 - Semantic-core generation is now gated layer-by-layer: after each production layer, call `prepare-paperclip-import`, expose client-reviewable decisions, process decisions, then run internal import-readiness validation before the next layer. Layer 2 client review batch `53c2c939-a23a-4a86-87e3-da6371feecf1` is now `client_review_completed` with progress `82/82`: accepted 76, rejected 6, deferred 0. [AST-705](/AST/issues/AST-705) is `todo`; the next expected action is internal validation/import readiness and then layer 3 candidate generation if validation passes.
 - Google Search Console MCP integration for Astrogen site data.
 - SEO monitoring and article performance loop planning.
-- Paperclip Telegram/HIA communication quality for human-facing Ukrainian updates.
+- Paperclip Telegram/HIA communication quality for human-facing Ukrainian updates. Issue-done notifications now go through the Telegram plugin and must avoid raw internal workflow labels; they should explain what changed and whether the owner needs to act now.
 - Human Decision Needed cards now require self-contained owner-facing decision briefs. For Astrogen SEO/blog gates, the brief must explain the decision in Ukrainian without internal workflow labels and include proposed article titles, primary/supporting keywords, Ukraine/global demand, business role, next step, required inclusions, forbidden claims, and the exact answer format.
 - Stage 15 strategic opportunity review for new/changed products and routes before downstream execution.
 

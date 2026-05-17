@@ -379,3 +379,12 @@
   - HIA must reject or return under-specified requests that contain only stage names, option IDs, or internal labels.
   - SEO/blog approval briefs must include article titles, primary/supporting keywords, Ukraine/global demand, cluster/family demand when available, business role, proposed page type, next step, required inclusions, forbidden claims, and a simple answer format.
 - Refreshed the active Astrogen owner decision request on [AST-705](/AST/issues/AST-705) with a plain-language Wave 1 article approval packet for the three proposed articles: `знак зодіаку`, `натальна карта`, and `сумісності знаків зодіаку`.
+
+## 2026-05-18
+
+- Fixed live Telegram issue-done formatting after Astrogen messages for [AST-754](/AST/issues/AST-754) and [AST-755](/AST/issues/AST-755) still exposed internal workflow titles such as `HIA`, `Stage 55`, and `Wave 1`.
+- Patched the live installed `paperclip-plugin-telegram` formatter in `/paperclip/.paperclip/plugins/node_modules/paperclip-plugin-telegram/dist/formatters.js`.
+- New issue-done messages use short Ukrainian fields: `Тема`, `Що сталося`, and `Далі`; the `Далі` line explicitly says whether the owner needs to act now.
+- Added mappings for owner approval gates, article briefing, article draft, and article validation issues so Telegram does not repeat raw issue titles or generic `Задачу ... завершено` summaries.
+- Restarted the live Paperclip app; plugin loader reported `12/12` plugins activated, and `/api/health` returned `status=ok`.
+- Smoke-tested the live formatter for the AST-755 title; output is now `Тема: Підготовка статей`, `Що сталося: Підготовлено робочі брифи...`, and `Далі: Автори готують тексти...`.
