@@ -104,6 +104,21 @@ export function MarkdownBody({ children, className, resolveImageSrc, resolveLink
       }
       return <pre {...preProps}>{preChildren}</pre>;
     },
+    code: ({ node: _node, className: codeClassName, children: codeChildren, ...codeProps }) => {
+      const text = flattenText(codeChildren);
+      const resolvedHref = text && !codeClassName && resolveLinkHref ? resolveLinkHref(text) : null;
+      const code = <code {...codeProps} className={codeClassName}>{codeChildren}</code>;
+      if (!resolvedHref || !onLinkClick) return code;
+      return (
+        <a
+          href={resolvedHref}
+          rel="noreferrer"
+          onClick={(event) => onLinkClick(text, event)}
+        >
+          {code}
+        </a>
+      );
+    },
     a: ({ href, children: linkChildren }) => {
       const parsed = href ? parseMentionChipHref(href) : null;
       if (parsed) {

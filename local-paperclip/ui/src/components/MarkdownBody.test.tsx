@@ -58,4 +58,20 @@ describe("MarkdownBody", () => {
 
     expect(html).toContain('href="/projects/p1?file=%2Fastrogen%2Fwork%2Foutput.md"');
   });
+
+  it("uses a context link resolver for inline code file paths", () => {
+    const html = renderToStaticMarkup(
+      <ThemeProvider>
+        <MarkdownBody
+          resolveLinkHref={(href) => href === "/astrogen/work/package.md" ? "/projects/p1?file=%2Fastrogen%2Fwork%2Fpackage.md" : null}
+          onLinkClick={() => undefined}
+        >
+          {"Package notes: `/astrogen/work/package.md`"}
+        </MarkdownBody>
+      </ThemeProvider>,
+    );
+
+    expect(html).toContain('href="/projects/p1?file=%2Fastrogen%2Fwork%2Fpackage.md"');
+    expect(html).toContain("<code>/astrogen/work/package.md</code>");
+  });
 });
