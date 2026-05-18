@@ -21,6 +21,7 @@ It records deployable structure, plugin inventory, scheduled jobs, company-visib
 - `manifests/plugins.md` - expected live plugin inventory.
 - `manifests/jobs.md` - expected plugin-owned scheduled jobs.
 - `manifests/secrets.md` - expected secret names/refs only, no values.
+- `manifests/astrogen-agents.md` - sanitized Astrogen runtime policy for heartbeats and SEO blog article writer fallback.
 - `scripts/export-live-config.sh` - exports a sanitized live snapshot for drift review.
 
 ## Update Rule

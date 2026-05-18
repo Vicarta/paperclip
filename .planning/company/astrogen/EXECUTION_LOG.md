@@ -408,3 +408,14 @@
   - Paperclip already reaps orphaned runs, resumes persisted queued work, and marks issue-assigned successful no-op runs as `failed/silent_noop`;
   - Phase 20 should extend that existing recovery layer with article-production transition rules, not create a duplicate general watchdog.
 - Current writer cost baseline: `anthropic/claude-sonnet-4.6` is planned at `$3/M input` and `$15/M output`; a 5-minute no-op heartbeat can cost roughly `$78-$1,037/month` depending on context size, while the existing configured hourly interval would be roughly `$6-$86/month` if every heartbeat invokes the writer LLM.
+- Stopped the external 15-minute Codex heartbeat monitor for Wave 1 article recovery. New Astrogen rule: do not passively check the same stalled Paperclip condition more than three times; after the third unchanged check, fix the system-level cause or reassign/recover the work.
+- Applied Phase 20 live first pass on `ubuntu-oc`:
+  - added `SEO Blog Article Writer GPT` as a separate `gpt-5.4` fallback writer, leaving the primary writer on Claude Sonnet;
+  - updated CMO contract so repeated same-class validator failures, protocol/runtime failures, or missing canonical artifacts route to the fallback writer instead of changing the primary writer's model;
+  - updated Validator contract to emit structured blocker classes, attempt number, repeated-blocker status, recommended next owner, and must-close checklist;
+  - updated Writer contract so `done` requires a verified non-empty canonical Stage 59 markdown artifact path;
+  - disabled routine LLM heartbeat for all Astrogen specialist agents and left it enabled only for CEO, CMO, and CTO.
+- Removed misleading `Human Decision Needed` labels from [AST-705](/AST/issues/AST-705), [AST-771](/AST/issues/AST-771), and [AST-775](/AST/issues/AST-775); these are internal process/technical blockers, not owner decisions.
+- Reassigned [AST-774](/AST/issues/AST-774) to `SEO Blog Article Writer GPT` and queued a fallback writer recovery wakeup for the zodiac-compatibility article.
+- [AST-774](/AST/issues/AST-774) completed successfully through the fallback writer with verified canonical artifact `/astrogen/work/59-seo-blog-article-drafts/active/ast-774-experts-sumisnosti-znakiv-zodiaku-ua-2026-05-18.md`.
+- Reopened [AST-772](/AST/issues/AST-772) and [AST-773](/AST/issues/AST-773) for the same fallback writer path because their previous `done` state still lacked canonical workspace files; this is `artifact_contract_missing`, not a content approval decision.

@@ -76,6 +76,7 @@ Validator completion comments must include stable blocker classes:
 - `internal_workflow_leak`
 - `missing_required_contextual_links`
 - `publication_packaging_incomplete`
+- `artifact_contract_missing`
 
 CMO uses these classes to count repeated failures. Do not rely on free-text comments alone.
 
@@ -161,3 +162,18 @@ Recommended thresholds:
 - Article production cannot loop indefinitely through the same writer on the same blocker class.
 - Writer LLM is not invoked on a frequent no-op heartbeat.
 - Recovery from stale article-production states reuses Paperclip's existing recovery layer, is deterministic, cheap, and visible in Paperclip.
+
+## Live Implementation Notes
+
+Applied on 2026-05-18:
+
+- Created live `SEO Blog Article Writer GPT` as a `codex_local` / `gpt-5.4` fallback writer reporting to CMO.
+- Kept primary `SEO Blog Article Writer` on `anthropic/claude-sonnet-4.6`.
+- Updated CMO contract with:
+  - no more than three unchanged checks for the same stalled article condition;
+  - repeated blocker-class routing to fallback writer;
+  - no owner/HIA gates for internal writer-quality or protocol failures.
+- Updated `SEO Blog Article Validator` contract with structured blocker classes, `attempt_number`, `same_blocker_repeated`, `recommended_next_owner`, and `must_close_checklist`.
+- Updated `SEO Blog Article Writer` contract so `done` requires a verified non-empty canonical Stage 59 markdown file, not only an attachment or comment.
+- Disabled routine LLM heartbeat for every Astrogen specialist agent; only CEO, CMO, and CTO have `heartbeat.enabled=true`.
+- Reassigned [AST-774](/AST/issues/AST-774) from the primary writer to `SEO Blog Article Writer GPT` after the primary writer failed with a protocol/runtime error.
