@@ -22,6 +22,13 @@ All specialist agents should remain `wakeOnDemand=true` with `heartbeat.enabled=
 | `SEO Blog Article Writer` | `openrouter` / `anthropic/claude-sonnet-4.6` | Primary first-pass SEO blog article author. |
 | `SEO Blog Article Writer GPT` | `codex_local` / `gpt-5.4` | Fallback/rescue author for repeated same-class validation failures, protocol/runtime failures, or missing canonical artifacts. |
 
+Primary OpenRouter writer runtime policy:
+
+- `requireArtifactOnDone=true`.
+- Selected Paperclip skills are prompt-injected as markdown operating context for OpenRouter runs. They are not local runtime tools.
+- Desired skills: `paperclip`, `paperclip-create-agent`, `paperclip-create-plugin`, `para-memory-files`.
+- An issue-bound OpenRouter run that returns unparsable protocol output, or `done` without a canonical artifact, must block internally with a diagnostic comment. It must not create a human decision gate.
+
 ## Recovery Rules
 
 - Do not passively monitor the same stalled Paperclip condition more than three times.
