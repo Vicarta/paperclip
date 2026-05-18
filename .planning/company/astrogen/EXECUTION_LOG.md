@@ -399,3 +399,9 @@
   - [AST-773](/AST/issues/AST-773) for the natal-chart article;
   - [AST-774](/AST/issues/AST-774) for the zodiac-compatibility article.
 - Current state: [AST-772](/AST/issues/AST-772) has a running writer run; [AST-773](/AST/issues/AST-773) and [AST-774](/AST/issues/AST-774) have queued writer runs. No owner decision is needed at this point.
+- Planned Phase 20 `Article Writer Fallback And Cost-Controlled Recovery`:
+  - keep the current Claude Sonnet writer as primary;
+  - add a separate GPT-based fallback writer for rescue rewrites after repeated same-class validation failures;
+  - require validator blocker classes so CMO can count repeated failures;
+  - avoid frequent writer LLM heartbeats and use deterministic watchdog checks instead.
+- Current writer cost baseline: `anthropic/claude-sonnet-4.6` is planned at `$3/M input` and `$15/M output`; a 5-minute no-op heartbeat can cost roughly `$78-$1,037/month` depending on context size, while the existing configured hourly interval would be roughly `$6-$86/month` if every heartbeat invokes the writer LLM.
