@@ -404,4 +404,7 @@
   - add a separate GPT-based fallback writer for rescue rewrites after repeated same-class validation failures;
   - require validator blocker classes so CMO can count repeated failures;
   - avoid frequent writer LLM heartbeats and use deterministic watchdog checks instead.
+- Corrected Phase 20 planning language after verifying existing Paperclip runtime recovery:
+  - Paperclip already reaps orphaned runs, resumes persisted queued work, and marks issue-assigned successful no-op runs as `failed/silent_noop`;
+  - Phase 20 should extend that existing recovery layer with article-production transition rules, not create a duplicate general watchdog.
 - Current writer cost baseline: `anthropic/claude-sonnet-4.6` is planned at `$3/M input` and `$15/M output`; a 5-minute no-op heartbeat can cost roughly `$78-$1,037/month` depending on context size, while the existing configured hourly interval would be roughly `$6-$86/month` if every heartbeat invokes the writer LLM.

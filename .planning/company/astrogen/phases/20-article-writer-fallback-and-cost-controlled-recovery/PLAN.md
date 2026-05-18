@@ -30,7 +30,15 @@ Approximate monthly cost if every heartbeat invokes the writer LLM:
 | 3 hours | 240 | $2.16 | $5.40 | $12.24 | $28.80 |
 | 6 hours | 120 | $1.08 | $2.70 | $6.12 | $14.40 |
 
-Planning decision: do not enable a 5- or 15-minute LLM heartbeat for article writers. Use deterministic recovery checks and wake-on-demand execution instead.
+Planning decision: do not enable a 5- or 15-minute LLM heartbeat for article writers. Reuse and extend Paperclip's existing runtime recovery checks and wake-on-demand execution instead.
+
+Paperclip already has a runtime-level guard for technical stalls:
+
+- startup and periodic heartbeat recovery reaps orphaned runs and resumes persisted queued work;
+- issue-assigned successful runs with no useful issue-side effect are marked `failed/silent_noop`;
+- the runtime writes a diagnostic issue comment, releases the execution path, and sends an operational Telegram alert.
+
+Phase 20 must not build a second general watchdog. It should add article-production transition rules on top of the existing recovery layer.
 
 ## Decisions
 
@@ -71,11 +79,11 @@ Validator completion comments must include stable blocker classes:
 
 CMO uses these classes to count repeated failures. Do not rely on free-text comments alone.
 
-### Recovery watchdog
+### Article production recovery rules
 
 Do not solve this with frequent writer heartbeats.
 
-Implement a cheap deterministic recovery check that inspects Paperclip state and only wakes agents when there is a real condition:
+Extend the existing Paperclip recovery path with cheap deterministic article-production checks that inspect Paperclip state and only wake agents when there is a real condition:
 
 - writer issue `in_progress` with no output / no useful action beyond threshold;
 - writer run queued too long without start;
@@ -132,8 +140,9 @@ Recommended thresholds:
    - Writer must explicitly mark each validator blocker as closed.
    - Writer must not change route/CTA/product surface unless the accepted brief says so.
 
-5. Add deterministic watchdog.
-   - Start as a CMO/Observability routine or server-side recovery check.
+5. Extend existing runtime recovery with article-production rules.
+   - Prefer the server-side recovery path that already handles orphaned runs, queued work, and `silent_noop`.
+   - If implemented as a routine first, it must be a thin deterministic inspector, not an LLM heartbeat.
    - It should inspect issue/run tables and comments without invoking article-writer LLM.
    - It should create or reopen recovery issues only when deterministic evidence exists.
 
@@ -151,5 +160,4 @@ Recommended thresholds:
 - Validator outputs stable blocker classes.
 - Article production cannot loop indefinitely through the same writer on the same blocker class.
 - Writer LLM is not invoked on a frequent no-op heartbeat.
-- Recovery from stale article-production states is deterministic, cheap, and visible in Paperclip.
-
+- Recovery from stale article-production states reuses Paperclip's existing recovery layer, is deterministic, cheap, and visible in Paperclip.
