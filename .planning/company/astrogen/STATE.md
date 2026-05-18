@@ -13,7 +13,7 @@ See: `.planning/company/astrogen/README.md`
 
 Phase: Astrogen growth/content operating system hardening
 Status: Active
-Last activity: 2026-05-18 - Live Telegram issue-done formatter was patched so Astrogen notifications use short human-facing Ukrainian `Тема` / `Що сталося` / `Далі` fields instead of internal issue titles like `HIA`, `Stage 55`, and `Wave`.
+Last activity: 2026-05-18 - Wave 1 article-production stall was recovered: stale HIA gate `AST-769` was cancelled, `AST-705` is no longer a human-decision blocker, and corrective Stage 59 reruns `AST-772`-`AST-774` are open under `AST-771`.
 
 ## Current Focus
 
@@ -21,7 +21,7 @@ Last activity: 2026-05-18 - Live Telegram issue-done formatter was patched so As
 - Keep reusable agent templates, shared plugins, and cross-client architecture inside `.planning/agency-core/`.
 - Use shared Paperclip plugins where applicable, but configure Astrogen with its own company scope, secrets, budgets, project IDs, and data access.
 - Current semantic-core/content focus: after Layer 3 validation, do not turn every accepted keyword into a page. Convert the semantic core into article opportunities, validate SERP-based clusters for the shortlist, then publish small continuous waves that feed performance data back into the backlog.
-- Current article-production focus: owner approved the three Wave 1 articles on [AST-705](/AST/issues/AST-705). [AST-755](/AST/issues/AST-755) completed the article briefs. First-pass Stage 59 drafts were produced on [AST-757](/AST/issues/AST-757), [AST-758](/AST/issues/AST-758), and [AST-759](/AST/issues/AST-759). Stage 61 validation returned all three drafts for focused revision. Stage 59 revisions [AST-763](/AST/issues/AST-763), [AST-764](/AST/issues/AST-764), and [AST-765](/AST/issues/AST-765) were produced, but Stage 61 revalidation [AST-766](/AST/issues/AST-766), [AST-767](/AST/issues/AST-767), and [AST-768](/AST/issues/AST-768) returned them again. The current blocker is agent-output quality, not an owner decision.
+- Current article-production focus: owner approved the three Wave 1 articles on [AST-705](/AST/issues/AST-705). [AST-755](/AST/issues/AST-755) completed the article briefs. First-pass Stage 59 drafts were produced on [AST-757](/AST/issues/AST-757), [AST-758](/AST/issues/AST-758), and [AST-759](/AST/issues/AST-759). Stage 61 validation returned all three drafts for focused revision. Stage 59 revisions [AST-763](/AST/issues/AST-763), [AST-764](/AST/issues/AST-764), and [AST-765](/AST/issues/AST-765) were produced, but Stage 61 revalidation [AST-766](/AST/issues/AST-766), [AST-767](/AST/issues/AST-767), and [AST-768](/AST/issues/AST-768) returned them again. A stale HIA gate [AST-769](/AST/issues/AST-769) was cancelled. Recovery issue [AST-771](/AST/issues/AST-771) opened corrective Stage 59 reruns [AST-772](/AST/issues/AST-772), [AST-773](/AST/issues/AST-773), and [AST-774](/AST/issues/AST-774). No owner decision is needed; the current blocker is internal article quality and fresh Stage 61 acceptance.
 - Current page-registry focus: Astrogen blog page registry is now seeded in live Postgres `seo_ops` from `https://astrogen.com.ua/sitemap.xml`. Initial import registered 40 blog-related URLs: 35 blog articles, 4 category pages, and 1 blog index page. The 35 article rows were enriched with title, meta description, category/tag metadata, content text, content hash, and content block counts from the public site data source. Keyword mapping remains pending.
 
 ## Known Active Workstreams

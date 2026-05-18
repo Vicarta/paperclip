@@ -388,3 +388,14 @@
 - Added mappings for owner approval gates, article briefing, article draft, and article validation issues so Telegram does not repeat raw issue titles or generic `Задачу ... завершено` summaries.
 - Restarted the live Paperclip app; plugin loader reported `12/12` plugins activated, and `/api/health` returned `status=ok`.
 - Smoke-tested the live formatter for the AST-755 title; output is now `Тема: Підготовка статей`, `Що сталося: Підготовлено робочі брифи...`, and `Далі: Автори готують тексти...`.
+- Investigated the stalled Wave 1 article-production lane after Stage 61 revalidation returned all three revised drafts again.
+- Root cause: CMO opened stale HIA gate [AST-769](/AST/issues/AST-769), asking the owner to choose one article for drafting even though the owner had already approved all three articles and all three drafts had already gone through Stage 59 plus two Stage 61 validation passes.
+- Recovery applied in live Paperclip:
+  - cancelled stale HIA gate [AST-769](/AST/issues/AST-769);
+  - restored [AST-705](/AST/issues/AST-705) to `in_progress` and removed the false `Human Decision Needed` blocker;
+  - created recovery manager issue [AST-771](/AST/issues/AST-771).
+- CMO completed recovery planning on [AST-771](/AST/issues/AST-771) and opened execution-ready corrective Stage 59 reruns:
+  - [AST-772](/AST/issues/AST-772) for the zodiac-sign article;
+  - [AST-773](/AST/issues/AST-773) for the natal-chart article;
+  - [AST-774](/AST/issues/AST-774) for the zodiac-compatibility article.
+- Current state: [AST-772](/AST/issues/AST-772) has a running writer run; [AST-773](/AST/issues/AST-773) and [AST-774](/AST/issues/AST-774) have queued writer runs. No owner decision is needed at this point.
