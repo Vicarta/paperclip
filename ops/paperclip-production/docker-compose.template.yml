@@ -15,7 +15,7 @@ services:
       - paperclip_pgdata:/var/lib/postgresql/data
 
   app:
-    image: ${PAPERCLIP_APP_IMAGE:-paperclip-app:v2026.513.0-files-links-20260518}
+    image: ${PAPERCLIP_APP_IMAGE:-paperclip-app:v2026.513.1-files-links-project-fallback-20260518}
     restart: unless-stopped
     depends_on:
       db:

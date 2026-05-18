@@ -1067,6 +1067,9 @@ export function IssueDetail() {
   if (error) return <p className="text-sm text-destructive">{error.message}</p>;
   if (!issue) return null;
 
+  const fallbackProject = orderedProjects.find((project) => !project.archivedAt) ?? null;
+  const commentFileProjectId = issue.projectId ?? fallbackProject?.id ?? null;
+
   // Ancestors are returned oldest-first from the server (root at end, immediate parent at start)
   const ancestors = issue.ancestors ?? [];
   const handleFilePicked = async (evt: ChangeEvent<HTMLInputElement>) => {
@@ -1508,7 +1511,7 @@ export function IssueDetail() {
             linkedRuns={timelineRuns}
             timelineEvents={timelineEvents}
             companyId={issue.companyId}
-            projectId={issue.projectId}
+            projectId={commentFileProjectId}
             issueStatus={issue.status}
             agentMap={agentMap}
             currentUserId={currentUserId}
