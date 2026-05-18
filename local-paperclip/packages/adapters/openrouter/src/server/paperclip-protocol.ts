@@ -93,6 +93,7 @@ export function parseOpenRouterIssueProtocolIntent(text: string): OpenRouterIssu
 export function buildOpenRouterIssueProtocolInstruction(input: {
   issueIdentifier: string | null;
   issueId: string | null;
+  requireArtifactOnDone?: boolean;
 }) {
   const issueLabel = input.issueIdentifier ?? input.issueId ?? "current issue";
   return [
@@ -116,6 +117,11 @@ export function buildOpenRouterIssueProtocolInstruction(input: {
     "Rules:",
     "- If the task produces a long-form draft or another canonical workspace artifact, put the full markdown in artifact.body and use artifact.relativePath with the canonical project-relative file path.",
     "- Prefer artifact for long-form article drafts and other repo-native markdown deliverables.",
+    ...(input.requireArtifactOnDone
+      ? [
+          '- This run has requireArtifactOnDone=true: do not return status="done" unless artifact.relativePath and artifact.body are both present.',
+        ]
+      : []),
     '- Use document.key="draft" unless the issue explicitly requires another key.',
     '- Use status="blocked" only for a true blocker that prevents completion now.',
     '- Use status="done" when the requested deliverable is complete.',

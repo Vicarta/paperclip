@@ -56,6 +56,8 @@ import {
 } from "@paperclipai/adapter-openclaw-gateway";
 import {
   execute as openRouterDirectExecute,
+  listOpenRouterSkills,
+  syncOpenRouterSkills,
   testEnvironment as openRouterDirectTestEnvironment,
 } from "@paperclipai/adapter-openrouter/server";
 import {
@@ -159,6 +161,8 @@ const openRouterDirectAdapter: ServerAdapterModule = {
   type: "openrouter",
   execute: openRouterDirectExecute,
   testEnvironment: openRouterDirectTestEnvironment,
+  listSkills: listOpenRouterSkills,
+  syncSkills: syncOpenRouterSkills,
   models: openRouterDirectModels,
   supportsLocalAgentJwt: true,
   agentConfigurationDoc: openRouterDirectAgentConfigurationDoc,

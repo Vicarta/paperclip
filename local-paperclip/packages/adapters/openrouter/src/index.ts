@@ -22,6 +22,7 @@ Core fields:
 - promptTemplate (string, optional): heartbeat prompt template
 - bootstrapPromptTemplate (string, optional): prompt only for fresh/stateless runs
 - timeoutSec (number, optional): request timeout in seconds
+- requireArtifactOnDone (boolean, optional): for issue-bound runs, block status=done unless the model returns an artifact with relativePath and body
 
 Optional provider fields:
 - baseUrl (string, optional): defaults to https://openrouter.ai/api/v1
@@ -39,6 +40,7 @@ Notes:
 - This adapter is stateless and executes via direct HTTPS calls to OpenRouter.
 - It does not require local OpenCode, Claude, Codex, or Gemini CLIs on the Paperclip host.
 - It is intended for prompt-based agents rather than local tool-using coding agents.
+- Paperclip company skills are supported as prompt-injected markdown context. They are not local executable tools.
 - For issue-bound Paperclip runs, the adapter can execute an explicit issue protocol response
   (issue document upsert + artifact write + lifecycle patch) using the run JWT; it is still not a general local tool runtime.
 `;

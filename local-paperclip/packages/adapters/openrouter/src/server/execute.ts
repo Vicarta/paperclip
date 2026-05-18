@@ -3,6 +3,7 @@ import path from "node:path";
 import type { AdapterExecutionContext, AdapterExecutionResult } from "@paperclipai/adapter-utils";
 import {
   asNumber,
+  asBoolean,
   asString,
   buildPaperclipEnv,
   joinPromptSections,
@@ -19,6 +20,7 @@ import {
   resolveOpenRouterSettings,
   summarizeErrorPayload,
 } from "./shared.js";
+import { loadOpenRouterPromptSkills } from "./skills.js";
 import {
   buildOpenRouterIssueProtocolInstruction,
   parseOpenRouterIssueProtocolIntent,
@@ -65,6 +67,67 @@ async function loadInstructions(
   }
 }
 
+function resolveWorkspaceRoot(context: Record<string, unknown>) {
+  return (
+    asString(parseObject(context.paperclipWorkspace).cwd, "").trim() ||
+    asString(parseObject(Array.isArray(context.paperclipWorkspaces) ? context.paperclipWorkspaces[0] : null).cwd, "").trim()
+  );
+}
+
+function buildProtocolBlockedComment(input: {
+  reason: string;
+  rawPreview?: string | null;
+  requireArtifactOnDone?: boolean;
+}) {
+  const lines = [
+    "## OpenRouter adapter blocked",
+    "",
+    input.reason,
+    "",
+    "This is an internal adapter/protocol blocker, not a human decision.",
+  ];
+  if (input.requireArtifactOnDone) {
+    lines.push("", "This run requires a canonical workspace artifact before the issue can be marked done.");
+  }
+  if (input.rawPreview) {
+    lines.push("", "Assistant output preview:", "", "```text", input.rawPreview.slice(0, 1200), "```");
+  }
+  return lines.join("\n");
+}
+
+async function patchIssueViaApi(input: {
+  apiUrl: string;
+  authToken: string;
+  runId: string;
+  issueId: string;
+  status?: string;
+  comment?: string;
+}) {
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${input.authToken}`,
+    "Content-Type": "application/json",
+    "X-Paperclip-Run-Id": input.runId,
+  };
+  const patchResponse = await fetch(
+    `${input.apiUrl.replace(/\/+$/, "")}/api/issues/${encodeURIComponent(input.issueId)}`,
+    {
+      method: "PATCH",
+      headers,
+      body: JSON.stringify({
+        ...(input.status ? { status: input.status } : {}),
+        ...(input.comment ? { comment: input.comment } : {}),
+      }),
+    },
+  );
+  const patchText = await patchResponse.text();
+  const patchPayload = patchText ? parseJson(patchText) : null;
+  if (!patchResponse.ok) {
+    throw new Error(
+      `Paperclip issue patch failed (${patchResponse.status}): ${summarizeErrorPayload(patchPayload) || patchText || "unknown error"}`,
+    );
+  }
+}
+
 function readUsage(value: OpenRouterResponse["usage"]) {
   const promptTokens =
     typeof value?.prompt_tokens === "number" && Number.isFinite(value.prompt_tokens)
@@ -102,6 +165,19 @@ export async function execute(
   const bootstrapPromptTemplate = asString(configRecord.bootstrapPromptTemplate, "");
   const instructionsFilePath = asString(configRecord.instructionsFilePath, "");
   const instructionsPrefix = await loadInstructions(instructionsFilePath, onLog);
+  const skillContext = await loadOpenRouterPromptSkills(configRecord);
+  if (skillContext.desiredSkills.length > 0) {
+    await onLog(
+      "stdout",
+      `[paperclip] OpenRouter prompt skills configured: ${skillContext.desiredSkills.join(", ")}\n`,
+    );
+  }
+  if (skillContext.missingSkills.length > 0) {
+    await onLog(
+      "stderr",
+      `[paperclip] Warning: missing OpenRouter prompt skills: ${skillContext.missingSkills.join(", ")}\n`,
+    );
+  }
   const templateData = {
     agentId: agent.id,
     companyId: agent.companyId,
@@ -123,12 +199,18 @@ export async function execute(
     context.paperclipHumanFacingLanguageInstruction,
   );
   const sessionHandoffNote = renderTextSection(context.paperclipSessionHandoffMarkdown);
-  const systemPrompt = joinPromptSections([instructionsPrefix, renderedBootstrapPrompt]);
+  const requireArtifactOnDone = asBoolean(configRecord.requireArtifactOnDone, false);
+  const systemPrompt = joinPromptSections([
+    instructionsPrefix,
+    skillContext.text,
+    renderedBootstrapPrompt,
+  ]);
   const protocolInstruction =
     currentIssueId && authToken
       ? buildOpenRouterIssueProtocolInstruction({
           issueIdentifier: currentIssueIdentifier,
           issueId: currentIssueId,
+          requireArtifactOnDone,
         })
       : "";
   const userPrompt =
@@ -231,7 +313,27 @@ export async function execute(
     let protocolResult: Record<string, unknown> | null = null;
     if (assistantText && currentIssueId && authToken) {
       const intent = parseOpenRouterIssueProtocolIntent(assistantText);
+      const apiUrl = buildPaperclipEnv({
+        id: agent.id,
+        companyId: agent.companyId,
+      }).PAPERCLIP_API_URL.trim();
+      if (!apiUrl) {
+        throw new Error("OpenRouter issue protocol requires an internal Paperclip API URL.");
+      }
+
       if (!intent) {
+        await patchIssueViaApi({
+          apiUrl,
+          authToken,
+          runId,
+          issueId: currentIssueId,
+          status: "blocked",
+          comment: buildProtocolBlockedComment({
+            reason:
+              "The model returned text that could not be parsed as the required Paperclip issue JSON object.",
+            rawPreview: assistantText,
+          }),
+        });
         return {
           exitCode: 1,
           signal: null,
@@ -257,19 +359,44 @@ export async function execute(
         };
       }
 
-      const apiUrl = buildPaperclipEnv({
-        id: agent.id,
-        companyId: agent.companyId,
-      }).PAPERCLIP_API_URL.trim();
-      if (!apiUrl) {
-        throw new Error("OpenRouter issue protocol requires an internal Paperclip API URL.");
+      if (requireArtifactOnDone && intent.status === "done" && !intent.artifact) {
+        await patchIssueViaApi({
+          apiUrl,
+          authToken,
+          runId,
+          issueId: currentIssueId,
+          status: "blocked",
+          comment: buildProtocolBlockedComment({
+            reason:
+              "The model tried to mark the issue done without returning the required canonical workspace artifact.",
+            requireArtifactOnDone: true,
+          }),
+        });
+        return {
+          exitCode: 1,
+          signal: null,
+          timedOut: false,
+          errorCode: "artifact_required_on_done",
+          errorMessage:
+            "OpenRouter issue-bound run requires artifact when status is done.",
+          usage: readUsage(payload.usage),
+          provider: "openrouter",
+          model: asString(payload.model, model),
+          billingType: "api",
+          costUsd: extractCostUsd(payload),
+          resultJson: {
+            provider: "openrouter",
+            protocol: {
+              applied: false,
+              error: "artifact_required_on_done",
+              status: intent.status,
+              hasDocument: Boolean(intent.document),
+            },
+          },
+          summary: `OpenRouter ${model}`,
+          clearSession: true,
+        };
       }
-
-      const headers: Record<string, string> = {
-        Authorization: `Bearer ${authToken}`,
-        "Content-Type": "application/json",
-        "X-Paperclip-Run-Id": runId,
-      };
 
       if (intent.document) {
         await upsertIssueDocumentViaApi({
@@ -285,9 +412,7 @@ export async function execute(
       }
 
       if (intent.artifact) {
-        const workspaceRoot =
-          asString(parseObject(context.paperclipWorkspace).cwd, "").trim() ||
-          asString(parseObject(Array.isArray(context.paperclipWorkspaces) ? context.paperclipWorkspaces[0] : null).cwd, "").trim();
+        const workspaceRoot = resolveWorkspaceRoot(context);
         await persistIssueArtifactToWorkspace({
           workspaceRoot,
           relativePath: intent.artifact.relativePath,
@@ -305,24 +430,14 @@ export async function execute(
       }
 
       if (intent.status || intent.comment) {
-        const patchResponse = await fetch(
-          `${apiUrl.replace(/\/+$/, "")}/api/issues/${encodeURIComponent(currentIssueId)}`,
-          {
-            method: "PATCH",
-            headers,
-            body: JSON.stringify({
-              ...(intent.status ? { status: intent.status } : {}),
-              ...(intent.comment ? { comment: intent.comment } : {}),
-            }),
-          },
-        );
-        const patchText = await patchResponse.text();
-        const patchPayload = patchText ? parseJson(patchText) : null;
-        if (!patchResponse.ok) {
-          throw new Error(
-            `Paperclip issue patch failed (${patchResponse.status}): ${summarizeErrorPayload(patchPayload) || patchText || "unknown error"}`,
-          );
-        }
+        await patchIssueViaApi({
+          apiUrl,
+          authToken,
+          runId,
+          issueId: currentIssueId,
+          status: intent.status ?? undefined,
+          comment: intent.comment ?? undefined,
+        });
       }
 
       await onLog(
