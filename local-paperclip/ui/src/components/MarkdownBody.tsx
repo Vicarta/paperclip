@@ -1,4 +1,4 @@
-import { isValidElement, useEffect, useId, useState, type ReactNode } from "react";
+import { isValidElement, useEffect, useId, useState, type MouseEvent, type ReactNode } from "react";
 import Markdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { cn } from "../lib/utils";
@@ -10,6 +10,9 @@ interface MarkdownBodyProps {
   className?: string;
   /** Optional resolver for relative image paths (e.g. within export packages) */
   resolveImageSrc?: (src: string) => string | null;
+  /** Optional resolver for markdown link targets in context-aware surfaces. */
+  resolveLinkHref?: (href: string) => string | null;
+  onLinkClick?: (href: string, event: MouseEvent<HTMLAnchorElement>) => void;
 }
 
 let mermaidLoaderPromise: Promise<typeof import("mermaid").default> | null = null;
@@ -91,7 +94,7 @@ function MermaidDiagramBlock({ source, darkMode }: { source: string; darkMode: b
   );
 }
 
-export function MarkdownBody({ children, className, resolveImageSrc }: MarkdownBodyProps) {
+export function MarkdownBody({ children, className, resolveImageSrc, resolveLinkHref, onLinkClick }: MarkdownBodyProps) {
   const { theme } = useTheme();
   const components: Components = {
     pre: ({ node: _node, children: preChildren, ...preProps }) => {
@@ -122,8 +125,13 @@ export function MarkdownBody({ children, className, resolveImageSrc }: MarkdownB
           </a>
         );
       }
+      const resolvedHref = href && resolveLinkHref ? resolveLinkHref(href) ?? href : href;
       return (
-        <a href={href} rel="noreferrer">
+        <a
+          href={resolvedHref}
+          rel="noreferrer"
+          onClick={href && onLinkClick ? (event) => onLinkClick(href, event) : undefined}
+        >
           {linkChildren}
         </a>
       );

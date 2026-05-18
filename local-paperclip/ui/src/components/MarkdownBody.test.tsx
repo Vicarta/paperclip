@@ -46,4 +46,16 @@ describe("MarkdownBody", () => {
     expect(html).toContain('data-mention-kind="project"');
     expect(html).toContain("--paperclip-mention-project-color:#336699");
   });
+
+  it("uses a context link resolver for regular markdown links", () => {
+    const html = renderToStaticMarkup(
+      <ThemeProvider>
+        <MarkdownBody resolveLinkHref={(href) => href === "/astrogen/work/output.md" ? "/projects/p1?file=%2Fastrogen%2Fwork%2Foutput.md" : null}>
+          {"[Package notes](/astrogen/work/output.md)"}
+        </MarkdownBody>
+      </ThemeProvider>,
+    );
+
+    expect(html).toContain('href="/projects/p1?file=%2Fastrogen%2Fwork%2Foutput.md"');
+  });
 });

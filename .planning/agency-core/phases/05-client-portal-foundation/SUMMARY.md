@@ -67,7 +67,7 @@ After the portal host and provider-level firewall are confirmed, deploy from:
 Then run the Nginx/Let's Encrypt activation from that project.
 
 ```bash
-LETSENCRYPT_EMAIL=o.savitsky@gmail.com npm run deploy:nginx
+LETSENCRYPT_EMAIL=admin@example.com npm run deploy:nginx
 ```
 
 Then verify public HTTPS, cookie flags, Nginx route isolation, and Certbot renewal.

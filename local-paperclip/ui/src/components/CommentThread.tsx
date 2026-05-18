@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import { memo, useEffect, useMemo, useRef, useState, type ChangeEvent, type MouseEvent } from "react";
 import { Link, useLocation } from "react-router-dom";
 import type {
   Agent,
@@ -81,6 +81,41 @@ interface CommentThreadProps {
 }
 
 const DRAFT_DEBOUNCE_MS = 800;
+const FILE_BROWSER_PLUGIN_KEY = "paperclip-file-browser-example";
+const FILE_BROWSER_TAB_SLOT_ID = "files-tab";
+const FILE_LINK_EXTENSION_REGEX = /\.[a-zA-Z0-9]{1,10}(?:$|[?#])/;
+const WEB_URL_PATTERN = /^https?:\/\//i;
+const NON_FILE_ROUTE_PATTERN = /^\/(?:api|auth|admin|issues|projects|agents|settings|dashboard|plugins|instance|companies|inbox|routines|goals|approvals|activity|costs|seo|skills)(?:\/|$)/i;
+
+function isCommentFileHref(href: string): boolean {
+  const value = href.trim();
+  if (!value || value.startsWith("#") || value.startsWith("mailto:") || value.startsWith("tel:")) return false;
+  if (WEB_URL_PATTERN.test(value)) return false;
+  if (NON_FILE_ROUTE_PATTERN.test(value)) return false;
+  return value.includes("/") && FILE_LINK_EXTENSION_REGEX.test(value);
+}
+
+function buildCommentFileHref(projectId: string | null | undefined, href: string): string | null {
+  if (!projectId || !isCommentFileHref(href)) return null;
+  const tabValue = `plugin:${FILE_BROWSER_PLUGIN_KEY}:${FILE_BROWSER_TAB_SLOT_ID}`;
+  return `/projects/${projectId}?tab=${encodeURIComponent(tabValue)}&file=${encodeURIComponent(href)}`;
+}
+
+function navigateToHref(href: string, event: MouseEvent<HTMLAnchorElement>) {
+  if (
+    event.defaultPrevented
+    || event.button !== 0
+    || event.metaKey
+    || event.ctrlKey
+    || event.altKey
+    || event.shiftKey
+  ) {
+    return;
+  }
+  event.preventDefault();
+  window.history.pushState({}, "", href);
+  window.dispatchEvent(new PopStateEvent("popstate"));
+}
 
 function loadDraft(draftKey: string): string {
   try {
@@ -251,6 +286,7 @@ function CommentCard({
   const isHighlighted = highlightCommentId === comment.id;
   const isPending = comment.clientStatus === "pending";
   const isQueued = queued || comment.queueState === "queued" || comment.clientStatus === "queued";
+  const resolveCommentLinkHref = (href: string) => buildCommentFileHref(projectId, href);
 
   return (
     <div
@@ -310,7 +346,16 @@ function CommentCard({
           <CopyMarkdownButton text={comment.body} />
         </span>
       </div>
-      <MarkdownBody className="text-sm">{comment.body}</MarkdownBody>
+      <MarkdownBody
+        className="text-sm"
+        resolveLinkHref={resolveCommentLinkHref}
+        onLinkClick={(href, event) => {
+          const fileHref = resolveCommentLinkHref(href);
+          if (fileHref) navigateToHref(fileHref, event);
+        }}
+      >
+        {comment.body}
+      </MarkdownBody>
       {companyId && !isPending ? (
         <div className="mt-2 space-y-2">
           <PluginSlotOutlet

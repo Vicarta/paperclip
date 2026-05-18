@@ -153,13 +153,32 @@ function normalizePathForCompare(pathValue: string): string {
   return trimmed || "/";
 }
 
+function workspaceAliasPrefix(workspacePath: string): string | null {
+  const normalizedWorkspace = normalizePathForCompare(workspacePath);
+  const parts = normalizedWorkspace.split("/").filter(Boolean);
+  const workspaceName = parts[parts.length - 1];
+  return workspaceName ? `/${workspaceName}/` : null;
+}
+
 function isPathInsideWorkspace(filePath: string, workspacePath: string): boolean {
   const normalizedFile = normalizePathForCompare(filePath);
   const normalizedWorkspace = normalizePathForCompare(workspacePath);
   if (!normalizedFile || !normalizedWorkspace || normalizedWorkspace === "/") {
     return false;
   }
-  return normalizedFile === normalizedWorkspace || normalizedFile.startsWith(`${normalizedWorkspace}/`);
+  const aliasPrefix = workspaceAliasPrefix(workspacePath);
+  return normalizedFile === normalizedWorkspace
+    || normalizedFile.startsWith(`${normalizedWorkspace}/`)
+    || Boolean(aliasPrefix && normalizedFile.startsWith(aliasPrefix));
+}
+
+function normalizePathForWorkspace(filePath: string, workspacePath: string): string {
+  const normalizedFile = filePath.trim().replace(/\\/g, "/");
+  const aliasPrefix = workspaceAliasPrefix(workspacePath);
+  if (aliasPrefix && normalizedFile.startsWith(aliasPrefix)) {
+    return normalizedFile.slice(aliasPrefix.length);
+  }
+  return filePath;
 }
 
 function workspaceLabel(workspace: Workspace): string {
@@ -487,7 +506,7 @@ export function FilesTab({ context }: PluginDetailTabProps) {
     if (!urlFilePath || !selectedWorkspace) return;
     if (lastConsumedFileRef.current === urlFilePath) return;
     lastConsumedFileRef.current = urlFilePath;
-    setSelectedPath(urlFilePath);
+    setSelectedPath(normalizePathForWorkspace(urlFilePath, selectedWorkspace.path));
     setMobileView("editor");
   }, [urlFilePath, selectedWorkspace]);
 

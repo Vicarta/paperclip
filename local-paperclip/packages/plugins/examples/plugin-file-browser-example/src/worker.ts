@@ -19,16 +19,35 @@ function sanitizeWorkspacePath(pathValue: string): string {
 
 function resolveWorkspace(workspacePath: string, requestedPath?: string): string | null {
   const root = path.resolve(workspacePath);
-  const resolved = requestedPath
-    ? path.isAbsolute(requestedPath)
-      ? path.resolve(requestedPath)
-      : path.resolve(root, requestedPath)
+  const normalizedRequestedPath = requestedPath
+    ? normalizeWorkspaceAliasPath(root, requestedPath)
+    : undefined;
+  const resolved = normalizedRequestedPath
+    ? path.isAbsolute(normalizedRequestedPath)
+      ? path.resolve(normalizedRequestedPath)
+      : path.resolve(root, normalizedRequestedPath)
     : root;
   const relative = path.relative(root, resolved);
   if (relative.startsWith("..") || path.isAbsolute(relative)) {
     return null;
   }
   return resolved;
+}
+
+function normalizeWorkspaceAliasPath(root: string, requestedPath: string): string {
+  const trimmed = requestedPath.trim();
+  if (!path.isAbsolute(trimmed)) return trimmed;
+
+  const normalizedRoot = root.replace(/\\/g, "/").replace(/\/+$/, "");
+  const normalizedRequested = trimmed.replace(/\\/g, "/");
+  const workspaceName = path.basename(normalizedRoot);
+  const workspaceAliasPrefix = `/${workspaceName}/`;
+
+  if (workspaceName && normalizedRequested.startsWith(workspaceAliasPrefix)) {
+    return normalizedRequested.slice(workspaceAliasPrefix.length);
+  }
+
+  return trimmed;
 }
 
 /**
