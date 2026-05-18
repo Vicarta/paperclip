@@ -419,3 +419,4 @@
 - Reassigned [AST-774](/AST/issues/AST-774) to `SEO Blog Article Writer GPT` and queued a fallback writer recovery wakeup for the zodiac-compatibility article.
 - [AST-774](/AST/issues/AST-774) completed successfully through the fallback writer with verified canonical artifact `/astrogen/work/59-seo-blog-article-drafts/active/ast-774-experts-sumisnosti-znakiv-zodiaku-ua-2026-05-18.md`.
 - Reopened [AST-772](/AST/issues/AST-772) and [AST-773](/AST/issues/AST-773) for the same fallback writer path because their previous `done` state still lacked canonical workspace files; this is `artifact_contract_missing`, not a content approval decision.
+- Corrected [AST-705](/AST/issues/AST-705) and [AST-771](/AST/issues/AST-771) from `blocked` to `in_progress`, because the lane is now internal recovery work rather than an owner decision wait.

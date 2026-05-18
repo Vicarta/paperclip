@@ -13,7 +13,7 @@ See: `.planning/company/astrogen/README.md`
 
 Phase: Astrogen growth/content operating system hardening
 Status: Active
-Last activity: 2026-05-18 - Phase 20 live recovery pass applied: `SEO Blog Article Writer GPT` was added as fallback, specialist routine heartbeats were disabled, CMO/Validator/Writer contracts now include repeated-blocker recovery rules, `AST-774` completed through fallback with a verified canonical artifact, and `AST-772`/`AST-773` were reopened to fallback because their previous done state lacked canonical files.
+Last activity: 2026-05-18 - Phase 20 live recovery pass applied: `SEO Blog Article Writer GPT` was added as fallback, specialist routine heartbeats were disabled, CMO/Validator/Writer contracts now include repeated-blocker recovery rules, `AST-774` completed through fallback with a verified canonical artifact, `AST-772`/`AST-773` were reopened to fallback because their previous done state lacked canonical files, and `AST-705`/`AST-771` were corrected to `in_progress` because no owner decision is pending.
 
 ## Current Focus
 
