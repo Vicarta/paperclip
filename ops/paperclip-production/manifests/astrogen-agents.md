@@ -19,14 +19,15 @@ All specialist agents should remain `wakeOnDemand=true` with `heartbeat.enabled=
 
 | Agent | Runtime path | Role |
 | --- | --- | --- |
-| `SEO Blog Article Writer` | `openrouter` / `anthropic/claude-sonnet-4.6` | Primary first-pass SEO blog article author. |
-| `SEO Blog Article Writer GPT` | `codex_local` / `gpt-5.4` | Fallback/rescue author for repeated same-class validation failures, protocol/runtime failures, or missing canonical artifacts. |
+| `SEO Blog Article Writer (Claude)` | `openrouter` / `anthropic/claude-sonnet-4.6` | Primary first-pass SEO blog article author. |
+| `SEO Blog Article Writer (ChatGPT)` | `codex_local` / `gpt-5.4` | Fallback/rescue author for repeated same-class validation failures, protocol/runtime failures, or missing canonical artifacts. |
 
 Primary OpenRouter writer runtime policy:
 
 - `requireArtifactOnDone=true`.
-- Selected Paperclip skills are prompt-injected as markdown operating context for OpenRouter runs. They are not local runtime tools.
-- Desired skills: `paperclip`, `paperclip-create-agent`, `paperclip-create-plugin`, `para-memory-files`.
+- `promptTemplate` is filled with the OpenRouter-specific Stage 59 operating rules.
+- `paperclipSkillSync.desiredSkills=[]`; OpenRouter must not be presented as having local Paperclip skill tools.
+- The prompt explicitly tells the agent it has no shell, filesystem, browser, or Paperclip tool access and must return the canonical markdown artifact through the issue protocol.
 - An issue-bound OpenRouter run that returns unparsable protocol output, or `done` without a canonical artifact, must block internally with a diagnostic comment. It must not create a human decision gate.
 
 ## Recovery Rules
