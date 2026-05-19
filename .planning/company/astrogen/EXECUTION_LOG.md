@@ -2,6 +2,12 @@
 
 ## 2026-05-19
 
+- Delivered four existing Stage 65 Astrogen blog cover images to Telegram without article texts:
+  - `Натальна карта дитини: як читати результат і не переінтерпретувати`;
+  - `Що робити, якщо точний час народження дитини невідомий`;
+  - `Які дані потрібні для натальної карти дитини: повний список перед замовленням`;
+  - `Що входить у результат фінансової натальної карти, а що ні`.
+- Created live Paperclip audit issue [AST-792](/AST/issues/AST-792). Delivery used the temporary audited direct Bot API fallback because the Phase 22 Telegram delivery-groups source implementation has not yet been cut over to production.
 - Implemented Phase 22 `Telegram Attachment Delivery Groups` in source:
   - extended the shared `notification-contract` schema with `delivery_groups`;
   - added server-side grouped attachment resolution and tests;
