@@ -160,9 +160,11 @@ export {
   issueNotificationAttachmentSourceSchema,
   issueNotificationRecipientTargetSchema,
   issueNotificationAttachmentSelectorSchema,
+  issueNotificationDeliveryGroupSchema,
   issueNotificationRecipientSchema,
   issueNotificationContractSchema,
   type IssueNotificationAttachmentSelector,
+  type IssueNotificationDeliveryGroup,
   type IssueNotificationRecipient,
   type IssueNotificationContract,
 } from "./notification-contract.js";

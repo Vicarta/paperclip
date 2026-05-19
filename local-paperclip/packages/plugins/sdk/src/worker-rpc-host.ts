@@ -637,6 +637,14 @@ export function startWorkerRpcHost(options: WorkerRpcHostOptions): WorkerRpcHost
           return callHost("issues.createComment", { issueId, body, companyId });
         },
 
+        async listAttachments(issueId: string, companyId: string) {
+          return callHost("issues.attachments.list", { issueId, companyId });
+        },
+
+        async getAttachmentContent(attachmentId: string, companyId: string) {
+          return callHost("issues.attachments.getContent", { attachmentId, companyId });
+        },
+
         documents: {
           async list(issueId: string, companyId: string) {
             return callHost("issues.documents.list", { issueId, companyId });

@@ -5,6 +5,7 @@ import {
   issueNotificationContractSchema,
   type IssueNotificationAttachmentSelector,
   type IssueNotificationContract,
+  type IssueNotificationDeliveryGroup,
 } from "@paperclipai/shared";
 import { documentService } from "./documents.js";
 import { issueService } from "./issues.js";
@@ -15,6 +16,14 @@ export interface ResolvedIssueNotificationAttachment extends IssueAttachment {
   contentPath: string;
 }
 
+export interface ResolvedIssueNotificationAttachmentGroup {
+  key: string;
+  title: string | null;
+  caption: string | null;
+  attachments: ResolvedIssueNotificationAttachment[];
+  missingSelectors: IssueNotificationAttachmentSelector[];
+}
+
 export interface ResolvedIssueNotificationContract {
   key: typeof ISSUE_NOTIFICATION_CONTRACT_KEY;
   documentId: string;
@@ -22,6 +31,7 @@ export interface ResolvedIssueNotificationContract {
   contract: IssueNotificationContract;
   attachment: ResolvedIssueNotificationAttachment | null;
   attachments: ResolvedIssueNotificationAttachment[];
+  attachmentGroups: ResolvedIssueNotificationAttachmentGroup[];
 }
 
 export function extractIssueNotificationContractJson(body: string): string | null {
@@ -66,6 +76,47 @@ function withContentPath(attachment: Omit<IssueAttachment, "contentPath">): Reso
   };
 }
 
+function resolveSelectors(
+  attachments: Omit<IssueAttachment, "contentPath">[],
+  selectors: IssueNotificationAttachmentSelector[],
+): {
+  attachments: ResolvedIssueNotificationAttachment[];
+  missingSelectors: IssueNotificationAttachmentSelector[];
+} {
+  const resolved: Omit<IssueAttachment, "contentPath">[] = [];
+  const missingSelectors: IssueNotificationAttachmentSelector[] = [];
+
+  for (const selector of selectors) {
+    const match = attachments.find((candidate) => attachmentMatchesSelector(candidate, selector)) ?? null;
+    if (!match) {
+      missingSelectors.push(selector);
+      continue;
+    }
+    if (!resolved.some((candidate) => candidate.id === match.id)) {
+      resolved.push(match);
+    }
+  }
+
+  return {
+    attachments: resolved.map(withContentPath),
+    missingSelectors,
+  };
+}
+
+function resolveDeliveryGroup(
+  attachments: Omit<IssueAttachment, "contentPath">[],
+  group: IssueNotificationDeliveryGroup,
+): ResolvedIssueNotificationAttachmentGroup {
+  const resolved = resolveSelectors(attachments, group.artifacts);
+  return {
+    key: group.key,
+    title: group.title ?? null,
+    caption: group.caption ?? null,
+    attachments: resolved.attachments,
+    missingSelectors: resolved.missingSelectors,
+  };
+}
+
 export function issueNotificationContractService(db: Db) {
   const documentsSvc = documentService(db);
   const issuesSvc = issueService(db);
@@ -78,18 +129,20 @@ export function issueNotificationContractService(db: Db) {
       const contract = parseIssueNotificationContractDocument(document);
       const attachments = await issuesSvc.listAttachments(issueId);
       let resolvedAttachments: ResolvedIssueNotificationAttachment[];
+      let attachmentGroups: ResolvedIssueNotificationAttachmentGroup[] = [];
       if (contract.delivery.mode === "attach_file") {
         const artifactSelector = contract.delivery.artifact;
         resolvedAttachments = attachments
           .filter((candidate) => attachmentMatchesSelector(candidate, artifactSelector))
           .slice(0, 1)
           .map(withContentPath);
+      } else if (contract.delivery.mode === "attach_files") {
+        resolvedAttachments = resolveSelectors(attachments, contract.delivery.artifacts).attachments;
       } else {
-        resolvedAttachments = contract.delivery.artifacts
-          .map((selector) => attachments.find((candidate) => attachmentMatchesSelector(candidate, selector)) ?? null)
-          .filter((candidate): candidate is IssueAttachment => candidate !== null)
-          .filter((candidate, index, all) => all.findIndex((other) => other.id === candidate.id) === index)
-          .map(withContentPath);
+        attachmentGroups = contract.delivery.groups.map((group) => resolveDeliveryGroup(attachments, group));
+        resolvedAttachments = attachmentGroups
+          .flatMap((group) => group.attachments)
+          .filter((attachment, index, all) => all.findIndex((other) => other.id === attachment.id) === index);
       }
 
       return {
@@ -99,6 +152,7 @@ export function issueNotificationContractService(db: Db) {
         contract,
         attachment: resolvedAttachments[0] ?? null,
         attachments: resolvedAttachments,
+        attachmentGroups,
       };
     },
   };

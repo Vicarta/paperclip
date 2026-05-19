@@ -475,6 +475,15 @@ export function createTestHarness(options: TestHarnessOptions): TestHarness {
         issueComments.set(issueId, current);
         return comment;
       },
+      async listAttachments(issueId, companyId) {
+        requireCapability(manifest, capabilitySet, "issue.attachments.read");
+        if (!isInCompany(issues.get(issueId), companyId)) return [];
+        return [];
+      },
+      async getAttachmentContent() {
+        requireCapability(manifest, capabilitySet, "issue.attachments.read");
+        throw new Error("issues.getAttachmentContent is not implemented in test context");
+      },
       documents: {
         async list(issueId, companyId) {
           requireCapability(manifest, capabilitySet, "issue.documents.read");

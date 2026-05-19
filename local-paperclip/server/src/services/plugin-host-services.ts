@@ -20,6 +20,7 @@ import { documentService } from "./documents.js";
 import { heartbeatService } from "./heartbeat.js";
 import { subscribeCompanyLiveEvents } from "./live-events.js";
 import { randomUUID } from "node:crypto";
+import { buffer as streamToBuffer } from "node:stream/consumers";
 import { activityService } from "./activity.js";
 import { costService } from "./costs.js";
 import { assetService } from "./assets.js";
@@ -28,6 +29,7 @@ import { pluginStateStore } from "./plugin-state-store.js";
 import { createPluginSecretsHandler } from "./plugin-secrets-handler.js";
 import { logActivity } from "./activity-log.js";
 import type { PluginEventBus } from "./plugin-event-bus.js";
+import type { StorageService } from "../storage/types.js";
 import { lookup as dnsLookup } from "node:dns/promises";
 import type { IncomingMessage, RequestOptions as HttpRequestOptions } from "node:http";
 import { request as httpRequest } from "node:http";
@@ -527,6 +529,7 @@ export function buildHostServices(
   pluginKey: string,
   eventBus: PluginEventBus,
   notifyWorker?: (method: string, params: unknown) => void,
+  storage?: StorageService,
 ): HostServices & { dispose(): void } {
   const registry = pluginRegistryService(db);
   const stateStore = pluginStateStore(db);
@@ -571,6 +574,11 @@ export function buildHostServices(
     if (limit == null) return rows.slice(offset);
     return rows.slice(offset, offset + limit);
   };
+
+  const withAttachmentContentPath = <T extends { id: string }>(attachment: T) => ({
+    ...attachment,
+    contentPath: `/api/attachments/${attachment.id}/content`,
+  });
 
   /**
    * Plugins are instance-wide in the current runtime. Company IDs are still
@@ -940,6 +948,30 @@ export function buildHostServices(
           params.body,
           {},
         )) as IssueComment;
+      },
+      async listAttachments(params) {
+        const companyId = ensureCompanyId(params.companyId);
+        await ensurePluginAvailableForCompany(companyId);
+        requireInCompany("Issue", await issues.getById(params.issueId), companyId);
+        return (await issues.listAttachments(params.issueId)).map(withAttachmentContentPath);
+      },
+      async getAttachmentContent(params) {
+        const companyId = ensureCompanyId(params.companyId);
+        await ensurePluginAvailableForCompany(companyId);
+        if (!storage) {
+          throw new Error("Attachment storage service is unavailable to plugins");
+        }
+        const attachment = await issues.getAttachmentById(params.attachmentId);
+        if (!attachment || attachment.companyId !== companyId) {
+          throw new Error(`Attachment not found: ${params.attachmentId}`);
+        }
+        requireInCompany("Issue", await issues.getById(attachment.issueId), companyId);
+        const object = await storage.getObject(attachment.companyId, attachment.objectKey);
+        const body = await streamToBuffer(object.stream);
+        return {
+          attachment: withAttachmentContentPath(attachment),
+          contentBase64: body.toString("base64"),
+        };
       },
     },
 

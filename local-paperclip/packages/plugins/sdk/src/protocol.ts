@@ -25,6 +25,7 @@ import type {
   Project,
   Issue,
   IssueComment,
+  IssueAttachment,
   IssueDocument,
   IssueDocumentSummary,
   Agent,
@@ -651,6 +652,17 @@ export interface WorkerToHostMethods {
   "issues.createComment": [
     params: { issueId: string; body: string; companyId: string },
     result: IssueComment,
+  ];
+  "issues.attachments.list": [
+    params: { issueId: string; companyId: string },
+    result: IssueAttachment[],
+  ];
+  "issues.attachments.getContent": [
+    params: { attachmentId: string; companyId: string },
+    result: {
+      attachment: IssueAttachment;
+      contentBase64: string;
+    },
   ];
 
   // Issue Documents

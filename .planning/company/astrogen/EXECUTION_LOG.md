@@ -1,5 +1,19 @@
 # Execution Log: Astrogen
 
+## 2026-05-19
+
+- Implemented Phase 22 `Telegram Attachment Delivery Groups` in source:
+  - extended the shared `notification-contract` schema with `delivery_groups`;
+  - added server-side grouped attachment resolution and tests;
+  - added plugin SDK/host APIs for gated issue attachment metadata/content reads;
+  - added capability `issue.attachments.read` and cross-company isolation tests;
+  - added source-controlled `paperclip-plugin-telegram@0.3.1-paperclip.0`;
+  - implemented grouped Telegram `sendDocument` delivery with idempotency, issue audit comments, and activity log;
+  - preserved the short Ukrainian Telegram completion formatter so the plugin overlay does not reintroduce noisy upstream lifecycle messages.
+- Verified locally with server contract/bridge tests, Telegram delivery/formatter tests, Telegram plugin typecheck/build, and server typecheck.
+- Updated `ops/paperclip-production/manifests/plugins.md` to record the Phase 22 plugin package/version expectation.
+- Production cutover was not performed in this source phase. Next step is a controlled app/plugin image deploy and smoke using the same guarded procedure as Phase 16/17.
+
 ## 2026-05-17
 
 - Owner approved all three proposed Wave 1 Astrogen blog articles.

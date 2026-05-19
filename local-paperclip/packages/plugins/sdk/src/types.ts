@@ -19,6 +19,7 @@ import type {
   Project,
   Issue,
   IssueComment,
+  IssueAttachment,
   IssueDocument,
   IssueDocumentSummary,
   Agent,
@@ -65,6 +66,7 @@ export type {
   Project,
   Issue,
   IssueComment,
+  IssueAttachment,
   IssueDocument,
   IssueDocumentSummary,
   Agent,
@@ -939,6 +941,11 @@ export interface PluginIssuesClient {
   ): Promise<Issue>;
   listComments(issueId: string, companyId: string): Promise<IssueComment[]>;
   createComment(issueId: string, body: string, companyId: string): Promise<IssueComment>;
+  listAttachments(issueId: string, companyId: string): Promise<IssueAttachment[]>;
+  getAttachmentContent(
+    attachmentId: string,
+    companyId: string,
+  ): Promise<{ attachment: IssueAttachment; contentBase64: string }>;
   /** Read and write issue documents. Requires `issue.documents.read` / `issue.documents.write`. */
   documents: PluginIssueDocumentsClient;
 }

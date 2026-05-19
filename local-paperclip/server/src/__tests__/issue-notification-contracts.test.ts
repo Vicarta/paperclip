@@ -79,6 +79,75 @@ describe("issue notification contract parsing", () => {
     }
     expect(contract.delivery.artifacts).toHaveLength(2);
   });
+
+  it("parses grouped telegram delivery while preserving the attach_files limit per group", () => {
+    const contract = parseIssueNotificationContractDocument({
+      body: `
+\`\`\`json notification-contract
+{
+  "enabled": true,
+  "channel": "telegram",
+  "trigger": "issue_done",
+  "delivery": {
+    "mode": "delivery_groups",
+    "summary": "Готовий пакет матеріалів.",
+    "groups": [
+      {
+        "key": "article-1",
+        "title": "Стаття 1",
+        "caption": "1/2 Стаття 1",
+        "artifacts": [
+          { "source": "issue_attachment", "filenameIncludes": ".md" },
+          { "source": "issue_attachment", "filenameIncludes": ".html" },
+          { "source": "issue_attachment", "contentTypePrefix": "image/" }
+        ]
+      }
+    ]
+  }
+}
+\`\`\`
+      `,
+    });
+
+    expect(contract.delivery.mode).toBe("delivery_groups");
+    if (contract.delivery.mode !== "delivery_groups") {
+      throw new Error("Expected delivery_groups mode");
+    }
+    expect(contract.delivery.groups).toHaveLength(1);
+    expect(contract.delivery.groups[0]?.artifacts).toHaveLength(3);
+  });
+
+  it("rejects delivery groups with more than the attach_files selector limit", () => {
+    expect(() =>
+      parseIssueNotificationContractDocument({
+        body: `
+\`\`\`json notification-contract
+{
+  "enabled": true,
+  "channel": "telegram",
+  "trigger": "issue_done",
+  "delivery": {
+    "mode": "delivery_groups",
+    "groups": [
+      {
+        "key": "too-many",
+        "artifacts": [
+          { "source": "issue_attachment", "filenameIncludes": "1" },
+          { "source": "issue_attachment", "filenameIncludes": "2" },
+          { "source": "issue_attachment", "filenameIncludes": "3" },
+          { "source": "issue_attachment", "filenameIncludes": "4" },
+          { "source": "issue_attachment", "filenameIncludes": "5" },
+          { "source": "issue_attachment", "filenameIncludes": "6" }
+        ]
+      }
+    ]
+  }
+}
+\`\`\`
+        `,
+      }),
+    ).toThrow();
+  });
 });
 
 describeEmbeddedPostgres("issueNotificationContractService", () => {
@@ -264,6 +333,102 @@ describeEmbeddedPostgres("issueNotificationContractService", () => {
     expect(resolved?.attachments).toEqual([
       expect.objectContaining({ id: markdownAttachment.id }),
       expect.objectContaining({ id: htmlAttachment.id }),
+    ]);
+    expect(resolved?.attachmentGroups).toEqual([]);
+  });
+
+  it("resolves grouped attachments with missing selector diagnostics", async () => {
+    const companyId = randomUUID();
+    const issueId = randomUUID();
+
+    await db.insert(companies).values({
+      id: companyId,
+      name: "Paperclip",
+      issuePrefix: "AST",
+      requireBoardApprovalForNewAgents: false,
+    });
+
+    await db.insert(issues).values({
+      id: issueId,
+      companyId,
+      title: "Article bundle notification",
+      status: "done",
+      priority: "medium",
+      createdByUserId: "user-1",
+    });
+
+    await documentsSvc.upsertIssueDocument({
+      issueId,
+      key: "notification-contract",
+      title: "Telegram grouped delivery",
+      format: "markdown",
+      body: `
+\`\`\`json notification-contract
+{
+  "enabled": true,
+  "channel": "telegram",
+  "trigger": "issue_done",
+  "delivery": {
+    "mode": "delivery_groups",
+    "summary": "Готовий пакет матеріалів.",
+    "groups": [
+      {
+        "key": "article-1",
+        "title": "Стаття 1",
+        "caption": "1/1 Стаття 1",
+        "artifacts": [
+          { "source": "issue_attachment", "filenameIncludes": "article-1", "contentTypePrefix": "text/markdown" },
+          { "source": "issue_attachment", "filenameIncludes": "article-1", "contentTypePrefix": "text/html" },
+          { "source": "issue_attachment", "filenameIncludes": "missing" }
+        ]
+      }
+    ]
+  }
+}
+\`\`\`
+      `,
+      createdByUserId: "user-1",
+    });
+
+    const markdownAttachment = await issuesSvc.createAttachment({
+      issueId,
+      provider: "local_fs",
+      objectKey: "article-1.md",
+      contentType: "text/markdown",
+      byteSize: 12,
+      sha256: "e".repeat(64),
+      originalFilename: "article-1.md",
+      createdByUserId: "user-1",
+    });
+
+    const htmlAttachment = await issuesSvc.createAttachment({
+      issueId,
+      provider: "local_fs",
+      objectKey: "article-1.html",
+      contentType: "text/html",
+      byteSize: 24,
+      sha256: "f".repeat(64),
+      originalFilename: "article-1.html",
+      createdByUserId: "user-1",
+    });
+
+    const resolved = await notificationSvc.getForIssue(issueId);
+
+    expect(resolved?.attachments.map((attachment) => attachment.id)).toEqual([
+      markdownAttachment.id,
+      htmlAttachment.id,
+    ]);
+    expect(resolved?.attachmentGroups).toEqual([
+      expect.objectContaining({
+        key: "article-1",
+        title: "Стаття 1",
+        caption: "1/1 Стаття 1",
+        attachments: [
+          expect.objectContaining({ id: markdownAttachment.id }),
+          expect.objectContaining({ id: htmlAttachment.id }),
+        ],
+        missingSelectors: [expect.objectContaining({ filenameIncludes: "missing" })],
+      }),
     ]);
   });
 });
