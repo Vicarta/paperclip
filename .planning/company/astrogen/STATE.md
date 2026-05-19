@@ -84,6 +84,7 @@ Last activity: 2026-05-18 - Phase 20 live recovery pass applied: `SEO Blog Artic
 - Phase 18 production source-of-truth pass completed. Deliverables are in `.planning/company/astrogen/phases/18-production-config-source-of-truth/`; sanitized production templates/manifests are in `ops/paperclip-production/`.
 - Live Astrogen CTO, Observability, CMO, SEO Semantic Core Strategist, and SEO Semantic Core Validator contracts were updated so CTO/Observability do not manually push stalled work as a substitute for Paperclip recovery actions, and CMO/SEO agents use company search before creating duplicate semantic-core/content/remediation issues.
 - Production now runs `paperclip-app:v2026.513.0-phase17.1`; old server-side issue completion Telegram sender source/tests were removed; health, plugin loader `12/12`, Telegram jobs, and Astrogen portal semantic-core endpoints were smoke-checked.
+- Phase 22 is planned for Telegram attachment delivery groups. It keeps the existing `attach_files` limit, adds grouped delivery packets for larger issue attachment packages, requires `sendDocument`-based delivery through the Telegram plugin, adds idempotency/audit trail, and forbids live `dist` hotfixes as the durable path because future upstream Paperclip/plugin updates may overwrite them.
 
 ## Roadmap Evolution
 
@@ -92,6 +93,7 @@ Last activity: 2026-05-18 - Phase 20 live recovery pass applied: `SEO Blog Artic
 - Phase 17 first pass executed: Plugin Standardization And Secrets Vault Migration.
 - Phase 18 executed: Production Config Source Of Truth.
 - Phase 20 live first pass applied: Article Writer Fallback And Cost-Controlled Recovery.
+- Phase 22 planned: Telegram Attachment Delivery Groups for first-class grouped issue attachment delivery through the Telegram plugin.
 - CTO weekly release-check routine verified against live `build.releaseTag`; no newer release was found.
 
 ## Pending Todos
