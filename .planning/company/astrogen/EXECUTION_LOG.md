@@ -420,3 +420,21 @@
 - [AST-774](/AST/issues/AST-774) completed successfully through the fallback writer with verified canonical artifact `/astrogen/work/59-seo-blog-article-drafts/active/ast-774-experts-sumisnosti-znakiv-zodiaku-ua-2026-05-18.md`.
 - Reopened [AST-772](/AST/issues/AST-772) and [AST-773](/AST/issues/AST-773) for the same fallback writer path because their previous `done` state still lacked canonical workspace files; this is `artifact_contract_missing`, not a content approval decision.
 - Corrected [AST-705](/AST/issues/AST-705) and [AST-771](/AST/issues/AST-771) from `blocked` to `in_progress`, because the lane is now internal recovery work rather than an owner decision wait.
+
+## 2026-05-19
+
+- Confirmed that the prior Astrogen article workflow had a Stage 65 image lane under `/home/paperclip/astrogen/work/65-seo-blog-image-generation/active`, but the current Wave 1 lane stopped at Stage 64 packaging.
+- Root cause: the live Stage 65 process document still described image generation as a future slot, and the CMO/Stage 64 contracts did not require an image bundle before Telegram/editorial delivery.
+- Updated live Astrogen contracts on `ubuntu-oc`:
+  - `/home/paperclip/astrogen/docs/process/65-seo-blog-image-generation.md`;
+  - `/home/paperclip/astrogen/docs/process/64-seo-blog-publication-packaging.md`;
+  - `/home/paperclip/astrogen/agents/cmo/AGENTS.md`.
+- New rule: Stage 64 publication packaging is not complete for blog articles until a governed Stage 65 hero image bundle exists, unless the owner explicitly waives images.
+- Generated Stage 65 hero images for the three already packaged Wave 1 articles without regenerating article text:
+  - `ast-788-wave1-natal-chart-ua-image-2026-05-19`;
+  - `ast-788-wave1-zodiac-sign-ua-image-2026-05-19`;
+  - `ast-788-wave1-zodiac-compatibility-ua-image-2026-05-19`.
+- All three generated images passed `validate-seo-blog-image-bundle` automated QA at `2752x1536`.
+- Created delivery issue [AST-791](/AST/issues/AST-791), attached nine artifacts: three markdown files, three HTML files, and three hero images.
+- Sent the article packages to Telegram as one short summary message plus three media groups, one per article. Telegram message ids: `569`, `570-572`, `573-575`, and `576-578`.
+- Added an audit comment on [AST-791](/AST/issues/AST-791). The delivery used the Astrogen Telegram bot secret from Paperclip Secrets; no plaintext token was printed or stored in Git.

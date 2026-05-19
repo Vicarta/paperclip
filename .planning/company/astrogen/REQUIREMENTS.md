@@ -23,6 +23,8 @@
 - `AST-IMG-03`: Images should carry hope, clarity, support, calm confidence, or positive movement toward a better state.
 - `AST-IMG-04`: Avoid dead, sculptural, repetitive, over-template-looking images; vary clothing, scenes, emotional tone, and composition.
 - `AST-IMG-05`: Telegram delivery should send images without compression when the workflow supports it.
+- `AST-IMG-06`: A blog article package is not complete until it has the publishable markdown, publishable HTML, and a Stage 65 hero image bundle, unless the owner explicitly waives image generation for that article.
+- `AST-IMG-07`: Article package delivery to Telegram must include the article text artifact, HTML artifact, and hero image together, with an audit trail on the related Paperclip issue. Article text must not be regenerated during image-only recovery.
 
 ## SEO
 
@@ -68,3 +70,4 @@
 - `AST-HIA-03`: Issue lifecycle Telegram notifications must have one canonical delivery path owned by the Telegram plugin. Do not run a parallel server-side issue notification sender for the same lifecycle event.
 - `AST-HIA-04`: CTO and Observability must not manually push, wake, reopen, reassign, unblock, or complete another agent's work as a substitute for Paperclip system recovery actions.
 - `AST-HIA-05`: Human Decision Needed cards must include a self-contained Ukrainian decision brief that assumes the owner knows nothing about Paperclip internals. For SEO/content choices, include titles, primary/supporting keywords, Ukraine/global demand, business role, next step, required inclusions, forbidden claims, and a simple answer format.
+- `AST-HIA-06`: Telegram article-package messages should be short Ukrainian package summaries. They should not expose internal stage labels in the chat text; detailed artifact paths and workflow diagnostics belong in Paperclip.

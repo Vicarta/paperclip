@@ -20,7 +20,7 @@ Human-facing Astrogen communication remains Ukrainian and should not expose inte
 - Layer 2 client review is complete.
 - Layer 3 has been regenerated/imported after the MCP contract update, reviewed in the client portal, validated, and converted into the first small blog content wave.
 - Owner approved all three proposed Wave 1 article topics on [AST-705](/AST/issues/AST-705).
-- Stage 55 article briefs are complete on [AST-755](/AST/issues/AST-755). First-pass Stage 59 drafts were produced on [AST-757](/AST/issues/AST-757), [AST-758](/AST/issues/AST-758), and [AST-759](/AST/issues/AST-759), then Stage 61 validation returned all three for focused revision. Stage 59 revisions [AST-763](/AST/issues/AST-763), [AST-764](/AST/issues/AST-764), and [AST-765](/AST/issues/AST-765) were also returned by Stage 61 revalidation [AST-766](/AST/issues/AST-766), [AST-767](/AST/issues/AST-767), and [AST-768](/AST/issues/AST-768). A stale HIA gate [AST-769](/AST/issues/AST-769) was cancelled, and recovery issue [AST-771](/AST/issues/AST-771) opened corrective Stage 59 reruns [AST-772](/AST/issues/AST-772), [AST-773](/AST/issues/AST-773), and [AST-774](/AST/issues/AST-774). Phase 20 now adds a GPT fallback writer and repeated-blocker recovery rules; [AST-774](/AST/issues/AST-774) completed through `SEO Blog Article Writer GPT` with a verified canonical artifact, while [AST-772](/AST/issues/AST-772) and [AST-773](/AST/issues/AST-773) were reopened to the same fallback path because their previous `done` state lacked canonical workspace files. The next step is fresh Stage 61 validation after verified canonical Stage 59 artifacts exist, before any owner editorial review.
+- Wave 1 article production is through editor-ready delivery: Stage 55 briefs, Stage 59 recovery drafts, Stage 61 validation, Stage 64 markdown/HTML packaging, and Stage 65 hero images are complete. Delivery issue [AST-791](/AST/issues/AST-791) attached all three markdown files, HTML files, and hero images, then sent them to Telegram for owner editorial review. Text artifacts were not regenerated during the image recovery.
 - Initial Astrogen blog page registry is seeded in live Postgres `seo_ops` from `https://astrogen.com.ua/sitemap.xml`: 40 blog-related URLs, including 35 article pages enriched with title/meta/content snapshots from the public site data source.
 - Known bad diagnostic rows such as `gemini ai` and `gemini google` were removed from client-visible review groups and inventory.
 - Paperclip server update planning is now required before relying on automated weekly release checks:
@@ -41,11 +41,11 @@ Human-facing Astrogen communication remains Ukrainian and should not expose inte
 - [x] **Phase 14: SEO Blog Content Waves** - Defined the blog-only workflow that converts validated semantic-core clusters into SERP-checked article opportunities, human-adjustable priorities, paced publication waves, validation, and performance feedback.
 - [x] **Live Blog Agent Contract Update** - Applied Phase 14 rules to live Astrogen CMO, semantic-core, SEO blog planning, article, and performance-loop agent/process contracts on `ubuntu-oc`.
 - [x] **Initial Astrogen Blog Registry Seed** - Registered the current public sitemap blog URLs in `seo_ops` and enriched the existing article rows with content snapshots.
+- [x] **Wave 1 Article Package Delivery** - Generated Stage 65 hero images for the three approved Wave 1 articles, attached markdown/HTML/image bundles to [AST-791](/AST/issues/AST-791), and delivered the packages to Telegram for editorial review without regenerating article text.
 
 ## In Progress
 
 - [ ] **Phase 11: Client Portal Pilot** - Continue the standalone client portal work in `/path/to/paperclip-cs-portal`. Paperclip now owns the client-safe semantic-core API; the separate portal owns auth/session/access and UI. Public Nginx/Let's Encrypt activation remains a portal-project/server-network task.
-- [ ] **Wave 1 Article Drafting** - Resolve repeated Stage 61 failures on the three revised drafts before owner editorial review. Do not send these as final owner-ready texts until SEO lock, route/CTA, and analytics handoff blockers are closed.
 - [ ] **Phase 19: Blog Page Registry And Publication Monitor** - Turn the initial sitemap import into a scheduled publication monitor: detect new manually published blog URLs, enrich content snapshots, match them to approved article opportunities and keyword targets, and start the post-publication monitoring loop.
 - [ ] **Phase 15: Paperclip Server Release Update** - Attempted and rolled back. Keep as evidence of the controlled update attempt, backup, failure mode, and rollback state.
 - [x] **Phase 16: Paperclip Plugin Compatibility Upgrade** - Compatibility gate and production cutover are complete for `v2026.513.0`: plugin packaging, manifest migration, secret/config smoke, worker dependency resolution, deterministic provenance, Astrogen portal endpoint smoke, and production plugin boot check all passed.
@@ -57,7 +57,7 @@ Human-facing Astrogen communication remains Ukrainian and should not expose inte
 ## Deferred / Future Tracks
 
 - [ ] **Content Contracts And Quality Gates** - Stabilize Ukrainian article contracts, sanitizer checks, product confidence tone, internal links, synonyms, and HTML packaging.
-- [ ] **Image Generation System** - Finalize blog image prompt rules, audience age/hope/positivity requirements, Telegram delivery without compression, and one-article test loop.
+- [ ] **Image Delivery System Hardening** - Turn the Stage 65 image plus Telegram bundle delivery into a first-class Paperclip plugin/process path, so future article waves do not need operator recovery to attach and send article packages.
 - [ ] **SEO Monitoring Loop** - Connect GSC/rank/SERP monitoring, article registry, thresholds, and post-publication decision logic on top of the shared `seo_ops` model.
 - [ ] **Human Interaction And Telegram Quality** - Keep Telegram/HIA messages short, Ukrainian, human-readable, and action-oriented.
 - [ ] **Strategic Growth Review Layer** - Use Product Discovery outputs to generate human-reviewable growth strategy options before execution on new/free products and routes.
@@ -65,11 +65,14 @@ Human-facing Astrogen communication remains Ukrainian and should not expose inte
 
 ## Current Next Step
 
-Complete Wave 1 article drafting from the approved Stage 55 briefs, then use Phase 19 to connect manual publication back into the page registry:
+Next owner-facing step: editorial review of the three delivered Wave 1 article packages. After the owner manually publishes an article on the site, Phase 19 connects publication back into the page registry:
 
 ```text
 approved article briefs
 -> article drafts
+-> Stage 64 markdown/HTML package
+-> Stage 65 hero image package
+-> Telegram editorial delivery
 -> human manual publication
 -> sitemap discovery
 -> page registry enrichment
