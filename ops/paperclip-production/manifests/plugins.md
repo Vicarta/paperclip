@@ -1,8 +1,8 @@
 # Production Plugin Manifest
 
 Last verified: 2026-05-20
-Source: Phase 17 live production smoke, plugin inventory, Telegram formatter smoke, Phase 22 source package verification, and Payload CMS live agent-tool smoke.
-Secret handling: config keys and secret refs only; no plaintext secret values.
+Source: Phase 17 live production smoke, plugin inventory, Telegram formatter smoke, Phase 22 source package verification, Payload CMS live agent-tool smoke, and secret schema reconciliation smoke.
+Secret handling: config keys and secret refs only; no plaintext secret values. Generic `secretService` create/resolve/rotate is reconciled with the production metadata schema.
 
 Expected status: Astrogen-required plugins `ready`. Optional legacy connector records may remain `error` until their package/runtime wiring is deliberately restored.
 
@@ -28,6 +28,10 @@ Expected status: Astrogen-required plugins `ready`. Optional legacy connector re
 - Payload CMS smoke:
   - `payload_cms_get_build_state` returned `HTTP 200`, `lastBuildStatus=queued`, `buildInProgress=false`.
   - `payload_cms_health_check` returned `HTTP 200`, with authenticated access to build state and Payload collections needed for blog drafts/media.
+- Secret service smoke:
+  - production image `paperclip-app:v2026.513.4-secret-schema-20260520` is active;
+  - migration `0058_secret_schema_reconciliation` is applied;
+  - a dummy local-encrypted secret was created, resolved, rotated, resolved again, and removed through the standard `secretService` path.
 - Error records, not required for current Astrogen SEO flow: `paperclip.bright-data-agent-tools`, `paperclip.exa-agent-tools`, `paperclip.serper-agent-tools`.
 
 ## Invariants

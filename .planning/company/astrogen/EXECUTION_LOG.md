@@ -488,3 +488,13 @@
   - `payload_cms_get_build_state` returned `HTTP 200`, `lastBuildStatus=queued`, `buildInProgress=false`;
   - `payload_cms_health_check` returned `HTTP 200` and confirmed read access to `buildState`, access metadata, and create/read/update access for `blogPosts`, `media`, `authors`, `categories`, `tags`, and `redirects`.
 - Noted production schema drift in `company_secrets`: live DB includes extra not-null secret metadata columns that are not represented in the current source helper. For this deployment, the Payload key was inserted/rotated through a compatibility SQL path using the same local-encrypted provider; follow-up should reconcile the source schema/service with the live secret schema before relying on the generic secret helper for new secret creation.
+- Checked upstream before implementing the follow-up. Newer upstream already has the same secret metadata direction (`key`, lifecycle `status`, managed mode, provider metadata, and version fingerprint fields), so the live DB was ahead of the local source rather than randomly broken.
+- Backported the minimal compatible secret schema/service support instead of pulling the full upstream secret subsystem:
+  - added migration `0058_secret_schema_reconciliation`;
+  - updated `company_secrets` and `company_secret_versions` schema definitions;
+  - updated `secretService` create/resolve/rotate behavior to populate and respect the lifecycle metadata;
+  - added embedded Postgres tests for create/resolve/rotate.
+- Deployed production image `paperclip-app:v2026.513.4-secret-schema-20260520` on `ubuntu-oc`.
+- Production health check returned `status=ok`; plugin loader reported `10/10` plugins loaded successfully and `81` registered tools.
+- Verified migration `0058_secret_schema_reconciliation` in the live Drizzle journal.
+- Smoke-tested the generic `secretService` path in live Paperclip using a dummy local-encrypted secret: created version 1, resolved it, rotated to version 2, resolved the rotated value, and removed the test secret. No real secret value was printed or stored in Git.
