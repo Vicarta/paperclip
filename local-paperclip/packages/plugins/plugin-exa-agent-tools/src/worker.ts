@@ -1,6 +1,17 @@
-import { definePlugin, runWorker, type ToolResult } from "@paperclipai/plugin-sdk";
+import {
+  definePlugin,
+  runWorker,
+  type ToolResult,
+  type ToolRunContext,
+} from "@paperclipai/plugin-sdk";
 import { callExaMcpTool, type ExaPluginConfig } from "./exa-mcp-client.js";
-import { EXA_MCP_TOOLS, PLUGIN_ID, TOOL_NAMES } from "./constants.js";
+import {
+  EXA_COST_BILLING_TYPE,
+  EXA_COST_PROVIDER,
+  EXA_MCP_TOOLS,
+  PLUGIN_ID,
+  TOOL_NAMES,
+} from "./constants.js";
 
 async function getConfig(ctx: Parameters<NonNullable<Parameters<typeof definePlugin>[0]["setup"]>>[0]) {
   return await ctx.config.get() as ExaPluginConfig;
@@ -26,6 +37,56 @@ function normalizeCrawlArgs(params: Record<string, unknown>) {
   return next;
 }
 
+function usdToCents(amountUsd: unknown) {
+  if (typeof amountUsd !== "number" || !Number.isFinite(amountUsd) || amountUsd <= 0) {
+    return 0;
+  }
+  return Math.max(0, Math.round(amountUsd * 100));
+}
+
+function resolveEstimatedCostCents(config: ExaPluginConfig, toolName: string) {
+  if (config.costAccountingMode !== "estimated_per_request") return 0;
+  switch (toolName) {
+    case TOOL_NAMES.webSearch:
+      return usdToCents(config.estimatedWebSearchCostUsd);
+    case TOOL_NAMES.crawlUrl:
+      return usdToCents(config.estimatedCrawlUrlCostUsd);
+    case TOOL_NAMES.codeContext:
+      return usdToCents(config.estimatedCodeContextCostUsd);
+    default:
+      return 0;
+  }
+}
+
+async function emitExaCost(input: {
+  ctx: Parameters<Parameters<typeof definePlugin>[0]["setup"]>[0];
+  runCtx: ToolRunContext;
+  config: ExaPluginConfig;
+  toolName: string;
+}) {
+  const costCents = resolveEstimatedCostCents(input.config, input.toolName);
+  if (costCents <= 0) return;
+
+  await input.ctx.costs.createEvent({
+    companyId: input.runCtx.companyId,
+    agentId: input.runCtx.agentId,
+    projectId: input.runCtx.projectId,
+    issueId: null,
+    goalId: null,
+    heartbeatRunId: input.runCtx.runId,
+    billingCode: `exa:${input.toolName}`,
+    provider: EXA_COST_PROVIDER,
+    biller: EXA_COST_PROVIDER,
+    billingType: EXA_COST_BILLING_TYPE,
+    model: input.toolName,
+    inputTokens: 0,
+    cachedInputTokens: 0,
+    outputTokens: 0,
+    costCents,
+    occurredAt: new Date().toISOString(),
+  });
+}
+
 const plugin = definePlugin({
   async setup(ctx) {
     ctx.logger.info(`${PLUGIN_ID} plugin setup complete`);
@@ -48,7 +109,7 @@ const plugin = definePlugin({
           required: ["query"],
         },
       },
-      async (params): Promise<ToolResult> => {
+      async (params, runCtx): Promise<ToolResult> => {
         const config = await getConfig(ctx);
         const result = await callExaMcpTool({
           toolName: EXA_MCP_TOOLS.webSearch,
@@ -56,7 +117,9 @@ const plugin = definePlugin({
           config,
           resolveSecret: (secretRef) => ctx.secrets.resolve(secretRef),
         });
-        return result.isError ? { error: result.content || "Exa web search failed" } : { content: result.content, data: result.data };
+        if (result.isError) return { error: result.content || "Exa web search failed" };
+        await emitExaCost({ ctx, runCtx, config, toolName: TOOL_NAMES.webSearch });
+        return { content: result.content, data: result.data };
       },
     );
 
@@ -83,7 +146,7 @@ const plugin = definePlugin({
           ],
         },
       },
-      async (params): Promise<ToolResult> => {
+      async (params, runCtx): Promise<ToolResult> => {
         const config = await getConfig(ctx);
         const result = await callExaMcpTool({
           toolName: EXA_MCP_TOOLS.crawling,
@@ -91,7 +154,9 @@ const plugin = definePlugin({
           config,
           resolveSecret: (secretRef) => ctx.secrets.resolve(secretRef),
         });
-        return result.isError ? { error: result.content || "Exa crawl failed" } : { content: result.content, data: result.data };
+        if (result.isError) return { error: result.content || "Exa crawl failed" };
+        await emitExaCost({ ctx, runCtx, config, toolName: TOOL_NAMES.crawlUrl });
+        return { content: result.content, data: result.data };
       },
     );
 
@@ -109,7 +174,7 @@ const plugin = definePlugin({
           required: ["query"],
         },
       },
-      async (params): Promise<ToolResult> => {
+      async (params, runCtx): Promise<ToolResult> => {
         const config = await getConfig(ctx);
         const result = await callExaMcpTool({
           toolName: EXA_MCP_TOOLS.codeContext,
@@ -117,7 +182,9 @@ const plugin = definePlugin({
           config,
           resolveSecret: (secretRef) => ctx.secrets.resolve(secretRef),
         });
-        return result.isError ? { error: result.content || "Exa code context lookup failed" } : { content: result.content, data: result.data };
+        if (result.isError) return { error: result.content || "Exa code context lookup failed" };
+        await emitExaCost({ ctx, runCtx, config, toolName: TOOL_NAMES.codeContext });
+        return { content: result.content, data: result.data };
       },
     );
   },

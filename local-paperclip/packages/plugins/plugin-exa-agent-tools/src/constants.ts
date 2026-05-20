@@ -21,3 +21,6 @@ export const EXA_MCP_TOOLS = {
 } as const;
 
 export const DEFAULT_EXA_MCP_URL = "https://mcp.exa.ai/mcp";
+
+export const EXA_COST_PROVIDER = "exa.ai";
+export const EXA_COST_BILLING_TYPE = "metered_api";

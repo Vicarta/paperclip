@@ -9,6 +9,13 @@ export type BrightDataPluginConfig = {
   brightDataTokenSecretRef?: string;
   brightDataMcpUrl?: string;
   brightDataGroups?: string[];
+  costAccountingMode?: "disabled" | "estimated_per_request";
+  estimatedMcpToolCostUsd?: number;
+  estimatedDatasetTriggerCostUsd?: number;
+  estimatedSnapshotProgressCostUsd?: number;
+  estimatedSnapshotDownloadCostUsd?: number;
+  estimatedRunDatasetCostUsd?: number;
+  estimatedInstagramPostSetCostUsd?: number;
 };
 
 type BrightDataDatasetTriggerInput =

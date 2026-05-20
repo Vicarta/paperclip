@@ -743,6 +743,52 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
     expect(harness.costs[0]?.provider).toBe("semantic-core-builder");
   });
 
+  it("does not duplicate semantic-core import cost events for the same run", async () => {
+    const harness = createTestHarness({ manifest });
+    await plugin.definition.setup(harness.ctx);
+
+    const response = {
+      content: JSON.stringify({
+        schema_version: "paperclip_import.v1",
+        run_id: "run_cost_idempotent",
+        artifacts: {
+          accepted_keywords: [{ keyword_text: "натальна карта онлайн" }],
+          clusters: [],
+          serp_segments: [],
+        },
+        cost: {
+          total_estimated: 0.42,
+          events: [],
+        },
+      }),
+      data: {
+        structuredContent: null,
+        content: [],
+      },
+      isError: false,
+    };
+
+    callSemanticCoreMcpToolMock.mockResolvedValue(response);
+
+    await harness.executeTool(
+      TOOL_NAMES.preparePaperclipImport,
+      { run_id: "run_cost_idempotent" },
+      toolRunCtx,
+    );
+    await harness.executeTool(
+      TOOL_NAMES.preparePaperclipImport,
+      { run_id: "run_cost_idempotent" },
+      toolRunCtx,
+    );
+
+    expect(harness.costs).toHaveLength(1);
+    expect(harness.costs[0]).toMatchObject({
+      provider: "semantic-core-builder",
+      billingCode: "semantic-core-mcp",
+      costCents: 42,
+    });
+  });
+
   it("surfaces unsafe import readiness without marking accepted import as allowed", async () => {
     const harness = createTestHarness({ manifest });
     await plugin.definition.setup(harness.ctx);

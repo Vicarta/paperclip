@@ -47,5 +47,71 @@ describe("plugin-serper-agent-tools", () => {
       }),
     );
     expect(result.content).toBe("Serper web search results");
+    expect(harness.costs).toHaveLength(0);
+  });
+
+  it("emits one estimated cost event for successful web search when enabled", async () => {
+    const harness = createTestHarness({
+      manifest,
+      config: {
+        serperApiKeySecretRef: "secret-1",
+        costAccountingMode: "estimated_per_request",
+        estimatedSearchCostUsd: 0.01,
+      },
+    });
+    await plugin.definition.setup(harness.ctx);
+
+    searchSerperMock.mockResolvedValueOnce({
+      content: "Serper web search results",
+      data: { organic: [{ title: "Example" }] },
+    });
+
+    await harness.executeTool(
+      TOOL_NAMES.googleSearch,
+      {
+        q: "китайський гороскоп",
+        gl: "ua",
+        hl: "uk",
+      },
+      {
+        companyId: "company-serper",
+        projectId: "11111111-1111-1111-1111-111111111111",
+        agentId: "22222222-2222-2222-2222-222222222222",
+        runId: "33333333-3333-3333-3333-333333333333",
+      },
+    );
+
+    expect(harness.costs).toHaveLength(1);
+    expect(harness.costs[0]).toMatchObject({
+      companyId: "company-serper",
+      projectId: "11111111-1111-1111-1111-111111111111",
+      agentId: "22222222-2222-2222-2222-222222222222",
+      heartbeatRunId: "33333333-3333-3333-3333-333333333333",
+      provider: "serper.dev",
+      biller: "serper.dev",
+      billingType: "metered_api",
+      model: "google_search",
+      billingCode: "serper:google-search:search",
+      costCents: 1,
+    });
+  });
+
+  it("does not emit cost when Serper call fails", async () => {
+    const harness = createTestHarness({
+      manifest,
+      config: {
+        serperApiKeySecretRef: "secret-1",
+        costAccountingMode: "estimated_per_request",
+        estimatedSearchCostUsd: 0.01,
+      },
+    });
+    await plugin.definition.setup(harness.ctx);
+
+    searchSerperMock.mockRejectedValueOnce(new Error("Rate limited"));
+
+    await expect(
+      harness.executeTool(TOOL_NAMES.googleSearch, { q: "китайський гороскоп" }),
+    ).rejects.toThrow("Rate limited");
+    expect(harness.costs).toHaveLength(0);
   });
 });

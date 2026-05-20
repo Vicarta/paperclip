@@ -6,6 +6,7 @@ import {
   PLUGIN_VERSION,
   SLOT_IDS,
   TOOL_NAMES,
+  SERPER_COST_BILLING_TYPE,
 } from "./constants.js";
 
 const manifest: PaperclipPluginManifestV1 = {
@@ -22,6 +23,7 @@ const manifest: PaperclipPluginManifestV1 = {
     "secrets.read-ref",
     "agent.tools.register",
     "instance.settings.register",
+    "costs.write",
   ],
   entrypoints: {
     worker: "./dist/worker.js",
@@ -43,6 +45,26 @@ const manifest: PaperclipPluginManifestV1 = {
         title: "Serper API Base URL",
         description: "Base URL for Serper REST API requests.",
         default: DEFAULT_SERPER_API_BASE_URL,
+      },
+      costAccountingMode: {
+        type: "string",
+        title: "Cost Accounting Mode",
+        description:
+          "How Paperclip writes Serper spend to the cost ledger. Use estimated_per_request when Serper is billed by request/credit and does not return per-call cost.",
+        enum: ["disabled", "estimated_per_request"],
+        default: "disabled",
+      },
+      estimatedSearchCostUsd: {
+        type: "number",
+        title: "Estimated Web Search Cost USD",
+        description: `Estimated cost per successful web search call. Written as ${SERPER_COST_BILLING_TYPE}.`,
+        default: 0,
+      },
+      estimatedNewsCostUsd: {
+        type: "number",
+        title: "Estimated News Search Cost USD",
+        description: `Estimated cost per successful news search call. Written as ${SERPER_COST_BILLING_TYPE}.`,
+        default: 0,
       },
     },
   },

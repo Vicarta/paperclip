@@ -14,3 +14,6 @@ export const TOOL_NAMES = {
 } as const;
 
 export const DEFAULT_SERPER_API_BASE_URL = "https://google.serper.dev";
+
+export const SERPER_COST_PROVIDER = "serper.dev";
+export const SERPER_COST_BILLING_TYPE = "metered_api";

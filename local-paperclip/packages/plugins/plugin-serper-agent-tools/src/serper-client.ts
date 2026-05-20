@@ -3,6 +3,9 @@ import { DEFAULT_SERPER_API_BASE_URL } from "./constants.js";
 export type SerperPluginConfig = {
   serperApiKeySecretRef?: string;
   serperApiBaseUrl?: string;
+  costAccountingMode?: "disabled" | "estimated_per_request";
+  estimatedSearchCostUsd?: number;
+  estimatedNewsCostUsd?: number;
 };
 
 export type SerperSearchParams = {

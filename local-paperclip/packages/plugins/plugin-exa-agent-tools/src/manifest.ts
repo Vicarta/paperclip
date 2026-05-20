@@ -1,6 +1,7 @@
 import type { PaperclipPluginManifestV1 } from "@paperclipai/plugin-sdk";
 import {
   DEFAULT_EXA_MCP_URL,
+  EXA_COST_BILLING_TYPE,
   EXPORT_NAMES,
   PLUGIN_ID,
   PLUGIN_VERSION,
@@ -21,6 +22,7 @@ const manifest: PaperclipPluginManifestV1 = {
     "secrets.read-ref",
     "agent.tools.register",
     "instance.settings.register",
+    "costs.write",
   ],
   entrypoints: {
     worker: "./dist/worker.js",
@@ -41,6 +43,32 @@ const manifest: PaperclipPluginManifestV1 = {
         title: "Exa MCP URL",
         description: "Remote Exa MCP endpoint. Defaults to the official hosted endpoint.",
         default: DEFAULT_EXA_MCP_URL,
+      },
+      costAccountingMode: {
+        type: "string",
+        title: "Cost Accounting Mode",
+        description:
+          "How Paperclip writes Exa spend to the cost ledger. Use estimated_per_request when request-level provider cost is unavailable.",
+        enum: ["disabled", "estimated_per_request"],
+        default: "disabled",
+      },
+      estimatedWebSearchCostUsd: {
+        type: "number",
+        title: "Estimated Web Search Cost USD",
+        description: `Estimated cost per successful Exa web search call. Written as ${EXA_COST_BILLING_TYPE}.`,
+        default: 0,
+      },
+      estimatedCrawlUrlCostUsd: {
+        type: "number",
+        title: "Estimated Crawl URL Cost USD",
+        description: `Estimated cost per successful Exa crawl call. Written as ${EXA_COST_BILLING_TYPE}.`,
+        default: 0,
+      },
+      estimatedCodeContextCostUsd: {
+        type: "number",
+        title: "Estimated Code Context Cost USD",
+        description: `Estimated cost per successful Exa code-context call. Written as ${EXA_COST_BILLING_TYPE}.`,
+        default: 0,
       },
     },
   },

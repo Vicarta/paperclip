@@ -5,6 +5,10 @@ import { DEFAULT_EXA_MCP_URL } from "./constants.js";
 export type ExaPluginConfig = {
   exaApiKeySecretRef?: string;
   exaMcpUrl?: string;
+  costAccountingMode?: "disabled" | "estimated_per_request";
+  estimatedWebSearchCostUsd?: number;
+  estimatedCrawlUrlCostUsd?: number;
+  estimatedCodeContextCostUsd?: number;
 };
 
 export type ExaToolName = "web_search_exa" | "crawling_exa" | "get_code_context_exa";

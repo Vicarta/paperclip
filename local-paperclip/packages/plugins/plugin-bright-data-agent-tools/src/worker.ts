@@ -1,4 +1,9 @@
-import { definePlugin, runWorker, type ToolResult } from "@paperclipai/plugin-sdk";
+import {
+  definePlugin,
+  runWorker,
+  type ToolResult,
+  type ToolRunContext,
+} from "@paperclipai/plugin-sdk";
 import {
   callBrightDataTool,
   downloadBrightDataSnapshot,
@@ -10,10 +15,71 @@ import {
   triggerBrightDataDatasetRequest,
   type BrightDataPluginConfig,
 } from "./bright-data-mcp-client.js";
-import { PLUGIN_ID, TOOL_NAMES } from "./constants.js";
+import {
+  BRIGHT_DATA_COST_BILLING_TYPE,
+  BRIGHT_DATA_COST_PROVIDER,
+  PLUGIN_ID,
+  TOOL_NAMES,
+} from "./constants.js";
 
 async function getConfig(ctx: Parameters<NonNullable<Parameters<typeof definePlugin>[0]["setup"]>>[0]) {
   return await ctx.config.get() as BrightDataPluginConfig;
+}
+
+function usdToCents(amountUsd: unknown) {
+  if (typeof amountUsd !== "number" || !Number.isFinite(amountUsd) || amountUsd <= 0) {
+    return 0;
+  }
+  return Math.max(0, Math.round(amountUsd * 100));
+}
+
+function resolveEstimatedCostCents(config: BrightDataPluginConfig, toolName: string) {
+  if (config.costAccountingMode !== "estimated_per_request") return 0;
+  switch (toolName) {
+    case TOOL_NAMES.callTool:
+      return usdToCents(config.estimatedMcpToolCostUsd);
+    case TOOL_NAMES.triggerDatasetRequest:
+      return usdToCents(config.estimatedDatasetTriggerCostUsd);
+    case TOOL_NAMES.getSnapshotProgress:
+      return usdToCents(config.estimatedSnapshotProgressCostUsd);
+    case TOOL_NAMES.downloadSnapshot:
+      return usdToCents(config.estimatedSnapshotDownloadCostUsd);
+    case TOOL_NAMES.runDatasetRequest:
+      return usdToCents(config.estimatedRunDatasetCostUsd);
+    case TOOL_NAMES.resolveInstagramAccountPostSet:
+      return usdToCents(config.estimatedInstagramPostSetCostUsd);
+    default:
+      return 0;
+  }
+}
+
+async function emitBrightDataCost(input: {
+  ctx: Parameters<Parameters<typeof definePlugin>[0]["setup"]>[0];
+  runCtx: ToolRunContext;
+  config: BrightDataPluginConfig;
+  toolName: string;
+}) {
+  const costCents = resolveEstimatedCostCents(input.config, input.toolName);
+  if (costCents <= 0) return;
+
+  await input.ctx.costs.createEvent({
+    companyId: input.runCtx.companyId,
+    agentId: input.runCtx.agentId,
+    projectId: input.runCtx.projectId,
+    issueId: null,
+    goalId: null,
+    heartbeatRunId: input.runCtx.runId,
+    billingCode: `bright-data:${input.toolName}`,
+    provider: BRIGHT_DATA_COST_PROVIDER,
+    biller: BRIGHT_DATA_COST_PROVIDER,
+    billingType: BRIGHT_DATA_COST_BILLING_TYPE,
+    model: input.toolName,
+    inputTokens: 0,
+    cachedInputTokens: 0,
+    outputTokens: 0,
+    costCents,
+    occurredAt: new Date().toISOString(),
+  });
 }
 
 function readString(record: Record<string, unknown>, key: string) {
@@ -118,7 +184,7 @@ const plugin = definePlugin({
           required: ["remoteToolName"],
         },
       },
-      async (params): Promise<ToolResult> => {
+      async (params, runCtx): Promise<ToolResult> => {
         const config = await getConfig(ctx);
         const record = params as Record<string, unknown>;
         const remoteToolName =
@@ -141,9 +207,9 @@ const plugin = definePlugin({
           resolveSecret: (secretRef) => ctx.secrets.resolve(secretRef),
         });
 
-        return result.isError
-          ? { error: result.content || "Bright Data tool call failed" }
-          : { content: result.content, data: result.data };
+        if (result.isError) return { error: result.content || "Bright Data tool call failed" };
+        await emitBrightDataCost({ ctx, runCtx, config, toolName: TOOL_NAMES.callTool });
+        return { content: result.content, data: result.data };
       },
     );
 
@@ -166,7 +232,7 @@ const plugin = definePlugin({
           required: ["datasetId", "input"],
         },
       },
-      async (params): Promise<ToolResult> => {
+      async (params, runCtx): Promise<ToolResult> => {
         try {
           const config = await getConfig(ctx);
           const record = params as Record<string, unknown>;
@@ -190,6 +256,7 @@ const plugin = definePlugin({
             config,
             resolveSecret: (secretRef) => ctx.secrets.resolve(secretRef),
           });
+          await emitBrightDataCost({ ctx, runCtx, config, toolName: TOOL_NAMES.triggerDatasetRequest });
           return { content: result.content, data: result.data };
         } catch (error) {
           return { error: error instanceof Error ? error.message : String(error) };
@@ -210,7 +277,7 @@ const plugin = definePlugin({
           required: ["snapshotId"],
         },
       },
-      async (params): Promise<ToolResult> => {
+      async (params, runCtx): Promise<ToolResult> => {
         try {
           const config = await getConfig(ctx);
           const record = params as Record<string, unknown>;
@@ -220,6 +287,7 @@ const plugin = definePlugin({
             config,
             resolveSecret: (secretRef) => ctx.secrets.resolve(secretRef),
           });
+          await emitBrightDataCost({ ctx, runCtx, config, toolName: TOOL_NAMES.getSnapshotProgress });
           return { content: result.content, data: result.data };
         } catch (error) {
           return { error: error instanceof Error ? error.message : String(error) };
@@ -241,7 +309,7 @@ const plugin = definePlugin({
           required: ["snapshotId"],
         },
       },
-      async (params): Promise<ToolResult> => {
+      async (params, runCtx): Promise<ToolResult> => {
         try {
           const config = await getConfig(ctx);
           const record = params as Record<string, unknown>;
@@ -252,6 +320,7 @@ const plugin = definePlugin({
             config,
             resolveSecret: (secretRef) => ctx.secrets.resolve(secretRef),
           });
+          await emitBrightDataCost({ ctx, runCtx, config, toolName: TOOL_NAMES.downloadSnapshot });
           return { content: result.content, data: result.data };
         } catch (error) {
           return { error: error instanceof Error ? error.message : String(error) };
@@ -282,7 +351,7 @@ const plugin = definePlugin({
           required: ["datasetId", "input"],
         },
       },
-      async (params): Promise<ToolResult> => {
+      async (params, runCtx): Promise<ToolResult> => {
         try {
           const config = await getConfig(ctx);
           const record = params as Record<string, unknown>;
@@ -310,6 +379,7 @@ const plugin = definePlugin({
             config,
             resolveSecret: (secretRef) => ctx.secrets.resolve(secretRef),
           });
+          await emitBrightDataCost({ ctx, runCtx, config, toolName: TOOL_NAMES.runDatasetRequest });
           return { content: result.content, data: result.data };
         } catch (error) {
           return { error: error instanceof Error ? error.message : String(error) };
@@ -337,7 +407,7 @@ const plugin = definePlugin({
           required: ["handleOrUrl"],
         },
       },
-      async (params): Promise<ToolResult> => {
+      async (params, runCtx): Promise<ToolResult> => {
         try {
           const config = await getConfig(ctx);
           const record = params as Record<string, unknown>;
@@ -415,6 +485,7 @@ const plugin = definePlugin({
               } satisfies CachedInstagramPostSet,
             );
           }
+          await emitBrightDataCost({ ctx, runCtx, config, toolName: TOOL_NAMES.resolveInstagramAccountPostSet });
           return {
             content: result.content,
             data: {

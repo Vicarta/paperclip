@@ -81,7 +81,7 @@ Use stable names:
 
 - `metered_api` for paid per-use API calls;
 - `subscription_included` for known included calls;
-- `estimated_metered_api` if the provider does not return per-call cost and Paperclip calculates it from configured pricing;
+- `metered_api` with an `estimated` billing code/model convention if the provider does not return per-call cost and Paperclip calculates it from configured pricing;
 - `reconciled_metered_api` for aggregate provider reconciliation rows.
 
 If `cost_events.billing_type` currently rejects new enum-like strings, either use the closest existing value or add a migration and tests.
@@ -162,8 +162,8 @@ Implementation:
 - fix production activation separately if still broken when executing this phase;
 - add `costs.write` capability;
 - prefer authoritative usage endpoint for reconciliation when available;
-- if per-call cost is not available in tool responses, add `estimated_per_request` mode with explicit config and mark rows `estimated_metered_api`;
-- add optional account-usage reconciliation task that writes delta rows with `reconciled_metered_api`;
+- if per-call cost is not available in tool responses, add `estimated_per_request` mode with explicit config and write rows as `metered_api` until the ledger billing enum grows an explicit estimated value;
+- add optional account-usage reconciliation task that writes delta rows with the closest supported billing type unless a migration adds `reconciled_metered_api`;
 - ensure tool calls have provider `exa.ai`.
 
 Acceptance:

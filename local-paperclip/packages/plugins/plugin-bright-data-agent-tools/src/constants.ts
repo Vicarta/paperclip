@@ -26,3 +26,6 @@ export const DEFAULT_BRIGHT_DATA_GROUPS = [
   "advanced_scraping",
   "app_stores",
 ] as const;
+
+export const BRIGHT_DATA_COST_PROVIDER = "brightdata.com";
+export const BRIGHT_DATA_COST_BILLING_TYPE = "metered_api";

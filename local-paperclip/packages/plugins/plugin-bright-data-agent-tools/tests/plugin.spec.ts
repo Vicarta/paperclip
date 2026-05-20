@@ -120,6 +120,52 @@ describe("plugin-bright-data-agent-tools", () => {
     expect(result.content).toBe("Fetched profile");
   });
 
+  it("emits one estimated cost event for successful generic Bright Data tool calls when enabled", async () => {
+    const harness = createTestHarness({
+      manifest,
+      config: {
+        brightDataTokenSecretRef: "secret-1",
+        costAccountingMode: "estimated_per_request",
+        estimatedMcpToolCostUsd: 0.05,
+      },
+    });
+    await plugin.definition.setup(harness.ctx);
+
+    callBrightDataToolMock.mockResolvedValueOnce({
+      isError: false,
+      content: "Fetched profile",
+      data: { content: [{ type: "text", text: "Fetched profile" }], structuredContent: null },
+    });
+
+    await harness.executeTool(
+      TOOL_NAMES.callTool,
+      {
+        remoteToolName: "social_lookup",
+        arguments: { handle: "astrogen.com.ua" },
+      },
+      {
+        companyId: "company-bright-data",
+        projectId: "11111111-1111-1111-1111-111111111111",
+        agentId: "22222222-2222-2222-2222-222222222222",
+        runId: "33333333-3333-3333-3333-333333333333",
+      },
+    );
+
+    expect(harness.costs).toHaveLength(1);
+    expect(harness.costs[0]).toMatchObject({
+      companyId: "company-bright-data",
+      projectId: "11111111-1111-1111-1111-111111111111",
+      agentId: "22222222-2222-2222-2222-222222222222",
+      heartbeatRunId: "33333333-3333-3333-3333-333333333333",
+      provider: "brightdata.com",
+      biller: "brightdata.com",
+      billingType: "metered_api",
+      model: "call-tool",
+      billingCode: "bright-data:call-tool",
+      costCents: 5,
+    });
+  });
+
   it("triggers an async dataset request", async () => {
     const harness = createTestHarness({
       manifest,
@@ -253,7 +299,11 @@ describe("plugin-bright-data-agent-tools", () => {
   it("reuses cached Instagram account post-set results by default", async () => {
     const harness = createTestHarness({
       manifest,
-      config: { brightDataTokenSecretRef: "secret-1" },
+      config: {
+        brightDataTokenSecretRef: "secret-1",
+        costAccountingMode: "estimated_per_request",
+        estimatedInstagramPostSetCostUsd: 0.1,
+      },
     });
     await plugin.definition.setup(harness.ctx);
 
@@ -280,5 +330,11 @@ describe("plugin-bright-data-agent-tools", () => {
     expect(first.data).toMatchObject({ cache: { hit: false } });
     expect(second.content).toContain("Reused cached Bright Data Instagram account post set");
     expect(second.data).toMatchObject({ cache: { hit: true } });
+    expect(harness.costs).toHaveLength(1);
+    expect(harness.costs[0]).toMatchObject({
+      provider: "brightdata.com",
+      billingCode: "bright-data:resolve-instagram-account-post-set",
+      costCents: 10,
+    });
   });
 });
