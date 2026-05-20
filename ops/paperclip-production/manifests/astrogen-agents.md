@@ -38,6 +38,14 @@ Primary OpenRouter writer runtime policy:
 - CMO must switch a Stage 59 article task to `SEO Blog Article Writer GPT` instead of changing the model inside the primary writer.
 - Technical writer/validator failures must not be labeled as owner decisions.
 
+## CMO Blog Scope Rule
+
+When the owner asks to write, create, generate, or prepare a new blog article, CMO must not reinterpret the request as importing an already accepted or already written package unless the owner explicitly approves that substitution.
+
+For a new blog article request, CMO keeps the parent issue open until the requested chain is complete: topic selection, new article drafting, validation, new cover image generation, Payload CMS draft creation, and Telegram notification with the draft or admin URL. CTO may own only the technical CMS/media/Telegram implementation step.
+
+Existing accepted article packages may still be imported as additional CMS operations, but that does not satisfy a request for a new article.
+
 ## Canonical Artifact Rule
 
 Stage 59 article writer issues may be marked `done` only when a verified non-empty canonical markdown file exists under:
