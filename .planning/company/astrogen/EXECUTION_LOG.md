@@ -467,3 +467,24 @@
 - Created delivery issue [AST-791](/AST/issues/AST-791), attached nine artifacts: three markdown files, three HTML files, and three hero images.
 - Sent the article packages to Telegram as one short summary message plus three media groups, one per article. Telegram message ids: `569`, `570-572`, `573-575`, and `576-578`.
 - Added an audit comment on [AST-791](/AST/issues/AST-791). The delivery used the Astrogen Telegram bot secret from Paperclip Secrets; no plaintext token was printed or stored in Git.
+
+## 2026-05-20
+
+- Deployed the new bundled `paperclip.payload-cms-agent-tools` plugin to live Paperclip on `ubuntu-oc`.
+- Built and switched production to Docker image `paperclip-app:v2026.513.3-payload-cms-20260520`.
+- Stored the Astrogen Payload CMS API key in Paperclip Secrets as `Astrogen Payload CMS API Key`; plugin config stores only the secret UUID and CMS collection slugs.
+- Installed and loaded plugin record `paperclip.payload-cms-agent-tools` from `/app/packages/plugins/plugin-payload-cms-agent-tools`.
+- Plugin loader registered 9 tools:
+  - `payload_cms_health_check`;
+  - `payload_cms_get_build_state`;
+  - `payload_cms_get_access`;
+  - `payload_cms_find_blog_post`;
+  - `payload_cms_list_taxonomy`;
+  - `payload_cms_upload_media`;
+  - `payload_cms_create_blog_post_draft`;
+  - `payload_cms_update_blog_post_draft`;
+  - `payload_cms_publish_blog_post`.
+- Smoke-tested live agent tool execution through `/api/agents/me/plugin-tools/execute`:
+  - `payload_cms_get_build_state` returned `HTTP 200`, `lastBuildStatus=queued`, `buildInProgress=false`;
+  - `payload_cms_health_check` returned `HTTP 200` and confirmed read access to `buildState`, access metadata, and create/read/update access for `blogPosts`, `media`, `authors`, `categories`, `tags`, and `redirects`.
+- Noted production schema drift in `company_secrets`: live DB includes extra not-null secret metadata columns that are not represented in the current source helper. For this deployment, the Payload key was inserted/rotated through a compatibility SQL path using the same local-encrypted provider; follow-up should reconcile the source schema/service with the live secret schema before relying on the generic secret helper for new secret creation.
