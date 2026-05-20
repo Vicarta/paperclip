@@ -407,6 +407,13 @@
       "when": 1778529600000,
       "tag": "0057_semantic_core_review_group_decisions",
       "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1779278400000,
+      "tag": "0058_secret_schema_reconciliation",
+      "breakpoints": true
     }
   ]
 }

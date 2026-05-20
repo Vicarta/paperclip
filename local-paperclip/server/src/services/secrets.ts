@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, ne } from "drizzle-orm";
 import type { Db } from "@paperclipai/db";
 import { companySecrets, companySecretVersions } from "@paperclipai/db";
 import type { AgentEnvConfig, EnvBinding, SecretProvider } from "@paperclipai/shared";
@@ -22,6 +22,15 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 
 function isSensitiveEnvKey(key: string) {
   return SENSITIVE_ENV_KEY_RE.test(key);
+}
+
+function normalizeSecretKey(input: string) {
+  return input
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_.-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 120);
 }
 
 function canonicalizeBinding(binding: EnvBinding): CanonicalEnvBinding {
@@ -51,7 +60,11 @@ export function secretService(db: Db) {
     return db
       .select()
       .from(companySecrets)
-      .where(and(eq(companySecrets.companyId, companyId), eq(companySecrets.name, name)))
+      .where(and(
+        eq(companySecrets.companyId, companyId),
+        eq(companySecrets.name, name),
+        ne(companySecrets.status, "deleted"),
+      ))
       .then((rows) => rows[0] ?? null);
   }
 
@@ -71,6 +84,7 @@ export function secretService(db: Db) {
   async function assertSecretInCompany(companyId: string, secretId: string) {
     const secret = await getById(secretId);
     if (!secret) throw notFound("Secret not found");
+    if (secret.status === "deleted") throw notFound("Secret not found");
     if (secret.companyId !== companyId) throw unprocessable("Secret must belong to same company");
     return secret;
   }
@@ -84,11 +98,21 @@ export function secretService(db: Db) {
     const resolvedVersion = version === "latest" ? secret.latestVersion : version;
     const versionRow = await getSecretVersion(secret.id, resolvedVersion);
     if (!versionRow) throw notFound("Secret version not found");
+    if (secret.status !== "active") throw unprocessable("Secret is not active");
+    if (versionRow.status === "disabled" || versionRow.status === "destroyed" || versionRow.revokedAt) {
+      throw unprocessable("Secret version is not active");
+    }
     const provider = getSecretProvider(secret.provider as SecretProvider);
-    return provider.resolveVersion({
+    const value = await provider.resolveVersion({
       material: versionRow.material as Record<string, unknown>,
       externalRef: secret.externalRef,
     });
+    await db
+      .update(companySecrets)
+      .set({ lastResolvedAt: new Date(), updatedAt: new Date() })
+      .where(eq(companySecrets.id, secret.id))
+      .catch(() => undefined);
+    return value;
   }
 
   async function normalizeEnvConfig(
@@ -167,6 +191,7 @@ export function secretService(db: Db) {
         name: string;
         provider: SecretProvider;
         value: string;
+        key?: string | null;
         description?: string | null;
         externalRef?: string | null;
       },
@@ -174,6 +199,18 @@ export function secretService(db: Db) {
     ) => {
       const existing = await getByName(companyId, input.name);
       if (existing) throw conflict(`Secret already exists: ${input.name}`);
+      const key = normalizeSecretKey(input.key ?? input.name);
+      if (!key) throw unprocessable("Secret key is required");
+      const duplicateKey = await db
+        .select()
+        .from(companySecrets)
+        .where(and(
+          eq(companySecrets.companyId, companyId),
+          eq(companySecrets.key, key),
+          ne(companySecrets.status, "deleted"),
+        ))
+        .then((rows) => rows[0] ?? null);
+      if (duplicateKey) throw conflict(`Secret key already exists: ${key}`);
 
       const provider = getSecretProvider(input.provider);
       const prepared = await provider.createVersion({
@@ -186,11 +223,15 @@ export function secretService(db: Db) {
           .insert(companySecrets)
           .values({
             companyId,
+            key,
             name: input.name,
             provider: input.provider,
+            status: "active",
+            managedMode: "paperclip_managed",
             externalRef: prepared.externalRef,
             latestVersion: 1,
             description: input.description ?? null,
+            lastRotatedAt: new Date(),
             createdByAgentId: actor?.agentId ?? null,
             createdByUserId: actor?.userId ?? null,
           })
@@ -202,6 +243,8 @@ export function secretService(db: Db) {
           version: 1,
           material: prepared.material,
           valueSha256: prepared.valueSha256,
+          fingerprintSha256: prepared.valueSha256,
+          status: "current",
           createdByAgentId: actor?.agentId ?? null,
           createdByUserId: actor?.userId ?? null,
         });
@@ -217,6 +260,7 @@ export function secretService(db: Db) {
     ) => {
       const secret = await getById(secretId);
       if (!secret) throw notFound("Secret not found");
+      if (secret.status !== "active") throw unprocessable("Cannot rotate a non-active secret");
       const provider = getSecretProvider(secret.provider as SecretProvider);
       const nextVersion = secret.latestVersion + 1;
       const prepared = await provider.createVersion({
@@ -230,15 +274,26 @@ export function secretService(db: Db) {
           version: nextVersion,
           material: prepared.material,
           valueSha256: prepared.valueSha256,
+          fingerprintSha256: prepared.valueSha256,
+          status: "current",
           createdByAgentId: actor?.agentId ?? null,
           createdByUserId: actor?.userId ?? null,
         });
+
+        await tx
+          .update(companySecretVersions)
+          .set({ status: "previous" })
+          .where(and(
+            eq(companySecretVersions.secretId, secret.id),
+            ne(companySecretVersions.version, nextVersion),
+          ));
 
         const updated = await tx
           .update(companySecrets)
           .set({
             latestVersion: nextVersion,
             externalRef: prepared.externalRef,
+            lastRotatedAt: new Date(),
             updatedAt: new Date(),
           })
           .where(eq(companySecrets.id, secret.id))
