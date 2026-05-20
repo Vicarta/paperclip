@@ -39,6 +39,12 @@ Behavior after the patch:
   for owner approval gates, article briefing, article draft, and article
   validation issues. This prevents messages such as `HIA: owner approval gate
   for Stage 55...` and `Stage 55 briefing...` from reaching Telegram.
+- 2026-05-20 update: the article-draft classifier no longer matches the bare
+  word `draft`. Payload CMS tasks can legitimately say `CMS state: draft` while
+  being about cover images or other CMS metadata, not article drafting. The live
+  formatter now routes `Payload`, `CMS`, `coverImage`, `cover image`,
+  `hero image`, `media asset`, and `blog post` completions to the human-facing
+  subject `Оновлення статті в CMS`.
 - `worker.js` enriches issue-done events from `ctx.companies.get(...)` and
   `ctx.issues.get(...)` so the formatter has `companyName` and `projectName`.
 
@@ -67,3 +73,16 @@ Deployment note:
   patched `dist` files.
 - When the Telegram plugin source is moved into the main repo, port this
   hotfix into source and remove this operational override.
+
+Regression smoke for the 2026-05-20 CMS fix:
+
+```text
+Input: title "Fast-track Payload CMS cover image update...", comment includes
+"Фінальний CMS state: draft" and "coverImage".
+
+Expected Telegram topic:
+Тема: Оновлення статті в CMS
+
+Must not send:
+Тема: Чернетки статей
+```

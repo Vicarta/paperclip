@@ -39,6 +39,7 @@ Expected status: Astrogen-required plugins `ready`. Optional legacy connector re
 - Telegram issue lifecycle notifications must have one path: `paperclip-plugin-telegram`.
 - Telegram issue-done messages must be human-facing Ukrainian operator text. They must not expose internal stage labels such as `HIA`, `Stage 55`, `Wave`, raw agent lane names, artifact paths, or fallback summaries like `Задачу ... завершено`.
 - Issue-done messages should use short fields: `Тема`, `Що сталося`, and `Далі`. The `Далі` line must say whether the owner needs to act now.
+- Telegram article-draft classification must not match the bare word `draft`. `CMS state: draft`, Payload drafts, cover image updates, media uploads, and `coverImage` updates are CMS operations, not Stage 59 article-draft completion.
 - Article package delivery is separate from noisy issue lifecycle notifications: a delivery issue may attach markdown, HTML, and image artifacts and send a concise Telegram package summary. Source-controlled plugin package `paperclip-plugin-telegram@0.3.1-paperclip.0` owns `delivery_groups`; production must deploy that package before direct operator Bot API delivery is considered retired.
 - `telegram-daily-digest` must remain absent unless deliberately reintroduced with a new product decision.
 - DataForSEO and Semantic Core MCP cost attribution uses `costs.write` and `ctx.costs.createEvent(...)`; this is not replaced by `metrics.write`.
