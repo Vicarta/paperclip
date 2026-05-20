@@ -63,7 +63,7 @@ Human-facing Astrogen communication remains Ukrainian and should not expose inte
 - [ ] **SEO Monitoring Loop** - Connect GSC/rank/SERP monitoring, article registry, thresholds, and post-publication decision logic on top of the shared `seo_ops` model.
 - [ ] **Human Interaction And Telegram Quality** - Keep Telegram/HIA messages short, Ukrainian, human-readable, and action-oriented.
 - [ ] **Strategic Growth Review Layer** - Use Product Discovery outputs to generate human-reviewable growth strategy options before execution on new/free products and routes.
-- [ ] **Publication And CMS Integration** - Pause until CMS selection is clear, then add publication adapter and content deployment workflow.
+- [ ] **Publication And CMS Integration** - Payload CMS is selected. Source implementation has started with a secret-backed Payload CMS agent-tools plugin for build-state checks, taxonomy lookup, media upload, blog draft create/update, guarded publish, and later production cutover into the article workflow.
 
 ## Current Next Step
 

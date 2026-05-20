@@ -1,5 +1,14 @@
 # Execution Log: Astrogen
 
+## 2026-05-20
+
+- Started Payload CMS publication adapter implementation after Astrogen blog moved under Payload CMS:
+  - added source package `@paperclipai/plugin-payload-cms-agent-tools`;
+  - implemented secret-backed API-key configuration for `https://cms.astrogen.com.ua/api`;
+  - added agent tools for build-state/access checks, blog post lookup, taxonomy lookup, media upload, draft create/update, and guarded publish;
+  - added conservative Markdown-to-Lexical conversion for draft creation while allowing pass-through Payload Lexical JSON;
+  - verified Payload service user access locally with the API key file outside Git: `buildState` returned 200 and `/api/access` showed publisher access for media, authors, categories, tags, blogPosts, redirects, agentActions, buildEvents, and buildState.
+
 ## 2026-05-19
 
 - Delivered four existing Stage 65 Astrogen blog cover images to Telegram without article texts:

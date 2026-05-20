@@ -59,7 +59,7 @@
 
 - `AST-INT-01`: MCP/GSC/Semantic Core tokens must remain server-side secrets.
 - `AST-INT-02`: Paperclip plugins may be shared, but Astrogen enablement must be verified in Astrogen company context.
-- `AST-INT-03`: CMS adapter work remains paused until the CMS is selected.
+- `AST-INT-03`: Astrogen CMS integration targets Payload CMS at `https://cms.astrogen.com.ua/api`. Paperclip must use a secret-backed service user API key, create/update drafts by default, upload media through Payload media APIs, and require explicit human approval before direct publish actions.
 - `AST-INT-04`: Live Astrogen plugins should use the current Paperclip plugin contract rather than long-lived compatibility bridges, unless a bridge has an explicit owner and expiry condition.
 - `AST-INT-05`: Provider, notification, portal, and MCP credentials should be migrated to Paperclip Secrets/provider-vault records where supported, with auditability and without plaintext values in Git, planning docs, issue comments, Telegram, or logs.
 
