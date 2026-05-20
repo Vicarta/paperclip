@@ -6,6 +6,7 @@ export type SerperPluginConfig = {
   costAccountingMode?: "disabled" | "estimated_per_request";
   estimatedSearchCostUsd?: number;
   estimatedNewsCostUsd?: number;
+  flatCostUsdPerSearch?: number;
 };
 
 export type SerperSearchParams = {

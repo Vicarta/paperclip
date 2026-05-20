@@ -96,6 +96,42 @@ describe("plugin-serper-agent-tools", () => {
     });
   });
 
+  it("accumulates legacy sub-cent flat Serper search costs before writing a cent", async () => {
+    const harness = createTestHarness({
+      manifest,
+      config: {
+        serperApiKeySecretRef: "secret-1",
+        flatCostUsdPerSearch: 0.001,
+      },
+    });
+    await plugin.definition.setup(harness.ctx);
+
+    searchSerperMock.mockResolvedValue({
+      content: "Serper web search results",
+      data: { organic: [{ title: "Example" }] },
+    });
+
+    for (let index = 0; index < 10; index += 1) {
+      await harness.executeTool(
+        TOOL_NAMES.googleSearch,
+        { q: `китайський гороскоп ${index}` },
+        {
+          companyId: "company-serper",
+          projectId: "11111111-1111-1111-1111-111111111111",
+          agentId: "22222222-2222-2222-2222-222222222222",
+          runId: "33333333-3333-3333-3333-333333333333",
+        },
+      );
+    }
+
+    expect(harness.costs).toHaveLength(1);
+    expect(harness.costs[0]).toMatchObject({
+      provider: "serper.dev",
+      billingCode: "serper:google-search:search",
+      costCents: 1,
+    });
+  });
+
   it("does not emit cost when Serper call fails", async () => {
     const harness = createTestHarness({
       manifest,

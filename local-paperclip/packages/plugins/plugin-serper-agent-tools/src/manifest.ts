@@ -24,6 +24,8 @@ const manifest: PaperclipPluginManifestV1 = {
     "agent.tools.register",
     "instance.settings.register",
     "costs.write",
+    "plugin.state.read",
+    "plugin.state.write",
   ],
   entrypoints: {
     worker: "./dist/worker.js",

@@ -22,21 +22,59 @@ async function getConfig(
   return (await ctx.config.get()) as SerperPluginConfig;
 }
 
-function usdToCents(amountUsd: unknown) {
-  if (typeof amountUsd !== "number" || !Number.isFinite(amountUsd) || amountUsd <= 0) {
-    return 0;
-  }
-  return Math.max(0, Math.round(amountUsd * 100));
+function readPositiveNumber(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : 0;
 }
 
-function resolveEstimatedCostCents(config: SerperPluginConfig, params: SerperSearchParams) {
-  if (config.costAccountingMode !== "estimated_per_request") return 0;
+function readRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+}
+
+function resolveEstimatedCostUsd(config: SerperPluginConfig, params: SerperSearchParams) {
   const type = params.type === "news" ? "news" : "search";
-  return usdToCents(
-    type === "news"
-      ? config.estimatedNewsCostUsd
-      : config.estimatedSearchCostUsd,
+  if (config.costAccountingMode === "estimated_per_request") {
+    return type === "news"
+      ? readPositiveNumber(config.estimatedNewsCostUsd)
+      : readPositiveNumber(config.estimatedSearchCostUsd);
+  }
+  if (type === "search") return readPositiveNumber(config.flatCostUsdPerSearch);
+  return 0;
+}
+
+async function allocateEstimatedCostCents(input: {
+  ctx: Parameters<Parameters<typeof definePlugin>[0]["setup"]>[0];
+  stateKey: string;
+  amountUsd: number;
+}) {
+  const exactCents = input.amountUsd * 100;
+  if (!Number.isFinite(exactCents) || exactCents <= 0) return 0;
+
+  const stateKey = `fractional-cents:${input.stateKey}`;
+  const previous = readRecord(await input.ctx.state.get({
+    scopeKind: "instance",
+    namespace: "cost-accounting",
+    stateKey,
+  }));
+  const previousFractionalCents = readPositiveNumber(previous.fractionalCents);
+  const totalCents = previousFractionalCents + exactCents;
+  const wholeCents = Math.floor(totalCents + Number.EPSILON);
+  const fractionalCents = Math.max(0, totalCents - wholeCents);
+
+  await input.ctx.state.set(
+    {
+      scopeKind: "instance",
+      namespace: "cost-accounting",
+      stateKey,
+    },
+    {
+      fractionalCents,
+      updatedAt: new Date().toISOString(),
+    },
   );
+
+  return wholeCents;
 }
 
 async function emitSerperCost(input: {
@@ -45,10 +83,15 @@ async function emitSerperCost(input: {
   config: SerperPluginConfig;
   params: SerperSearchParams;
 }) {
-  const costCents = resolveEstimatedCostCents(input.config, input.params);
+  const type = input.params.type === "news" ? "news" : "search";
+  const amountUsd = resolveEstimatedCostUsd(input.config, input.params);
+  const costCents = await allocateEstimatedCostCents({
+    ctx: input.ctx,
+    stateKey: `${TOOL_NAMES.googleSearch}:${type}`,
+    amountUsd,
+  });
   if (costCents <= 0) return;
 
-  const type = input.params.type === "news" ? "news" : "search";
   await input.ctx.costs.createEvent({
     companyId: input.runCtx.companyId,
     agentId: input.runCtx.agentId,
