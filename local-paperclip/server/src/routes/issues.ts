@@ -52,6 +52,8 @@ const MAX_ISSUE_COMMENT_LIMIT = 500;
 const updateIssueRouteSchema = updateIssueSchema.extend({
   interrupt: z.boolean().optional(),
 });
+const CHILD_STATUS_PARENT_WAKEUP_STATUSES = new Set(["done", "blocked", "in_review"]);
+const PARENT_MANAGER_WAKEUP_STATUSES = new Set(["todo", "in_progress", "in_review", "blocked"]);
 
 export function issueRoutes(
   db: Db,
@@ -1263,6 +1265,10 @@ export function issueRoutes(
       existing.status === "backlog" &&
       issue.status !== "backlog" &&
       req.body.status !== undefined;
+    const childStatusNeedsParentReview =
+      existing.status !== issue.status &&
+      CHILD_STATUS_PARENT_WAKEUP_STATUSES.has(issue.status) &&
+      !!issue.parentId;
 
     // Merge all wakeups from this update into one enqueue per agent to avoid duplicate runs.
     void (async () => {
@@ -1306,6 +1312,48 @@ export function issueRoutes(
             ...(interruptedRunId ? { interruptedRunId } : {}),
           },
         });
+      }
+
+      if (childStatusNeedsParentReview && issue.parentId) {
+        try {
+          const parentIssue = await svc.getById(issue.parentId);
+          if (
+            parentIssue?.assigneeAgentId &&
+            parentIssue.companyId === issue.companyId &&
+            PARENT_MANAGER_WAKEUP_STATUSES.has(parentIssue.status) &&
+            !wakeups.has(parentIssue.assigneeAgentId)
+          ) {
+            wakeups.set(parentIssue.assigneeAgentId, {
+              source: "automation",
+              triggerDetail: "system",
+              reason: "child_issue_needs_parent_review",
+              payload: {
+                issueId: parentIssue.id,
+                parentIssueId: parentIssue.id,
+                parentIdentifier: parentIssue.identifier,
+                childIssueId: issue.id,
+                childIdentifier: issue.identifier,
+                childStatus: issue.status,
+                mutation: "child_status_change",
+              },
+              requestedByActorType: actor.actorType,
+              requestedByActorId: actor.actorId,
+              contextSnapshot: {
+                issueId: parentIssue.id,
+                taskId: parentIssue.id,
+                parentIssueId: parentIssue.id,
+                parentIdentifier: parentIssue.identifier,
+                childIssueId: issue.id,
+                childIdentifier: issue.identifier,
+                childStatus: issue.status,
+                source: "issue.child_status_change",
+                wakeReason: "child_issue_needs_parent_review",
+              },
+            });
+          }
+        } catch (err) {
+          logger.warn({ err, issueId: issue.id, parentId: issue.parentId }, "failed to resolve parent issue for wakeup");
+        }
       }
 
       if (commentBody && comment) {

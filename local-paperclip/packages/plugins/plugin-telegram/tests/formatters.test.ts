@@ -105,6 +105,31 @@ describe("formatIssueDone", () => {
     const lines = msg.text.split("\n").filter((l: string) => l.trim());
     expect(lines.length).toBe(2);
   });
+
+  it("uses a CMS draft-ready message with a direct draft button", () => {
+    const draftUrl = "https://cms.astrogen.com.ua/admin/collections/blogPosts/38";
+    const msg = formatIssueDone(
+      mockEvent({
+        companyName: "Astrogen",
+        title: "Що робити, якщо точний час народження дитини невідомий",
+        comment: [
+          "Payload CMS draft ready.",
+          "CMS state: draft.",
+          "Cover image uploaded and coverImage set.",
+          `Draft/admin URL: ${draftUrl}`,
+        ].join("\n"),
+      }),
+      { baseUrl: "https://paperclip.example", issuePrefix: "AST" },
+    );
+
+    expect(msg.text).toContain("Чернетка готова");
+    expect(msg.text).toContain("Статтю створено в CMS як чернетку");
+    expect(msg.text).toContain("Cover\\-зображення додано");
+    expect(msg.text).toContain("https://cms\\.astrogen\\.com\\.ua/admin/collections/blogPosts/38");
+    expect(msg.text).not.toContain("Що зроблено");
+    expect(msg.options.inlineKeyboard?.[0]?.[0]).toEqual({ text: "Відкрити чернетку", url: draftUrl });
+    expect(msg.options.inlineKeyboard?.[1]?.[0]?.text).toBe("Відкрити задачу");
+  });
 });
 
 describe("formatIssueAssigned", () => {

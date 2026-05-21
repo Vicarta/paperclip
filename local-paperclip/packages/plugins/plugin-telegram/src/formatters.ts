@@ -42,6 +42,21 @@ function issueButton(identifier: string, opts?: IssueLinksOpts): { text: string;
   return null;
 }
 
+function extractPayloadDraftUrl(comment: string | null): string | null {
+  if (!comment) return null;
+  const match = comment.match(/https:\/\/cms\.astrogen\.com\.ua\/admin\/collections\/blogPosts\/[A-Za-z0-9_-]+/);
+  return match?.[0] ?? null;
+}
+
+function isPayloadDraftReadyComment(comment: string | null): boolean {
+  if (!comment) return false;
+  return (
+    /(?:payload|cms).*draft/i.test(comment) &&
+    /(?:cover|coverImage|зображення|image)/i.test(comment) &&
+    /https:\/\/cms\.astrogen\.com\.ua\/admin\/collections\/blogPosts\//.test(comment)
+  );
+}
+
 function agentButton(agentId: string, label: string, publicUrl?: string): { text: string; url: string } | null {
   if (publicUrl && isExternalUrl(publicUrl)) {
     return { text: label, url: `${publicUrl}/agents/${agentId}` };
@@ -137,6 +152,25 @@ export function formatIssueDone(event: PluginEvent, opts?: IssueLinksOpts): Form
   const title = String(p.title ?? "");
   const comment = p.comment ? String(p.comment) : null;
   const companyName = p.companyName ? String(p.companyName) : null;
+  const draftUrl = extractPayloadDraftUrl(comment);
+
+  if (draftUrl && isPayloadDraftReadyComment(comment)) {
+    const lines: string[] = [`${esc("✅")} ${bold("Чернетка готова")}`];
+    if (companyName) lines.push(`${bold("Компанія")}: ${esc(companyName)}`);
+    if (title) lines.push(`${bold("Стаття")}: ${esc(title)}`);
+    lines.push(esc("Статтю створено в CMS як чернетку. Cover-зображення додано."));
+    lines.push(`${bold("Чернетка")}: ${esc(draftUrl)}`);
+
+    const buttons = [{ text: "Відкрити чернетку", url: draftUrl }];
+    const issue = issueButton(identifier, opts);
+    return {
+      text: lines.join("\n"),
+      options: {
+        parseMode: "MarkdownV2",
+        inlineKeyboard: issue ? [buttons, [issue]] : [buttons],
+      },
+    };
+  }
 
   const lines: string[] = [`${esc("✅")} ${bold("Готово")}: ${issueLink(identifier, opts)}`];
   if (companyName) lines.push(`${bold("Компанія")}: ${esc(companyName)}`);

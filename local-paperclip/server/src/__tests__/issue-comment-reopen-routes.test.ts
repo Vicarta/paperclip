@@ -79,7 +79,7 @@ function createApp() {
   return app;
 }
 
-function makeIssue(status: "todo" | "done") {
+function makeIssue(status: "todo" | "done" | "in_progress" | "in_review" | "blocked", overrides: Record<string, unknown> = {}) {
   return {
     id: "11111111-1111-4111-8111-111111111111",
     companyId: "company-1",
@@ -89,6 +89,8 @@ function makeIssue(status: "todo" | "done") {
     createdByUserId: "local-board",
     identifier: "PAP-580",
     title: "Comment reopen default",
+    parentId: null,
+    ...overrides,
   };
 }
 
@@ -201,5 +203,63 @@ describe("issue comment reopen routes", () => {
         }),
       }),
     );
+  });
+
+  it("wakes the parent manager when a child issue is done", async () => {
+    const childId = "11111111-1111-4111-8111-111111111111";
+    const parentId = "33333333-3333-4333-8333-333333333333";
+    const parentAgentId = "44444444-4444-4444-8444-444444444444";
+    const existingChild = makeIssue("in_progress", {
+      id: childId,
+      identifier: "PAP-581",
+      parentId,
+      assigneeAgentId: "22222222-2222-4222-8222-222222222222",
+    });
+    const updatedChild = makeIssue("done", {
+      id: childId,
+      identifier: "PAP-581",
+      parentId,
+      assigneeAgentId: "22222222-2222-4222-8222-222222222222",
+    });
+    const parentIssue = makeIssue("in_progress", {
+      id: parentId,
+      identifier: "PAP-500",
+      parentId: null,
+      assigneeAgentId: parentAgentId,
+      title: "Parent manager issue",
+    });
+
+    mockIssueService.getById.mockImplementation(async (id: string) => {
+      if (id === childId) return existingChild;
+      if (id === parentId) return parentIssue;
+      return null;
+    });
+    mockIssueService.update.mockResolvedValue(updatedChild);
+
+    const res = await request(createApp()).patch(`/api/issues/${childId}`).send({ status: "done" });
+
+    expect(res.status).toBe(200);
+    await vi.waitFor(() => {
+      expect(mockHeartbeatService.wakeup).toHaveBeenCalledWith(
+        parentAgentId,
+        expect.objectContaining({
+          source: "automation",
+          triggerDetail: "system",
+          reason: "child_issue_needs_parent_review",
+          payload: expect.objectContaining({
+            issueId: parentId,
+            parentIssueId: parentId,
+            childIssueId: childId,
+            childStatus: "done",
+          }),
+          contextSnapshot: expect.objectContaining({
+            issueId: parentId,
+            taskId: parentId,
+            childIssueId: childId,
+            wakeReason: "child_issue_needs_parent_review",
+          }),
+        }),
+      );
+    });
   });
 });
