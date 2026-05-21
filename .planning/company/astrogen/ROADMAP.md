@@ -32,6 +32,7 @@ Human-facing Astrogen communication remains Ukrainian and should not expose inte
 - Telegram issue lifecycle notifications now have one canonical path: the Telegram plugin. The previous server-side issue-done sender is disabled, the old daily digest job is removed, and completion messages use the Astrogen HIA style rule: short Ukrainian text, no long technical explanation in chat, and no repeated long caption when an attachment is sent.
 - Phase 22 source implementation is ready for production cutover: `notification-contract` supports `delivery_groups`, plugin SDK exposes gated issue attachment reads, and `paperclip-plugin-telegram@0.3.1-paperclip.0` sends grouped issue attachments as Telegram documents with idempotency and audit comments. Production still needs a normal app/plugin image cutover before this replaces the temporary operator-side delivery path.
 - Phase 18 added `ops/paperclip-production/` as the sanitized Git source of truth for production compose shape, plugin/job/secret-reference manifests, and live drift export. Plaintext secrets and generated live exports remain excluded from Git.
+- Phase 23 is introducing a blog layout layer: validated articles now move through layout editing and layout/schema validation before Payload CMS draft delivery. Payload CMS blog text must use `articleContent.v1`, not raw Lexical, markdown, or arbitrary HTML.
 
 ## Completed
 
@@ -55,6 +56,7 @@ Human-facing Astrogen communication remains Ukrainian and should not expose inte
 - [x] **Phase 18: Production Config Source Of Truth** - Added sanitized production templates/manifests under `ops/paperclip-production/` and a live export script for drift review without secret material.
 - [x] **Phase 20: Article Writer Fallback And Cost-Controlled Recovery** - Added `SEO Blog Article Writer GPT`, structured validator blocker classes, CMO fallback routing after repeated same-class failures, canonical artifact verification for writers, and a strict no-passive-monitoring-after-three-checks rule. Routine LLM heartbeat is now enabled only for CEO, CMO, and CTO.
 - [x] **Telegram Notification Style Fix** - Done-message summaries are capped and rewritten into short Ukrainian operator text; document captions no longer duplicate the full completion summary. Telegram issue lifecycle delivery now goes through one path: the Telegram plugin.
+- [ ] **Phase 23: Blog Article Layout Pipeline** - Add `articleContent.v1` Payload CMS tool validation, `SEO Blog Article Layout Editor`, `SEO Blog Article Layout Validator`, and update the Chinese horoscope draft through the new layout pipeline.
 
 ## Deferred / Future Tracks
 
@@ -67,13 +69,14 @@ Human-facing Astrogen communication remains Ukrainian and should not expose inte
 
 ## Current Next Step
 
-Next owner-facing step: editorial review of the three delivered Wave 1 article packages. After the owner manually publishes an article on the site, Phase 19 connects publication back into the page registry:
+Next owner-facing step: run Phase 23 on the Chinese horoscope draft so the CMS draft has meaningful visual rhythm through `articleContent.v1` blocks before editorial review/publication. After the owner manually publishes an article on the site, Phase 19 connects publication back into the page registry:
 
 ```text
 approved article briefs
 -> article drafts
 -> Stage 64 markdown/HTML package
 -> Stage 65 hero image package
+-> articleContent.v1 layout package
 -> Telegram editorial delivery
 -> human manual publication
 -> sitemap discovery

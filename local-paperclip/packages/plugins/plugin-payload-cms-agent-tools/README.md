@@ -33,19 +33,27 @@ the plaintext key.
 
 ## Content Input
 
-For `createBlogPostDraft` and `updateBlogPostDraft`, agents can pass either:
+For `createBlogPostDraft` and `updateBlogPostDraft`, agents must pass article
+text as `articleContent` with `schemaVersion: "articleContent.v1"`.
 
-- `content`: Payload Lexical JSON, passed through as-is;
-- `markdown`: simple Markdown converted into a conservative Lexical document.
+The plugin rejects raw Payload Lexical JSON, markdown, raw HTML, inline styles,
+CSS classes, unsupported block types, and unsafe CTA URLs. Payload CMS performs
+the final conversion from `articleContent.v1` into its visual Lexical content.
 
-The Markdown converter intentionally supports only safe common structure:
-headings, paragraphs, ordered lists, and unordered lists. More complex content
-should be passed as Payload-ready `content`.
+Allowed `articleContent.v1` block types:
+
+- `paragraph`
+- `heading` (`h2`, `h3`, `h4`)
+- `list`
+- `editorialCallout` (`soft`, `brand`, `situation`)
+- `twoColumnText` (`text`, `list`)
+- `quietCta`
 
 ## Safety
 
 - Draft creation defaults to `_status: "draft"`.
 - Updating a post also writes `_status: "draft"`.
+- Draft creation and updates also force `workflowStatus: "draft"`.
 - Publishing requires the separate `payload_cms_publish_blog_post` tool with
   `confirmPublish=true`.
 - The plugin does not delete CMS content.

@@ -75,7 +75,13 @@ describe("plugin-payload-cms-agent-tools", () => {
     await harness.executeTool(TOOL_NAMES.createBlogPostDraft, {
       title: "Натальна карта: що це таке",
       slug: "natalna-karta-shcho-tse-take",
-      markdown: "# Натальна карта\n\nТекст статті.",
+      articleContent: {
+        schemaVersion: "articleContent.v1",
+        blocks: [
+          { type: "heading", level: "h2", text: "Натальна карта" },
+          { type: "paragraph", text: "Текст статті." },
+        ],
+      },
       category: 1,
     });
 
@@ -83,7 +89,9 @@ describe("plugin-payload-cms-agent-tools", () => {
       expect.objectContaining({
         title: "Натальна карта: що це таке",
         slug: "natalna-karta-shcho-tse-take",
-        markdown: "# Натальна карта\n\nТекст статті.",
+        articleContent: expect.objectContaining({
+          schemaVersion: "articleContent.v1",
+        }),
       }),
     );
   });
@@ -122,7 +130,19 @@ describe("Payload CMS content helpers", () => {
   it("builds draft payloads by default", () => {
     const payload = buildBlogPostPayload({
       title: "Article",
-      markdown: "Intro",
+      articleContent: {
+        schemaVersion: "articleContent.v1",
+        blocks: [
+          { type: "paragraph", text: "Intro" },
+          {
+            type: "quietCta",
+            title: "Потрібен індивідуальний погляд?",
+            text: "Можна перейти до підбору експерта.",
+            linkLabel: "Підібрати експерта",
+            linkUrl: "/experts",
+          },
+        ],
+      },
       coverImage: 49,
       extraFields: { createdBy: 1 },
     });
@@ -131,7 +151,54 @@ describe("Payload CMS content helpers", () => {
       coverImage: 49,
       createdBy: 1,
       _status: "draft",
+      workflowStatus: "draft",
     });
-    expect(payload.content).toBeTruthy();
+    expect(payload.articleContent).toMatchObject({
+      schemaVersion: "articleContent.v1",
+      blocks: [
+        { type: "paragraph", text: "Intro" },
+        { type: "quietCta", linkUrl: "/experts" },
+      ],
+    });
+    expect(payload.content).toBeUndefined();
+  });
+
+  it("rejects legacy markdown or raw Lexical content for blog text", () => {
+    expect(() => buildBlogPostPayload({ title: "Article", markdown: "Intro" } as any)).toThrow(
+      /articleContent\.v1/,
+    );
+    expect(() => buildBlogPostPayload({ title: "Article", content: { root: {} } } as any)).toThrow(
+      /articleContent\.v1/,
+    );
+  });
+
+  it("rejects unsafe articleContent blocks", () => {
+    expect(() =>
+      buildBlogPostPayload({
+        title: "Article",
+        articleContent: {
+          schemaVersion: "articleContent.v1",
+          blocks: [{ type: "paragraph", text: "<strong>HTML тут не буде форматуванням</strong>" }],
+        },
+      }),
+    ).toThrow(/plain text/);
+
+    expect(() =>
+      buildBlogPostPayload({
+        title: "Article",
+        articleContent: {
+          schemaVersion: "articleContent.v1",
+          blocks: [
+            {
+              type: "quietCta",
+              title: "CTA",
+              text: "Text",
+              linkLabel: "Open",
+              linkUrl: "javascript:alert(1)",
+            },
+          ],
+        },
+      }),
+    ).toThrow(/internal path or HTTPS URL/);
   });
 });

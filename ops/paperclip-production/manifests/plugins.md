@@ -51,3 +51,4 @@ Expected status: Astrogen-required plugins `ready`. Optional legacy connector re
 - DataForSEO and Semantic Core MCP cost attribution uses `costs.write` and `ctx.costs.createEvent(...)`; this is not replaced by `metrics.write`.
 - Shared MCP/provider plugins must not be switched to company-specific secrets through global instance config without company-aware secret resolution.
 - Payload CMS publish remains guarded: agents may create/update drafts by default; publishing requires the explicit `payload_cms_publish_blog_post` tool with `confirmPublish=true`.
+- Payload CMS blog text must be sent as `articleContent.v1`. Agents must not send raw Lexical JSON, markdown, raw HTML, inline styles, CSS classes, unsupported article blocks, or unsafe CTA URLs to the blog post create/update tools.

@@ -21,6 +21,8 @@ All specialist agents should remain `wakeOnDemand=true` with `heartbeat.enabled=
 | --- | --- | --- |
 | `SEO Blog Article Writer (Claude)` | `openrouter` / `anthropic/claude-sonnet-4.6` | Primary first-pass SEO blog article author. |
 | `SEO Blog Article Writer (ChatGPT)` | `codex_local` / `gpt-5.4` | Fallback/rescue author for repeated same-class validation failures, protocol/runtime failures, or missing canonical artifacts. |
+| `SEO Blog Article Layout Editor` | `codex_local` / `gpt-5.4` | Converts validated article drafts into `articleContent.v1` with meaningful editorial blocks and calm CTA placement. |
+| `SEO Blog Article Layout Validator` | `codex_local` / `gpt-5.4` | Validates `articleContent.v1` schema, visual rhythm, CTA safety, SEO-lock preservation, and absence of raw HTML/Lexical/CSS. |
 
 Primary OpenRouter writer runtime policy:
 
@@ -42,9 +44,33 @@ Primary OpenRouter writer runtime policy:
 
 When the owner asks to write, create, generate, or prepare a new blog article, CMO must not reinterpret the request as importing an already accepted or already written package unless the owner explicitly approves that substitution.
 
-For a new blog article request, CMO keeps the parent issue open until the requested chain is complete: topic selection, new article drafting, validation, new cover image generation, Payload CMS draft creation, and Telegram notification with the draft or admin URL. CTO may own only the technical CMS/media/Telegram implementation step.
+For a new blog article request, CMO keeps the parent issue open until the requested chain is complete: topic selection, new article drafting, validation, layout editing, layout/schema validation, new cover image generation, Payload CMS draft creation, and Telegram notification with the draft or admin URL. CTO may own only the technical CMS/media/Telegram implementation step.
 
 Existing accepted article packages may still be imported as additional CMS operations, but that does not satisfy a request for a new article.
+
+## Blog Layout Pipeline
+
+Validated article drafts must flow through:
+
+```text
+Writer
+-> Article Validator
+-> SEO Blog Article Layout Editor
+-> SEO Blog Article Layout Validator
+-> Payload CMS draft
+-> Telegram draft URL
+```
+
+The layout editor must not rewrite the article's SEO lock, factual claims, slug, CTA route, product/service framing, or approved title. Its job is editorial structure: scan-friendly summary blocks, comparison blocks, examples, lists, and quiet CTAs that make the article feel useful rather than static.
+
+The layout validator must reject:
+
+- raw Payload Lexical JSON;
+- raw HTML or CSS;
+- unsupported `articleContent.v1` blocks;
+- unsafe CTA links;
+- layout that drops SEO locks, required links, or validated claims;
+- decorative blocks that do not clarify the article.
 
 ## Canonical Artifact Rule
 

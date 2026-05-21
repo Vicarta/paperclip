@@ -19,14 +19,109 @@ const looseObjectSchema = {
   additionalProperties: true,
 } as const;
 
+const articleContentSchema = {
+  type: "object",
+  properties: {
+    schemaVersion: { type: "string", enum: ["articleContent.v1"] },
+    blocks: {
+      type: "array",
+      minItems: 1,
+      items: {
+        oneOf: [
+          {
+            type: "object",
+            properties: {
+              type: { type: "string", enum: ["paragraph"] },
+              text: { type: "string" },
+            },
+            required: ["type", "text"],
+            additionalProperties: false,
+          },
+          {
+            type: "object",
+            properties: {
+              type: { type: "string", enum: ["heading"] },
+              level: { type: "string", enum: ["h2", "h3", "h4"] },
+              text: { type: "string" },
+            },
+            required: ["type", "level", "text"],
+            additionalProperties: false,
+          },
+          {
+            type: "object",
+            properties: {
+              type: { type: "string", enum: ["list"] },
+              ordered: { type: "boolean" },
+              items: { type: "array", minItems: 1, items: { type: "string" } },
+            },
+            required: ["type", "ordered", "items"],
+            additionalProperties: false,
+          },
+          {
+            type: "object",
+            properties: {
+              type: { type: "string", enum: ["editorialCallout"] },
+              variant: { type: "string", enum: ["soft", "brand", "situation"] },
+              title: { type: "string" },
+              body: { type: "string" },
+            },
+            required: ["type", "variant", "title", "body"],
+            additionalProperties: false,
+          },
+          {
+            type: "object",
+            properties: {
+              type: { type: "string", enum: ["twoColumnText"] },
+              mode: { type: "string", enum: ["text"] },
+              leftTitle: { type: "string" },
+              leftBody: { type: "string" },
+              rightTitle: { type: "string" },
+              rightBody: { type: "string" },
+            },
+            required: ["type", "mode", "leftTitle", "leftBody", "rightTitle", "rightBody"],
+            additionalProperties: false,
+          },
+          {
+            type: "object",
+            properties: {
+              type: { type: "string", enum: ["twoColumnText"] },
+              mode: { type: "string", enum: ["list"] },
+              leftTitle: { type: "string" },
+              leftBody: { type: "array", minItems: 1, items: { type: "string" } },
+              rightTitle: { type: "string" },
+              rightBody: { type: "array", minItems: 1, items: { type: "string" } },
+            },
+            required: ["type", "mode", "leftTitle", "leftBody", "rightTitle", "rightBody"],
+            additionalProperties: false,
+          },
+          {
+            type: "object",
+            properties: {
+              type: { type: "string", enum: ["quietCta"] },
+              title: { type: "string" },
+              text: { type: "string" },
+              linkLabel: { type: "string" },
+              linkUrl: { type: "string" },
+              note: { type: "string" },
+            },
+            required: ["type", "title", "text", "linkLabel", "linkUrl"],
+            additionalProperties: false,
+          },
+        ],
+      },
+    },
+  },
+  required: ["schemaVersion", "blocks"],
+  additionalProperties: false,
+} as const;
+
 const blogPostFieldsSchema = {
   type: "object",
   properties: {
     title: { type: "string" },
     slug: { type: "string" },
     excerpt: { type: "string" },
-    markdown: { type: "string" },
-    content: looseObjectSchema,
+    articleContent: articleContentSchema,
     coverImage: { type: ["number", "string"] },
     ogImage: { type: ["number", "string"] },
     author: { type: ["number", "string"] },
@@ -211,14 +306,14 @@ const manifest: PaperclipPluginManifestV1 = {
       name: TOOL_NAMES.createBlogPostDraft,
       displayName: "Payload CMS Create Blog Post Draft",
       description:
-        "Create a Payload blog post draft. Defaults to `_status=draft`; use publish tool separately for live publication.",
+        "Create a Payload blog post draft with articleContent.v1. Defaults to `_status=draft`; use publish tool separately for live publication.",
       parametersSchema: blogPostFieldsSchema,
     },
     {
       name: TOOL_NAMES.updateBlogPostDraft,
       displayName: "Payload CMS Update Blog Post Draft",
       description:
-        "Update an existing Payload blog post as a draft/revision by id or slug. Does not publish unless the publish tool is called separately.",
+        "Update an existing Payload blog post as a draft/revision by id or slug using articleContent.v1. Does not publish unless the publish tool is called separately.",
       parametersSchema: {
         type: "object",
         properties: {

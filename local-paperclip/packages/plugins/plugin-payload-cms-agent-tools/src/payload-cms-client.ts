@@ -9,7 +9,7 @@ import {
   DEFAULT_PAYLOAD_API_BASE_URL,
   DEFAULT_TAGS_COLLECTION,
 } from "./constants.js";
-import { markdownToLexical } from "./markdown-to-lexical.js";
+import { validateArticleContentV1, type ArticleContentV1 } from "./article-content.js";
 
 export type PayloadCmsPluginConfig = {
   payloadApiKeySecretRef?: string;
@@ -28,8 +28,7 @@ export type BlogPostFields = {
   title?: string;
   slug?: string;
   excerpt?: string;
-  markdown?: string;
-  content?: Record<string, unknown>;
+  articleContent?: ArticleContentV1 | Record<string, unknown>;
   coverImage?: number | string;
   ogImage?: number | string;
   author?: number | string;
@@ -196,6 +195,19 @@ async function payloadRequest<T>(
 }
 
 export function buildBlogPostPayload(fields: BlogPostFields, opts?: { publish?: boolean }) {
+  const legacyFields = fields as Record<string, unknown>;
+  if (legacyFields.content !== undefined || legacyFields.markdown !== undefined || legacyFields.contentHtml !== undefined) {
+    throw new Error("Payload CMS blog text must use articleContent.v1; raw Lexical content, markdown, and HTML are not accepted");
+  }
+  if (
+    fields.extraFields &&
+    ["content", "markdown", "contentHtml", "articleContent", "_status", "workflowStatus"].some((key) =>
+      Object.prototype.hasOwnProperty.call(fields.extraFields, key),
+    )
+  ) {
+    throw new Error("extraFields must not override content, publication, or workflow fields");
+  }
+
   const payload: Record<string, unknown> = {
     ...(fields.extraFields ?? {}),
   };
@@ -223,13 +235,12 @@ export function buildBlogPostPayload(fields: BlogPostFields, opts?: { publish?: 
     if (value !== undefined) payload[key] = value;
   }
 
-  if (fields.content) {
-    payload.content = fields.content;
-  } else if (typeof fields.markdown === "string") {
-    payload.content = markdownToLexical(fields.markdown);
+  if (fields.articleContent !== undefined) {
+    payload.articleContent = validateArticleContentV1(fields.articleContent);
   }
 
   payload._status = opts?.publish ? "published" : "draft";
+  if (!opts?.publish) payload.workflowStatus = "draft";
   if (opts?.publish && !payload.publishedAt) payload.publishedAt = new Date().toISOString();
   return payload;
 }
