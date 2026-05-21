@@ -508,3 +508,15 @@
   - CMS state remains `_status=draft`, `workflowStatus=draft`.
 - Tightened Phase 23 contracts so a generic or weakly connected cover image is a blocking package defect, not an optional handoff note.
 - Added a cover-image rule: blog covers must not contain rendered text, labels, letters, numbers, captions, or text-like decoration.
+- Completed the live Phase 23 delivery chain for [AST-821](/AST/issues/AST-821):
+  - Payload draft `38` was updated through the `articleContent.v1` layout pipeline and kept in draft state;
+  - the final article ending now uses one compact in-article CTA instead of repeated stacked CTA cards;
+  - the current cover is topic-specific and text-free: Payload media id `59`;
+  - CMO accepted and closed [AST-821](/AST/issues/AST-821) after verified delivery proof.
+- Fixed the production Telegram delivery-groups runtime blocker:
+  - root cause: the installed Telegram plugin dependency used an older persistent `@paperclipai/plugin-sdk` that did not expose `ctx.issues.listAttachments` and `ctx.issues.getAttachmentContent`;
+  - aligned the persistent Telegram plugin SDK dependency with the running app image SDK and restarted the Paperclip app container;
+  - Telegram plugin loaded successfully after restart;
+  - [AST-827](/AST/issues/AST-827) produced an acceptance-grade audit comment with `Telegram message ids: 628`;
+  - [AST-839](/AST/issues/AST-839) and superseded [AST-829](/AST/issues/AST-829) are closed.
+- Important durability note: this production recovery included a live persistent plugin dependency alignment. It proves the runtime path but does not replace the durable Phase 22 requirement to ship the source-controlled Telegram plugin package through the normal app/plugin cutover path.
