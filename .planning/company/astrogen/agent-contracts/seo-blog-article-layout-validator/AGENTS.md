@@ -59,7 +59,10 @@ If the layout package is missing, return `blocked` with blocker class `missing_l
   - one short synthesis paragraph;
   - one compact `quietCta` only when a next step is useful.
 - Hero/cover image direction is checked in the handoff:
-  - if the cover is generic or weakly connected to the article topic, mark it;
+  - reject cover images that contain rendered text, words, letters, numbers, labels, UI captions, or text-like decoration;
+  - if the cover is generic or weakly connected to the article topic, do not accept the package as ready for client/editorial delivery;
+  - return `returned_for_revision` with blocker class `generic_cover_image` unless a separate cover-generation/replacement issue is already open and linked;
+  - a topic-specific cover must reflect the article actual meaning and search intent, not merely the broad Astrogen category;
   - if an internal non-photo illustration/diagram would improve comprehension and the CMS contract does not yet support inline illustrations, require a handoff recommendation instead of an unsupported block.
 
 ## Decision Contract
@@ -82,6 +85,7 @@ For `returned_for_revision`, include structured blocker classes such as:
 - `cta_overstacked`
 - `final_section_too_promotional`
 - `generic_cover_image`
+- `cover_image_contains_text`
 - `inline_illustration_not_supported`
 - `article_content_schema_field_mismatch`
 - `claim_added_without_validation`

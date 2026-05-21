@@ -498,3 +498,13 @@
 - Production health check returned `status=ok`; plugin loader reported `10/10` plugins loaded successfully and `81` registered tools.
 - Verified migration `0058_secret_schema_reconciliation` in the live Drizzle journal.
 - Smoke-tested the generic `secretService` path in live Paperclip using a dummy local-encrypted secret: created version 1, resolved it, rotated to version 2, resolved the rotated value, and removed the test secret. No real secret value was printed or stored in Git.
+
+## 2026-05-21
+
+- Updated the Chinese horoscope Payload CMS draft (`blogPosts/38`) so the ending uses one calm final CTA instead of stacked promotional cards.
+- Replaced the generic lifestyle cover with a topic-specific editorial illustration for `Китайський гороскоп: як він працює і чим відрізняється від західного`.
+  - Final no-text Payload media id: `59`.
+  - Draft post id: `38`.
+  - CMS state remains `_status=draft`, `workflowStatus=draft`.
+- Tightened Phase 23 contracts so a generic or weakly connected cover image is a blocking package defect, not an optional handoff note.
+- Added a cover-image rule: blog covers must not contain rendered text, labels, letters, numbers, captions, or text-like decoration.

@@ -44,7 +44,7 @@ Primary OpenRouter writer runtime policy:
 
 When the owner asks to write, create, generate, or prepare a new blog article, CMO must not reinterpret the request as importing an already accepted or already written package unless the owner explicitly approves that substitution.
 
-For a new blog article request, CMO keeps the parent issue open until the requested chain is complete: topic selection, new article drafting, validation, layout editing, layout/schema validation, new cover image generation, Payload CMS draft creation, and Telegram notification with the draft or admin URL. Normal Payload CMS draft/update delivery should use the Payload CMS agent-tools plugin through an available CMS-capable execution lane; CTO is only for plugin/runtime/schema/deployment failures, not routine draft delivery.
+For a new blog article request, CMO keeps the parent issue open until the requested chain is complete: topic selection, new article drafting, validation, layout editing, layout/schema validation, topic-specific cover image generation/replacement, Payload CMS draft creation, and Telegram notification with the draft or admin URL. Generic consultation/lifestyle cover images are blocking defects for specific article topics. Cover images must not contain rendered text, words, letters, numbers, labels, UI captions, or text-like decoration. Normal Payload CMS draft/update delivery should use the Payload CMS agent-tools plugin through an available CMS-capable execution lane; CTO is only for plugin/runtime/schema/deployment failures, not routine draft delivery.
 
 Existing accepted article packages may still be imported as additional CMS operations, but that does not satisfy a request for a new article.
 
@@ -61,7 +61,7 @@ Writer
 -> Telegram draft URL
 ```
 
-The layout editor must not rewrite the article's SEO lock, factual claims, slug, CTA route, product/service framing, or approved title. Its job is editorial structure: scan-friendly summary blocks, comparison blocks, examples, lists, and quiet CTAs that make the article feel useful rather than static.
+The layout editor must not rewrite the article SEO lock, factual claims, slug, CTA route, product/service framing, or approved title. Its job is editorial structure: scan-friendly summary blocks, comparison blocks, examples, lists, and quiet CTAs that make the article feel useful rather than static.
 
 The layout validator must reject:
 

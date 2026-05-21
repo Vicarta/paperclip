@@ -85,7 +85,11 @@ If two next steps are relevant but `quietCta` supports only one button, choose t
 
 ## Image Direction Policy
 
-Every article package should include a cover/hero image that clearly matches the article's topic and search intent. A generic lifestyle consultation image is not enough when the article is about a specific conceptual comparison, cycle, checklist, or decision framework.
+Every article package must include a cover/hero image that clearly matches the article topic and search intent. A generic lifestyle consultation image is not enough when the article is about a specific conceptual comparison, cycle, checklist, or decision framework.
+
+Cover images must not contain rendered text, words, letters, numbers, labels, UI captions, or text-like decoration. The cover should communicate through scene, symbols, composition, color, and CMS alt text. If explanatory text is needed, it belongs in the article body, not on the cover image.
+
+A generic or weakly connected cover is a blocking package defect, not a cosmetic note. CMO should route a cover-generation/replacement step before Payload CMS draft delivery or Telegram/editorial notification. The final CMS draft must have the topic-specific image set as `coverImage`.
 
 When useful, the layout handoff may recommend an internal non-photo illustration, diagram, or simple editorial visual. Do not add unsupported inline image blocks to `articleContent.v1`; keep the recommendation in the handoff until the CMS schema explicitly supports inline illustrations.
 
@@ -133,6 +137,7 @@ Expected blocker classes:
 - `cta_overstacked`
 - `final_section_too_promotional`
 - `generic_cover_image`
+- `cover_image_contains_text`
 - `inline_illustration_not_supported`
 - `article_content_schema_field_mismatch`
 - `claim_added_without_validation`

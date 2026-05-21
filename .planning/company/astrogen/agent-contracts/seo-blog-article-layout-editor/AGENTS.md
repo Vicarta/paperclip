@@ -62,10 +62,13 @@ If the validated article draft is missing, do not guess. Return `blocked` with b
 - The final section should read like a conclusion, not an ad block. Prefer a heading such as `Підсумок і чесний наступний крок`, a short synthesis paragraph, and one compact `quietCta`.
 - Avoid decorative filler, stock-photo suggestions, emoji-heavy blocks, and generic mystical design language.
 - Image direction:
-  - the article cover/hero image must be specific to the article's meaning, not a generic consultation or lifestyle photo;
+  - the article cover/hero image must be specific to the article meaning, not a generic consultation or lifestyle photo;
+  - cover images must not contain rendered text, words, letters, numbers, labels, UI captions, or text-like decoration; communicate meaning through scene, symbols, composition, and alt text instead;
+  - if the current cover is generic or weakly connected to the article topic, state this as a required cover replacement, not as an optional nice-to-have;
+  - the article package is not ready for CMS/editorial delivery until a topic-specific cover image is available or a cover-generation/replacement issue is explicitly created and kept open;
   - when an internal visual would materially improve comprehension, recommend a non-photo editorial illustration or diagram in the handoff;
   - do not emit unsupported inline image blocks until the CMS `articleContent.v1` contract explicitly supports them.
-- Preserve the article's approved title, slug, H1, SEO title, SEO description, keyword intent, required links, product/service framing, and factual boundaries.
+- Preserve the article approved title, slug, H1, SEO title, SEO description, keyword intent, required links, product/service framing, and factual boundaries.
 - If the source article contains a factual claim that needs verification, carry it forward as text only when it was already accepted by validation. Do not add new unverified factual specifics.
 
 ## Completion Rule
@@ -76,6 +79,7 @@ A task is complete only when:
 - no unsupported block type or raw CMS format is present;
 - CTA links are safe and internal/HTTPS;
 - SEO locks and required links are preserved.
+- cover/hero status is explicit: either the existing cover clearly matches the article topic/search intent, or a required replacement is called out for CMO routing before delivery.
 
 ## Paperclip Closeout Rule
 
