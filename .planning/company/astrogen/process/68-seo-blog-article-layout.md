@@ -46,6 +46,20 @@ Allowed block types:
 - `twoColumnText`
 - `quietCta`
 
+Use the exact Payload plugin field contract:
+
+```json
+{ "type": "paragraph", "text": "Plain text only." }
+{ "type": "heading", "level": "h2", "text": "Heading text." }
+{ "type": "list", "ordered": false, "items": ["Item 1", "Item 2"] }
+{ "type": "editorialCallout", "variant": "soft", "title": "Short title", "body": "Short body." }
+{ "type": "twoColumnText", "mode": "text", "leftTitle": "Left", "leftBody": "Left text.", "rightTitle": "Right", "rightBody": "Right text." }
+{ "type": "twoColumnText", "mode": "list", "leftTitle": "Left", "leftBody": ["Item 1"], "rightTitle": "Right", "rightBody": ["Item 1"] }
+{ "type": "quietCta", "title": "Short CTA title", "text": "CTA body.", "linkLabel": "Button label", "linkUrl": "/internal-path" }
+```
+
+Do not use legacy or improvised field names such as `style`, `body` on paragraphs, `text` on `editorialCallout`, `leftText`, `rightText`, paragraph `links`, or a `quietCta` without `title`. The Payload plugin rejects extra keys.
+
 The editor should use blocks only when they clarify meaning. Strong default candidates:
 
 - short summary callout after the intro;
@@ -120,6 +134,7 @@ Expected blocker classes:
 - `final_section_too_promotional`
 - `generic_cover_image`
 - `inline_illustration_not_supported`
+- `article_content_schema_field_mismatch`
 - `claim_added_without_validation`
 
 ## Completion

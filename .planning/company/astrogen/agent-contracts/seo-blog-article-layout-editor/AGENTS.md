@@ -34,6 +34,14 @@ If the validated article draft is missing, do not guess. Return `blocked` with b
 
 - Output only `articleContent.v1` JSON plus a short layout handoff note.
 - Use only supported blocks: `paragraph`, `heading`, `list`, `editorialCallout`, `twoColumnText`, `quietCta`.
+- Use the exact Payload plugin field names:
+  - `paragraph`: `type`, `text`;
+  - `heading`: `type`, `level`, `text`;
+  - `list`: `type`, `ordered`, `items`;
+  - `editorialCallout`: `type`, `variant`, `title`, `body`;
+  - `twoColumnText`: `type`, `mode`, `leftTitle`, `leftBody`, `rightTitle`, `rightBody`;
+  - `quietCta`: `type`, `title`, `text`, `linkLabel`, `linkUrl`, optional `note`.
+- Do not invent compatibility fields. In particular, do not use `style` for lists, `text` for callout body, `leftText`/`rightText`, paragraph `links`, or a `quietCta` without `title`.
 - Do not output raw Payload Lexical JSON.
 - Do not output raw HTML, inline styles, CSS classes, or arbitrary embeds.
 - Do not use `javascript:` URLs or external CTA URLs unless the brief explicitly requires a trusted HTTPS destination.

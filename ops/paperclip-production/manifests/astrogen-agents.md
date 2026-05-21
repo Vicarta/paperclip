@@ -44,7 +44,7 @@ Primary OpenRouter writer runtime policy:
 
 When the owner asks to write, create, generate, or prepare a new blog article, CMO must not reinterpret the request as importing an already accepted or already written package unless the owner explicitly approves that substitution.
 
-For a new blog article request, CMO keeps the parent issue open until the requested chain is complete: topic selection, new article drafting, validation, layout editing, layout/schema validation, new cover image generation, Payload CMS draft creation, and Telegram notification with the draft or admin URL. CTO may own only the technical CMS/media/Telegram implementation step.
+For a new blog article request, CMO keeps the parent issue open until the requested chain is complete: topic selection, new article drafting, validation, layout editing, layout/schema validation, new cover image generation, Payload CMS draft creation, and Telegram notification with the draft or admin URL. Normal Payload CMS draft/update delivery should use the Payload CMS agent-tools plugin through an available CMS-capable execution lane; CTO is only for plugin/runtime/schema/deployment failures, not routine draft delivery.
 
 Existing accepted article packages may still be imported as additional CMS operations, but that does not satisfy a request for a new article.
 

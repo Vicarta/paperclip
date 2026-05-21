@@ -33,6 +33,14 @@ If the layout package is missing, return `blocked` with blocker class `missing_l
 
 - `schemaVersion` is exactly `articleContent.v1`.
 - Only supported blocks are present: `paragraph`, `heading`, `list`, `editorialCallout`, `twoColumnText`, `quietCta`.
+- The exact Payload plugin field contract is used:
+  - `paragraph` has only `type`, `text`;
+  - `heading` has only `type`, `level`, `text`;
+  - `list` has only `type`, `ordered`, `items`;
+  - `editorialCallout` has only `type`, `variant`, `title`, `body`;
+  - `twoColumnText` has only `type`, `mode`, `leftTitle`, `leftBody`, `rightTitle`, `rightBody`;
+  - `quietCta` has `type`, `title`, `text`, `linkLabel`, `linkUrl`, and optional `note`.
+- Reject legacy/improvised field names such as `style`, callout `text`, `leftText`, `rightText`, paragraph `links`, or `quietCta` without `title`.
 - Heading levels are only `h2`, `h3`, `h4`.
 - Callout variants are only `soft`, `brand`, `situation`.
 - `quietCta.linkUrl` is an internal `/...` path or HTTPS URL; default expert route is `/experts`.
@@ -75,6 +83,7 @@ For `returned_for_revision`, include structured blocker classes such as:
 - `final_section_too_promotional`
 - `generic_cover_image`
 - `inline_illustration_not_supported`
+- `article_content_schema_field_mismatch`
 - `claim_added_without_validation`
 
 ## Completion Rule
