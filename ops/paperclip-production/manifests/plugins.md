@@ -29,9 +29,14 @@ Expected status: Astrogen-required plugins `ready`. Optional legacy connector re
   - `payload_cms_get_build_state` returned `HTTP 200`, `lastBuildStatus=queued`, `buildInProgress=false`.
   - `payload_cms_health_check` returned `HTTP 200`, with authenticated access to build state and Payload collections needed for blog drafts/media.
 - Secret service smoke:
-  - production image `paperclip-app:v2026.513.4-secret-schema-20260520` is active;
+  - production image `paperclip-app:v2026.513.6-phase10-20260521` is active;
   - migration `0058_secret_schema_reconciliation` is applied;
   - a dummy local-encrypted secret was created, resolved, rotated, resolved again, and removed through the standard `secretService` path.
+- Phase 10 smoke:
+  - app health returned `HTTP 200` after cutover;
+  - server bundle contains `child_issue_needs_parent_review`;
+  - installed Telegram plugin bundle contains `Чернетка готова` and `Відкрити чернетку`;
+  - Astrogen CMO heartbeat is `enabled=true`, `intervalSec=600`, `wakeOnDemand=true`, `maxConcurrentRuns=1`.
 - Error records, not required for current Astrogen SEO flow: `paperclip.bright-data-agent-tools`, `paperclip.exa-agent-tools`, `paperclip.serper-agent-tools`.
 
 ## Invariants

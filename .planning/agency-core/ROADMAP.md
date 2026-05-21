@@ -19,4 +19,4 @@ Agency Core contains reusable Paperclip operating-system assets that should work
 
 ## Current Next Step
 
-Next reusable step: cut the Phase 10 source changes into the production image/plugin bundle, then smoke one article lane to measure accepted brief -> draft -> CMS draft -> Telegram URL delivery time.
+Next reusable step: smoke one article lane end-to-end to measure accepted brief -> draft -> CMS draft -> Telegram URL delivery time, then use the measured latency to decide whether any remaining delay is workflow, provider, or agent-contract related.

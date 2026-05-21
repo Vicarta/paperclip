@@ -7,6 +7,7 @@
 - Parent wakeup payload carries both child and parent identifiers, so the manager agent can continue the correct parent workflow without waiting for the next scheduled heartbeat.
 - Telegram issue-done formatting now detects Payload CMS draft-ready completions and sends a concise Ukrainian message with the direct CMS draft/admin URL and `Відкрити чернетку` button.
 - Production plugin invariants were updated: generic forwarded `issue.updated` is not delivery proof for a ready blog draft.
+- Production image `paperclip-app:v2026.513.6-phase10-20260521` is deployed and healthy.
 
 ## Verification
 
@@ -25,4 +26,4 @@ Live CMO runtime check:
 
 ## Remaining Runtime Cutover
 
-The source change is ready for production image cutover. Until the new image/plugin bundle is deployed, the live instance still relies on the already-applied operational contracts and manual Telegram resend path for this specific AST-820 correction.
+No remaining cutover is needed for Phase 10. The next practical check is a real article-lane smoke: accepted brief -> draft -> validation/CMS -> Telegram draft URL.
