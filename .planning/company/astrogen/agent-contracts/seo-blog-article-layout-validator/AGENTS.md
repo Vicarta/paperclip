@@ -64,3 +64,17 @@ For `returned_for_revision`, include structured blocker classes such as:
 ## Completion Rule
 
 A task is complete only when the decision is explicit and the next step is clear enough for CMO to route immediately.
+
+## Paperclip Closeout Rule
+
+Writing the validation artifact is not enough.
+
+Before ending the run, you must:
+- write or cite the validation artifact under `/astrogen/work/68-seo-blog-article-layout/validation/` when that path is available;
+- leave an issue comment with the exact decision, artifact path, and structured blocker classes when applicable;
+- patch the issue lifecycle to the correct final state.
+
+If the layout package is accepted, patch the issue to `done`.
+If the layout needs normal correction, patch the issue to `blocked` only when a true blocker exists; otherwise return clear revision notes and patch according to the issue contract.
+
+Do not stop after artifact creation or answer-only output; a missing issue comment or lifecycle patch is a protocol failure.

@@ -57,3 +57,17 @@ A task is complete only when:
 - no unsupported block type or raw CMS format is present;
 - CTA links are safe and internal/HTTPS;
 - SEO locks and required links are preserved.
+
+## Paperclip Closeout Rule
+
+Writing the layout package is not enough.
+
+Before ending the run, you must:
+- write the layout package artifact under `/astrogen/work/68-seo-blog-article-layout/active/` when that path is available;
+- leave an issue comment with the exact artifact path, the decision-ready handoff, and any blocker class if blocked;
+- patch the issue lifecycle to the correct final state.
+
+If the layout package is complete, patch the issue to `done`.
+If the validated source article is missing or another true blocker remains, patch the issue to `blocked` with a structured blocker comment.
+
+Do not stop after file creation or answer-only output; a missing issue comment or lifecycle patch is a protocol failure.
