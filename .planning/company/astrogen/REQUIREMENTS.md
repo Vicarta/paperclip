@@ -15,6 +15,7 @@
 - `AST-CONTENT-04`: Articles should use product synonyms and variants, not repeat one exact term mechanically.
 - `AST-CONTENT-05`: Articles should include contextual internal links to relevant product pages, not only a final CTA.
 - `AST-CONTENT-06`: If birth place is required, use the modern settlement name, not only the historical name at time of birth.
+- `AST-CONTENT-07`: Blog article endings must stay editorial. After the last major explanatory section, use at most one compact in-article CTA block; do not stack repeated CTA cards, and keep the in-article CTA lighter than the global site CTA below the article.
 
 ## Images
 
@@ -25,6 +26,7 @@
 - `AST-IMG-05`: Telegram delivery should send images without compression when the workflow supports it.
 - `AST-IMG-06`: A blog article package is not complete until it has the publishable markdown, publishable HTML, and a Stage 65 hero image bundle, unless the owner explicitly waives image generation for that article.
 - `AST-IMG-07`: Article package delivery to Telegram must include the article text artifact, HTML artifact, and hero image together, with an audit trail on the related Paperclip issue. Article text must not be regenerated during image-only recovery.
+- `AST-IMG-08`: Blog cover/hero images must be specific to the article topic and search intent. Generic consultation/lifestyle imagery is a fallback, not the default. Internal non-photo illustrations or diagrams may be recommended when they improve comprehension, but only embedded when the CMS content schema supports them.
 
 ## SEO
 

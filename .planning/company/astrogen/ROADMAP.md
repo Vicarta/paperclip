@@ -56,7 +56,7 @@ Human-facing Astrogen communication remains Ukrainian and should not expose inte
 - [x] **Phase 18: Production Config Source Of Truth** - Added sanitized production templates/manifests under `ops/paperclip-production/` and a live export script for drift review without secret material.
 - [x] **Phase 20: Article Writer Fallback And Cost-Controlled Recovery** - Added `SEO Blog Article Writer GPT`, structured validator blocker classes, CMO fallback routing after repeated same-class failures, canonical artifact verification for writers, and a strict no-passive-monitoring-after-three-checks rule. Routine LLM heartbeat is now enabled only for CEO, CMO, and CTO.
 - [x] **Telegram Notification Style Fix** - Done-message summaries are capped and rewritten into short Ukrainian operator text; document captions no longer duplicate the full completion summary. Telegram issue lifecycle delivery now goes through one path: the Telegram plugin.
-- [ ] **Phase 23: Blog Article Layout Pipeline** - Add `articleContent.v1` Payload CMS tool validation, `SEO Blog Article Layout Editor`, `SEO Blog Article Layout Validator`, and update the Chinese horoscope draft through the new layout pipeline.
+- [ ] **Phase 23: Blog Article Layout Pipeline** - Add `articleContent.v1` Payload CMS tool validation, `SEO Blog Article Layout Editor`, `SEO Blog Article Layout Validator`, and update the Chinese horoscope draft through the new layout pipeline. Follow-up rule added after draft review: article endings must use at most one compact in-article CTA block, avoid repeated stacked cards, and flag generic cover images or useful internal illustration opportunities in the layout handoff.
 
 ## Deferred / Future Tracks
 

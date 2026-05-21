@@ -41,6 +41,18 @@ If the layout package is missing, return `blocked` with blocker class `missing_l
 - The layout does not add new unverified factual claims.
 - The article has useful visual rhythm without over-decoration.
 - CTAs are calm and useful, not aggressive sales copy.
+- The final section is editorial and not over-monetized:
+  - at most one special CTA block appears after the last major explanatory section;
+  - there is no stack of repeated CTA cards;
+  - the same offer is not repeated under different names;
+  - the in-article final CTA stays lighter than the large global site CTA below the article.
+- The recommended final shape is:
+  - a summary heading such as `Підсумок і чесний наступний крок`;
+  - one short synthesis paragraph;
+  - one compact `quietCta` only when a next step is useful.
+- Hero/cover image direction is checked in the handoff:
+  - if the cover is generic or weakly connected to the article topic, mark it;
+  - if an internal non-photo illustration/diagram would improve comprehension and the CMS contract does not yet support inline illustrations, require a handoff recommendation instead of an unsupported block.
 
 ## Decision Contract
 
@@ -59,6 +71,10 @@ For `returned_for_revision`, include structured blocker classes such as:
 - `seo_lock_drift`
 - `layout_overdecorated`
 - `layout_too_static`
+- `cta_overstacked`
+- `final_section_too_promotional`
+- `generic_cover_image`
+- `inline_illustration_not_supported`
 - `claim_added_without_validation`
 
 ## Completion Rule

@@ -38,14 +38,25 @@ If the validated article draft is missing, do not guess. Return `blocked` with b
 - Do not output raw HTML, inline styles, CSS classes, or arbitrary embeds.
 - Do not use `javascript:` URLs or external CTA URLs unless the brief explicitly requires a trusted HTTPS destination.
 - Keep CTAs calm, useful, and reader-facing. Default Astrogen expert CTA route is `/experts`.
+- Final-section CTA rule:
+  - after the last major explanatory section, use at most one special CTA block;
+  - never stack multiple pink/brand CTA cards at the end of an article;
+  - do not repeat the same offer under different labels, for example "next step", "catalog experts", "personal weekly forecast";
+  - remember that the site already has a large global CTA below the article, so the in-article final CTA must be lighter and editorial;
+  - if two next steps are relevant but the CMS block supports only one button, choose the primary next step from the brief/SEO lock and mention the secondary option in calm body text instead of creating a second card.
 - Add visual rhythm only where it clarifies meaning:
   - short summary callout after the intro;
   - important warning callout;
   - comparison two-column block;
   - enough / better-with-expert two-column block;
   - practical example paragraph;
-  - quiet inline CTA.
+  - one quiet inline CTA when it helps the reader choose a next step.
+- The final section should read like a conclusion, not an ad block. Prefer a heading such as `Підсумок і чесний наступний крок`, a short synthesis paragraph, and one compact `quietCta`.
 - Avoid decorative filler, stock-photo suggestions, emoji-heavy blocks, and generic mystical design language.
+- Image direction:
+  - the article cover/hero image must be specific to the article's meaning, not a generic consultation or lifestyle photo;
+  - when an internal visual would materially improve comprehension, recommend a non-photo editorial illustration or diagram in the handoff;
+  - do not emit unsupported inline image blocks until the CMS `articleContent.v1` contract explicitly supports them.
 - Preserve the article's approved title, slug, H1, SEO title, SEO description, keyword intent, required links, product/service framing, and factual boundaries.
 - If the source article contains a factual claim that needs verification, carry it forward as text only when it was already accepted by validation. Do not add new unverified factual specifics.
 

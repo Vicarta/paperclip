@@ -55,6 +55,26 @@ The editor should use blocks only when they clarify meaning. Strong default cand
 - two-column "enough / better with expert" block;
 - calm inline CTA to `/experts` when relevant.
 
+## Final Section Policy
+
+The final part of an article must close the editorial argument before it asks for action.
+
+After the last major explanatory section:
+
+- use at most one special CTA block;
+- do not stack repeated pink/brand CTA cards;
+- do not repeat the same offer under labels such as "next step", "catalog experts", "personal weekly forecast";
+- keep the in-article CTA lighter than the large global site CTA that appears below the article;
+- prefer a final heading such as `Підсумок і чесний наступний крок`, one short synthesis paragraph, and one compact `quietCta`.
+
+If two next steps are relevant but `quietCta` supports only one button, choose the primary next step from the accepted brief/SEO lock. Mention the secondary option in body text only if it is genuinely helpful; do not create a second CTA card to compensate for the one-button schema.
+
+## Image Direction Policy
+
+Every article package should include a cover/hero image that clearly matches the article's topic and search intent. A generic lifestyle consultation image is not enough when the article is about a specific conceptual comparison, cycle, checklist, or decision framework.
+
+When useful, the layout handoff may recommend an internal non-photo illustration, diagram, or simple editorial visual. Do not add unsupported inline image blocks to `articleContent.v1`; keep the recommendation in the handoff until the CMS schema explicitly supports inline illustrations.
+
 ## Hard Limits
 
 Do not output or send:
@@ -96,6 +116,10 @@ Expected blocker classes:
 - `seo_lock_drift`
 - `layout_overdecorated`
 - `layout_too_static`
+- `cta_overstacked`
+- `final_section_too_promotional`
+- `generic_cover_image`
+- `inline_illustration_not_supported`
 - `claim_added_without_validation`
 
 ## Completion
