@@ -1,6 +1,7 @@
 import type { PluginEvent } from "@paperclipai/plugin-sdk";
 import { escapeMarkdownV2, truncateAtWord } from "./telegram-api.js";
 import type { SendMessageOptions } from "./telegram-api.js";
+import { containsPayloadDraftReadyEvidence, sanitizeIssueDoneComment } from "./notification-policy.js";
 
 type Payload = Record<string, unknown>;
 
@@ -49,12 +50,7 @@ function extractPayloadDraftUrl(comment: string | null): string | null {
 }
 
 function isPayloadDraftReadyComment(comment: string | null): boolean {
-  if (!comment) return false;
-  return (
-    /(?:payload|cms).*draft/i.test(comment) &&
-    /(?:cover|coverImage|зображення|image)/i.test(comment) &&
-    /https:\/\/cms\.astrogen\.com\.ua\/admin\/collections\/blogPosts\//.test(comment)
-  );
+  return containsPayloadDraftReadyEvidence(comment);
 }
 
 function agentButton(agentId: string, label: string, publicUrl?: string): { text: string; url: string } | null {
@@ -176,8 +172,9 @@ export function formatIssueDone(event: PluginEvent, opts?: IssueLinksOpts): Form
   if (companyName) lines.push(`${bold("Компанія")}: ${esc(companyName)}`);
   if (title) lines.push(`${bold("Задача")}: ${esc(title)}`);
 
-  if (comment) {
-    const truncated = truncateAtWord(comment, 180);
+  const safeComment = sanitizeIssueDoneComment(comment);
+  if (safeComment) {
+    const truncated = truncateAtWord(safeComment, 125);
     lines.push(`${bold("Що зроблено")}: ${esc(truncated)}`);
   }
 

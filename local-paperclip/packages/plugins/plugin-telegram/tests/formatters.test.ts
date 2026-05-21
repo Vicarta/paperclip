@@ -94,6 +94,17 @@ describe("formatIssueDone", () => {
     expect(msg.text).toContain("Що зроблено");
   });
 
+  it("does not forward raw technical markdown as a completion summary", () => {
+    const msg = formatIssueDone(mockEvent({
+      title: "Restore Telegram message-id proof for AST-827 Chinese horoscope delivery",
+      comment: "## Result\n\nTelegram proof was **not** restored. `AST-828` is complete as a diagnosis/routing lane.",
+    }));
+
+    expect(msg.text).not.toContain("Що зроблено");
+    expect(msg.text).not.toContain("diagnosis");
+    expect(msg.text).not.toContain("##");
+  });
+
   it("truncates long comments", () => {
     const longComment = Array(80).fill("word").join(" ");
     const msg = formatIssueDone(mockEvent({ comment: longComment }));

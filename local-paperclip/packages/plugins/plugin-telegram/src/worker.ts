@@ -51,6 +51,7 @@ import { validateSecretRefFields } from "./secret-ref-validation.js";
 import { shouldNotifyApproval } from "./approval-routing.js";
 import { buildPaperclipAuthHeaders, fetchPaperclipApi } from "./paperclip-api.js";
 import { deliverIssueAttachmentGroups } from "./attachment-delivery.js";
+import { shouldSuppressGenericIssueDoneNotification } from "./notification-policy.js";
 
 type TelegramConfig = {
   telegramBotTokenRef: string;
@@ -559,16 +560,24 @@ const plugin = definePlugin({
             }
           } catch { /* best effort */ }
         }
-        const target = await notify(event, formatIssueDone);
-        if (target?.chatId) {
+        const chatId = await resolveChat(ctx, event.companyId, config.defaultChatId);
+        if (chatId) {
           try {
-            await deliverIssueAttachmentGroups({
+            const messageThreadId = await resolveNotificationThreadId(ctx, chatId, event, config.topicRouting);
+            const delivery = await deliverIssueAttachmentGroups({
               ctx,
               token,
               event,
-              chatId: target.chatId,
-              messageThreadId: target.messageThreadId,
+              chatId,
+              messageThreadId,
             });
+            if (
+              delivery.status === "sent" ||
+              delivery.status === "blocked" ||
+              (delivery.status === "skipped" && delivery.reason === "already_delivered")
+            ) {
+              return;
+            }
           } catch (err) {
             ctx.logger.error("Telegram attachment delivery failed", {
               issueId: event.entityId,
@@ -577,6 +586,15 @@ const plugin = definePlugin({
             });
           }
         }
+
+        if (shouldSuppressGenericIssueDoneNotification({
+          title: typeof payload.title === "string" ? payload.title : null,
+          comment: typeof payload.comment === "string" ? payload.comment : null,
+        })) {
+          return;
+        }
+
+        await notify(event, formatIssueDone);
       });
     }
 
