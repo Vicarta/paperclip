@@ -1,11 +1,11 @@
 import { createHash } from "node:crypto";
 import type { IssueAttachment } from "@paperclipai/shared";
 import type { PluginContext, PluginEvent } from "@paperclipai/plugin-sdk";
-import { ISSUE_NOTIFICATION_CONTRACT_KEY, issueNotificationContractSchema } from "@paperclipai/shared";
 import { sendDocument, sendMessage } from "./telegram-api.js";
 
 const JSON_FENCE_REGEX = /```json(?:\s+notification-contract)?\s*([\s\S]*?)```/i;
 const DELIVERY_STATE_PREFIX = "telegram.attachment-delivery.v1";
+const ISSUE_NOTIFICATION_CONTRACT_KEY = "notification-contract";
 
 type AttachmentSelector = {
   source?: "issue_attachment";
@@ -42,13 +42,97 @@ function extractJson(body: string): string | null {
   return body.match(JSON_FENCE_REGEX)?.[1]?.trim() ?? null;
 }
 
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
+}
+
+function asOptionalString(value: unknown): string | undefined | null {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+}
+
+function parseSelector(value: unknown): AttachmentSelector | null {
+  const record = asRecord(value);
+  if (!record) return null;
+  if (record.source !== undefined && record.source !== "issue_attachment") return null;
+
+  const filenameIncludes = asOptionalString(record.filenameIncludes);
+  if (filenameIncludes === null) return null;
+  const contentTypePrefix = asOptionalString(record.contentTypePrefix);
+  if (contentTypePrefix === null) return null;
+
+  return {
+    source: "issue_attachment",
+    ...(filenameIncludes ? { filenameIncludes } : {}),
+    ...(contentTypePrefix ? { contentTypePrefix } : {}),
+  };
+}
+
+function parseGroup(value: unknown): DeliveryGroup | null {
+  const record = asRecord(value);
+  if (!record) return null;
+
+  const key = asOptionalString(record.key);
+  if (!key) return null;
+  const title = asOptionalString(record.title);
+  if (title === null) return null;
+  const caption = asOptionalString(record.caption);
+  if (caption === null) return null;
+
+  if (!Array.isArray(record.artifacts) || record.artifacts.length === 0 || record.artifacts.length > 5) {
+    return null;
+  }
+  const artifacts = record.artifacts.map((selector) => parseSelector(selector));
+  if (artifacts.some((selector) => selector === null)) return null;
+
+  return {
+    key,
+    ...(title ? { title } : {}),
+    ...(caption ? { caption } : {}),
+    artifacts: artifacts as AttachmentSelector[],
+  };
+}
+
 function parseContract(body: string): DeliveryContract | null {
   const json = extractJson(body);
   if (!json) return null;
-  const parsed = issueNotificationContractSchema.parse(JSON.parse(json));
-  if (parsed.channel !== "telegram" || parsed.trigger !== "issue_done") return null;
-  if (parsed.delivery.mode !== "delivery_groups") return null;
-  return parsed as DeliveryContract;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(json);
+  } catch {
+    return null;
+  }
+
+  const record = asRecord(parsed);
+  if (!record) return null;
+  if (record.channel !== "telegram" || record.trigger !== "issue_done") return null;
+
+  const enabled = record.enabled === undefined ? true : record.enabled;
+  if (typeof enabled !== "boolean") return null;
+
+  const delivery = asRecord(record.delivery);
+  if (!delivery || delivery.mode !== "delivery_groups") return null;
+  const summary = asOptionalString(delivery.summary);
+  if (summary === null) return null;
+
+  if (!Array.isArray(delivery.groups) || delivery.groups.length === 0 || delivery.groups.length > 100) {
+    return null;
+  }
+  const groups = delivery.groups.map((group) => parseGroup(group));
+  if (groups.some((group) => group === null)) return null;
+
+  return {
+    enabled,
+    channel: "telegram",
+    trigger: "issue_done",
+    delivery: {
+      mode: "delivery_groups",
+      ...(summary ? { summary } : {}),
+      groups: groups as DeliveryGroup[],
+    },
+  };
 }
 
 function attachmentMatchesSelector(attachment: IssueAttachment, selector: AttachmentSelector): boolean {
