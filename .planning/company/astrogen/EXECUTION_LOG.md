@@ -595,3 +595,8 @@
   - Plugin loader reported `13/13` plugins loaded successfully.
   - Runtime grep verified `iconList` is present in the built Payload CMS adapter manifest and article-content validator.
   - Synced the updated Astrogen layout editor, layout validator, and Stage 68 process docs to `/home/paperclip/astrogen`.
+- Smoke-tested `iconList` in the live Payload CMS draft for `Китайський гороскоп: як він працює і чим відрізняється від західного` (`blogPosts/38`).
+  - Replaced the plain list of 12 Chinese horoscope signs with an `iconList` block using registry keys from `chinese-rat` through `chinese-pig`.
+  - Kept the article in CMS draft workflow state.
+  - Verified through the CMS API that `articleContent.v1` still has `29` blocks, exactly `1` `iconList`, and exactly `1` `quietCta`.
+  - The public preview endpoint was not reachable from this environment during the smoke check (`curl` timed out), so visual confirmation should be done in Payload/blog preview.
