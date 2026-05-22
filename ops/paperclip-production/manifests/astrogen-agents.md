@@ -1,19 +1,19 @@
 # Astrogen Agent Runtime Manifest
 
-Last verified: 2026-05-18
+Last verified: 2026-05-22
 Scope: production runtime policy and sanitized agent identities only. No secrets or private prompt bodies belong here.
 
 ## Heartbeat Policy
 
-Routine LLM heartbeat is enabled only for:
+Routine LLM timer heartbeat is disabled by default for Astrogen managers and specialists.
 
 | Agent | Purpose |
 | --- | --- |
-| `CEO` | Top-level governance and escalation. |
-| `Chief Marketing Officer` | Marketing/content pipeline management. |
-| `Chief Technical Officer` | Technical recovery and system health. |
+| `CEO` | `wakeOnDemand=true`, `heartbeat.enabled=false`; wake only for concrete governance/escalation events. |
+| `Chief Marketing Officer` | `wakeOnDemand=true`, `heartbeat.enabled=false`; wake for assignments, comments, approvals, child-completion handoffs, routines, or deterministic watchdog findings. |
+| `Chief Technical Officer` | `wakeOnDemand=true`, `heartbeat.enabled=false`; wake for explicit technical incidents/routines only, not for passive intervention in other agents' work. |
 
-All specialist agents should remain `wakeOnDemand=true` with `heartbeat.enabled=false` unless a human explicitly approves a temporary exception.
+All specialist agents should remain `wakeOnDemand=true` with `heartbeat.enabled=false` unless a human explicitly approves a temporary exception with an expiry. Recovery should use deterministic watchdog/routine checks that enqueue concrete work, not frequent idle LLM polling.
 
 ## SEO Blog Article Writers
 

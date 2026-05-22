@@ -394,6 +394,25 @@ export function shouldFailSucceededIssueRunAsSilentNoop(input: {
   return input.runCommentCount === 0;
 }
 
+export function isActionableForTimerHeartbeat(input: {
+  issueStatus: string | null | undefined;
+  issueUpdatedAt?: Date | null;
+  latestCommentAt?: Date | null;
+  lastHeartbeatAt?: Date | null;
+}): boolean {
+  if (input.issueStatus === "todo") return true;
+
+  if (!input.issueStatus || !["in_progress", "in_review", "blocked"].includes(input.issueStatus)) {
+    return false;
+  }
+
+  const lastHeartbeatAt = input.lastHeartbeatAt?.getTime() ?? 0;
+  const issueUpdatedAt = input.issueUpdatedAt?.getTime() ?? 0;
+  const latestCommentAt = input.latestCommentAt?.getTime() ?? 0;
+
+  return issueUpdatedAt > lastHeartbeatAt || latestCommentAt > lastHeartbeatAt;
+}
+
 function normalizeLedgerBillingType(value: unknown): BillingType {
   const raw = readNonEmptyString(value);
   switch (raw) {
@@ -1834,7 +1853,42 @@ export function heartbeatService(db: Db) {
       intervalSec: Math.max(0, asNumber(heartbeat.intervalSec, 0)),
       wakeOnDemand: asBoolean(heartbeat.wakeOnDemand ?? heartbeat.wakeOnAssignment ?? heartbeat.wakeOnOnDemand ?? heartbeat.wakeOnAutomation, true),
       maxConcurrentRuns: normalizeMaxConcurrentRuns(heartbeat.maxConcurrentRuns),
+      skipIfNoActionableWork: asBoolean(heartbeat.skipIfNoActionableWork, false),
     };
+  }
+
+  async function hasActionableTimerWork(agent: typeof agents.$inferSelect) {
+    const lastHeartbeatAt = agent.lastHeartbeatAt ?? agent.createdAt;
+
+    const rows = await db
+      .select({ id: issues.id })
+      .from(issues)
+      .where(
+        and(
+          eq(issues.companyId, agent.companyId),
+          eq(issues.assigneeAgentId, agent.id),
+          sql`${issues.hiddenAt} is null`,
+          sql`(
+            ${issues.status} = 'todo'
+            or (
+              ${issues.status} in ('in_progress', 'in_review', 'blocked')
+              and (
+                ${issues.updatedAt} > ${lastHeartbeatAt}
+                or exists (
+                  select 1
+                  from ${issueComments}
+                  where ${issueComments.companyId} = ${issues.companyId}
+                    and ${issueComments.issueId} = ${issues.id}
+                    and ${issueComments.createdAt} > ${lastHeartbeatAt}
+                )
+              )
+            )
+          )`,
+        ),
+      )
+      .limit(1);
+
+    return rows.length > 0;
   }
 
   async function countRunningRunsForAgent(agentId: string) {
@@ -4167,6 +4221,10 @@ export function heartbeatService(db: Db) {
         const baseline = new Date(agent.lastHeartbeatAt ?? agent.createdAt).getTime();
         const elapsedMs = now.getTime() - baseline;
         if (elapsedMs < policy.intervalSec * 1000) continue;
+        if (policy.skipIfNoActionableWork && !(await hasActionableTimerWork(agent))) {
+          skipped += 1;
+          continue;
+        }
 
         const run = await enqueueWakeup(agent.id, {
           source: "timer",

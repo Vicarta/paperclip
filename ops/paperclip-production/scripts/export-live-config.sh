@@ -50,6 +50,10 @@ run_copy "agents.csv" "
     coalesce(a.title, '') as title,
     a.status,
     a.adapter_type,
+    coalesce(a.runtime_config -> 'heartbeat' ->> 'enabled', '') as heartbeat_enabled,
+    coalesce(a.runtime_config -> 'heartbeat' ->> 'intervalSec', '') as heartbeat_interval_sec,
+    coalesce(a.runtime_config -> 'heartbeat' ->> 'wakeOnDemand', '') as heartbeat_wake_on_demand,
+    coalesce(a.runtime_config -> 'heartbeat' ->> 'skipIfNoActionableWork', '') as heartbeat_skip_if_no_actionable_work,
     a.budget_monthly_cents,
     a.updated_at
   from agents a
