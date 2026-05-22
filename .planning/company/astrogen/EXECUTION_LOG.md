@@ -600,3 +600,15 @@
   - Kept the article in CMS draft workflow state.
   - Verified through the CMS API that `articleContent.v1` still has `29` blocks, exactly `1` `iconList`, and exactly `1` `quietCta`.
   - The public preview endpoint was not reachable from this environment during the smoke check (`curl` timed out), so visual confirmation should be done in Payload/blog preview.
+- Started a production no-timer-heartbeat smoke test for the next Astrogen SEO blog article pipeline.
+  - Created parent issue [AST-840](/AST/issues/AST-840) for CMO-owned execution.
+  - Confirmed `Chief Marketing Officer`, `MKT Blog Brief Strategist`, `SEO Blog Article Writer`, `SEO Blog Article Validator`, `SEO Blog Article Layout Editor`, and `SEO Blog Article Layout Validator` all have timer heartbeat disabled with `wakeOnDemand=true`.
+  - Verified the chain advanced through assignment/on-demand wake-ups:
+    - [AST-841](/AST/issues/AST-841) Stage 55 brief completed for `Ретроградний меркурій`;
+    - [AST-842](/AST/issues/AST-842) Stage 59 draft completed;
+    - [AST-843](/AST/issues/AST-843), [AST-844](/AST/issues/AST-844), and [AST-846](/AST/issues/AST-846) correction passes completed;
+    - [AST-845](/AST/issues/AST-845) and [AST-847](/AST/issues/AST-847) Stage 61 validation passes completed;
+    - [AST-848](/AST/issues/AST-848) Stage 68 layout completed;
+    - [AST-849](/AST/issues/AST-849) Stage 68 layout validation completed.
+  - Observed one runtime issue: the Claude/OpenRouter writer failed once on [AST-843](/AST/issues/AST-843) with `adapter_failed` before producing work. The task was rerouted to `SEO Blog Article Writer (ChatGPT)`, and wake-on-assignment recovered the lane without CTO involvement.
+  - At the last check, [AST-840](/AST/issues/AST-840) remained CMO-owned `in_progress` pending downstream cover image, CMS draft, and Telegram delivery routing.
