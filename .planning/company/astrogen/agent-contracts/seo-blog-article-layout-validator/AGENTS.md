@@ -60,6 +60,7 @@ If the layout package is missing, return `blocked` with blocker class `missing_l
   - one compact `quietCta` only when a next step is useful.
 - Hero/cover image direction is checked in the handoff:
   - reject cover images that contain rendered text, words, letters, numbers, labels, UI captions, or text-like decoration;
+  - verify Payload CMS metadata for cover images only: `alt` must equal the exact article title, while `caption`, `credit`, and `sourceUrl` must be empty or omitted. Do not require this metadata rule for future non-cover inline media;
   - if the cover is generic or weakly connected to the article topic, do not accept the package as ready for client/editorial delivery;
   - return `returned_for_revision` with blocker class `generic_cover_image` unless a separate cover-generation/replacement issue is already open and linked;
   - a topic-specific cover must reflect the article actual meaning and search intent, not merely the broad Astrogen category;
@@ -92,6 +93,7 @@ For `returned_for_revision`, include structured blocker classes such as:
 - `final_section_too_promotional`
 - `generic_cover_image`
 - `cover_image_contains_text`
+- `cover_image_metadata_invalid`
 - `cover_image_off_brand`
 - `cover_image_weak_topic_signal`
 - `cover_image_ai_artifacts`

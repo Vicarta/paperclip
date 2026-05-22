@@ -20,6 +20,14 @@
   - Docker app container runs the new image;
   - plugin loader activated 13/13 ready plugins and registered 92 tools;
   - live Astrogen active-agent heartbeat check returned `timer_enabled_agents=0`, `wake_on_demand_agents=29`, `skip_guard_agents=29`.
+- Updated Astrogen blog cover-image metadata policy:
+  - cover/hero `alt` must equal the exact article title;
+  - cover/hero `caption`, `credit`, and `sourceUrl` must be empty or omitted;
+  - the rule applies only to cover/hero assets, not future inline explanatory media.
+- Applied the rule to the live Stage 68 process contract and layout editor/validator agent contracts on the server, plus the live CMO routing note.
+- Updated existing Payload CMS cover media:
+  - media `60` for `Китайський гороскоп: як він працює і чим відрізняється від західного`;
+  - media `61` for `Знак зодіаку: як визначити свій знак і не помилитися з межовою датою`.
 
 ## 2026-05-20
 

@@ -89,6 +89,15 @@ Every article package must include a cover/hero image that clearly matches the a
 
 Cover images must not contain rendered text, words, letters, numbers, labels, UI captions, or text-like decoration. The cover should communicate through scene, symbols, composition, color, and CMS alt text. If explanatory text is needed, it belongs in the article body, not on the cover image.
 
+Payload CMS metadata for cover images has a stricter rule than ordinary media:
+
+- `alt` must be the exact article title;
+- `caption` must be empty or omitted;
+- `credit` must be empty or omitted;
+- `sourceUrl` must be empty or omitted.
+
+This metadata rule applies only to `coverImage`/hero assets. Future inline explanatory images may use descriptive metadata when the CMS schema supports them.
+
 Cover images must meet Astrogen editorial quality, not just "have an image". The target is a premium designer visual comparable to a strong editorial photo or campaign hero: precise topic signal, polished lighting, clean composition, natural depth, refined detail, and no obvious AI artifacts.
 
 When the live Astrogen reference layer is available, use `/astrogen/docs/reference/ARTICLE_IMAGE_DESIGN_SYSTEM.md` as the canonical art-direction source for blog imagery. The shorter rules in this process are mandatory gates; the reference document is the richer style system for prompt construction and QA.
@@ -162,6 +171,7 @@ Expected blocker classes:
 - `final_section_too_promotional`
 - `generic_cover_image`
 - `cover_image_contains_text`
+- `cover_image_metadata_invalid`
 - `cover_image_off_brand`
 - `cover_image_weak_topic_signal`
 - `cover_image_ai_artifacts`

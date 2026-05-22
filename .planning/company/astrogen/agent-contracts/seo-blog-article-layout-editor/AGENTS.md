@@ -64,6 +64,7 @@ If the validated article draft is missing, do not guess. Return `blocked` with b
 - Image direction:
   - the article cover/hero image must be specific to the article meaning, not a generic consultation or lifestyle photo;
   - cover images must not contain rendered text, words, letters, numbers, labels, UI captions, or text-like decoration; communicate meaning through scene, symbols, composition, and alt text instead;
+  - Payload CMS metadata rule for cover images only: set `alt` exactly to the article title; leave `caption`, `credit`, and `sourceUrl` empty/omitted. This rule applies only to cover/hero images, not to future inline explanatory media;
   - the cover must look like a premium Astrogen editorial visual, comparable to a strong photo or campaign hero: polished lighting, clean composition, natural depth, refined detail, and no obvious AI artifacts;
   - when available, use `/astrogen/docs/reference/ARTICLE_IMAGE_DESIGN_SYSTEM.md` as the richer art-direction source for prompt construction;
   - use Astrogen visual anchors: calm modern expertise, soft neutral base, deep burgundy/wine accents, warm gold detail, deep green or subtle mint/teal glow only when useful, and a light esoteric signal without mystical clutter;
