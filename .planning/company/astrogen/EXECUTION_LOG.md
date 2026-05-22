@@ -532,3 +532,8 @@
   - verified `articleContent.v1` now has `29` blocks and exactly one `quietCta`;
   - verified the cover remains topic-specific and text-free: Payload media id `59`.
 - Paperclip live issue state remains closed for [AST-821](/AST/issues/AST-821), [AST-827](/AST/issues/AST-827), [AST-829](/AST/issues/AST-829), and [AST-839](/AST/issues/AST-839). Telegram delivery proof remains `message id 628`.
+- Rechecked Telegram plugin state through the Paperclip API:
+  - live plugin record still reports `paperclip-plugin-telegram@0.3.0`;
+  - activity log still shows generic `issue.updated` forwarding for technical closeout issues after the source policy was added;
+  - attempted the safe API reinstall path from `/app/packages/plugins/plugin-telegram`, but the live app path does not expose a built Paperclip plugin manifest for that installer;
+  - durable fix still requires the normal server-side app/plugin package cutover. The runtime SDK alignment proves attachment delivery, but it does not prove the Telegram completion-noise policy is active in the installed live plugin bundle.

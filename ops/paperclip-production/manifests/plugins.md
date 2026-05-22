@@ -1,7 +1,7 @@
 # Production Plugin Manifest
 
-Last verified: 2026-05-21
-Source: Phase 17 live production smoke, plugin inventory, Telegram formatter smoke, Phase 22 source package verification, live Telegram delivery-groups proof on AST-827, Payload CMS live agent-tool smoke, and secret schema reconciliation smoke.
+Last verified: 2026-05-22
+Source: Phase 17 live production smoke, plugin inventory, Telegram formatter smoke, Phase 22 source package verification, live Telegram delivery-groups proof on AST-827, follow-up Telegram live-record check, Payload CMS live agent-tool smoke, and secret schema reconciliation smoke.
 Secret handling: config keys and secret refs only; no plaintext secret values. Generic `secretService` create/resolve/rotate is reconciled with the production metadata schema.
 
 Expected status: Astrogen-required plugins `ready`. Optional legacy connector records may remain `error` until their package/runtime wiring is deliberately restored.
@@ -42,6 +42,11 @@ Expected status: Astrogen-required plugins `ready`. Optional legacy connector re
   - audit comment recorded `Telegram message ids: 628`;
   - runtime recovery aligned the persistent Telegram plugin `@paperclipai/plugin-sdk` dependency with the running app image SDK so `ctx.issues.listAttachments` and `ctx.issues.getAttachmentContent` are available.
   - this runtime alignment is a recovery patch, not the durable package-cutover target.
+- 2026-05-22 follow-up:
+  - live plugin registry still reports `paperclip-plugin-telegram@0.3.0`;
+  - activity log still records generic `issue.updated` forwarding for technical closeout issues, so the source completion-noise policy must not be treated as live yet;
+  - Paperclip API reinstall from `/app/packages/plugins/plugin-telegram` failed because that live image path does not expose a built plugin manifest for the installer;
+  - durable cutover still requires a normal server-side app/plugin package deploy.
 - Error records, not required for current Astrogen SEO flow: `paperclip.bright-data-agent-tools`, `paperclip.exa-agent-tools`, `paperclip.serper-agent-tools`.
 
 ## Invariants
