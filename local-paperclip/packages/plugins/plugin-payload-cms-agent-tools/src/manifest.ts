@@ -19,6 +19,43 @@ const looseObjectSchema = {
   additionalProperties: true,
 } as const;
 
+const iconListIcons = [
+  "chinese-rat",
+  "chinese-ox",
+  "chinese-tiger",
+  "chinese-rabbit",
+  "chinese-dragon",
+  "chinese-snake",
+  "chinese-horse",
+  "chinese-goat",
+  "chinese-monkey",
+  "chinese-rooster",
+  "chinese-dog",
+  "chinese-pig",
+  "zodiac-aries",
+  "zodiac-taurus",
+  "zodiac-gemini",
+  "zodiac-cancer",
+  "zodiac-leo",
+  "zodiac-virgo",
+  "zodiac-libra",
+  "zodiac-scorpio",
+  "zodiac-sagittarius",
+  "zodiac-capricorn",
+  "zodiac-aquarius",
+  "zodiac-pisces",
+  "editorial-check",
+  "editorial-info",
+  "editorial-calendar",
+  "editorial-money",
+  "editorial-heart",
+  "editorial-star",
+  "editorial-people",
+  "editorial-chat",
+  "editorial-target",
+  "editorial-book",
+] as const;
+
 const articleContentSchema = {
   type: "object",
   properties: {
@@ -66,6 +103,31 @@ const articleContentSchema = {
               body: { type: "string" },
             },
             required: ["type", "variant", "title", "body"],
+            additionalProperties: false,
+          },
+          {
+            type: "object",
+            properties: {
+              type: { type: "string", enum: ["iconList"] },
+              style: { type: "string", enum: ["grid", "compact", "twoColumn"] },
+              title: { type: "string" },
+              items: {
+                type: "array",
+                minItems: 1,
+                maxItems: 40,
+                items: {
+                  type: "object",
+                  properties: {
+                    icon: { type: "string", enum: iconListIcons },
+                    label: { type: "string" },
+                    text: { type: "string" },
+                  },
+                  required: ["icon", "label"],
+                  additionalProperties: false,
+                },
+              },
+            },
+            required: ["type", "style", "title", "items"],
             additionalProperties: false,
           },
           {

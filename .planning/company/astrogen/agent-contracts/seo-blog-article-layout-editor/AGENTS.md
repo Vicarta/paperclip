@@ -33,14 +33,17 @@ If the validated article draft is missing, do not guess. Return `blocked` with b
 ## Core Rules
 
 - Output only `articleContent.v1` JSON plus a short layout handoff note.
-- Use only supported blocks: `paragraph`, `heading`, `list`, `editorialCallout`, `twoColumnText`, `quietCta`.
+- Use only supported blocks: `paragraph`, `heading`, `list`, `editorialCallout`, `iconList`, `twoColumnText`, `quietCta`.
 - Use the exact Payload plugin field names:
   - `paragraph`: `type`, `text`;
   - `heading`: `type`, `level`, `text`;
   - `list`: `type`, `ordered`, `items`;
   - `editorialCallout`: `type`, `variant`, `title`, `body`;
+  - `iconList`: `type`, `style`, `title`, `items`; each item uses `icon`, `label`, optional `text`;
   - `twoColumnText`: `type`, `mode`, `leftTitle`, `leftBody`, `rightTitle`, `rightBody`;
   - `quietCta`: `type`, `title`, `text`, `linkLabel`, `linkUrl`, optional `note`.
+- Use `iconList` only with the Payload icon registry. Do not send emoji, raw SVG, image URLs, file names, CSS classes, or invented icon keys. If a needed icon key is missing, return a blocker/request to extend the registry instead of guessing.
+- `iconList.style` must be `grid`, `compact`, or `twoColumn`; each item must have a registry `icon` and `label`; optional `text` must be short; max 40 items.
 - Do not invent compatibility fields. In particular, do not use `style` for lists, `text` for callout body, `leftText`/`rightText`, paragraph `links`, or a `quietCta` without `title`.
 - Do not output raw Payload Lexical JSON.
 - Do not output raw HTML, inline styles, CSS classes, or arbitrary embeds.
@@ -56,6 +59,7 @@ If the validated article draft is missing, do not guess. Return `blocked` with b
   - short summary callout after the intro;
   - important warning callout;
   - comparison two-column block;
+  - iconList for controlled zodiac/editorial item lists where registry icons clarify meaning;
   - enough / better-with-expert two-column block;
   - practical example paragraph;
   - one quiet inline CTA when it helps the reader choose a next step.

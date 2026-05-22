@@ -3,11 +3,56 @@ export type ArticleContentV1 = {
   blocks: ArticleContentBlock[];
 };
 
+export type ArticleIconListStyle = "grid" | "compact" | "twoColumn";
+
+export type ArticleIconListIcon =
+  | "chinese-rat"
+  | "chinese-ox"
+  | "chinese-tiger"
+  | "chinese-rabbit"
+  | "chinese-dragon"
+  | "chinese-snake"
+  | "chinese-horse"
+  | "chinese-goat"
+  | "chinese-monkey"
+  | "chinese-rooster"
+  | "chinese-dog"
+  | "chinese-pig"
+  | "zodiac-aries"
+  | "zodiac-taurus"
+  | "zodiac-gemini"
+  | "zodiac-cancer"
+  | "zodiac-leo"
+  | "zodiac-virgo"
+  | "zodiac-libra"
+  | "zodiac-scorpio"
+  | "zodiac-sagittarius"
+  | "zodiac-capricorn"
+  | "zodiac-aquarius"
+  | "zodiac-pisces"
+  | "editorial-check"
+  | "editorial-info"
+  | "editorial-calendar"
+  | "editorial-money"
+  | "editorial-heart"
+  | "editorial-star"
+  | "editorial-people"
+  | "editorial-chat"
+  | "editorial-target"
+  | "editorial-book";
+
+export type ArticleIconListItem = {
+  icon: ArticleIconListIcon;
+  label: string;
+  text?: string;
+};
+
 export type ArticleContentBlock =
   | { type: "paragraph"; text: string }
   | { type: "heading"; level: "h2" | "h3" | "h4"; text: string }
   | { type: "list"; ordered: boolean; items: string[] }
   | { type: "editorialCallout"; variant: "soft" | "brand" | "situation"; title: string; body: string }
+  | { type: "iconList"; style: ArticleIconListStyle; title: string; items: ArticleIconListItem[] }
   | {
       type: "twoColumnText";
       mode: "text";
@@ -35,6 +80,43 @@ export type ArticleContentBlock =
 
 const HEADING_LEVELS = new Set(["h2", "h3", "h4"]);
 const CALLOUT_VARIANTS = new Set(["soft", "brand", "situation"]);
+const ICON_LIST_STYLES = new Set(["grid", "compact", "twoColumn"]);
+const ICON_LIST_ICONS = new Set([
+  "chinese-rat",
+  "chinese-ox",
+  "chinese-tiger",
+  "chinese-rabbit",
+  "chinese-dragon",
+  "chinese-snake",
+  "chinese-horse",
+  "chinese-goat",
+  "chinese-monkey",
+  "chinese-rooster",
+  "chinese-dog",
+  "chinese-pig",
+  "zodiac-aries",
+  "zodiac-taurus",
+  "zodiac-gemini",
+  "zodiac-cancer",
+  "zodiac-leo",
+  "zodiac-virgo",
+  "zodiac-libra",
+  "zodiac-scorpio",
+  "zodiac-sagittarius",
+  "zodiac-capricorn",
+  "zodiac-aquarius",
+  "zodiac-pisces",
+  "editorial-check",
+  "editorial-info",
+  "editorial-calendar",
+  "editorial-money",
+  "editorial-heart",
+  "editorial-star",
+  "editorial-people",
+  "editorial-chat",
+  "editorial-target",
+  "editorial-book",
+]);
 const TWO_COLUMN_MODES = new Set(["text", "list"]);
 const HTML_TAG_PATTERN = /<\/?[a-z][\s\S]*>/i;
 
@@ -80,6 +162,25 @@ function rejectExtraKeys(record: Record<string, unknown>, allowed: string[], pat
   }
 }
 
+function validateIconListItems(value: unknown, path: string): ArticleIconListItem[] {
+  if (!Array.isArray(value)) throw new Error(`${path} must be an array`);
+  if (value.length === 0) throw new Error(`${path} must not be empty`);
+  if (value.length > 40) throw new Error(`${path} must contain at most 40 items`);
+  return value.map((item, index) => {
+    const itemPath = `${path}[${index}]`;
+    const record = asRecord(item);
+    if (!record) throw new Error(`${itemPath} must be an object`);
+    rejectExtraKeys(record, ["icon", "label", "text"], itemPath);
+    const icon = requireString(record.icon, `${itemPath}.icon`);
+    if (!ICON_LIST_ICONS.has(icon)) throw new Error(`${itemPath}.icon is not in the allowed icon registry`);
+    return {
+      icon: icon as ArticleIconListIcon,
+      label: requireString(record.label, `${itemPath}.label`),
+      ...(record.text !== undefined ? { text: requireString(record.text, `${itemPath}.text`) } : {}),
+    };
+  });
+}
+
 function validateBlock(value: unknown, index: number): ArticleContentBlock {
   const path = `articleContent.blocks[${index}]`;
   const block = asRecord(value);
@@ -116,6 +217,18 @@ function validateBlock(value: unknown, index: number): ArticleContentBlock {
       variant: variant as "soft" | "brand" | "situation",
       title: requireString(block.title, `${path}.title`),
       body: requireString(block.body, `${path}.body`),
+    };
+  }
+
+  if (type === "iconList") {
+    rejectExtraKeys(block, ["type", "style", "title", "items"], path);
+    const style = requireString(block.style, `${path}.style`);
+    if (!ICON_LIST_STYLES.has(style)) throw new Error(`${path}.style must be grid, compact, or twoColumn`);
+    return {
+      type,
+      style: style as ArticleIconListStyle,
+      title: requireString(block.title, `${path}.title`),
+      items: validateIconListItems(block.items, `${path}.items`),
     };
   }
 

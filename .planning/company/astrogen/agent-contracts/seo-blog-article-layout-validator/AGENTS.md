@@ -32,15 +32,17 @@ If the layout package is missing, return `blocked` with blocker class `missing_l
 ## Validation Checklist
 
 - `schemaVersion` is exactly `articleContent.v1`.
-- Only supported blocks are present: `paragraph`, `heading`, `list`, `editorialCallout`, `twoColumnText`, `quietCta`.
+- Only supported blocks are present: `paragraph`, `heading`, `list`, `editorialCallout`, `iconList`, `twoColumnText`, `quietCta`.
 - The exact Payload plugin field contract is used:
   - `paragraph` has only `type`, `text`;
   - `heading` has only `type`, `level`, `text`;
   - `list` has only `type`, `ordered`, `items`;
   - `editorialCallout` has only `type`, `variant`, `title`, `body`;
+  - `iconList` has only `type`, `style`, `title`, `items`, and each item has only `icon`, `label`, optional `text`;
   - `twoColumnText` has only `type`, `mode`, `leftTitle`, `leftBody`, `rightTitle`, `rightBody`;
   - `quietCta` has `type`, `title`, `text`, `linkLabel`, `linkUrl`, and optional `note`.
-- Reject legacy/improvised field names such as `style`, callout `text`, `leftText`, `rightText`, paragraph `links`, or `quietCta` without `title`.
+- Reject legacy/improvised field names such as list `style`, callout `text`, `leftText`, `rightText`, paragraph `links`, or `quietCta` without `title`.
+- For `iconList`, reject emoji, raw SVG, image URLs, file names, CSS classes, invented icon keys, missing labels, unsupported styles, or more than 40 items. Icon keys must come from the Payload icon registry.
 - Heading levels are only `h2`, `h3`, `h4`.
 - Callout variants are only `soft`, `brand`, `situation`.
 - `quietCta.linkUrl` is an internal `/...` path or HTTPS URL; default expert route is `/experts`.
@@ -84,6 +86,7 @@ For `returned_for_revision`, include structured blocker classes such as:
 
 - `schema_invalid`
 - `unsupported_block`
+- `icon_registry_invalid`
 - `unsafe_cta_url`
 - `raw_format_detected`
 - `seo_lock_drift`

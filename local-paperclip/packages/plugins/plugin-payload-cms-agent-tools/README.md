@@ -46,8 +46,13 @@ Allowed `articleContent.v1` block types:
 - `heading` (`h2`, `h3`, `h4`)
 - `list`
 - `editorialCallout` (`soft`, `brand`, `situation`)
+- `iconList` (`grid`, `compact`, `twoColumn`)
 - `twoColumnText` (`text`, `list`)
 - `quietCta`
+
+`iconList` uses registry keys only. Do not send emoji, SVG, image URLs, file names,
+or CSS classes as icons. See `docs/article-content-v1.md` for the registry and
+examples.
 
 ## Safety
 

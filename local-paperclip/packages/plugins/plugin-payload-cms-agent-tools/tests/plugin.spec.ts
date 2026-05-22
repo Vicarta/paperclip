@@ -163,6 +163,45 @@ describe("Payload CMS content helpers", () => {
     expect(payload.content).toBeUndefined();
   });
 
+  it("accepts iconList blocks with registered icons only", () => {
+    const payload = buildBlogPostPayload({
+      title: "Article",
+      articleContent: {
+        schemaVersion: "articleContent.v1",
+        blocks: [
+          {
+            type: "iconList",
+            style: "grid",
+            title: "Знаки китайського гороскопу",
+            items: [
+              { icon: "chinese-rat", label: "Щур", text: "Перший знак китайського циклу." },
+              { icon: "chinese-ox", label: "Бик" },
+              { icon: "zodiac-aries", label: "Овен" },
+              { icon: "editorial-calendar", label: "Дата" },
+            ],
+          },
+        ],
+      },
+    });
+
+    expect(payload.articleContent).toMatchObject({
+      schemaVersion: "articleContent.v1",
+      blocks: [
+        {
+          type: "iconList",
+          style: "grid",
+          title: "Знаки китайського гороскопу",
+          items: [
+            { icon: "chinese-rat", label: "Щур", text: "Перший знак китайського циклу." },
+            { icon: "chinese-ox", label: "Бик" },
+            { icon: "zodiac-aries", label: "Овен" },
+            { icon: "editorial-calendar", label: "Дата" },
+          ],
+        },
+      ],
+    });
+  });
+
   it("rejects legacy markdown or raw Lexical content for blog text", () => {
     expect(() => buildBlogPostPayload({ title: "Article", markdown: "Intro" } as any)).toThrow(
       /articleContent\.v1/,
@@ -200,5 +239,73 @@ describe("Payload CMS content helpers", () => {
         },
       }),
     ).toThrow(/internal path or HTTPS URL/);
+  });
+
+  it("rejects unsafe or unregistered iconList icon values", () => {
+    const base = {
+      schemaVersion: "articleContent.v1",
+      blocks: [
+        {
+          type: "iconList",
+          style: "grid",
+          title: "Знаки китайського гороскопу",
+          items: [{ icon: "chinese-rat", label: "Щур" }],
+        },
+      ],
+    } as const;
+
+    for (const icon of ["🐀", "rat-icon.svg", "chinese-unicorn"]) {
+      expect(() =>
+        buildBlogPostPayload({
+          title: "Article",
+          articleContent: {
+            ...base,
+            blocks: [
+              {
+                ...base.blocks[0],
+                items: [{ icon, label: "Щур" }],
+              },
+            ],
+          },
+        }),
+      ).toThrow(/allowed icon registry/);
+    }
+
+    expect(() =>
+      buildBlogPostPayload({
+        title: "Article",
+        articleContent: {
+          ...base,
+          blocks: [
+            {
+              ...base.blocks[0],
+              items: [{ icon: "<svg></svg>", label: "Щур" }],
+            },
+          ],
+        },
+      }),
+    ).toThrow(/plain text/);
+  });
+
+  it("rejects iconList blocks with more than 40 items", () => {
+    expect(() =>
+      buildBlogPostPayload({
+        title: "Article",
+        articleContent: {
+          schemaVersion: "articleContent.v1",
+          blocks: [
+            {
+              type: "iconList",
+              style: "compact",
+              title: "Too many",
+              items: Array.from({ length: 41 }, (_, index) => ({
+                icon: "editorial-star",
+                label: `Item ${index + 1}`,
+              })),
+            },
+          ],
+        },
+      }),
+    ).toThrow(/at most 40 items/);
   });
 });

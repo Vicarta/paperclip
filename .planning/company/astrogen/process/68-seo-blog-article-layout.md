@@ -43,6 +43,7 @@ Allowed block types:
 - `heading`
 - `list`
 - `editorialCallout`
+- `iconList`
 - `twoColumnText`
 - `quietCta`
 
@@ -53,6 +54,7 @@ Use the exact Payload plugin field contract:
 { "type": "heading", "level": "h2", "text": "Heading text." }
 { "type": "list", "ordered": false, "items": ["Item 1", "Item 2"] }
 { "type": "editorialCallout", "variant": "soft", "title": "Short title", "body": "Short body." }
+{ "type": "iconList", "style": "grid", "title": "Icon list title", "items": [{ "icon": "editorial-info", "label": "Label", "text": "Optional short text." }] }
 { "type": "twoColumnText", "mode": "text", "leftTitle": "Left", "leftBody": "Left text.", "rightTitle": "Right", "rightBody": "Right text." }
 { "type": "twoColumnText", "mode": "list", "leftTitle": "Left", "leftBody": ["Item 1"], "rightTitle": "Right", "rightBody": ["Item 1"] }
 { "type": "quietCta", "title": "Short CTA title", "text": "CTA body.", "linkLabel": "Button label", "linkUrl": "/internal-path" }
@@ -60,11 +62,14 @@ Use the exact Payload plugin field contract:
 
 Do not use legacy or improvised field names such as `style`, `body` on paragraphs, `text` on `editorialCallout`, `leftText`, `rightText`, paragraph `links`, or a `quietCta` without `title`. The Payload plugin rejects extra keys.
 
+For `iconList`, use only the registry documented in `docs/article-content-v1.md`. Do not use emoji, raw SVG, image URLs, file names, CSS classes, or invented icon keys. Allowed styles are `grid`, `compact`, and `twoColumn`; each item requires `icon` and `label`, optional `text` should stay short, and one `iconList` may contain at most 40 items.
+
 The editor should use blocks only when they clarify meaning. Strong default candidates:
 
 - short summary callout after the intro;
 - important caveat/warning callout;
 - comparison block;
+- icon list for controlled zodiac/editorial item lists where registry icons clarify meaning;
 - practical example paragraph;
 - two-column "enough / better with expert" block;
 - calm inline CTA to `/experts` when relevant.
@@ -162,6 +167,7 @@ Expected blocker classes:
 
 - `schema_invalid`
 - `unsupported_block`
+- `icon_registry_invalid`
 - `unsafe_cta_url`
 - `raw_format_detected`
 - `seo_lock_drift`
