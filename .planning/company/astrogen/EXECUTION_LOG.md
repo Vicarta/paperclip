@@ -580,3 +580,18 @@
   - cover prompts must carry article intent, topic anchors, Astrogen style anchors, no-text/no-glyph constraints, crop safety, and fit rationale;
   - validator blocker classes now include off-brand covers, weak topic signal, visible AI artifacts, and below-brand-standard image quality;
   - the CMO manifest now treats premium topic-specific cover generation as part of the required new-article delivery chain.
+- Added `iconList` support to the Payload CMS article adapter for `articleContent.v1`.
+  - The adapter now accepts only registry icons for Chinese zodiac, regular zodiac, and editorial lists.
+  - Supported styles are `grid`, `compact`, and `twoColumn`; each item requires a `label`; one block is limited to `40` items.
+  - Emoji, raw SVG, image URLs, file names, CSS classes, invented icon keys, and HTML-like text remain blocked.
+  - Added adapter docs at `plugin-payload-cms-agent-tools/docs/article-content-v1.md`.
+- Updated Astrogen Stage 68 layout editor and layout validator contracts so agents can use `iconList` for controlled zodiac/editorial lists and must return `icon_registry_invalid` instead of inventing missing icons.
+- Verified locally:
+  - `pnpm --filter @paperclipai/plugin-payload-cms-agent-tools test`;
+  - `pnpm --filter @paperclipai/plugin-payload-cms-agent-tools typecheck`;
+  - `pnpm --filter @paperclipai/plugin-payload-cms-agent-tools build`.
+- Deployed production image `paperclip-app:v2026.513.11-iconlist-20260522` with source revision `ce7c9c60`.
+  - Production health check returned `status=ok`.
+  - Plugin loader reported `13/13` plugins loaded successfully.
+  - Runtime grep verified `iconList` is present in the built Payload CMS adapter manifest and article-content validator.
+  - Synced the updated Astrogen layout editor, layout validator, and Stage 68 process docs to `/home/paperclip/astrogen`.
