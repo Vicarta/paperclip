@@ -520,3 +520,15 @@
   - [AST-827](/AST/issues/AST-827) produced an acceptance-grade audit comment with `Telegram message ids: 628`;
   - [AST-839](/AST/issues/AST-839) and superseded [AST-829](/AST/issues/AST-829) are closed.
 - Important durability note: this production recovery included a live persistent plugin dependency alignment. It proves the runtime path but does not replace the durable Phase 22 requirement to ship the source-controlled Telegram plugin package through the normal app/plugin cutover path.
+
+## 2026-05-22
+
+- Rechecked the Chinese horoscope Payload CMS draft after the Phase 23 closeout.
+- Found that the draft still had two `quietCta` blocks despite the intended final-CTA policy.
+- Updated Payload draft `38` directly through the CMS API:
+  - removed the earlier duplicated `free-horoscope` CTA block and its lead-in paragraph;
+  - kept one final compact CTA to the Astrogen experts catalog;
+  - kept `_status=draft` and `workflowStatus=draft`;
+  - verified `articleContent.v1` now has `29` blocks and exactly one `quietCta`;
+  - verified the cover remains topic-specific and text-free: Payload media id `59`.
+- Paperclip live issue state remains closed for [AST-821](/AST/issues/AST-821), [AST-827](/AST/issues/AST-827), [AST-829](/AST/issues/AST-829), and [AST-839](/AST/issues/AST-839). Telegram delivery proof remains `message id 628`.
