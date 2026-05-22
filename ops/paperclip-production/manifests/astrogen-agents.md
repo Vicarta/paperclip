@@ -19,25 +19,27 @@ All specialist agents should remain `wakeOnDemand=true` with `heartbeat.enabled=
 
 | Agent | Runtime path | Role |
 | --- | --- | --- |
-| `SEO Blog Article Writer (Claude)` | `openrouter` / `anthropic/claude-sonnet-4.6` | Primary first-pass SEO blog article author. |
-| `SEO Blog Article Writer (ChatGPT)` | `codex_local` / `gpt-5.4` | Fallback/rescue author for repeated same-class validation failures, protocol/runtime failures, or missing canonical artifacts. |
+| `SEO Blog Article Writer (ChatGPT)` | `codex_local` / `gpt-5.4` | Primary first-pass SEO blog article author and normal deterministic correction author. |
+| `SEO Blog Article Writer (Claude)` | `openrouter` / `anthropic/claude-sonnet-4.6` | Reserve author only for explicit CMO-approved recovery when the ChatGPT lane is unavailable or repeatedly blocked. |
 | `SEO Blog Article Layout Editor` | `codex_local` / `gpt-5.4` | Converts validated article drafts into `articleContent.v1` with meaningful editorial blocks and calm CTA placement. |
 | `SEO Blog Article Layout Validator` | `codex_local` / `gpt-5.4` | Validates `articleContent.v1` schema, visual rhythm, CTA safety, SEO-lock preservation, and absence of raw HTML/Lexical/CSS. |
 
-Primary OpenRouter writer runtime policy:
+Reserve OpenRouter writer runtime policy:
 
 - `requireArtifactOnDone=true`.
 - `promptTemplate` is filled with the OpenRouter-specific Stage 59 operating rules.
 - `paperclipSkillSync.desiredSkills=[]`; OpenRouter must not be presented as having local Paperclip skill tools.
 - The prompt explicitly tells the agent it has no shell, filesystem, browser, or Paperclip tool access and must return the canonical markdown artifact through the issue protocol.
 - An issue-bound OpenRouter run that returns unparsable protocol output, or `done` without a canonical artifact, must block internally with a diagnostic comment. It must not create a human decision gate.
+- Routine Stage 59 first-pass drafts should not be routed to OpenRouter/Claude while the ChatGPT writer lane is healthy.
 
 ## Recovery Rules
 
 - Do not passively monitor the same stalled Paperclip condition more than three times.
 - After the third unchanged check, switch to system recovery: update the contract, reassign the work, create a concrete recovery issue, or fix the configuration.
 - Validator returns must include structured blocker classes so CMO can count repeated same-class failures.
-- CMO must switch a Stage 59 article task to `SEO Blog Article Writer GPT` instead of changing the model inside the primary writer.
+- CMO must route normal Stage 59 article drafting and ordinary corrections to `SEO Blog Article Writer (ChatGPT)`.
+- CMO must not switch the model inside an existing writer agent as a workaround. If the ChatGPT lane is explicitly blocked, choose a concrete recovery path or deliberately assign the reserve `SEO Blog Article Writer (Claude)` lane.
 - Technical writer/validator failures must not be labeled as owner decisions.
 
 ## CMO Blog Scope Rule

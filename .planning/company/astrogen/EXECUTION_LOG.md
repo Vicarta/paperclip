@@ -612,3 +612,7 @@
     - [AST-849](/AST/issues/AST-849) Stage 68 layout validation completed.
   - Observed one runtime issue: the Claude/OpenRouter writer failed once on [AST-843](/AST/issues/AST-843) with `adapter_failed` before producing work. The task was rerouted to `SEO Blog Article Writer (ChatGPT)`, and wake-on-assignment recovered the lane without CTO involvement.
   - At the last check, [AST-840](/AST/issues/AST-840) remained CMO-owned `in_progress` pending downstream cover image, CMS draft, and Telegram delivery routing.
+- Promoted `SEO Blog Article Writer (ChatGPT)` to the primary Astrogen Stage 59 article author for first-pass drafts and normal correction passes.
+  - Kept `SEO Blog Article Writer (Claude)` / OpenRouter as a reserve lane only for explicit CMO-approved recovery when the ChatGPT lane is unavailable or repeatedly blocked.
+  - Verified live CMO and ChatGPT writer contracts already carry the ChatGPT-primary routing rule.
+  - Updated the production runtime manifest and Astrogen planning state so the source-of-truth matches the live server.
