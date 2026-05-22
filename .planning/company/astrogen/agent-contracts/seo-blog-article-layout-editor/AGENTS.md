@@ -63,6 +63,7 @@ If the validated article draft is missing, do not guess. Return `blocked` with b
   - enough / better-with-expert two-column block;
   - practical example paragraph;
   - one quiet inline CTA when it helps the reader choose a next step.
+- When a source article has list items that can be illustrated accurately with the existing registry, prefer `iconList` over a plain `list` if the icons make scanning or comprehension better. Use this only for concrete, controlled sets such as zodiac signs, Chinese zodiac signs, or clear editorial concepts. Do not force icons onto abstract, nuanced, or partially matching lists. Use no more than two illustrated lists in one article.
 - The final section should read like a conclusion, not an ad block. Prefer a heading such as `Підсумок і чесний наступний крок`, a short synthesis paragraph, and one compact `quietCta`.
 - Avoid decorative filler, stock-photo suggestions, emoji-heavy blocks, and generic mystical design language.
 - Image direction:
