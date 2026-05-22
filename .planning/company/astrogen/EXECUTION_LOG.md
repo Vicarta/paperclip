@@ -1,5 +1,26 @@
 # Execution Log: Astrogen
 
+## 2026-05-22
+
+- Audited Paperclip LLM usage for Astrogen between 2026-05-21 23:00 and 2026-05-22 10:00 Europe/Kiev.
+- Found 84 Astrogen LLM request/cost events, all `timer/system` heartbeats from CEO, CMO, and CTO, consuming 26,543,631 input tokens and 27,714 output tokens.
+- Applied the live Astrogen cutoff:
+  - set active Astrogen timer heartbeats to disabled;
+  - preserved `wakeOnDemand=true`;
+  - set `heartbeat.skipIfNoActionableWork=true` for active Astrogen agents.
+- Added source-level timer actionability guard in `heartbeatService.tickTimers()`:
+  - `todo` assigned issues are actionable;
+  - `in_progress`, `in_review`, and `blocked` assigned issues are actionable only when the issue or comments changed after the agent's previous heartbeat;
+  - idle timers with `skipIfNoActionableWork=true` are skipped before an adapter/LLM run is created.
+- Added focused tests for timer actionability and kept the existing silent-noop tests passing.
+- Updated production config export to include heartbeat fields for drift review.
+- Deployed `paperclip-app:v2026.513.10-heartbeat-cost-20260522` to production.
+- Production smoke passed:
+  - `/api/health` returned `status=ok`;
+  - Docker app container runs the new image;
+  - plugin loader activated 13/13 ready plugins and registered 92 tools;
+  - live Astrogen active-agent heartbeat check returned `timer_enabled_agents=0`, `wake_on_demand_agents=29`, `skip_guard_agents=29`.
+
 ## 2026-05-20
 
 - Started Payload CMS publication adapter implementation after Astrogen blog moved under Payload CMS:

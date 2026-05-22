@@ -13,7 +13,7 @@ See: `.planning/company/astrogen/README.md`
 
 Phase: Astrogen growth/content operating system hardening
 Status: Active
-Last activity: 2026-05-22 - Phase 24 LLM heartbeat cost-control pass started after the overnight audit found 84 Astrogen `timer/system` LLM runs from CEO/CMO/CTO between 2026-05-21 23:00 and 2026-05-22 10:00 Europe/Kiev. Astrogen manager work should move to wake-on-demand, explicit routines, and deterministic watchdogs instead of idle timer heartbeats.
+Last activity: 2026-05-22 - Phase 24 LLM heartbeat cost-control pass completed. The overnight audit found 84 Astrogen `timer/system` LLM runs from CEO/CMO/CTO between 2026-05-21 23:00 and 2026-05-22 10:00 Europe/Kiev. Live Astrogen config now has zero active timer-enabled agents, wake-on-demand preserved, and `heartbeat.skipIfNoActionableWork=true` applied to active agents. Production deploy `paperclip-app:v2026.513.10-heartbeat-cost-20260522` is healthy with 13 plugins loaded.
 
 ## Current Focus
 
@@ -95,7 +95,7 @@ Last activity: 2026-05-22 - Phase 24 LLM heartbeat cost-control pass started aft
 - Phase 20 live first pass applied: Article Writer Fallback And Cost-Controlled Recovery.
 - Phase 22 planned: Telegram Attachment Delivery Groups for first-class grouped issue attachment delivery through the Telegram plugin.
 - CTO weekly release-check routine verified against live `build.releaseTag`; no newer release was found.
-- Phase 24 planned: LLM Heartbeat Cost Control after an overnight token audit showed non-functional manager timer heartbeats.
+- Phase 24 executed: LLM Heartbeat Cost Control after an overnight token audit showed non-functional manager timer heartbeats.
 
 ## Pending Todos
 
