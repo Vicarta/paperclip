@@ -537,3 +537,12 @@
   - activity log still shows generic `issue.updated` forwarding for technical closeout issues after the source policy was added;
   - attempted the safe API reinstall path from `/app/packages/plugins/plugin-telegram`, but the live app path does not expose a built Paperclip plugin manifest for that installer;
   - durable fix still requires the normal server-side app/plugin package cutover. The runtime SDK alignment proves attachment delivery, but it does not prove the Telegram completion-noise policy is active in the installed live plugin bundle.
+- Completed the Telegram plugin package cutover:
+  - verified SSH/Tailscale access and production Docker health;
+  - rebuilt and tested the source-controlled `paperclip-plugin-telegram@0.3.1-paperclip.0` package locally (`16` test files, `229` tests);
+  - installed the built package under `/paperclip/.paperclip/plugins/local-packages/paperclip-plugin-telegram-0.3.1-paperclip.0`;
+  - updated the production plugin registry to point at that package path and manifest;
+  - restarted the Paperclip app container and verified health;
+  - live plugin API now reports version `0.3.1-paperclip.0`;
+  - plugin loader logs show `paperclip-plugin-telegram` activated successfully at version `0.3.1-paperclip.0`;
+  - installed policy smoke confirms proof/delivery closeout notifications are suppressed while real CMS draft-ready notifications remain allowed.
