@@ -546,3 +546,8 @@
   - live plugin API now reports version `0.3.1-paperclip.0`;
   - plugin loader logs show `paperclip-plugin-telegram` activated successfully at version `0.3.1-paperclip.0`;
   - installed policy smoke confirms proof/delivery closeout notifications are suppressed while real CMS draft-ready notifications remain allowed.
+- Tightened the Astrogen article image-generation contract:
+  - cover images must meet a premium editorial/photo-quality Astrogen visual standard, not merely be topic-adjacent;
+  - cover prompts must carry article intent, topic anchors, Astrogen style anchors, no-text/no-glyph constraints, crop safety, and fit rationale;
+  - validator blocker classes now include off-brand covers, weak topic signal, visible AI artifacts, and below-brand-standard image quality;
+  - the CMO manifest now treats premium topic-specific cover generation as part of the required new-article delivery chain.

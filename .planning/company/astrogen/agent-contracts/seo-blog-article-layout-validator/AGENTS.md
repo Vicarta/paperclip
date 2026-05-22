@@ -63,6 +63,12 @@ If the layout package is missing, return `blocked` with blocker class `missing_l
   - if the cover is generic or weakly connected to the article topic, do not accept the package as ready for client/editorial delivery;
   - return `returned_for_revision` with blocker class `generic_cover_image` unless a separate cover-generation/replacement issue is already open and linked;
   - a topic-specific cover must reflect the article actual meaning and search intent, not merely the broad Astrogen category;
+  - the cover must meet Astrogen premium editorial quality: strong photo/editorial-hero feel, polished lighting, clean composition, natural depth, refined detail, and no obvious AI artifacts;
+  - when `/astrogen/docs/reference/ARTICLE_IMAGE_DESIGN_SYSTEM.md` is available, use it as the richer art-direction source for brand-fit validation;
+  - reject covers that feel like cheap stock imagery, generic wellness consultation, neon-purple astrology, mystical clutter, stereotyped cultural decoration, random zodiac-wheel decoration, or a scene that could fit almost any Astrogen article;
+  - reject covers with malformed hands/faces, uncanny faces, warped astrology symbols, fake glyphs, muddy edges, inconsistent lighting, or low-resolution/compression artifacts;
+  - require the handoff to name two or three topic-specific semantic anchors and explain why the image communicates the article within two seconds;
+  - require Astrogen visual fit: calm modern expertise, soft neutral base, deep burgundy/wine accents, warm gold detail, and restrained esoteric signal;
   - if an internal non-photo illustration/diagram would improve comprehension and the CMS contract does not yet support inline illustrations, require a handoff recommendation instead of an unsupported block.
 
 ## Decision Contract
@@ -86,6 +92,10 @@ For `returned_for_revision`, include structured blocker classes such as:
 - `final_section_too_promotional`
 - `generic_cover_image`
 - `cover_image_contains_text`
+- `cover_image_off_brand`
+- `cover_image_weak_topic_signal`
+- `cover_image_ai_artifacts`
+- `cover_image_quality_below_brand_standard`
 - `inline_illustration_not_supported`
 - `article_content_schema_field_mismatch`
 - `claim_added_without_validation`

@@ -89,9 +89,33 @@ Every article package must include a cover/hero image that clearly matches the a
 
 Cover images must not contain rendered text, words, letters, numbers, labels, UI captions, or text-like decoration. The cover should communicate through scene, symbols, composition, color, and CMS alt text. If explanatory text is needed, it belongs in the article body, not on the cover image.
 
+Cover images must meet Astrogen editorial quality, not just "have an image". The target is a premium designer visual comparable to a strong editorial photo or campaign hero: precise topic signal, polished lighting, clean composition, natural depth, refined detail, and no obvious AI artifacts.
+
+When the live Astrogen reference layer is available, use `/astrogen/docs/reference/ARTICLE_IMAGE_DESIGN_SYSTEM.md` as the canonical art-direction source for blog imagery. The shorter rules in this process are mandatory gates; the reference document is the richer style system for prompt construction and QA.
+
+Astrogen visual direction:
+
+- calm, modern, expert, emotionally warm, and lightly esoteric;
+- white or soft neutral base, deep burgundy/wine accents, warm gold detail, deep green or subtle mint/teal glow only where useful;
+- refined editorial styling, not mystical clutter, neon-purple astrology, cheap stock-photo consultation, generic laptop/coffee, tarot/crystal decoration unless the article truly needs it, or stereotyped cultural props;
+- realistic human imagery only when it adds meaning and looks natural; otherwise prefer a high-end symbolic still life, refined diagram-like composition, or premium editorial illustration;
+- the image should answer "what is this article about?" within two seconds without relying on the article title.
+
+The image generation handoff must include:
+
+- article title and search intent;
+- visual concept in one or two sentences;
+- two or three concrete semantic anchors from the article topic;
+- Astrogen style anchors from the visual direction above;
+- hard negatives: no text, no letters, no numbers, no UI, no fake glyphs, no distorted hands/faces, no random symbols, no generic stock scene;
+- aspect ratio and crop safety for CMS cover usage;
+- a short reason why the image fits the article.
+
 A generic or weakly connected cover is a blocking package defect, not a cosmetic note. CMO should route a cover-generation/replacement step before Payload CMS draft delivery or Telegram/editorial notification. The final CMS draft must have the topic-specific image set as `coverImage`.
 
-When useful, the layout handoff may recommend an internal non-photo illustration, diagram, or simple editorial visual. Do not add unsupported inline image blocks to `articleContent.v1`; keep the recommendation in the handoff until the CMS schema explicitly supports inline illustrations.
+Generated images should be rejected and regenerated when they contain visible text, text-like pseudo-glyphs, malformed hands/faces, warped symbols, plastic/uncanny faces, muddy edges, incoherent astrology marks, or a scene that could fit almost any wellness article.
+
+When useful, the layout handoff may recommend an internal non-photo illustration, diagram, or simple editorial visual. Internal visuals should explain the article, not decorate it. Do not add unsupported inline image blocks to `articleContent.v1`; keep the recommendation in the handoff until the CMS schema explicitly supports inline illustrations.
 
 ## Hard Limits
 
@@ -138,6 +162,10 @@ Expected blocker classes:
 - `final_section_too_promotional`
 - `generic_cover_image`
 - `cover_image_contains_text`
+- `cover_image_off_brand`
+- `cover_image_weak_topic_signal`
+- `cover_image_ai_artifacts`
+- `cover_image_quality_below_brand_standard`
 - `inline_illustration_not_supported`
 - `article_content_schema_field_mismatch`
 - `claim_added_without_validation`

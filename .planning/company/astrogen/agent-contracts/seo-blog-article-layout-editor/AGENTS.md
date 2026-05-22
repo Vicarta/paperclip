@@ -64,6 +64,12 @@ If the validated article draft is missing, do not guess. Return `blocked` with b
 - Image direction:
   - the article cover/hero image must be specific to the article meaning, not a generic consultation or lifestyle photo;
   - cover images must not contain rendered text, words, letters, numbers, labels, UI captions, or text-like decoration; communicate meaning through scene, symbols, composition, and alt text instead;
+  - the cover must look like a premium Astrogen editorial visual, comparable to a strong photo or campaign hero: polished lighting, clean composition, natural depth, refined detail, and no obvious AI artifacts;
+  - when available, use `/astrogen/docs/reference/ARTICLE_IMAGE_DESIGN_SYSTEM.md` as the richer art-direction source for prompt construction;
+  - use Astrogen visual anchors: calm modern expertise, soft neutral base, deep burgundy/wine accents, warm gold detail, deep green or subtle mint/teal glow only when useful, and a light esoteric signal without mystical clutter;
+  - avoid neon-purple astrology, cheap stock-photo consultation, generic laptop/coffee, stereotyped cultural props, random zodiac wheels, tarot/crystal decoration unless truly relevant, and childish/emoji-like symbols;
+  - the image concept must answer what the article is about within two seconds without relying on the article title;
+  - image handoff must include title/search intent, visual concept, two or three semantic anchors, Astrogen style anchors, hard negatives, aspect ratio/crop safety, and a short fit rationale;
   - if the current cover is generic or weakly connected to the article topic, state this as a required cover replacement, not as an optional nice-to-have;
   - the article package is not ready for CMS/editorial delivery until a topic-specific cover image is available or a cover-generation/replacement issue is explicitly created and kept open;
   - when an internal visual would materially improve comprehension, recommend a non-photo editorial illustration or diagram in the handoff;
@@ -80,6 +86,7 @@ A task is complete only when:
 - CTA links are safe and internal/HTTPS;
 - SEO locks and required links are preserved.
 - cover/hero status is explicit: either the existing cover clearly matches the article topic/search intent, or a required replacement is called out for CMO routing before delivery.
+- cover image direction is explicit enough for generation and QA, including topic anchors, Astrogen style anchors, no-text/no-glyph constraints, and whether any existing/generated image is below brand standard.
 
 ## Paperclip Closeout Rule
 
