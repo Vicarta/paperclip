@@ -79,10 +79,25 @@ Do not leak internal routing or task language into visible copy. Phrases such as
 notes, or handoff instructions belong in Paperclip artifacts, not in the CMS
 article.
 
-If two routes are relevant but the current schema can represent only one
-clickable CTA, choose the primary route for `quietCta.linkUrl`. Mention the
-secondary route only as natural editorial copy without a raw URL, or return a
-blocker if the brief requires multiple clickable inline links.
+Product/service mention link rule:
+
+- If visible article copy names an Astrogen product, service, route, or
+  commercial next step, the named thing must have a real supported link in the
+  same article package.
+- Examples include the experts catalog, free/personal horoscope routes,
+  natal-chart products, financial natal-chart products,
+  compatibility/synastry products, and any canonical product route from
+  company/product references.
+- Do not leave product names as plain unlinked text merely because raw URLs are
+  forbidden.
+- Do not write raw URLs into visible text to compensate for missing inline-link
+  support.
+- With the current schema, if only one link can be represented, choose the
+  primary route for `quietCta.linkUrl` and remove or generalize secondary
+  named-product mentions.
+- If the brief requires multiple named product/service links and the current CMS
+  schema cannot represent them, return a structured blocker instead of producing
+  unlinked product mentions.
 
 The editor should use blocks only when they clarify meaning. Strong default candidates:
 
@@ -106,7 +121,7 @@ After the last major explanatory section:
 - keep the in-article CTA lighter than the large global site CTA that appears below the article;
 - prefer a final heading such as `Підсумок і чесний наступний крок`, one short synthesis paragraph, and one compact `quietCta`.
 
-If two next steps are relevant but `quietCta` supports only one button, choose the primary next step from the accepted brief/SEO lock. Mention the secondary option in body text only if it is genuinely helpful; do not create a second CTA card to compensate for the one-button schema.
+If two next steps are relevant but `quietCta` supports only one button, choose the primary next step from the accepted brief/SEO lock. Do not create a second CTA card to compensate for the one-button schema, and do not name a secondary Astrogen product/service in visible text unless it can also be represented by a supported link.
 
 ## Image Direction Policy
 
@@ -192,6 +207,10 @@ Expected blocker classes:
 - `icon_registry_invalid`
 - `unsafe_cta_url`
 - `raw_format_detected`
+- `raw_url_in_visible_text`
+- `internal_routing_note_leaked`
+- `required_link_not_representable`
+- `required_inline_product_link_not_supported`
 - `seo_lock_drift`
 - `layout_overdecorated`
 - `layout_too_static`

@@ -50,14 +50,20 @@ If the validated article draft is missing, do not guess. Return `blocked` with b
 - Do not use `javascript:` URLs or external CTA URLs unless the brief explicitly requires a trusted HTTPS destination.
 - Do not put raw URLs such as `https://...`, `http://...`, or `www...` into visible text fields. Current `articleContent.v1` supports clickable links only through explicit link fields such as `quietCta.linkUrl`; plain URLs in paragraphs remain plain text and are a layout defect.
 - Do not leak internal routing/task notes into the article body. Phrases like `Контекстний другий маршрут`, `CTA route`, `SEO lock`, `brief route`, or similar planning language must never appear in visible copy.
-- If more than one internal route is relevant, choose the primary route for the single calm `quietCta`. Mention a secondary option only as natural editorial text without a raw URL, or return a blocker if the brief requires multiple clickable inline links that the current CMS schema cannot represent.
+- Product/service mention link rule:
+  - if visible article copy names an Astrogen product, service, route, or commercial next step, the reader must have a real supported link for that named thing in the same article package;
+  - examples include the experts catalog, free/personal horoscope routes, natal-chart products, financial natal-chart products, compatibility/synastry products, and any canonical product route from company/product references;
+  - do not leave product names as plain unlinked text merely because raw URLs are forbidden;
+  - do not write raw URLs into text to compensate for missing inline-link support;
+  - with the current `articleContent.v1` schema, supported links are explicit link fields such as `quietCta.linkUrl`; if only one link can be represented, choose the primary route from the brief/SEO lock and remove or generalize secondary named-product mentions;
+  - if the brief requires multiple named product/service links and the current CMS schema cannot represent them, return `blocked` with blocker class `required_inline_product_link_not_supported` instead of producing an unlinked product mention.
 - Keep CTAs calm, useful, and reader-facing. Default Astrogen expert CTA route is `/experts`.
 - Final-section CTA rule:
   - after the last major explanatory section, use at most one special CTA block;
   - never stack multiple pink/brand CTA cards at the end of an article;
   - do not repeat the same offer under different labels, for example "next step", "catalog experts", "personal weekly forecast";
   - remember that the site already has a large global CTA below the article, so the in-article final CTA must be lighter and editorial;
-  - if two next steps are relevant but the CMS block supports only one button, choose the primary next step from the brief/SEO lock and mention the secondary option in calm body text instead of creating a second card.
+  - if two next steps are relevant but the CMS block supports only one button, choose the primary next step from the brief/SEO lock and avoid naming a secondary Astrogen product/service unless it can also be represented by a supported link.
 - Add visual rhythm only where it clarifies meaning:
   - short summary callout after the intro;
   - important warning callout;

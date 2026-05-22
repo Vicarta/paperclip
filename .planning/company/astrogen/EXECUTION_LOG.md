@@ -620,3 +620,7 @@
   - Payload CMS adapter validation now rejects raw `https://`, `http://`, and `www.` URLs in visible article text fields.
   - The adapter also rejects internal routing/task notes such as contextual route handoff language in visible copy.
   - Stage 68 layout editor/validator contracts now require supported link fields such as `quietCta.linkUrl` and blocker classes `raw_url_in_visible_text`, `internal_routing_note_leaked`, and `required_link_not_representable`.
+- Tightened the Astrogen product/service mention link contract.
+  - Any visible mention of an Astrogen product, service, route, or commercial next step now requires a real supported link in the same article package.
+  - Until the CMS content schema supports inline links, secondary product mentions must be removed/generalized or routed through the single supported `quietCta.linkUrl`.
+  - Added blocker class `required_inline_product_link_not_supported` for cases where the accepted brief requires multiple named product/service links that the current CMS schema cannot represent.

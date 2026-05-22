@@ -13,7 +13,7 @@
 - `AST-CONTENT-02`: Ukrainian articles must use natural Ukrainian wording and avoid machine-translation calques.
 - `AST-CONTENT-03`: Financial product articles should increase product confidence and purchase desire without making unsupported guarantees.
 - `AST-CONTENT-04`: Articles should use product synonyms and variants, not repeat one exact term mechanically.
-- `AST-CONTENT-05`: Articles should include contextual internal links to relevant product pages, not only a final CTA.
+- `AST-CONTENT-05`: Articles should include contextual internal links to relevant product pages, not only a final CTA. Any visible mention of an Astrogen product/service must be linked through a supported CMS link field; if the current content schema cannot represent the required link, the article package must be returned for revision instead of leaving the product mention as plain text.
 - `AST-CONTENT-06`: If birth place is required, use the modern settlement name, not only the historical name at time of birth.
 - `AST-CONTENT-07`: Blog article endings must stay editorial. After the last major explanatory section, use at most one compact in-article CTA block; do not stack repeated CTA cards, and keep the in-article CTA lighter than the global site CTA below the article.
 

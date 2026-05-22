@@ -49,7 +49,13 @@ If the layout package is missing, return `blocked` with blocker class `missing_l
 - No raw Payload Lexical JSON, raw HTML, inline styles, CSS classes, unsupported embeds, or `javascript:` URLs.
 - No raw URLs in visible text fields. Reject `https://...`, `http://...`, or `www...` inside paragraphs, headings, lists, callouts, icon-list labels/text, two-column copy, CTA title/text/label/note, or any other user-visible copy. Current `articleContent.v1` supports clickable links only through explicit link fields such as `quietCta.linkUrl`.
 - No internal routing/task notes in visible copy. Reject phrases such as `Контекстний другий маршрут`, `CTA route`, `SEO lock`, `brief route`, or other planning-language remnants.
-- If a required product/service route is mentioned as a next step, it must either be represented by the supported `quietCta.linkUrl` or be intentionally left as non-clickable editorial text without a raw URL. Do not accept a layout that makes a named route look clickable while providing no actual supported link.
+- Product/service mention link rule:
+  - if visible article copy names an Astrogen product, service, route, or commercial next step, the named thing must have a real supported link in the same article package;
+  - examples include the experts catalog, free/personal horoscope routes, natal-chart products, financial natal-chart products, compatibility/synastry products, and any canonical product route from company/product references;
+  - do not accept named Astrogen products left as plain unlinked text merely because raw URLs are forbidden;
+  - do not accept raw URLs in visible copy as a substitute for supported links;
+  - with the current `articleContent.v1` schema, supported links are explicit link fields such as `quietCta.linkUrl`; if the package can represent only one link, secondary named-product mentions must be removed, generalized, or routed through a supported link;
+  - if the brief requires multiple named product/service links and the current CMS schema cannot represent them, return `returned_for_revision` or `blocked` with blocker class `required_inline_product_link_not_supported` instead of accepting the package.
 - The layout preserves approved title, slug, H1, SEO title, SEO description, primary/supporting keyword intent, required links, and product/service framing.
 - The layout does not add new unverified factual claims.
 - The article has useful visual rhythm without over-decoration.
@@ -95,6 +101,7 @@ For `returned_for_revision`, include structured blocker classes such as:
 - `raw_url_in_visible_text`
 - `internal_routing_note_leaked`
 - `required_link_not_representable`
+- `required_inline_product_link_not_supported`
 - `seo_lock_drift`
 - `layout_overdecorated`
 - `layout_too_static`
