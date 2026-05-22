@@ -119,6 +119,9 @@ const ICON_LIST_ICONS = new Set([
 ]);
 const TWO_COLUMN_MODES = new Set(["text", "list"]);
 const HTML_TAG_PATTERN = /<\/?[a-z][\s\S]*>/i;
+const RAW_URL_PATTERN = /\b(?:https?:\/\/|www\.)\S+/i;
+const INTERNAL_ROUTING_NOTE_PATTERN =
+  /(?:контекстн[^\s]*\s+(?:перш[^\s]*|друг[^\s]*)?\s*маршрут|contextual\s+(?:first|second)?\s*route|cta\s+route|seo\s+lock|brief\s+route)/i;
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
@@ -134,10 +137,21 @@ function requireString(value: unknown, path: string, opts?: { allowEmpty?: boole
   return trimmed;
 }
 
+function requireVisibleText(value: unknown, path: string, opts?: { allowEmpty?: boolean }) {
+  const text = requireString(value, path, opts);
+  if (RAW_URL_PATTERN.test(text)) {
+    throw new Error(`${path} must not contain raw URLs; use a supported link field such as quietCta.linkUrl`);
+  }
+  if (INTERNAL_ROUTING_NOTE_PATTERN.test(text)) {
+    throw new Error(`${path} must not contain internal routing notes or task instructions`);
+  }
+  return text;
+}
+
 function requireStringArray(value: unknown, path: string) {
   if (!Array.isArray(value)) throw new Error(`${path} must be an array of strings`);
   if (value.length === 0) throw new Error(`${path} must not be empty`);
-  return value.map((item, index) => requireString(item, `${path}[${index}]`));
+  return value.map((item, index) => requireVisibleText(item, `${path}[${index}]`));
 }
 
 function requireBoolean(value: unknown, path: string) {
@@ -175,8 +189,8 @@ function validateIconListItems(value: unknown, path: string): ArticleIconListIte
     if (!ICON_LIST_ICONS.has(icon)) throw new Error(`${itemPath}.icon is not in the allowed icon registry`);
     return {
       icon: icon as ArticleIconListIcon,
-      label: requireString(record.label, `${itemPath}.label`),
-      ...(record.text !== undefined ? { text: requireString(record.text, `${itemPath}.text`) } : {}),
+      label: requireVisibleText(record.label, `${itemPath}.label`),
+      ...(record.text !== undefined ? { text: requireVisibleText(record.text, `${itemPath}.text`) } : {}),
     };
   });
 }
@@ -189,14 +203,14 @@ function validateBlock(value: unknown, index: number): ArticleContentBlock {
 
   if (type === "paragraph") {
     rejectExtraKeys(block, ["type", "text"], path);
-    return { type, text: requireString(block.text, `${path}.text`) };
+    return { type, text: requireVisibleText(block.text, `${path}.text`) };
   }
 
   if (type === "heading") {
     rejectExtraKeys(block, ["type", "level", "text"], path);
     const level = requireString(block.level, `${path}.level`);
     if (!HEADING_LEVELS.has(level)) throw new Error(`${path}.level must be h2, h3, or h4`);
-    return { type, level: level as "h2" | "h3" | "h4", text: requireString(block.text, `${path}.text`) };
+    return { type, level: level as "h2" | "h3" | "h4", text: requireVisibleText(block.text, `${path}.text`) };
   }
 
   if (type === "list") {
@@ -215,8 +229,8 @@ function validateBlock(value: unknown, index: number): ArticleContentBlock {
     return {
       type,
       variant: variant as "soft" | "brand" | "situation",
-      title: requireString(block.title, `${path}.title`),
-      body: requireString(block.body, `${path}.body`),
+      title: requireVisibleText(block.title, `${path}.title`),
+      body: requireVisibleText(block.body, `${path}.body`),
     };
   }
 
@@ -227,7 +241,7 @@ function validateBlock(value: unknown, index: number): ArticleContentBlock {
     return {
       type,
       style: style as ArticleIconListStyle,
-      title: requireString(block.title, `${path}.title`),
+      title: requireVisibleText(block.title, `${path}.title`),
       items: validateIconListItems(block.items, `${path}.items`),
     };
   }
@@ -238,15 +252,15 @@ function validateBlock(value: unknown, index: number): ArticleContentBlock {
     if (!TWO_COLUMN_MODES.has(mode)) throw new Error(`${path}.mode must be text or list`);
     const base = {
       type: "twoColumnText" as const,
-      leftTitle: requireString(block.leftTitle, `${path}.leftTitle`),
-      rightTitle: requireString(block.rightTitle, `${path}.rightTitle`),
+      leftTitle: requireVisibleText(block.leftTitle, `${path}.leftTitle`),
+      rightTitle: requireVisibleText(block.rightTitle, `${path}.rightTitle`),
     };
     if (mode === "text") {
       return {
         ...base,
         mode: "text",
-        leftBody: requireString(block.leftBody, `${path}.leftBody`),
-        rightBody: requireString(block.rightBody, `${path}.rightBody`),
+        leftBody: requireVisibleText(block.leftBody, `${path}.leftBody`),
+        rightBody: requireVisibleText(block.rightBody, `${path}.rightBody`),
       };
     }
     return {
@@ -261,11 +275,11 @@ function validateBlock(value: unknown, index: number): ArticleContentBlock {
     rejectExtraKeys(block, ["type", "title", "text", "linkLabel", "linkUrl", "note"], path);
     return {
       type,
-      title: requireString(block.title, `${path}.title`),
-      text: requireString(block.text, `${path}.text`),
-      linkLabel: requireString(block.linkLabel, `${path}.linkLabel`),
+      title: requireVisibleText(block.title, `${path}.title`),
+      text: requireVisibleText(block.text, `${path}.text`),
+      linkLabel: requireVisibleText(block.linkLabel, `${path}.linkLabel`),
       linkUrl: validateLinkUrl(block.linkUrl, `${path}.linkUrl`),
-      ...(block.note !== undefined ? { note: requireString(block.note, `${path}.note`) } : {}),
+      ...(block.note !== undefined ? { note: requireVisibleText(block.note, `${path}.note`) } : {}),
     };
   }
 

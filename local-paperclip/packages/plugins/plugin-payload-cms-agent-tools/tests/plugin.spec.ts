@@ -241,6 +241,36 @@ describe("Payload CMS content helpers", () => {
     ).toThrow(/internal path or HTTPS URL/);
   });
 
+  it("rejects raw URLs and internal routing notes in visible article text", () => {
+    expect(() =>
+      buildBlogPostPayload({
+        title: "Article",
+        articleContent: {
+          schemaVersion: "articleContent.v1",
+          blocks: [{ type: "paragraph", text: "Читайте далі: https://astrogen.com.ua/free-horoscope" }],
+        },
+      }),
+    ).toThrow(/must not contain raw URLs/);
+
+    expect(() =>
+      buildBlogPostPayload({
+        title: "Article",
+        articleContent: {
+          schemaVersion: "articleContent.v1",
+          blocks: [
+            {
+              type: "quietCta",
+              title: "Наступний крок",
+              text: "Контекстний другий маршрут, якщо він потрібен читачеві.",
+              linkLabel: "Відкрити",
+              linkUrl: "/money",
+            },
+          ],
+        },
+      }),
+    ).toThrow(/must not contain internal routing notes/);
+  });
+
   it("rejects unsafe or unregistered iconList icon values", () => {
     const base = {
       schemaVersion: "articleContent.v1",

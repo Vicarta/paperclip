@@ -616,3 +616,7 @@
   - Kept `SEO Blog Article Writer (Claude)` / OpenRouter as a reserve lane only for explicit CMO-approved recovery when the ChatGPT lane is unavailable or repeatedly blocked.
   - Verified live CMO and ChatGPT writer contracts already carry the ChatGPT-primary routing rule.
   - Updated the production runtime manifest and Astrogen planning state so the source-of-truth matches the live server.
+- Tightened `articleContent.v1` link hygiene after the `натальна карта` draft exposed plain URLs and leaked routing notes.
+  - Payload CMS adapter validation now rejects raw `https://`, `http://`, and `www.` URLs in visible article text fields.
+  - The adapter also rejects internal routing/task notes such as contextual route handoff language in visible copy.
+  - Stage 68 layout editor/validator contracts now require supported link fields such as `quietCta.linkUrl` and blocker classes `raw_url_in_visible_text`, `internal_routing_note_leaked`, and `required_link_not_representable`.

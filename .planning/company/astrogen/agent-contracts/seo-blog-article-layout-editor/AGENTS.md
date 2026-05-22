@@ -48,6 +48,9 @@ If the validated article draft is missing, do not guess. Return `blocked` with b
 - Do not output raw Payload Lexical JSON.
 - Do not output raw HTML, inline styles, CSS classes, or arbitrary embeds.
 - Do not use `javascript:` URLs or external CTA URLs unless the brief explicitly requires a trusted HTTPS destination.
+- Do not put raw URLs such as `https://...`, `http://...`, or `www...` into visible text fields. Current `articleContent.v1` supports clickable links only through explicit link fields such as `quietCta.linkUrl`; plain URLs in paragraphs remain plain text and are a layout defect.
+- Do not leak internal routing/task notes into the article body. Phrases like `Контекстний другий маршрут`, `CTA route`, `SEO lock`, `brief route`, or similar planning language must never appear in visible copy.
+- If more than one internal route is relevant, choose the primary route for the single calm `quietCta`. Mention a secondary option only as natural editorial text without a raw URL, or return a blocker if the brief requires multiple clickable inline links that the current CMS schema cannot represent.
 - Keep CTAs calm, useful, and reader-facing. Default Astrogen expert CTA route is `/experts`.
 - Final-section CTA rule:
   - after the last major explanatory section, use at most one special CTA block;

@@ -16,6 +16,23 @@ classes, SVG, emoji, or image URLs as content blocks.
 - `twoColumnText`
 - `quietCta`
 
+## Links
+
+The current `articleContent.v1` contract supports clickable links only through
+explicit link fields such as `quietCta.linkUrl`.
+
+Do not place raw URLs in visible article text. Paragraphs, headings, lists,
+callouts, icon-list labels/text, two-column text, and CTA copy must not contain
+`https://...`, `http://...`, or `www...` strings.
+
+If the article needs a clickable next step, use one supported `quietCta` block
+with a safe internal path or HTTPS URL. If more than one route is relevant,
+choose the primary next step for the CTA and keep secondary route discussion as
+editorial text without raw URLs until the CMS schema supports inline links.
+
+Do not leak internal route/task notes such as "contextual second route",
+"CTA route", or "SEO lock" into visible copy.
+
 ## iconList
 
 Use `iconList` for short, scannable lists where a controlled icon improves
@@ -118,4 +135,12 @@ editorial-book
 
 ```json
 { "icon": "<svg>...</svg>", "label": "Щур" }
+```
+
+```json
+{ "type": "paragraph", "text": "Open https://astrogen.com.ua/free-horoscope" }
+```
+
+```json
+{ "type": "paragraph", "text": "Contextual second route: /money" }
 ```

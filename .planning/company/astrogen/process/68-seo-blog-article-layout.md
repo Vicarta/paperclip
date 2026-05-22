@@ -64,6 +64,26 @@ Do not use legacy or improvised field names such as `style`, `body` on paragraph
 
 For `iconList`, use only the registry documented in `docs/article-content-v1.md`. Do not use emoji, raw SVG, image URLs, file names, CSS classes, or invented icon keys. Allowed styles are `grid`, `compact`, and `twoColumn`; each item requires `icon` and `label`, optional `text` should stay short, and one `iconList` may contain at most 40 items.
 
+## Link Policy
+
+Current `articleContent.v1` supports clickable article links only through explicit
+link fields such as `quietCta.linkUrl`.
+
+Do not put raw URLs in visible article text. Text fields must not contain
+`https://...`, `http://...`, or `www...` strings. A raw URL in a paragraph,
+list, callout, icon-list item, two-column block, or CTA copy is a validation
+failure because it will render as plain text.
+
+Do not leak internal routing or task language into visible copy. Phrases such as
+`Контекстний другий маршрут`, `CTA route`, `SEO lock`, `brief route`, run/stage
+notes, or handoff instructions belong in Paperclip artifacts, not in the CMS
+article.
+
+If two routes are relevant but the current schema can represent only one
+clickable CTA, choose the primary route for `quietCta.linkUrl`. Mention the
+secondary route only as natural editorial copy without a raw URL, or return a
+blocker if the brief requires multiple clickable inline links.
+
 The editor should use blocks only when they clarify meaning. Strong default candidates:
 
 - short summary callout after the intro;
@@ -137,6 +157,8 @@ Do not output or send:
 
 - raw Payload Lexical JSON;
 - raw HTML;
+- raw URLs inside visible text fields;
+- internal routing/task notes inside visible text fields;
 - markdown as the CMS body format;
 - inline styles;
 - CSS classes;
