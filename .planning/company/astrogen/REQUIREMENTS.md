@@ -16,6 +16,7 @@
 - `AST-CONTENT-05`: Articles should include contextual internal links to relevant product pages, not only a final CTA. Any visible mention of an Astrogen product/service must be linked through a supported CMS link field; if the current content schema cannot represent the required link, the article package must be returned for revision instead of leaving the product mention as plain text.
 - `AST-CONTENT-06`: If birth place is required, use the modern settlement name, not only the historical name at time of birth.
 - `AST-CONTENT-07`: Blog article endings must stay editorial. After the last major explanatory section, use at most one compact in-article CTA block; do not stack repeated CTA cards, and keep the in-article CTA lighter than the global site CTA below the article.
+- `AST-CONTENT-08`: Reader-facing copy must not promise a "next step" or similar action cue unless a concrete supported action/link appears in the same block or immediately after it. Dangling next-step promises block article delivery.
 
 ## Images
 

@@ -99,6 +99,19 @@ Product/service mention link rule:
   schema cannot represent them, return a structured blocker instead of producing
   unlinked product mentions.
 
+Next-step promise rule:
+
+- Do not write visible copy that promises a `наступний крок`, `перехід`,
+  `м'який вхід`, `доречний крок`, or similar action cue unless the same block or
+  the immediately following block gives the reader a concrete supported action.
+- A concrete supported action means a `quietCta` with a safe `linkUrl`, or
+  another explicitly supported CMS link field if the schema is extended later.
+- A next-step sentence followed by an unrelated heading, a purely explanatory
+  section, or a vague product hint without a link is a layout defect.
+- If no supported action can be represented, rewrite the sentence as neutral
+  editorial synthesis without promising an action, or return a structured
+  blocker with class `dangling_next_step_promise`.
+
 The editor should use blocks only when they clarify meaning. Strong default candidates:
 
 - short summary callout after the intro;
@@ -211,6 +224,7 @@ Expected blocker classes:
 - `internal_routing_note_leaked`
 - `required_link_not_representable`
 - `required_inline_product_link_not_supported`
+- `dangling_next_step_promise`
 - `seo_lock_drift`
 - `layout_overdecorated`
 - `layout_too_static`

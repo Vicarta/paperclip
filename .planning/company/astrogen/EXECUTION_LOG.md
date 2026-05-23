@@ -624,3 +624,6 @@
   - Any visible mention of an Astrogen product, service, route, or commercial next step now requires a real supported link in the same article package.
   - Until the CMS content schema supports inline links, secondary product mentions must be removed/generalized or routed through the single supported `quietCta.linkUrl`.
   - Added blocker class `required_inline_product_link_not_supported` for cases where the accepted brief requires multiple named product/service links that the current CMS schema cannot represent.
+- Tightened the Astrogen next-step copy contract after the `натальна карта` draft exposed a dangling "наступний крок" sentence without an immediate action.
+  - Stage 68 layout editor/validator now reject next-step, transition, or "soft entry" promises unless a supported action/link appears in the same block or immediately after it.
+  - Added blocker class `dangling_next_step_promise`.

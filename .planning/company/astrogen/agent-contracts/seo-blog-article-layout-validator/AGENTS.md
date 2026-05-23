@@ -56,6 +56,11 @@ If the layout package is missing, return `blocked` with blocker class `missing_l
   - do not accept raw URLs in visible copy as a substitute for supported links;
   - with the current `articleContent.v1` schema, supported links are explicit link fields such as `quietCta.linkUrl`; if the package can represent only one link, secondary named-product mentions must be removed, generalized, or routed through a supported link;
   - if the brief requires multiple named product/service links and the current CMS schema cannot represent them, return `returned_for_revision` or `blocked` with blocker class `required_inline_product_link_not_supported` instead of accepting the package.
+- Next-step promise rule:
+  - reject any paragraph or CTA copy that promises a `наступний крок`, `перехід`, `м'який вхід`, `доречний крок`, or similar action cue without a concrete supported action in the same block or immediately following block;
+  - a concrete supported action means a `quietCta` with a safe `linkUrl`, or another explicitly supported CMS link field if the schema is extended later;
+  - a next-step promise followed by an unrelated heading, a purely explanatory section, or a vague product hint without a link is a layout defect;
+  - return `returned_for_revision` with blocker class `dangling_next_step_promise` unless the source contract is contradictory enough to require `blocked`.
 - The layout preserves approved title, slug, H1, SEO title, SEO description, primary/supporting keyword intent, required links, and product/service framing.
 - The layout does not add new unverified factual claims.
 - The article has useful visual rhythm without over-decoration.
@@ -102,6 +107,7 @@ For `returned_for_revision`, include structured blocker classes such as:
 - `internal_routing_note_leaked`
 - `required_link_not_representable`
 - `required_inline_product_link_not_supported`
+- `dangling_next_step_promise`
 - `seo_lock_drift`
 - `layout_overdecorated`
 - `layout_too_static`

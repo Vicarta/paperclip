@@ -57,6 +57,11 @@ If the validated article draft is missing, do not guess. Return `blocked` with b
   - do not write raw URLs into text to compensate for missing inline-link support;
   - with the current `articleContent.v1` schema, supported links are explicit link fields such as `quietCta.linkUrl`; if only one link can be represented, choose the primary route from the brief/SEO lock and remove or generalize secondary named-product mentions;
   - if the brief requires multiple named product/service links and the current CMS schema cannot represent them, return `blocked` with blocker class `required_inline_product_link_not_supported` instead of producing an unlinked product mention.
+- Next-step promise rule:
+  - do not write a paragraph that promises a `наступний крок`, `перехід`, `м'який вхід`, `доречний крок`, or similar action cue unless the same block or the immediately following block gives the reader a concrete supported action;
+  - a concrete supported action means a `quietCta` with a safe `linkUrl`, or another explicitly supported CMS link field if the schema is extended later;
+  - never let a next-step sentence be followed by an unrelated heading, a purely explanatory section, or a vague product hint without a link;
+  - if no supported link/action can be represented, rewrite the sentence as neutral editorial synthesis without promising an action, or return `blocked` with blocker class `dangling_next_step_promise`.
 - Keep CTAs calm, useful, and reader-facing. Default Astrogen expert CTA route is `/experts`.
 - Final-section CTA rule:
   - after the last major explanatory section, use at most one special CTA block;
