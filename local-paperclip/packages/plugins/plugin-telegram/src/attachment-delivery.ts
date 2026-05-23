@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import type { IssueAttachment } from "@paperclipai/shared";
 import type { PluginContext, PluginEvent } from "@paperclipai/plugin-sdk";
 import { sendDocument, sendMessage } from "./telegram-api.js";
+import { recordTelegramDeliveryProof } from "./delivery-proof.js";
 
 const JSON_FENCE_REGEX = /```json(?:\s+notification-contract)?\s*([\s\S]*?)```/i;
 const DELIVERY_STATE_PREFIX = "telegram.attachment-delivery.v1";
@@ -294,6 +295,19 @@ export async function deliverIssueAttachmentGroups(input: {
       fileCount,
       messageIds,
     },
+  });
+  await recordTelegramDeliveryProof({
+    ctx: input.ctx,
+    companyId: input.event.companyId,
+    issueId,
+    chatId: input.chatId,
+    messageThreadId: input.messageThreadId,
+    messageIds,
+    deliveryKind: "attachment_delivery_group",
+    trigger: "issue_done",
+    fingerprint,
+    groupCount: resolvedGroups.length,
+    fileCount,
   });
   await input.ctx.issues.createComment(
     issueId,

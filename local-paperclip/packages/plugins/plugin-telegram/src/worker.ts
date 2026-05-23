@@ -51,6 +51,7 @@ import { validateSecretRefFields } from "./secret-ref-validation.js";
 import { shouldNotifyApproval } from "./approval-routing.js";
 import { buildPaperclipAuthHeaders, fetchPaperclipApi } from "./paperclip-api.js";
 import { deliverIssueAttachmentGroups } from "./attachment-delivery.js";
+import { recordTelegramDeliveryProof } from "./delivery-proof.js";
 import { shouldSuppressGenericIssueDoneNotification } from "./notification-policy.js";
 
 type TelegramConfig = {
@@ -510,6 +511,18 @@ const plugin = definePlugin({
           entityType: "plugin",
           entityId: event.entityId,
         });
+        if (event.entityType === "issue" && event.entityId) {
+          await recordTelegramDeliveryProof({
+            ctx,
+            companyId: event.companyId,
+            issueId: event.entityId,
+            chatId,
+            messageThreadId,
+            messageIds: [messageId],
+            deliveryKind: "issue_notification",
+            trigger: event.eventType,
+          });
+        }
 
         // First-message-per-entity: store the anchor so future notifications about the
         // same entity reply to this one. Never overwritten — the first message stays root.

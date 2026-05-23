@@ -163,7 +163,22 @@ describe("telegram attachment delivery groups", () => {
       "https://api.telegram.org/bottoken/sendDocument",
     ]);
     expect(comments.at(-1)).toContain("Telegram attachment delivery completed.");
-    expect(activity).toHaveLength(1);
+    expect(activity).toHaveLength(2);
+    expect(activity.at(-1)).toMatchObject({
+      message: "operational.telegram_delivery_proof",
+      entityType: "issue",
+      entityId: "issue-1",
+      metadata: {
+        channel: "telegram",
+        issueId: "issue-1",
+        chatId: "-100",
+        messageIds: [100, 101, 101, 101],
+        deliveryKind: "attachment_delivery_group",
+        trigger: "issue_done",
+        groupCount: 1,
+        fileCount: 3,
+      },
+    });
   });
 
   it("blocks delivery and comments when a selected attachment is missing", async () => {

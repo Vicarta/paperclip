@@ -13,7 +13,8 @@ See: `.planning/company/astrogen/README.md`
 
 Phase: Astrogen growth/content operating system hardening
 Status: Active
-Last activity: 2026-05-22 - Phase 24 LLM heartbeat cost-control pass completed. The overnight audit found 84 Astrogen `timer/system` LLM runs from CEO/CMO/CTO between 2026-05-21 23:00 and 2026-05-22 10:00 Europe/Kiev. Live Astrogen config now has zero active timer-enabled agents, wake-on-demand preserved, and `heartbeat.skipIfNoActionableWork=true` applied to active agents. Production deploy `paperclip-app:v2026.513.10-heartbeat-cost-20260522` is healthy with 13 plugins loaded.
+Last activity: 2026-05-23 - Phase 25 Telegram Delivery Proof Ledger completed. Telegram delivery proof is now recorded as structured plugin-owned activity events. Production deploy `paperclip-app:v2026.513.13-telegram-proof-20260523` is healthy and the live Telegram plugin registry reports `paperclip-plugin-telegram@0.3.1-paperclip.1`.
+Current phase note: Phase 25 is complete. Telegram delivery proof now uses plugin-owned structured activity ledger events instead of ad hoc manager/comment recovery.
 
 ## Current Focus
 
@@ -96,6 +97,7 @@ Last activity: 2026-05-22 - Phase 24 LLM heartbeat cost-control pass completed. 
 - Phase 22 planned: Telegram Attachment Delivery Groups for first-class grouped issue attachment delivery through the Telegram plugin.
 - CTO weekly release-check routine verified against live `build.releaseTag`; no newer release was found.
 - Phase 24 executed: LLM Heartbeat Cost Control after an overnight token audit showed non-functional manager timer heartbeats.
+- Phase 25 completed: Telegram Delivery Proof Ledger replaced manual message-id recovery with structured plugin-owned proof events for issue notifications and attachment delivery groups.
 
 ## Pending Todos
 

@@ -631,3 +631,11 @@
   - Free Astrogen offers must now be visibly labeled as free in every mention, CTA text, and link label.
   - Indirect product references now require supported links even when the exact product name is not used.
   - Added blocker classes `free_offer_not_labeled` and `product_like_reference_unlinked`.
+- Completed Phase 25: Telegram Delivery Proof Ledger.
+  - Added a structured `operational.telegram_delivery_proof` activity event to the Telegram plugin.
+  - Generic issue notifications now write proof metadata after Telegram returns a message id.
+  - Attachment delivery groups now write proof metadata with message ids, group count, file count, fingerprint, and content reference.
+  - Verified locally with `pnpm --filter paperclip-plugin-telegram build`, `test`, and `typecheck`.
+  - Deployed production image `paperclip-app:v2026.513.13-telegram-proof-20260523`.
+  - Updated the persistent installed Telegram plugin bundle used by the live plugin loader.
+  - Verified production health, plugin registry `paperclip-plugin-telegram|0.3.1-paperclip.1|ready`, loader activation at `0.3.1-paperclip.1`, and runtime presence of `operational.telegram_delivery_proof`.

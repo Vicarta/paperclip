@@ -1,6 +1,6 @@
 {
   "name": "paperclip-plugin-telegram",
-  "version": "0.3.1-paperclip.0",
+  "version": "0.3.1-paperclip.1",
   "type": "module",
   "private": true,
   "description": "Source-controlled Paperclip Telegram plugin overlay with attachment delivery groups",

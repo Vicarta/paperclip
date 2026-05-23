@@ -1,7 +1,7 @@
 # Production Plugin Manifest
 
-Last verified: 2026-05-22
-Source: Phase 17 live production smoke, plugin inventory, Telegram formatter smoke, Phase 22 source package verification, live Telegram delivery-groups proof on AST-827, Telegram plugin package cutover smoke, Payload CMS live agent-tool smoke, and secret schema reconciliation smoke.
+Last verified: 2026-05-23
+Source: Phase 17 live production smoke, plugin inventory, Telegram formatter smoke, Phase 22 source package verification, live Telegram delivery-groups proof on AST-827, Telegram plugin package cutover smoke, Telegram proof ledger smoke, Payload CMS live agent-tool smoke, and secret schema reconciliation smoke.
 Secret handling: config keys and secret refs only; no plaintext secret values. Generic `secretService` create/resolve/rotate is reconciled with the production metadata schema.
 
 Expected status: Astrogen-required plugins `ready`. Optional legacy connector records may remain `error` until their package/runtime wiring is deliberately restored.
@@ -9,7 +9,7 @@ Expected status: Astrogen-required plugins `ready`. Optional legacy connector re
 | Plugin key | Package | Expected role |
 | --- | --- | --- |
 | `paperclip-file-browser-example` | `@paperclipai/plugin-file-browser-example` | UI helper. |
-| `paperclip-plugin-telegram` | `paperclip-plugin-telegram@0.3.1-paperclip.0` via `/paperclip/.paperclip/plugins/local-packages/paperclip-plugin-telegram-0.3.1-paperclip.0` | Canonical Telegram lifecycle notifications, watch/escalation jobs, issue attachment delivery groups, and completion-noise suppression. |
+| `paperclip-plugin-telegram` | `paperclip-plugin-telegram@0.3.1-paperclip.1` via `/paperclip/.paperclip/plugins/local-packages/paperclip-plugin-telegram-0.3.1-paperclip.0` | Canonical Telegram lifecycle notifications, watch/escalation jobs, issue attachment delivery groups, completion-noise suppression, and structured delivery proof ledger events. |
 | `paperclip.bright-data-agent-tools` | `@paperclipai/plugin-bright-data-agent-tools` | Bright Data tools. |
 | `paperclip.dataforseo-agent-tools` | `@paperclipai/plugin-dataforseo-agent-tools` | DataForSEO tools and cost ledger events. |
 | `paperclip.diskinternals-bigquery-growth` | `@paperclipai/plugin-diskinternals-bigquery-growth` | DiskInternals-specific growth analytics. |
@@ -36,17 +36,25 @@ Expected status: Astrogen-required plugins `ready`. Optional legacy connector re
   - app health returned `HTTP 200` after cutover;
   - server bundle contains `child_issue_needs_parent_review`;
   - installed Telegram plugin bundle contains `Чернетка готова` and `Відкрити чернетку`;
-  - Astrogen CMO heartbeat is `enabled=true`, `intervalSec=600`, `wakeOnDemand=true`, `maxConcurrentRuns=1`.
+  - legacy Astrogen CMO timer heartbeat was superseded by the 2026-05-22 heartbeat cost-control policy.
+- 2026-05-22 heartbeat policy smoke:
+  - active production agents have `heartbeat.enabled=false`, `intervalSec=3600`, `wakeOnDemand=true`, and `heartbeat.skipIfNoActionableWork=true`;
+  - timer LLM heartbeat exceptions require explicit human approval, a concrete reason, an interval of at least 1 hour, and an expiry;
+  - recovery should use deterministic startup/periodic run recovery or routine/watchdog issues that enqueue concrete work, not frequent idle LLM polling.
 - Phase 22 live proof:
   - live Telegram delivery-groups path succeeded for [AST-827](/AST/issues/AST-827);
   - audit comment recorded `Telegram message ids: 628`;
   - runtime recovery aligned the persistent Telegram plugin `@paperclipai/plugin-sdk` dependency with the running app image SDK so `ctx.issues.listAttachments` and `ctx.issues.getAttachmentContent` are available.
   - this runtime alignment is a recovery patch, not the durable package-cutover target.
 - 2026-05-22 follow-up:
-  - live plugin registry now reports `paperclip-plugin-telegram@0.3.1-paperclip.0`;
+  - live plugin registry now reports `paperclip-plugin-telegram@0.3.1-paperclip.1`;
   - plugin package path is `/paperclip/.paperclip/plugins/local-packages/paperclip-plugin-telegram-0.3.1-paperclip.0`;
-  - app restart activated the Telegram worker with version `0.3.1-paperclip.0`;
+  - app restart activated the Telegram worker with version `0.3.1-paperclip.1`;
   - installed policy smoke confirms proof/delivery closeouts are suppressed while real CMS draft-ready notifications remain allowed.
+- Phase 25 proof ledger smoke:
+  - production image `paperclip-app:v2026.513.13-telegram-proof-20260523` is active;
+  - installed Telegram plugin bundle contains `operational.telegram_delivery_proof`;
+  - proof ledger activity is plugin-owned and created after Telegram returns message ids for issue notifications or attachment delivery groups.
 - Error records, not required for current Astrogen SEO flow: `paperclip.bright-data-agent-tools`, `paperclip.exa-agent-tools`, `paperclip.serper-agent-tools`.
 
 ## Invariants
@@ -56,7 +64,7 @@ Expected status: Astrogen-required plugins `ready`. Optional legacy connector re
 - Issue-done messages should use short fields: `Тема`, `Що сталося`, and `Далі`. The `Далі` line must say whether the owner needs to act now.
 - Telegram article-draft classification must not match the bare word `draft`. `CMS state: draft`, Payload drafts, cover image updates, media uploads, and `coverImage` updates are CMS operations, not Stage 59 article-draft completion.
 - Telegram Payload CMS draft-ready messages must include the direct CMS draft/admin URL and a `Відкрити чернетку` button. A generic forwarded `issue.updated` lifecycle notification is not delivery proof for a ready blog draft.
-- Article package delivery is separate from noisy issue lifecycle notifications: a delivery issue may attach markdown, HTML, and image artifacts and send a concise Telegram package summary. Source-controlled plugin package `paperclip-plugin-telegram@0.3.1-paperclip.0` owns `delivery_groups`; direct operator Bot API delivery should not be used for normal article package delivery.
+- Article package delivery is separate from noisy issue lifecycle notifications: a delivery issue may attach markdown, HTML, and image artifacts and send a concise Telegram package summary. Source-controlled plugin package `paperclip-plugin-telegram@0.3.1-paperclip.1` owns `delivery_groups`; direct operator Bot API delivery should not be used for normal article package delivery.
 - `telegram-daily-digest` must remain absent unless deliberately reintroduced with a new product decision.
 - DataForSEO and Semantic Core MCP cost attribution uses `costs.write` and `ctx.costs.createEvent(...)`; this is not replaced by `metrics.write`.
 - Shared MCP/provider plugins must not be switched to company-specific secrets through global instance config without company-aware secret resolution.
