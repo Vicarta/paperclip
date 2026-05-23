@@ -81,23 +81,40 @@ article.
 
 Product/service mention link rule:
 
-- If visible article copy names an Astrogen product, service, route, or
-  commercial next step, the named thing must have a real supported link in the
-  same article package.
+- If visible article copy names or clearly refers to an Astrogen product,
+  service, route, offer, or commercial next step, the referenced thing must have
+  a real supported link in the same article package.
+- This includes exact product names and product-like paraphrases such as
+  `персональний прогноз`, `персоналізований тижневий формат`,
+  `фінансовий розбір`, `такий формат`, `м'який старт`,
+  `персоналізований старт`, `каталог спеціалістів`, `розбір для фінансових тем`,
+  or other wording that points to a concrete Astrogen offer.
+- Do not rely on exact-name matching only. If the phrase points to a known
+  Astrogen route/product/service by meaning, treat it as a product mention.
 - Examples include the experts catalog, free/personal horoscope routes,
   natal-chart products, financial natal-chart products,
   compatibility/synastry products, and any canonical product route from
   company/product references.
+- If the referenced product/offer is free, every visible mention, CTA title,
+  CTA text, and link label that refers to it must explicitly say this with
+  natural wording such as `безкоштовно`, `без оплати`, or `безкоштовний`.
+- Do not hide the free nature of a free product behind neutral labels like
+  `персональний прогноз`, `стартовий формат`, or `м'який вхід`.
 - Do not leave product names as plain unlinked text merely because raw URLs are
   forbidden.
+- Do not leave product-like paraphrases unlinked merely because the exact
+  product name is absent.
 - Do not write raw URLs into visible text to compensate for missing inline-link
   support.
 - With the current schema, if only one link can be represented, choose the
   primary route for `quietCta.linkUrl` and remove or generalize secondary
   named-product mentions.
-- If the brief requires multiple named product/service links and the current CMS
-  schema cannot represent them, return a structured blocker instead of producing
-  unlinked product mentions.
+- If the brief requires multiple named or paraphrased product/service links and
+  the current CMS schema cannot represent them, return a structured blocker
+  instead of producing unlinked product mentions.
+- Use blocker class `free_offer_not_labeled` when a free product/offer is not
+  visibly labeled as free, and `product_like_reference_unlinked` when an
+  indirect product/service reference lacks a supported link.
 
 Next-step promise rule:
 
@@ -224,6 +241,8 @@ Expected blocker classes:
 - `internal_routing_note_leaked`
 - `required_link_not_representable`
 - `required_inline_product_link_not_supported`
+- `free_offer_not_labeled`
+- `product_like_reference_unlinked`
 - `dangling_next_step_promise`
 - `seo_lock_drift`
 - `layout_overdecorated`

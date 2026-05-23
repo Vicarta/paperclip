@@ -627,3 +627,7 @@
 - Tightened the Astrogen next-step copy contract after the `натальна карта` draft exposed a dangling "наступний крок" sentence without an immediate action.
   - Stage 68 layout editor/validator now reject next-step, transition, or "soft entry" promises unless a supported action/link appears in the same block or immediately after it.
   - Added blocker class `dangling_next_step_promise`.
+- Tightened the Astrogen free-product and product-like reference contract.
+  - Free Astrogen offers must now be visibly labeled as free in every mention, CTA text, and link label.
+  - Indirect product references now require supported links even when the exact product name is not used.
+  - Added blocker classes `free_offer_not_labeled` and `product_like_reference_unlinked`.

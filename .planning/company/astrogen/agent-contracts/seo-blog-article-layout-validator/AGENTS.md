@@ -50,12 +50,17 @@ If the layout package is missing, return `blocked` with blocker class `missing_l
 - No raw URLs in visible text fields. Reject `https://...`, `http://...`, or `www...` inside paragraphs, headings, lists, callouts, icon-list labels/text, two-column copy, CTA title/text/label/note, or any other user-visible copy. Current `articleContent.v1` supports clickable links only through explicit link fields such as `quietCta.linkUrl`.
 - No internal routing/task notes in visible copy. Reject phrases such as `Контекстний другий маршрут`, `CTA route`, `SEO lock`, `brief route`, or other planning-language remnants.
 - Product/service mention link rule:
-  - if visible article copy names an Astrogen product, service, route, or commercial next step, the named thing must have a real supported link in the same article package;
+  - if visible article copy names or clearly refers to an Astrogen product, service, route, offer, or commercial next step, the referenced thing must have a real supported link in the same article package;
+  - this includes exact product names and product-like paraphrases such as `персональний прогноз`, `персоналізований тижневий формат`, `фінансовий розбір`, `такий формат`, `м'який старт`, `персоналізований старт`, `каталог спеціалістів`, `розбір для фінансових тем`, or other wording that points to a concrete Astrogen offer;
+  - do not validate by exact-name matching only. If the phrase points to a known Astrogen route/product/service by meaning, validate it as a product mention;
   - examples include the experts catalog, free/personal horoscope routes, natal-chart products, financial natal-chart products, compatibility/synastry products, and any canonical product route from company/product references;
+  - if the referenced product/offer is free, reject every visible mention, CTA title, CTA text, or link label that refers to it but fails to say this explicitly with natural wording such as `безкоштовно`, `без оплати`, or `безкоштовний`;
   - do not accept named Astrogen products left as plain unlinked text merely because raw URLs are forbidden;
+  - do not accept product-like paraphrases left unlinked merely because the exact product name is absent;
   - do not accept raw URLs in visible copy as a substitute for supported links;
   - with the current `articleContent.v1` schema, supported links are explicit link fields such as `quietCta.linkUrl`; if the package can represent only one link, secondary named-product mentions must be removed, generalized, or routed through a supported link;
-  - if the brief requires multiple named product/service links and the current CMS schema cannot represent them, return `returned_for_revision` or `blocked` with blocker class `required_inline_product_link_not_supported` instead of accepting the package.
+  - if the brief requires multiple named or paraphrased product/service links and the current CMS schema cannot represent them, return `returned_for_revision` or `blocked` with blocker class `required_inline_product_link_not_supported` instead of accepting the package.
+  - blocker classes: use `free_offer_not_labeled` for free products/offers that are not visibly labeled as free, and `product_like_reference_unlinked` for indirect product/service references without supported links.
 - Next-step promise rule:
   - reject any paragraph or CTA copy that promises a `наступний крок`, `перехід`, `м'який вхід`, `доречний крок`, or similar action cue without a concrete supported action in the same block or immediately following block;
   - a concrete supported action means a `quietCta` with a safe `linkUrl`, or another explicitly supported CMS link field if the schema is extended later;
@@ -107,6 +112,8 @@ For `returned_for_revision`, include structured blocker classes such as:
 - `internal_routing_note_leaked`
 - `required_link_not_representable`
 - `required_inline_product_link_not_supported`
+- `free_offer_not_labeled`
+- `product_like_reference_unlinked`
 - `dangling_next_step_promise`
 - `seo_lock_drift`
 - `layout_overdecorated`

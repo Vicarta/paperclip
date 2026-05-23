@@ -51,12 +51,17 @@ If the validated article draft is missing, do not guess. Return `blocked` with b
 - Do not put raw URLs such as `https://...`, `http://...`, or `www...` into visible text fields. Current `articleContent.v1` supports clickable links only through explicit link fields such as `quietCta.linkUrl`; plain URLs in paragraphs remain plain text and are a layout defect.
 - Do not leak internal routing/task notes into the article body. Phrases like `Контекстний другий маршрут`, `CTA route`, `SEO lock`, `brief route`, or similar planning language must never appear in visible copy.
 - Product/service mention link rule:
-  - if visible article copy names an Astrogen product, service, route, or commercial next step, the reader must have a real supported link for that named thing in the same article package;
+  - if visible article copy names or clearly refers to an Astrogen product, service, route, offer, or commercial next step, the reader must have a real supported link for that thing in the same article package;
+  - this includes exact product names and product-like paraphrases such as `персональний прогноз`, `персоналізований тижневий формат`, `фінансовий розбір`, `такий формат`, `м'який старт`, `персоналізований старт`, `каталог спеціалістів`, `розбір для фінансових тем`, or other wording that points to a concrete Astrogen offer;
+  - do not rely on exact-name matching only. If the reader can reasonably understand that a phrase points to a known Astrogen route/product/service, treat it as a product mention that needs a supported link;
   - examples include the experts catalog, free/personal horoscope routes, natal-chart products, financial natal-chart products, compatibility/synastry products, and any canonical product route from company/product references;
+  - if the referenced product/offer is free, every visible mention, CTA title, CTA text, and link label that refers to it must explicitly say this with natural wording such as `безкоштовно`, `без оплати`, or `безкоштовний`;
+  - never hide the free nature of a free product behind neutral labels like `персональний прогноз`, `стартовий формат`, or `м'який вхід`;
   - do not leave product names as plain unlinked text merely because raw URLs are forbidden;
+  - do not leave product-like paraphrases unlinked just because the exact product name is absent;
   - do not write raw URLs into text to compensate for missing inline-link support;
   - with the current `articleContent.v1` schema, supported links are explicit link fields such as `quietCta.linkUrl`; if only one link can be represented, choose the primary route from the brief/SEO lock and remove or generalize secondary named-product mentions;
-  - if the brief requires multiple named product/service links and the current CMS schema cannot represent them, return `blocked` with blocker class `required_inline_product_link_not_supported` instead of producing an unlinked product mention.
+  - if the brief requires multiple named or paraphrased product/service links and the current CMS schema cannot represent them, return `blocked` with blocker class `required_inline_product_link_not_supported` instead of producing an unlinked product mention.
 - Next-step promise rule:
   - do not write a paragraph that promises a `наступний крок`, `перехід`, `м'який вхід`, `доречний крок`, or similar action cue unless the same block or the immediately following block gives the reader a concrete supported action;
   - a concrete supported action means a `quietCta` with a safe `linkUrl`, or another explicitly supported CMS link field if the schema is extended later;
