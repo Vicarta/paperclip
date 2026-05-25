@@ -87,6 +87,9 @@ If the layout package is missing, return `blocked` with blocker class `missing_l
   - a topic-specific cover must reflect the article actual meaning and search intent, not merely the broad Astrogen category;
   - the cover must meet Astrogen premium editorial quality: strong photo/editorial-hero feel, polished lighting, clean composition, natural depth, refined detail, and no obvious AI artifacts;
   - when `/astrogen/docs/reference/ARTICLE_IMAGE_DESIGN_SYSTEM.md` is available, use it as the richer art-direction source for brand-fit validation;
+  - for articles about human experience, decisions, relationships, family, children, career, money, emotions, consultation, or personal life context, require a photorealistic premium editorial human scene unless the handoff gives a stronger topic-specific reason for a non-human visual;
+  - reject human covers that feel posed instead of lived: direct-to-camera models, generic smiles, glossy stock-photo perfection, lifeless laptop/coffee scenes, or people with no visible action, decision, conversation, preparation, or emotional context;
+  - accept human covers only when the image shows a concrete lived moment and natural micro-emotion, with enough context to understand the article topic without text;
   - reject covers that feel like cheap stock imagery, generic wellness consultation, neon-purple astrology, mystical clutter, stereotyped cultural decoration, random zodiac-wheel decoration, or a scene that could fit almost any Astrogen article;
   - reject covers with malformed hands/faces, uncanny faces, warped astrology symbols, fake glyphs, muddy edges, inconsistent lighting, or low-resolution/compression artifacts;
   - require the handoff to name two or three topic-specific semantic anchors and explain why the image communicates the article within two seconds;

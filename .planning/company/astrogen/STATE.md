@@ -13,7 +13,7 @@ See: `.planning/company/astrogen/README.md`
 
 Phase: Astrogen growth/content operating system hardening
 Status: Active
-Last activity: 2026-05-23 - Phase 25 Telegram Delivery Proof Ledger completed. Telegram delivery proof is now recorded as structured plugin-owned activity events. Production deploy `paperclip-app:v2026.513.13-telegram-proof-20260523` is healthy and the live Telegram plugin registry reports `paperclip-plugin-telegram@0.3.1-paperclip.1`.
+Last activity: 2026-05-25 - Astrogen image contract tightened for human-topic cover images. Source contracts now require photorealistic premium editorial scenes with real-looking people in specific lived moments for articles about human experience, decisions, relationships, family, children, career, money, emotions, consultation, or personal life context.
 Current phase note: Phase 25 is complete. Telegram delivery proof now uses plugin-owned structured activity ledger events instead of ad hoc manager/comment recovery.
 
 ## Current Focus
@@ -98,6 +98,7 @@ Current phase note: Phase 25 is complete. Telegram delivery proof now uses plugi
 - CTO weekly release-check routine verified against live `build.releaseTag`; no newer release was found.
 - Phase 24 executed: LLM Heartbeat Cost Control after an overnight token audit showed non-functional manager timer heartbeats.
 - Phase 25 completed: Telegram Delivery Proof Ledger replaced manual message-id recovery with structured plugin-owned proof events for issue notifications and attachment delivery groups.
+- Image contract update: cover images for human-topic articles should normally be living photorealistic editorial scenes with people, concrete action/context, and natural micro-emotion, not posed stock-style models or abstract symbolism.
 
 ## Pending Todos
 

@@ -32,6 +32,7 @@
 - `AST-IMG-08`: Blog cover/hero images must be specific to the article topic and search intent. Generic consultation/lifestyle imagery is not acceptable for article packages about specific comparisons, cycles, checklists, or decision frameworks. A generic cover blocks editorial delivery until a topic-specific image is generated/uploaded and set as the CMS `coverImage`. Internal non-photo illustrations or diagrams may be recommended when they improve comprehension, but only embedded when the CMS content schema supports them.
 - `AST-IMG-09`: Blog cover images must not contain rendered text, words, letters, numbers, labels, UI captions, or text-like decoration. Meaning should come from the image concept, composition, and CMS alt text.
 - `AST-IMG-10`: Payload CMS metadata for blog cover/hero images must be deterministic: `alt` equals the exact article title, while `caption`, `credit`, and `sourceUrl` are empty or omitted. This rule applies only to cover/hero images; future inline explanatory images may use descriptive metadata when the CMS schema supports them.
+- `AST-IMG-11`: When an article is about human experience, decisions, relationships, family, children, career, money, emotions, consultation, or personal life context, the cover should normally be a photorealistic premium editorial scene with real-looking people in a specific lived moment. Human covers should feel observed rather than posed and must show concrete action, context, and natural micro-emotion instead of generic smiling models or lifeless stock-photo scenes.
 
 ## SEO
 

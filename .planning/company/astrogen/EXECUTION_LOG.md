@@ -639,3 +639,7 @@
   - Deployed production image `paperclip-app:v2026.513.13-telegram-proof-20260523`.
   - Updated the persistent installed Telegram plugin bundle used by the live plugin loader.
   - Verified production health, plugin registry `paperclip-plugin-telegram|0.3.1-paperclip.1|ready`, loader activation at `0.3.1-paperclip.1`, and runtime presence of `operational.telegram_delivery_proof`.
+- Tightened the Astrogen cover-image contract for human-topic articles.
+  - Added source rules requiring photorealistic premium editorial scenes with real-looking people for articles about human experience, decisions, relationships, family, children, career, money, emotions, consultation, or personal life context.
+  - Human-scene covers must show a specific lived moment, concrete action/context, and natural micro-emotion.
+  - Generic smiling models, direct-to-camera posing, glossy stock-photo perfection, and lifeless laptop/coffee scenes are now explicit rejection cases.

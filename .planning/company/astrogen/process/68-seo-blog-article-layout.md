@@ -177,7 +177,10 @@ Astrogen visual direction:
 - calm, modern, expert, emotionally warm, and lightly esoteric;
 - white or soft neutral base, deep burgundy/wine accents, warm gold detail, deep green or subtle mint/teal glow only where useful;
 - refined editorial styling, not mystical clutter, neon-purple astrology, cheap stock-photo consultation, generic laptop/coffee, tarot/crystal decoration unless the article truly needs it, or stereotyped cultural props;
-- realistic human imagery only when it adds meaning and looks natural; otherwise prefer a high-end symbolic still life, refined diagram-like composition, or premium editorial illustration;
+- for articles about human experience, decisions, relationships, family, children, career, money, emotions, consultation, or a personal life context, prefer a photorealistic premium editorial scene with real-looking people in a specific lived moment;
+- human scenes must feel observed, not posed: the person or people should be thinking, choosing, discussing, preparing, reading notes, working, holding a phone, sitting with a child, or otherwise doing something that makes the article topic legible without text;
+- human cover photography should show natural micro-emotions and concrete context such as a home, work desk, consultation setting, family moment, conversation, uncertainty, trust, relief, or decision point; avoid generic smiling models, direct-to-camera posing, glossy stock-photo perfection, and lifeless "person with laptop/coffee" scenes;
+- use realistic human imagery when the human situation is central to the article meaning; otherwise prefer a high-end symbolic still life, refined diagram-like composition, or premium editorial illustration;
 - the image should answer "what is this article about?" within two seconds without relying on the article title.
 
 The image generation handoff must include:
