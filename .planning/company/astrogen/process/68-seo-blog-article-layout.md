@@ -179,7 +179,10 @@ Astrogen visual direction:
 - refined editorial styling, not mystical clutter, neon-purple astrology, cheap stock-photo consultation, generic laptop/coffee, tarot/crystal decoration unless the article truly needs it, or stereotyped cultural props;
 - for articles about human experience, decisions, relationships, family, children, career, money, emotions, consultation, or a personal life context, prefer a photorealistic premium editorial scene with real-looking people in a specific lived moment;
 - human scenes must feel observed, not posed: the person or people should be thinking, choosing, discussing, preparing, reading notes, working, holding a phone, sitting with a child, or otherwise doing something that makes the article topic legible without text;
-- human cover photography should show natural micro-emotions and concrete context such as a home, work desk, consultation setting, family moment, conversation, uncertainty, trust, relief, or decision point; avoid generic smiling models, direct-to-camera posing, glossy stock-photo perfection, and lifeless "person with laptop/coffee" scenes;
+- human cover photography should show natural micro-emotions and concrete context such as a home, work desk, consultation setting, family moment, conversation, uncertainty, trust, relief, surprise, recognition, or decision point; it may feel like a cinematic still from a short video, with a believable unexpected facial reaction, but not theatrical acting, panic, tears, melodrama, or direct-to-camera posing;
+- when the topic implies reading, comparing, ordering, checking results, choosing an expert, or reviewing a forecast, prefer a smartphone, tablet, or laptop over paper/card props; device screens must be unreadable and non-specific, with no text, UI, icons, numbers, charts, percentages, notifications, or pseudo-text;
+- avoid paper/cards/notes unless genuinely needed; if used, they must be blank, out of focus, or positioned so no generated marks are visible. Reject unclear symbols, drawings, pseudo-writing, or artifacts on either side of a paper/card;
+- avoid generic smiling models, direct-to-camera posing, glossy stock-photo perfection, and lifeless "person with laptop/coffee" scenes;
 - use realistic human imagery when the human situation is central to the article meaning; otherwise prefer a high-end symbolic still life, refined diagram-like composition, or premium editorial illustration;
 - the image should answer "what is this article about?" within two seconds without relying on the article title.
 
@@ -189,13 +192,13 @@ The image generation handoff must include:
 - visual concept in one or two sentences;
 - two or three concrete semantic anchors from the article topic;
 - Astrogen style anchors from the visual direction above;
-- hard negatives: no text, no letters, no numbers, no UI, no fake glyphs, no distorted hands/faces, no random symbols, no generic stock scene;
+- hard negatives: no text, no letters, no numbers, no readable UI, no fake glyphs, no distorted hands/faces, no random symbols, no pseudo-writing on paper/screens, no generic stock scene;
 - aspect ratio and crop safety for CMS cover usage;
 - a short reason why the image fits the article.
 
 A generic or weakly connected cover is a blocking package defect, not a cosmetic note. CMO should route a cover-generation/replacement step before Payload CMS draft delivery or Telegram/editorial notification. The final CMS draft must have the topic-specific image set as `coverImage`.
 
-Generated images should be rejected and regenerated when they contain visible text, text-like pseudo-glyphs, malformed hands/faces, warped symbols, plastic/uncanny faces, muddy edges, incoherent astrology marks, or a scene that could fit almost any wellness article.
+Generated images should be rejected and regenerated when they contain visible text, text-like pseudo-glyphs, readable or fake screen UI, ambiguous marks on paper/cards, malformed hands/faces, warped symbols, plastic/uncanny faces, muddy edges, incoherent astrology marks, or a scene that could fit almost any wellness article.
 
 When useful, the layout handoff may recommend an internal non-photo illustration, diagram, or simple editorial visual. Internal visuals should explain the article, not decorate it. Do not add unsupported inline image blocks to `articleContent.v1`; keep the recommendation in the handoff until the CMS schema explicitly supports inline illustrations.
 

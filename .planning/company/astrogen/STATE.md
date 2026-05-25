@@ -101,6 +101,7 @@ Current phase note: Phase 25 is complete. Telegram delivery proof now uses plugi
 - Image contract update: cover images for human-topic articles should normally be living photorealistic editorial scenes with people, concrete action/context, and natural micro-emotion, not posed stock-style models or abstract symbolism.
 - Live Astrogen article-content contracts were synced from `astrogen-ukraine@67cb9aa` into `/home/paperclip/astrogen` without running workflow lanes. `articleContent.v1` ingestion now has an active reference doc, clean-JSON artifact requirements, separate handoff notes, fail-closed schema validation, and a contract-gap rule that blocks stuck lanes instead of creating ad hoc downstream/operator workarounds.
 - Routine Astrogen blog delivery now uses Payload CMS as the owner-facing review surface. Telegram should send only a concise text notification with the CMS draft/admin URL and article title. Markdown/HTML/image file bundles through Telegram are legacy/explicit-only and require a direct owner request for off-CMS files, archival delivery, or diagnostics.
+- Cover-image contract update: human-topic covers may use a cinematic video-still feeling with stronger but believable facial emotion. For scenes where users read, compare, order, choose, or review information, prefer smartphone/tablet/laptop props over paper; screens must be unreadable and non-specific, and paper/cards/notes must not contain pseudo-writing, unclear symbols, drawings, or other generated marks.
 
 ## Pending Todos
 

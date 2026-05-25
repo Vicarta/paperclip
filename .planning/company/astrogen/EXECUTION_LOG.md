@@ -663,3 +663,12 @@
   - Live-synced the same rule to `/home/paperclip/astrogen/agents/cmo/AGENTS.md`, `docs/process/64-seo-blog-publication-packaging.md`, and `docs/process/65-seo-blog-image-generation.md`.
   - Live backups were written under `/home/paperclip/astrogen/backups/cms-telegram-url-only-20260525T120309Z` and `/home/paperclip/astrogen/backups/cms-telegram-url-only-stage65-20260525T120418Z`.
   - No Paperclip workflow, heartbeat, or issue lane was manually run during this sync.
+- Updated the Astrogen article cover-image contract after the [AST-876](/AST/issues/AST-876) image experiment.
+  - Added a controlled "cinematic still from a short video" rule for human-topic covers: stronger facial emotion is allowed when it reads as a real lived moment, not theatrical acting.
+  - Added device/prop realism rules: when the scenario involves reading, comparing, ordering, checking results, choosing an expert, or reviewing a forecast, prefer smartphone/tablet/laptop over paper/card props.
+  - Device screens must remain unreadable and non-specific: no UI, icons, browser chrome, notifications, text, charts, percentages, numbers, or pseudo-text.
+  - Paper/cards/notes are no longer the default shortcut; if truly needed, they must be blank/out of focus and must not show unclear symbols, pseudo-writing, drawings, or generated marks.
+  - Updated `Vicarta/astrogen-ukraine` and pushed commit `52394cf`.
+  - Live-synced the rule to `/home/paperclip/astrogen/docs/reference/ARTICLE_IMAGE_DESIGN_SYSTEM.md`, `docs/process/65-seo-blog-image-generation.md`, `docs/process/68-seo-blog-article-layout.md`, and `agents/cmo/AGENTS.md`.
+  - Live backups were written under `/home/paperclip/astrogen/backups/device-emotion-cover-contract-20260525T134612Z` and `/home/paperclip/astrogen/backups/device-emotion-cover-contract-source-sync-20260525T134631Z`.
+  - No Paperclip workflow, heartbeat, or issue lane was manually run during this sync.
