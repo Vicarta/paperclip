@@ -100,6 +100,7 @@ Current phase note: Phase 25 is complete. Telegram delivery proof now uses plugi
 - Phase 25 completed: Telegram Delivery Proof Ledger replaced manual message-id recovery with structured plugin-owned proof events for issue notifications and attachment delivery groups.
 - Image contract update: cover images for human-topic articles should normally be living photorealistic editorial scenes with people, concrete action/context, and natural micro-emotion, not posed stock-style models or abstract symbolism.
 - Live Astrogen article-content contracts were synced from `astrogen-ukraine@67cb9aa` into `/home/paperclip/astrogen` without running workflow lanes. `articleContent.v1` ingestion now has an active reference doc, clean-JSON artifact requirements, separate handoff notes, fail-closed schema validation, and a contract-gap rule that blocks stuck lanes instead of creating ad hoc downstream/operator workarounds.
+- Routine Astrogen blog delivery now uses Payload CMS as the owner-facing review surface. Telegram should send only a concise text notification with the CMS draft/admin URL and article title. Markdown/HTML/image file bundles through Telegram are legacy/explicit-only and require a direct owner request for off-CMS files, archival delivery, or diagnostics.
 
 ## Pending Todos
 

@@ -655,3 +655,11 @@
   - Agency-core template files from `astrogen-ukraine` are not present in the live `/home/paperclip/astrogen` checkout, so only active Astrogen runtime files were changed.
   - Backup was written under `/home/paperclip/astrogen/backups/article-content-contract-20260525T115524Z`.
   - No Paperclip workflow, heartbeat, or issue lane was manually run during this sync.
+- Investigated unexpected Telegram file delivery from [AST-886](/AST/issues/AST-886).
+  - Root cause: the CMO-owned Stage 64/65 lane created a `notification-contract` with `delivery_groups` for publishable Markdown, publishable HTML, and `hero-image.jpg`.
+  - This was contract drift: that file-bundle flow was correct before direct Payload CMS access, but is no longer the normal Astrogen blog delivery path.
+  - Updated `Vicarta/astrogen-ukraine` and pushed commit `7f46e59` so normal CMS-backed blog delivery sends only a concise Telegram text notification with the CMS draft/admin URL and article title.
+  - File-bundle Telegram delivery is now legacy/explicit-only: only when the owner asks for off-CMS files, archival delivery, or diagnostic artifacts.
+  - Live-synced the same rule to `/home/paperclip/astrogen/agents/cmo/AGENTS.md`, `docs/process/64-seo-blog-publication-packaging.md`, and `docs/process/65-seo-blog-image-generation.md`.
+  - Live backups were written under `/home/paperclip/astrogen/backups/cms-telegram-url-only-20260525T120309Z` and `/home/paperclip/astrogen/backups/cms-telegram-url-only-stage65-20260525T120418Z`.
+  - No Paperclip workflow, heartbeat, or issue lane was manually run during this sync.
