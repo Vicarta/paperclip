@@ -13,7 +13,7 @@ See: `.planning/company/astrogen/README.md`
 
 Phase: Astrogen growth/content operating system hardening
 Status: Active
-Last activity: 2026-05-25 - Astrogen image contract tightened for human-topic cover images. Source contracts now require photorealistic premium editorial scenes with real-looking people in specific lived moments for articles about human experience, decisions, relationships, family, children, career, money, emotions, consultation, or personal life context.
+Last activity: 2026-05-25 - Astrogen image contract tightened and live-synced for human-topic cover images. Source and live contracts now require photorealistic premium editorial scenes with real-looking people in specific lived moments for articles about human experience, decisions, relationships, family, children, career, money, emotions, consultation, or personal life context.
 Current phase note: Phase 25 is complete. Telegram delivery proof now uses plugin-owned structured activity ledger events instead of ad hoc manager/comment recovery.
 
 ## Current Focus

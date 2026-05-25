@@ -643,3 +643,7 @@
   - Added source rules requiring photorealistic premium editorial scenes with real-looking people for articles about human experience, decisions, relationships, family, children, career, money, emotions, consultation, or personal life context.
   - Human-scene covers must show a specific lived moment, concrete action/context, and natural micro-emotion.
   - Generic smiling models, direct-to-camera posing, glossy stock-photo perfection, and lifeless laptop/coffee scenes are now explicit rejection cases.
+- Live-synced the human-topic cover-image contract to `ubuntu-oc`.
+  - Updated live external instruction files for `Chief Marketing Officer`, `SEO Blog Article Layout Editor`, and `SEO Blog Article Layout Validator`.
+  - Updated live Stage 68 process doc at `/home/paperclip/astrogen/docs/process/68-seo-blog-article-layout.md`.
+  - Backups were written under `/home/paperclip/astrogen/backups/human-cover-contract-20260525T093344Z` and `/home/paperclip/astrogen/backups/human-cover-contract-20260525T093459Z`.
