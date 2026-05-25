@@ -99,6 +99,7 @@ Current phase note: Phase 25 is complete. Telegram delivery proof now uses plugi
 - Phase 24 executed: LLM Heartbeat Cost Control after an overnight token audit showed non-functional manager timer heartbeats.
 - Phase 25 completed: Telegram Delivery Proof Ledger replaced manual message-id recovery with structured plugin-owned proof events for issue notifications and attachment delivery groups.
 - Image contract update: cover images for human-topic articles should normally be living photorealistic editorial scenes with people, concrete action/context, and natural micro-emotion, not posed stock-style models or abstract symbolism.
+- Live Astrogen article-content contracts were synced from `astrogen-ukraine@67cb9aa` into `/home/paperclip/astrogen` without running workflow lanes. `articleContent.v1` ingestion now has an active reference doc, clean-JSON artifact requirements, separate handoff notes, fail-closed schema validation, and a contract-gap rule that blocks stuck lanes instead of creating ad hoc downstream/operator workarounds.
 
 ## Pending Todos
 

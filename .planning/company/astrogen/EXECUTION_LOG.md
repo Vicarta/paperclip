@@ -647,3 +647,11 @@
   - Updated live external instruction files for `Chief Marketing Officer`, `SEO Blog Article Layout Editor`, and `SEO Blog Article Layout Validator`.
   - Updated live Stage 68 process doc at `/home/paperclip/astrogen/docs/process/68-seo-blog-article-layout.md`.
   - Backups were written under `/home/paperclip/astrogen/backups/human-cover-contract-20260525T093344Z` and `/home/paperclip/astrogen/backups/human-cover-contract-20260525T093459Z`.
+- Live-synced the Astrogen article-content contract hardening from `Vicarta/astrogen-ukraine@67cb9aa` to the Paperclip runtime workspace.
+  - Confirmed Paperclip reads Astrogen contracts from `/home/paperclip/astrogen` on `ubuntu-oc`; the live checkout is `server/live` at `94cd084` and contains local dirty changes, so a direct `git pull` was intentionally not used.
+  - Added `/home/paperclip/astrogen/docs/reference/article-content-v1.md`.
+  - Updated live contracts for `Chief Marketing Officer`, `SEO Blog Article Writer`, `SEO Blog Article Validator`, and process docs `59`, `61`, and `64`.
+  - The live contracts now require clean standalone `articleContent.json`, separate markdown handoff notes, fail-closed validation against `articleContent.v1`, and contract-gap blocking instead of ad hoc downstream/operator workarounds.
+  - Agency-core template files from `astrogen-ukraine` are not present in the live `/home/paperclip/astrogen` checkout, so only active Astrogen runtime files were changed.
+  - Backup was written under `/home/paperclip/astrogen/backups/article-content-contract-20260525T115524Z`.
+  - No Paperclip workflow, heartbeat, or issue lane was manually run during this sync.
