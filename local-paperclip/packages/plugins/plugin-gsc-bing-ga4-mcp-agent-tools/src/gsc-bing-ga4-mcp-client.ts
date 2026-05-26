@@ -118,6 +118,30 @@ function normalizeSiteArgValue(value: unknown) {
     : null;
 }
 
+function urlBelongsToAllowedSite(urlValue: string, allowedSiteUrl: string) {
+  let parsed: URL;
+  try {
+    parsed = new URL(urlValue);
+  } catch {
+    return false;
+  }
+
+  if (!["http:", "https:"].includes(parsed.protocol)) return false;
+
+  if (allowedSiteUrl.startsWith("sc-domain:")) {
+    const allowedDomain = allowedSiteUrl.slice("sc-domain:".length).toLowerCase();
+    const hostname = parsed.hostname.toLowerCase();
+    return hostname === allowedDomain || hostname.endsWith(`.${allowedDomain}`);
+  }
+
+  try {
+    const allowed = new URL(allowedSiteUrl);
+    return parsed.origin === allowed.origin;
+  } catch {
+    return false;
+  }
+}
+
 function normalizePropertyArgValue(value: unknown) {
   if (typeof value === "number" && Number.isFinite(value)) return String(value);
   return typeof value === "string" && value.trim().length > 0
@@ -143,6 +167,24 @@ function assertAndInjectAllowedSite(input: {
 
   if (isSiteScopedTool(input.toolName) && !normalizeSiteArgValue(next.siteUrl)) {
     next.siteUrl = input.allowedSiteUrl;
+  }
+
+  const inspectionUrl = normalizeSiteArgValue(next.inspectionUrl);
+  if (inspectionUrl && !urlBelongsToAllowedSite(inspectionUrl, input.allowedSiteUrl)) {
+    throw new Error(
+      `GSC/Bing/GA4 MCP inspection URL is not allowed: ${inspectionUrl}. Allowed site: ${input.allowedSiteUrl}`,
+    );
+  }
+
+  if (Array.isArray(next.urls)) {
+    for (const value of next.urls) {
+      const url = normalizeSiteArgValue(value);
+      if (!url || !urlBelongsToAllowedSite(url, input.allowedSiteUrl)) {
+        throw new Error(
+          `GSC/Bing/GA4 MCP inspection URL is not allowed: ${String(value)}. Allowed site: ${input.allowedSiteUrl}`,
+        );
+      }
+    }
   }
 
   return next;

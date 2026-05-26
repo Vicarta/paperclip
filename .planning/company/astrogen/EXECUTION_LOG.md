@@ -700,3 +700,9 @@
   - Added `payload_cms_list_blog_posts` to the Payload CMS plugin so weekly reports can use CMS publishing counts and draft state instead of sitemap fallback.
   - Updated the Stage 69 and CMO contracts so the CMO must query CMS + GSC/GA4 adapters before declaring report data unavailable.
   - Verified smoke checks: Payload CMS published count returns data, GSC/GA4 MCP tool listing works, and the old Search Console-only plugin remains disabled.
+- Updated the GSC/Bing/GA4 Paperclip adapter for MCP Phase 13 URL Inspection cache tools.
+  - Added default allowlist and wrapper tools for `inspection_batch_inspect` and `inspection_cache_stats`.
+  - Added plugin-side guard for `inspectionUrl` and batch `urls`, so non-Astrogen URLs are rejected before reaching MCP.
+  - Deployed the rebuilt plugin dist to live Paperclip and restarted the app; live plugin manifest now exposes both new wrapper tools.
+  - Updated the live explicit MCP tool allowlist to include both new inspection cache tools.
+  - Smoke-checked the MCP batch/cache tools against Astrogen without logging the bearer token.

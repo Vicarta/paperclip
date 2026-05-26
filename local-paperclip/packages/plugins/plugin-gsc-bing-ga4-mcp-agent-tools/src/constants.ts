@@ -35,6 +35,8 @@ export const VERIFIED_MCP_TOOL_NAMES = [
   "seo_primitive_is_cannibalized",
   "sites_health_check",
   "inspection_inspect",
+  "inspection_batch_inspect",
+  "inspection_cache_stats",
   "sitemaps_list",
   "pagespeed_analyze",
   "schema_validate",
@@ -84,6 +86,8 @@ export const SITE_SCOPED_MCP_TOOLS = [
   "seo_lost_queries",
   "sites_health_check",
   "inspection_inspect",
+  "inspection_batch_inspect",
+  "inspection_cache_stats",
   "sitemaps_list",
   "schema_validate",
 ] as const satisfies readonly VerifiedMcpToolName[];
@@ -109,6 +113,8 @@ export const TOOL_NAMES = {
   analyticsQuery: "analytics-query",
   seoLowCtrOpportunities: "seo-low-ctr-opportunities",
   inspectionInspect: "inspection-inspect",
+  inspectionBatchInspect: "inspection-batch-inspect",
+  inspectionCacheStats: "inspection-cache-stats",
   sitemapsList: "sitemaps-list",
   pagespeedAnalyze: "pagespeed-analyze",
 } as const;

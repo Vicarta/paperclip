@@ -56,6 +56,19 @@ const wrapperToolMap: Array<{
     description: "Inspect an indexed URL through GSC for the configured allowed site.",
   },
   {
+    paperclipToolName: TOOL_NAMES.inspectionBatchInspect,
+    mcpToolName: "inspection_batch_inspect",
+    displayName: "GSC URL Inspection Batch",
+    description:
+      "Inspect multiple URLs through GSC for the configured allowed site. Use for indexing audits; MCP remains acquisition/cache only.",
+  },
+  {
+    paperclipToolName: TOOL_NAMES.inspectionCacheStats,
+    mcpToolName: "inspection_cache_stats",
+    displayName: "GSC URL Inspection Cache Stats",
+    description: "Read URL Inspection cache statistics for the configured allowed site.",
+  },
+  {
     paperclipToolName: TOOL_NAMES.sitemapsList,
     mcpToolName: "sitemaps_list",
     displayName: "GSC Sitemaps List",

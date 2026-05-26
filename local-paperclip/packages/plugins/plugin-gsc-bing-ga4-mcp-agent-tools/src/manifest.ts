@@ -149,6 +149,20 @@ const manifest: PaperclipPluginManifestV1 = {
       parametersSchema: looseObjectSchema,
     },
     {
+      name: TOOL_NAMES.inspectionBatchInspect,
+      displayName: "GSC URL Inspection Batch",
+      description:
+        "Call MCP `inspection_batch_inspect` for multiple URLs on the configured allowed GSC site. Use this for indexing audits; MCP remains acquisition/cache only.",
+      parametersSchema: looseObjectSchema,
+    },
+    {
+      name: TOOL_NAMES.inspectionCacheStats,
+      displayName: "GSC URL Inspection Cache Stats",
+      description:
+        "Call MCP `inspection_cache_stats` for the configured allowed GSC site.",
+      parametersSchema: looseObjectSchema,
+    },
+    {
       name: TOOL_NAMES.sitemapsList,
       displayName: "GSC Sitemaps List",
       description: "Call MCP `sitemaps_list` for the configured allowed GSC site.",

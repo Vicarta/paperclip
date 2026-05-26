@@ -133,6 +133,43 @@ describe("plugin-gsc-bing-ga4-mcp-agent-tools", () => {
     ).toThrow(/not allowed/);
   });
 
+  it("allows batch inspection for tenant-owned URLs and injects the allowed site", () => {
+    expect(
+      prepareGscBingGa4McpArguments({
+        toolName: "inspection_batch_inspect",
+        args: {
+          urls: [
+            "https://astrogen.com.ua/blog/natalna-karta",
+            "https://www.astrogen.com.ua/experts",
+          ],
+          cacheMode: "read_write",
+          maxAgeHours: 24,
+        },
+        allowedSiteUrl: DEFAULT_ALLOWED_SITE_URL,
+      }),
+    ).toEqual({
+      siteUrl: DEFAULT_ALLOWED_SITE_URL,
+      urls: [
+        "https://astrogen.com.ua/blog/natalna-karta",
+        "https://www.astrogen.com.ua/experts",
+      ],
+      cacheMode: "read_write",
+      maxAgeHours: 24,
+    });
+  });
+
+  it("rejects batch inspection for non-tenant URLs before reaching MCP", () => {
+    expect(() =>
+      prepareGscBingGa4McpArguments({
+        toolName: "inspection_batch_inspect",
+        args: {
+          urls: ["https://example.com/blog/natalna-karta"],
+        },
+        allowedSiteUrl: DEFAULT_ALLOWED_SITE_URL,
+      }),
+    ).toThrow(/inspection URL is not allowed/);
+  });
+
   it("rejects non-verified MCP tool names", () => {
     expect(() =>
       prepareGscBingGa4McpArguments({
@@ -147,6 +184,8 @@ describe("plugin-gsc-bing-ga4-mcp-agent-tools", () => {
     expect(VERIFIED_MCP_TOOL_NAMES).toContain("bing_analytics_query");
     expect(VERIFIED_MCP_TOOL_NAMES).toContain("analytics_page_performance");
     expect(VERIFIED_MCP_TOOL_NAMES).toContain("opportunity_matrix");
+    expect(VERIFIED_MCP_TOOL_NAMES).toContain("inspection_batch_inspect");
+    expect(VERIFIED_MCP_TOOL_NAMES).toContain("inspection_cache_stats");
 
     expect(
       prepareGscBingGa4McpArguments({

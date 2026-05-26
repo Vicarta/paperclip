@@ -26,6 +26,7 @@ sc-domain:astrogen.com.ua
 - Tool calls are limited by backend plugin config.
 - The default tool allowlist contains only currently verified MCP tools.
 - Calls with a mismatched `siteUrl`, `site_url`, or `site` are rejected before reaching MCP.
+- Calls with `inspectionUrl` or batch `urls` outside the configured site are rejected before reaching MCP.
 - Site-scoped GSC tools receive the configured `allowedSiteUrl` automatically when the caller does not provide it.
 
 Verified default MCP tools are read-only analytics, diagnostics, and intelligence tools:
@@ -50,6 +51,8 @@ Verified default MCP tools are read-only analytics, diagnostics, and intelligenc
 - `seo_primitive_is_cannibalized`
 - `sites_health_check`
 - `inspection_inspect`
+- `inspection_batch_inspect`
+- `inspection_cache_stats`
 - `sitemaps_list`
 - `pagespeed_analyze`
 - `schema_validate`
@@ -99,6 +102,8 @@ Paperclip tools:
 - `analytics-query`: wrapper for `analytics_query`.
 - `seo-low-ctr-opportunities`: wrapper for `seo_low_ctr_opportunities`.
 - `inspection-inspect`: wrapper for `inspection_inspect`.
+- `inspection-batch-inspect`: wrapper for `inspection_batch_inspect`.
+- `inspection-cache-stats`: wrapper for `inspection_cache_stats`.
 - `sitemaps-list`: wrapper for `sitemaps_list`.
 - `pagespeed-analyze`: wrapper for `pagespeed_analyze`.
 
