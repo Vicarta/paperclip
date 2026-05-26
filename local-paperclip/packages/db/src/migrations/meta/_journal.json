@@ -414,6 +414,13 @@
       "when": 1779278400000,
       "tag": "0058_secret_schema_reconciliation",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1779811200000,
+      "tag": "0059_seo_ops_indexing_snapshots_findings",
+      "breakpoints": true
     }
   ]
 }

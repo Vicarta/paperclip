@@ -1,10 +1,15 @@
 import { Router } from "express";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import type { Db } from "@paperclipai/db";
 import {
   agents,
   issues,
+  seoOpsDiscoveryRuns,
+  seoOpsIndexingInspectionSnapshots,
+  seoOpsPageFindings,
+  seoOpsPages,
+  seoOpsProjectPages,
   seoOpsSemanticCoreKeywordActions,
   seoOpsSemanticCoreReviewBatches,
   seoOpsSemanticCoreReviewDecisions,
@@ -119,6 +124,36 @@ const rerunGateSchema = z.object({
   blockerReasons: z.array(z.string()).optional(),
 });
 
+const importIndexingInspectionResultsSchema = z.object({
+  companyId: z.string().uuid(),
+  projectId: z.string().uuid().optional().nullable(),
+  siteId: z.string().uuid(),
+  discoveryRunId: z.string().uuid().optional().nullable(),
+  input: z.record(z.unknown()).optional(),
+  summary: z.record(z.unknown()).optional(),
+  results: z.array(z.object({
+    url: z.string().min(1),
+    urlNormalized: z.string().optional().nullable(),
+    checkedAt: z.string().optional().nullable(),
+    provider: z.string().optional().nullable(),
+    verdict: z.string().optional().nullable(),
+    coverageState: z.string().optional().nullable(),
+    indexingState: z.string().optional().nullable(),
+    pageFetchState: z.string().optional().nullable(),
+    robotsTxtState: z.string().optional().nullable(),
+    googleCanonical: z.string().optional().nullable(),
+    userCanonical: z.string().optional().nullable(),
+    lastCrawlTime: z.string().optional().nullable(),
+    inspectionResultLink: z.string().optional().nullable(),
+    cacheHit: z.boolean().optional(),
+    apiCallMade: z.boolean().optional(),
+    quotaUnits: z.number().optional().nullable(),
+    normalizedPayload: z.record(z.unknown()).optional(),
+    rawPayloadRef: z.string().optional().nullable(),
+    rawPayloadHash: z.string().optional().nullable(),
+  })).min(1).max(2500),
+});
+
 function asRecord(value: unknown): JsonRecord {
   return value && typeof value === "object" && !Array.isArray(value) ? value as JsonRecord : {};
 }
@@ -137,6 +172,109 @@ function firstNonEmptyArray(...values: unknown[]) {
 
 function text(value: unknown, fallback = "") {
   return typeof value === "string" ? value.trim() : fallback;
+}
+
+function parseDate(value: string | null | undefined) {
+  if (!value) return null;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function normalizeUrlForSeoOps(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  try {
+    const url = new URL(trimmed);
+    url.hash = "";
+    url.hostname = url.hostname.toLowerCase();
+    if ((url.protocol === "https:" && url.port === "443") || (url.protocol === "http:" && url.port === "80")) {
+      url.port = "";
+    }
+    if (url.pathname.length > 1) url.pathname = url.pathname.replace(/\/+$/, "");
+    return url.toString();
+  } catch {
+    return trimmed.replace(/\/+$/, "");
+  }
+}
+
+export function classifyIndexingInspectionFinding(input: {
+  verdict?: string | null;
+  coverageState?: string | null;
+  indexingState?: string | null;
+  pageFetchState?: string | null;
+  robotsTxtState?: string | null;
+  googleCanonical?: string | null;
+  userCanonical?: string | null;
+}) {
+  const haystack = [
+    input.verdict,
+    input.coverageState,
+    input.indexingState,
+    input.pageFetchState,
+    input.robotsTxtState,
+  ].filter((value): value is string => Boolean(value)).join(" ").toLowerCase();
+
+  const googleCanonical = normalizeUrlForSeoOps(input.googleCanonical ?? "");
+  const userCanonical = normalizeUrlForSeoOps(input.userCanonical ?? "");
+  const canonicalMismatch = Boolean(googleCanonical && userCanonical && googleCanonical !== userCanonical);
+
+  if (canonicalMismatch || haystack.includes("alternate page with proper canonical tag")) {
+    return {
+      findingType: "canonical",
+      problemClass: "canonical_mismatch",
+      severity: "medium",
+    };
+  }
+  if (haystack.includes("duplicate") || haystack.includes("google chose different canonical")) {
+    return {
+      findingType: "canonical",
+      problemClass: "google_selected_different_canonical",
+      severity: "medium",
+    };
+  }
+  if (haystack.includes("discovered") && haystack.includes("not indexed")) {
+    return {
+      findingType: "indexing",
+      problemClass: "discovered_not_indexed",
+      severity: "medium",
+    };
+  }
+  if (haystack.includes("crawled") && haystack.includes("not indexed")) {
+    return {
+      findingType: "indexing",
+      problemClass: "crawled_not_indexed",
+      severity: "medium",
+    };
+  }
+  if (haystack.includes("redirect")) {
+    return {
+      findingType: "redirect",
+      problemClass: "page_with_redirect",
+      severity: "low",
+    };
+  }
+  if (haystack.includes("noindex")) {
+    return {
+      findingType: "noindex",
+      problemClass: "noindex_detected",
+      severity: "high",
+    };
+  }
+  if (haystack.includes("robots") && (haystack.includes("blocked") || haystack.includes("denied"))) {
+    return {
+      findingType: "technical",
+      problemClass: "robots_blocked",
+      severity: "high",
+    };
+  }
+  if (haystack.includes("unknown to google")) {
+    return {
+      findingType: "indexing",
+      problemClass: "unknown_to_google",
+      severity: "medium",
+    };
+  }
+  return null;
 }
 
 function numberOrNull(value: unknown) {
@@ -760,6 +898,248 @@ export function seoOpsRoutes(db: Db) {
       .where(eq(seoOpsSemanticCoreReviewBatches.id, batchId))
       .then((rows) => rows[0] ?? null);
   }
+
+  router.get("/seo/indexing/due-urls", async (req, res) => {
+    const companyId = text(req.query.companyId);
+    if (!companyId) throw badRequest("companyId is required");
+    assertCompanyAccess(req, companyId);
+    const siteId = text(req.query.siteId);
+    const projectId = text(req.query.projectId);
+    const limitRaw = Number(req.query.limit ?? 500);
+    const limit = Math.max(1, Math.min(Number.isFinite(limitRaw) ? limitRaw : 500, 2500));
+
+    const rows = await db
+      .select({
+        pageId: seoOpsPages.id,
+        projectPageId: seoOpsProjectPages.id,
+        companyId: seoOpsPages.companyId,
+        projectId: seoOpsProjectPages.projectId,
+        siteId: seoOpsPages.siteId,
+        url: seoOpsPages.canonicalUrl,
+        urlNormalized: seoOpsPages.canonicalUrlNormalized,
+        path: seoOpsPages.path,
+        pageType: seoOpsPages.pageType,
+        title: seoOpsPages.title,
+        projectPagePriority: seoOpsProjectPages.priority,
+        monitoringStatus: seoOpsProjectPages.monitoringStatus,
+        lastSeenAt: seoOpsPages.lastSeenAt,
+      })
+      .from(seoOpsPages)
+      .leftJoin(
+        seoOpsProjectPages,
+        and(
+          eq(seoOpsProjectPages.pageId, seoOpsPages.id),
+          eq(seoOpsProjectPages.companyId, seoOpsPages.companyId),
+          projectId ? eq(seoOpsProjectPages.projectId, projectId) : eq(seoOpsProjectPages.siteId, seoOpsPages.siteId),
+        ),
+      )
+      .where(and(
+        eq(seoOpsPages.companyId, companyId),
+        siteId ? eq(seoOpsPages.siteId, siteId) : eq(seoOpsPages.companyId, companyId),
+      ))
+      .orderBy(seoOpsProjectPages.priority, desc(seoOpsPages.lastSeenAt))
+      .limit(limit);
+
+    res.json({
+      items: rows,
+      count: rows.length,
+      source: "seo_ops.pages/project_pages",
+    });
+  });
+
+  router.post(
+    "/seo/indexing/inspection-results/import",
+    validate(importIndexingInspectionResultsSchema),
+    async (req, res) => {
+      const input = req.body as z.infer<typeof importIndexingInspectionResultsSchema>;
+      assertCompanyAccess(req, input.companyId);
+      const actor = getActorInfo(req);
+      const now = new Date();
+      const normalizedUrls = Array.from(new Set(input.results.map((result) =>
+        normalizeUrlForSeoOps(result.urlNormalized || result.url),
+      ).filter(Boolean)));
+
+      const pages = normalizedUrls.length > 0
+        ? await db
+          .select()
+          .from(seoOpsPages)
+          .where(and(
+            eq(seoOpsPages.companyId, input.companyId),
+            eq(seoOpsPages.siteId, input.siteId),
+            inArray(seoOpsPages.canonicalUrlNormalized, normalizedUrls),
+          ))
+        : [];
+      const pageByUrl = new Map(pages.map((page) => [page.canonicalUrlNormalized, page]));
+      const pageIds = pages.map((page) => page.id);
+      const projectPages = pageIds.length > 0
+        ? await db
+          .select()
+          .from(seoOpsProjectPages)
+          .where(and(
+            eq(seoOpsProjectPages.companyId, input.companyId),
+            input.projectId ? eq(seoOpsProjectPages.projectId, input.projectId) : eq(seoOpsProjectPages.siteId, input.siteId),
+            inArray(seoOpsProjectPages.pageId, pageIds),
+          ))
+        : [];
+      const projectPageByPageId = new Map(projectPages.map((page) => [page.pageId, page]));
+
+      const [run] = input.discoveryRunId
+        ? await db
+          .select()
+          .from(seoOpsDiscoveryRuns)
+          .where(eq(seoOpsDiscoveryRuns.id, input.discoveryRunId))
+        : await db
+          .insert(seoOpsDiscoveryRuns)
+          .values({
+            companyId: input.companyId,
+            projectId: input.projectId ?? null,
+            siteId: input.siteId,
+            source: "gsc_url_inspection",
+            status: "completed",
+            startedAt: now,
+            finishedAt: now,
+            input: input.input ?? {},
+            summary: input.summary ?? {},
+            heartbeatRunId: actor.runId ?? null,
+          })
+          .returning();
+
+      if (!run) throw notFound("GSC URL Inspection discovery run not found");
+      if (run.companyId !== input.companyId) throw forbidden("Discovery run belongs to another company");
+
+      let snapshotCount = 0;
+      let findingCount = 0;
+      const findingTypeCounts: Record<string, number> = {};
+
+      for (const result of input.results) {
+        const urlNormalized = normalizeUrlForSeoOps(result.urlNormalized || result.url);
+        const page = pageByUrl.get(urlNormalized) ?? null;
+        const projectPage = page ? projectPageByPageId.get(page.id) ?? null : null;
+        const checkedAt = parseDate(result.checkedAt) ?? now;
+        const [snapshot] = await db
+          .insert(seoOpsIndexingInspectionSnapshots)
+          .values({
+            companyId: input.companyId,
+            projectId: input.projectId ?? projectPage?.projectId ?? null,
+            siteId: input.siteId,
+            pageId: page?.id ?? null,
+            projectPageId: projectPage?.id ?? null,
+            discoveryRunId: run.id,
+            url: result.url,
+            urlNormalized,
+            checkedAt,
+            provider: result.provider || "google_search_console",
+            verdict: result.verdict ?? null,
+            coverageState: result.coverageState ?? null,
+            indexingState: result.indexingState ?? null,
+            pageFetchState: result.pageFetchState ?? null,
+            robotsTxtState: result.robotsTxtState ?? null,
+            googleCanonical: result.googleCanonical ?? null,
+            userCanonical: result.userCanonical ?? null,
+            lastCrawlTime: parseDate(result.lastCrawlTime),
+            inspectionResultLink: result.inspectionResultLink ?? null,
+            cacheHit: result.cacheHit ?? false,
+            apiCallMade: result.apiCallMade ?? false,
+            quotaUnits: result.quotaUnits === null || result.quotaUnits === undefined ? null : String(result.quotaUnits),
+            normalizedPayload: result.normalizedPayload ?? {},
+            rawPayloadRef: result.rawPayloadRef ?? null,
+            rawPayloadHash: result.rawPayloadHash ?? null,
+          })
+          .onConflictDoUpdate({
+            target: [
+              seoOpsIndexingInspectionSnapshots.companyId,
+              seoOpsIndexingInspectionSnapshots.discoveryRunId,
+              seoOpsIndexingInspectionSnapshots.urlNormalized,
+            ],
+            set: {
+              checkedAt,
+              verdict: result.verdict ?? null,
+              coverageState: result.coverageState ?? null,
+              indexingState: result.indexingState ?? null,
+              pageFetchState: result.pageFetchState ?? null,
+              robotsTxtState: result.robotsTxtState ?? null,
+              googleCanonical: result.googleCanonical ?? null,
+              userCanonical: result.userCanonical ?? null,
+              lastCrawlTime: parseDate(result.lastCrawlTime),
+              inspectionResultLink: result.inspectionResultLink ?? null,
+              cacheHit: result.cacheHit ?? false,
+              apiCallMade: result.apiCallMade ?? false,
+              quotaUnits: result.quotaUnits === null || result.quotaUnits === undefined ? null : String(result.quotaUnits),
+              normalizedPayload: result.normalizedPayload ?? {},
+              rawPayloadRef: result.rawPayloadRef ?? null,
+              rawPayloadHash: result.rawPayloadHash ?? null,
+            },
+          })
+          .returning();
+        snapshotCount += 1;
+
+        const finding = classifyIndexingInspectionFinding(result);
+        if (!finding || !snapshot) continue;
+        const fingerprint = [
+          "gsc_url_inspection",
+          input.siteId,
+          page?.id ?? urlNormalized,
+          finding.findingType,
+          finding.problemClass,
+        ].join(":");
+        await db
+          .insert(seoOpsPageFindings)
+          .values({
+            companyId: input.companyId,
+            projectId: input.projectId ?? projectPage?.projectId ?? null,
+            siteId: input.siteId,
+            pageId: page?.id ?? null,
+            projectPageId: projectPage?.id ?? null,
+            source: "gsc_url_inspection",
+            findingType: finding.findingType,
+            problemClass: finding.problemClass,
+            severity: finding.severity,
+            status: "open",
+            firstSeenAt: checkedAt,
+            lastSeenAt: checkedAt,
+            fingerprint,
+            latestSnapshotId: snapshot.id,
+            evidenceSummary: [
+              result.coverageState,
+              result.indexingState,
+              result.verdict,
+            ].filter(Boolean).join(" / "),
+            evidenceRefs: { snapshotId: snapshot.id, discoveryRunId: run.id },
+            policySnapshot: {},
+          })
+          .onConflictDoUpdate({
+            target: [seoOpsPageFindings.companyId, seoOpsPageFindings.fingerprint],
+            set: {
+              projectId: input.projectId ?? projectPage?.projectId ?? null,
+              pageId: page?.id ?? null,
+              projectPageId: projectPage?.id ?? null,
+              severity: finding.severity,
+              status: "open",
+              lastSeenAt: checkedAt,
+              resolvedAt: null,
+              latestSnapshotId: snapshot.id,
+              evidenceSummary: [
+                result.coverageState,
+                result.indexingState,
+                result.verdict,
+              ].filter(Boolean).join(" / "),
+              evidenceRefs: { snapshotId: snapshot.id, discoveryRunId: run.id },
+              updatedAt: now,
+            },
+          });
+        findingCount += 1;
+        findingTypeCounts[`${finding.findingType}:${finding.problemClass}`] =
+          (findingTypeCounts[`${finding.findingType}:${finding.problemClass}`] ?? 0) + 1;
+      }
+
+      res.status(201).json({
+        discoveryRunId: run.id,
+        snapshotCount,
+        findingCount,
+        findingTypeCounts,
+      });
+    },
+  );
 
   router.get("/seo/semantic-core/review-batches", async (req, res) => {
     const companyId = text(req.query.companyId);

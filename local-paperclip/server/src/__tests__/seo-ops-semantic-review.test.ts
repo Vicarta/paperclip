@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   applySemanticCoreImportGuards,
+  classifyIndexingInspectionFinding,
   isChiefTechnicalOfficerAgent,
   normalizePreparedSemanticCoreImport,
   semanticCoreDecisionWriteBlockReason,
@@ -14,6 +15,37 @@ import {
 } from "../services/semantic-core-client-review.js";
 
 describe("seo ops semantic-core review helpers", () => {
+  it("classifies URL Inspection states into deduplicated page finding classes", () => {
+    expect(classifyIndexingInspectionFinding({
+      coverageState: "Discovered - currently not indexed",
+    })).toEqual({
+      findingType: "indexing",
+      problemClass: "discovered_not_indexed",
+      severity: "medium",
+    });
+    expect(classifyIndexingInspectionFinding({
+      coverageState: "Duplicate, Google chose different canonical than user",
+    })).toEqual({
+      findingType: "canonical",
+      problemClass: "google_selected_different_canonical",
+      severity: "medium",
+    });
+    expect(classifyIndexingInspectionFinding({
+      googleCanonical: "https://astrogen.com.ua/blog/example",
+      userCanonical: "https://astrogen.com.ua/blog/example/",
+      verdict: "PASS",
+    })).toBeNull();
+    expect(classifyIndexingInspectionFinding({
+      googleCanonical: "https://astrogen.com.ua/blog/other",
+      userCanonical: "https://astrogen.com.ua/blog/example",
+      verdict: "PASS",
+    })).toEqual({
+      findingType: "canonical",
+      problemClass: "canonical_mismatch",
+      severity: "medium",
+    });
+  });
+
   it("blocks CTO agents from writing semantic-core review decisions", () => {
     expect(isChiefTechnicalOfficerAgent({
       name: "Chief Technical Officer",

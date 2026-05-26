@@ -1196,6 +1196,115 @@ export const seoOpsSeoDecisions = seoOps.table(
   }),
 );
 
+export const seoOpsIndexingInspectionSnapshots = seoOps.table(
+  "indexing_inspection_snapshots",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    companyId: uuid("company_id").notNull().references(() => companies.id),
+    projectId: uuid("project_id").references(() => projects.id),
+    siteId: uuid("site_id").notNull().references(() => seoOpsSites.id),
+    pageId: uuid("page_id").references(() => seoOpsPages.id),
+    projectPageId: uuid("project_page_id").references(() => seoOpsProjectPages.id),
+    discoveryRunId: uuid("discovery_run_id").references(() => seoOpsDiscoveryRuns.id),
+    url: text("url").notNull(),
+    urlNormalized: text("url_normalized").notNull(),
+    checkedAt: timestamp("checked_at", { withTimezone: true }).notNull().defaultNow(),
+    provider: text("provider").notNull().default("google_search_console"),
+    verdict: text("verdict"),
+    coverageState: text("coverage_state"),
+    indexingState: text("indexing_state"),
+    pageFetchState: text("page_fetch_state"),
+    robotsTxtState: text("robots_txt_state"),
+    googleCanonical: text("google_canonical"),
+    userCanonical: text("user_canonical"),
+    lastCrawlTime: timestamp("last_crawl_time", { withTimezone: true }),
+    inspectionResultLink: text("inspection_result_link"),
+    cacheHit: boolean("cache_hit").notNull().default(false),
+    apiCallMade: boolean("api_call_made").notNull().default(false),
+    quotaUnits: numeric("quota_units"),
+    normalizedPayload: jsonb("normalized_payload").$type<JsonRecord>().notNull().default({}),
+    rawPayloadRef: text("raw_payload_ref"),
+    rawPayloadHash: text("raw_payload_hash"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    discoveryUrlUq: uniqueIndex("seo_ops_indexing_snapshots_discovery_url_uq").on(
+      table.companyId,
+      table.discoveryRunId,
+      table.urlNormalized,
+    ),
+    companySiteCheckedIdx: index("seo_ops_indexing_snapshots_company_site_checked_idx").on(
+      table.companyId,
+      table.siteId,
+      table.checkedAt,
+    ),
+    companyPageCheckedIdx: index("seo_ops_indexing_snapshots_company_page_checked_idx").on(
+      table.companyId,
+      table.pageId,
+      table.checkedAt,
+    ),
+    projectPageCheckedIdx: index("seo_ops_indexing_snapshots_project_page_checked_idx").on(
+      table.projectPageId,
+      table.checkedAt,
+    ),
+    verdictIdx: index("seo_ops_indexing_snapshots_verdict_idx").on(
+      table.companyId,
+      table.verdict,
+      table.coverageState,
+    ),
+  }),
+);
+
+export const seoOpsPageFindings = seoOps.table(
+  "page_findings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    companyId: uuid("company_id").notNull().references(() => companies.id),
+    projectId: uuid("project_id").references(() => projects.id),
+    siteId: uuid("site_id").notNull().references(() => seoOpsSites.id),
+    pageId: uuid("page_id").references(() => seoOpsPages.id),
+    projectPageId: uuid("project_page_id").references(() => seoOpsProjectPages.id),
+    source: text("source").notNull(),
+    findingType: text("finding_type").notNull(),
+    problemClass: text("problem_class").notNull(),
+    severity: text("severity").notNull().default("medium"),
+    status: text("status").notNull().default("open"),
+    firstSeenAt: timestamp("first_seen_at", { withTimezone: true }).notNull().defaultNow(),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    fingerprint: text("fingerprint").notNull(),
+    latestSnapshotId: uuid("latest_snapshot_id").references(() => seoOpsIndexingInspectionSnapshots.id),
+    linkedIssueId: uuid("linked_issue_id").references(() => issues.id),
+    evidenceSummary: text("evidence_summary"),
+    evidenceRefs: jsonb("evidence_refs").$type<JsonRecord>().notNull().default({}),
+    policySnapshot: jsonb("policy_snapshot").$type<JsonRecord>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    companyFingerprintUq: uniqueIndex("seo_ops_page_findings_company_fingerprint_uq").on(
+      table.companyId,
+      table.fingerprint,
+    ),
+    companyStatusSeverityIdx: index("seo_ops_page_findings_company_status_severity_idx").on(
+      table.companyId,
+      table.status,
+      table.severity,
+    ),
+    projectPageStatusIdx: index("seo_ops_page_findings_project_page_status_idx").on(
+      table.projectPageId,
+      table.status,
+    ),
+    companyProblemIdx: index("seo_ops_page_findings_company_problem_idx").on(
+      table.companyId,
+      table.findingType,
+      table.problemClass,
+      table.status,
+    ),
+    linkedIssueIdx: index("seo_ops_page_findings_linked_issue_idx").on(table.linkedIssueId),
+  }),
+);
+
 export const seoOpsNewPageOpportunities = seoOps.table(
   "new_page_opportunities",
   {

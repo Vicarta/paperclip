@@ -83,6 +83,8 @@ Recommended operational tables:
 | `seo_ops.rank_tracking_policies` | Company/project/keyword-tier tracking frequency, provider, budget, and temporary-watch rules. |
 | `seo_ops.rank_tracking_targets` | Concrete scheduled rank checks derived from keyword target and policy rows. |
 | `seo_ops.performance_snapshots` | Time-series page/query/rank/GSC snapshots scoped to project page and keyword target. |
+| `seo_ops.indexing_inspection_snapshots` | Durable normalized GSC URL Inspection evidence for URLs Paperclip checks through MCP/provider tools. |
+| `seo_ops.page_findings` | Deduplicated operational page findings across indexing, canonical, redirect, noindex, sitemap, schema, duplicate, and technical checks. |
 | `seo_ops.new_page_opportunities` | Validated or pending opportunities where observed demand lacks a good landing page. |
 | `seo_ops.page_action_events` | Change history: created, refreshed, title/meta changed, internal links added, republished, etc. |
 | `seo_ops.scope_conflicts` | Cases where multiple project scopes claim the same URL in conflicting ways. |
@@ -188,6 +190,43 @@ Enrichment should check:
 - product/category inference.
 
 Enrichment cadence can be lower than sitemap discovery unless a page is new, changed, declining, or in temporary watch.
+
+## GSC URL Inspection And Page Findings
+
+URL Inspection is operational evidence, not a replacement for the page registry.
+
+Use existing tables this way:
+
+1. Register page existence in `seo_ops.pages`.
+2. Register project SEO ownership in `seo_ops.project_pages`.
+3. Record each audit acquisition as `seo_ops.discovery_runs.source = 'gsc_url_inspection'`.
+4. Store normalized URL Inspection results in `seo_ops.indexing_inspection_snapshots`.
+5. Update deduplicated lifecycle state in `seo_ops.page_findings`.
+
+`seo_ops.indexing_inspection_snapshots` stores provider evidence for one checked URL at one time:
+
+- inspected URL and normalized URL;
+- verdict, coverage state, indexing state, fetch state, robots state;
+- Google-selected canonical and user-declared canonical;
+- last crawl time and inspection result link;
+- cache hit/API call/quota metadata from the acquisition layer;
+- compact normalized payload plus optional raw payload reference or hash.
+
+`seo_ops.page_findings` is the durable decision surface for agents:
+
+- one open finding per fingerprint;
+- generic finding types such as `indexing`, `canonical`, `redirect`, `noindex`, `sitemap`, `duplicate`, `schema`, and `technical`;
+- lifecycle statuses: `open`, `acknowledged`, `resolved`, `ignored`;
+- latest evidence snapshot and optional linked Paperclip issue.
+
+LLM agents should not reason over raw per-URL inspection payloads. Backend/plugin code should write snapshots and update findings deterministically, then return compact summaries:
+
+- checked URL count;
+- new findings;
+- resolved findings;
+- repeated open findings;
+- findings already linked to open issues;
+- API/cache usage.
 
 ## GSC Query Ingestion
 
