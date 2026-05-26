@@ -156,6 +156,31 @@ const manifest: PaperclipPluginManifestV1 = {
       parametersSchema: looseObjectSchema,
     },
     {
+      name: TOOL_NAMES.inspectionBatchJobStart,
+      displayName: "GSC URL Inspection Batch Job Start",
+      description:
+        "Call MCP `inspection_batch_job_start` for large URL Inspection audits. MCP job/result files are transient provider acquisition state; Paperclip stores historical snapshots.",
+      parametersSchema: looseObjectSchema,
+    },
+    {
+      name: TOOL_NAMES.inspectionBatchJobStatus,
+      displayName: "GSC URL Inspection Batch Job Status",
+      description: "Call MCP `inspection_batch_job_status`.",
+      parametersSchema: looseObjectSchema,
+    },
+    {
+      name: TOOL_NAMES.inspectionBatchJobResults,
+      displayName: "GSC URL Inspection Batch Job Results",
+      description: "Call MCP `inspection_batch_job_results` with paging.",
+      parametersSchema: looseObjectSchema,
+    },
+    {
+      name: TOOL_NAMES.inspectionBatchJobCancel,
+      displayName: "GSC URL Inspection Batch Job Cancel",
+      description: "Call MCP `inspection_batch_job_cancel`.",
+      parametersSchema: looseObjectSchema,
+    },
+    {
       name: TOOL_NAMES.inspectionCacheStats,
       displayName: "GSC URL Inspection Cache Stats",
       description:

@@ -63,6 +63,32 @@ const wrapperToolMap: Array<{
       "Inspect multiple URLs through GSC for the configured allowed site. Use for indexing audits; MCP remains acquisition/cache only.",
   },
   {
+    paperclipToolName: TOOL_NAMES.inspectionBatchJobStart,
+    mcpToolName: "inspection_batch_job_start",
+    displayName: "GSC URL Inspection Batch Job Start",
+    description:
+      "Start an async GSC URL Inspection batch job for large audits. MCP job files are transient provider acquisition state.",
+  },
+  {
+    paperclipToolName: TOOL_NAMES.inspectionBatchJobStatus,
+    mcpToolName: "inspection_batch_job_status",
+    displayName: "GSC URL Inspection Batch Job Status",
+    description: "Poll an async GSC URL Inspection batch job status.",
+  },
+  {
+    paperclipToolName: TOOL_NAMES.inspectionBatchJobResults,
+    mcpToolName: "inspection_batch_job_results",
+    displayName: "GSC URL Inspection Batch Job Results",
+    description:
+      "Read paged normalized results from an async GSC URL Inspection batch job.",
+  },
+  {
+    paperclipToolName: TOOL_NAMES.inspectionBatchJobCancel,
+    mcpToolName: "inspection_batch_job_cancel",
+    displayName: "GSC URL Inspection Batch Job Cancel",
+    description: "Cancel an async GSC URL Inspection batch job.",
+  },
+  {
     paperclipToolName: TOOL_NAMES.inspectionCacheStats,
     mcpToolName: "inspection_cache_stats",
     displayName: "GSC URL Inspection Cache Stats",

@@ -185,6 +185,10 @@ describe("plugin-gsc-bing-ga4-mcp-agent-tools", () => {
     expect(VERIFIED_MCP_TOOL_NAMES).toContain("analytics_page_performance");
     expect(VERIFIED_MCP_TOOL_NAMES).toContain("opportunity_matrix");
     expect(VERIFIED_MCP_TOOL_NAMES).toContain("inspection_batch_inspect");
+    expect(VERIFIED_MCP_TOOL_NAMES).toContain("inspection_batch_job_start");
+    expect(VERIFIED_MCP_TOOL_NAMES).toContain("inspection_batch_job_status");
+    expect(VERIFIED_MCP_TOOL_NAMES).toContain("inspection_batch_job_results");
+    expect(VERIFIED_MCP_TOOL_NAMES).toContain("inspection_batch_job_cancel");
     expect(VERIFIED_MCP_TOOL_NAMES).toContain("inspection_cache_stats");
 
     expect(
@@ -214,5 +218,44 @@ describe("plugin-gsc-bing-ga4-mcp-agent-tools", () => {
     expect(VERIFIED_MCP_TOOL_NAMES).not.toContain("sitemaps_submit");
     expect(VERIFIED_MCP_TOOL_NAMES).not.toContain("bing_index_now");
     expect(VERIFIED_MCP_TOOL_NAMES).not.toContain("bing_sitemaps_submit");
+  });
+
+  it("allows async inspection job start for tenant-owned URLs and injects the allowed site", () => {
+    expect(
+      prepareGscBingGa4McpArguments({
+        toolName: "inspection_batch_job_start",
+        args: {
+          urls: ["https://astrogen.com.ua/blog/natalna-karta"],
+          cacheMode: "read_write",
+          maxAgeHours: 24,
+          forceRefresh: false,
+        },
+        allowedSiteUrl: DEFAULT_ALLOWED_SITE_URL,
+      }),
+    ).toEqual({
+      siteUrl: DEFAULT_ALLOWED_SITE_URL,
+      urls: ["https://astrogen.com.ua/blog/natalna-karta"],
+      cacheMode: "read_write",
+      maxAgeHours: 24,
+      forceRefresh: false,
+    });
+  });
+
+  it("allows async inspection job status and paged results by job id", () => {
+    expect(
+      prepareGscBingGa4McpArguments({
+        toolName: "inspection_batch_job_status",
+        args: { jobId: "job-123" },
+        allowedSiteUrl: DEFAULT_ALLOWED_SITE_URL,
+      }),
+    ).toEqual({ jobId: "job-123" });
+
+    expect(
+      prepareGscBingGa4McpArguments({
+        toolName: "inspection_batch_job_results",
+        args: { jobId: "job-123", offset: 0, limit: 100 },
+        allowedSiteUrl: DEFAULT_ALLOWED_SITE_URL,
+      }),
+    ).toEqual({ jobId: "job-123", offset: 0, limit: 100 });
   });
 });
