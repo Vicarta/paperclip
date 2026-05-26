@@ -117,6 +117,30 @@ describe("issue notification contract parsing", () => {
     expect(contract.delivery.groups[0]?.artifacts).toHaveLength(3);
   });
 
+  it("parses message-only telegram notification contracts", () => {
+    const contract = parseIssueNotificationContractDocument({
+      body: `
+\`\`\`json notification-contract
+{
+  "enabled": true,
+  "channel": "telegram",
+  "trigger": "issue_done",
+  "delivery": {
+    "mode": "message_only",
+    "text": "Astrogen: короткий тижневий звіт."
+  }
+}
+\`\`\`
+      `,
+    });
+
+    expect(contract.delivery.mode).toBe("message_only");
+    if (contract.delivery.mode !== "message_only") {
+      throw new Error("Expected message_only mode");
+    }
+    expect(contract.delivery.text).toContain("Astrogen");
+  });
+
   it("rejects delivery groups with more than the attach_files selector limit", () => {
     expect(() =>
       parseIssueNotificationContractDocument({

@@ -8,7 +8,7 @@ export type TelegramDeliveryProofInput = {
   issueId: string;
   chatId: string;
   messageIds: number[];
-  deliveryKind: "issue_notification" | "attachment_delivery_group";
+  deliveryKind: "issue_notification" | "attachment_delivery_group" | "message_only";
   trigger: string;
   messageThreadId?: number | null;
   fingerprint?: string | null;

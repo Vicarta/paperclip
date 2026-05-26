@@ -138,11 +138,13 @@ export function issueNotificationContractService(db: Db) {
           .map(withContentPath);
       } else if (contract.delivery.mode === "attach_files") {
         resolvedAttachments = resolveSelectors(attachments, contract.delivery.artifacts).attachments;
-      } else {
+      } else if (contract.delivery.mode === "delivery_groups") {
         attachmentGroups = contract.delivery.groups.map((group) => resolveDeliveryGroup(attachments, group));
         resolvedAttachments = attachmentGroups
           .flatMap((group) => group.attachments)
           .filter((attachment, index, all) => all.findIndex((other) => other.id === attachment.id) === index);
+      } else {
+        resolvedAttachments = [];
       }
 
       return {

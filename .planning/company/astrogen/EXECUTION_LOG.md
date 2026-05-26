@@ -1,5 +1,16 @@
 # Execution Log: Astrogen
 
+## 2026-05-26
+
+- Tested the weekly Astrogen blog/SEO Telegram report routine for the latest complete Monday-based week.
+- The CMO produced the compact report text in the issue, but Telegram received only the generic `Готово` issue-completion summary. Root cause: the Telegram `notification-contract` transport supported file/group delivery, while message-only reports had no explicit delivery mode and fell back to the generic completion formatter.
+- Added `message_only` support to the shared notification-contract schema, server notification-contract resolver, and Telegram plugin delivery/proof path.
+- Added tests for parsing and delivering message-only notification contracts.
+- Updated Astrogen CMO and Stage 69 weekly-report contracts: before closing a weekly report issue, CMO must create/update the issue document `notification-contract` with `delivery.mode = "message_only"` and `delivery.text` equal to the exact compact Telegram report.
+- Synced the Stage 69 and CMO contract changes to the live Astrogen checkout on `ubuntu-oc`.
+- Hotfixed the live installed Telegram plugin package in the running Paperclip container and restarted the app. Production smoke passed: `/api/health` is OK, Telegram plugin is `ready`, all 13 plugins loaded, and the active installed Telegram package contains `message_only` delivery support.
+- No report issue was re-executed manually after the owner reminder. Future verification should happen through the next agent-run/routine unless the owner explicitly asks for another test run.
+
 ## 2026-05-22
 
 - Audited Paperclip LLM usage for Astrogen between 2026-05-21 23:00 and 2026-05-22 10:00 Europe/Kiev.

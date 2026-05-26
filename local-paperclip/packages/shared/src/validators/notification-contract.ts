@@ -4,7 +4,7 @@ export const ISSUE_NOTIFICATION_CONTRACT_KEY = "notification-contract" as const;
 
 export const issueNotificationChannelSchema = z.enum(["telegram"]);
 export const issueNotificationTriggerSchema = z.enum(["issue_done"]);
-export const issueNotificationDeliveryModeSchema = z.enum(["attach_file", "attach_files", "delivery_groups"]);
+export const issueNotificationDeliveryModeSchema = z.enum(["attach_file", "attach_files", "delivery_groups", "message_only"]);
 export const issueNotificationAttachmentSourceSchema = z.enum(["issue_attachment"]);
 export const issueNotificationRecipientTargetSchema = z.enum(["default_chat", "chat_id", "routing_key"]);
 
@@ -74,6 +74,12 @@ export const issueNotificationContractSchema = z
           mode: z.literal("delivery_groups"),
           summary: z.string().trim().min(1).max(1000).optional(),
           groups: z.array(issueNotificationDeliveryGroupSchema).min(1).max(100),
+        })
+        .strict(),
+      z
+        .object({
+          mode: z.literal("message_only"),
+          text: z.string().trim().min(1).max(4000),
         })
         .strict(),
     ]),

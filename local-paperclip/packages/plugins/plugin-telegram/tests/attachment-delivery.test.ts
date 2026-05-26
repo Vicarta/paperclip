@@ -181,6 +181,56 @@ describe("telegram attachment delivery groups", () => {
     });
   });
 
+  it("sends message-only notification contracts and suppresses generic done fallback", async () => {
+    const { ctx, comments, activity } = createContext({
+      documentBody: `
+\`\`\`json notification-contract
+{
+  "enabled": true,
+  "channel": "telegram",
+  "trigger": "issue_done",
+  "delivery": {
+    "mode": "message_only",
+    "text": "Astrogen: короткий тижневий звіт."
+  }
+}
+\`\`\`
+`,
+    });
+
+    const result = await deliverIssueAttachmentGroups({
+      ctx,
+      token: "token",
+      event: {
+        eventId: "event-1",
+        eventType: "issue.updated",
+        companyId: "company-1",
+        entityType: "issue",
+        entityId: "issue-1",
+        payload: { status: "done" },
+        occurredAt: new Date().toISOString(),
+      } as any,
+      chatId: "-100",
+    });
+
+    expect(result).toMatchObject({ status: "sent", fileCount: 0, groupCount: 0 });
+    expect(ctx.http.fetch).toHaveBeenCalledTimes(1);
+    expect(ctx.http.fetch.mock.calls[0]?.[1]).toMatchObject({
+      method: "POST",
+    });
+    expect(JSON.stringify(ctx.http.fetch.mock.calls[0]?.[1])).toContain("Astrogen");
+    expect(comments.at(-1)).toContain("Files: 0");
+    expect(activity.at(-1)).toMatchObject({
+      message: "operational.telegram_delivery_proof",
+      metadata: {
+        deliveryKind: "message_only",
+        fileCount: 0,
+        groupCount: 0,
+        messageIds: [100],
+      },
+    });
+  });
+
   it("blocks delivery and comments when a selected attachment is missing", async () => {
     const { ctx, comments } = createContext({
       attachments: [

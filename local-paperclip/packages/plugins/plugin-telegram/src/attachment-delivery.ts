@@ -25,11 +25,16 @@ type DeliveryContract = {
   enabled: boolean;
   channel: "telegram";
   trigger: "issue_done";
-  delivery: {
-    mode: "delivery_groups";
-    summary?: string;
-    groups: DeliveryGroup[];
-  };
+  delivery:
+    | {
+        mode: "delivery_groups";
+        summary?: string;
+        groups: DeliveryGroup[];
+      }
+    | {
+        mode: "message_only";
+        text: string;
+      };
 };
 
 export type AttachmentDeliveryResult =
@@ -114,7 +119,23 @@ function parseContract(body: string): DeliveryContract | null {
   if (typeof enabled !== "boolean") return null;
 
   const delivery = asRecord(record.delivery);
-  if (!delivery || delivery.mode !== "delivery_groups") return null;
+  if (!delivery) return null;
+
+  if (delivery.mode === "message_only") {
+    const text = asOptionalString(delivery.text);
+    if (!text) return null;
+    return {
+      enabled,
+      channel: "telegram",
+      trigger: "issue_done",
+      delivery: {
+        mode: "message_only",
+        text,
+      },
+    };
+  }
+
+  if (delivery.mode !== "delivery_groups") return null;
   const summary = asOptionalString(delivery.summary);
   if (summary === null) return null;
 
@@ -162,12 +183,14 @@ function resolveGroup(attachments: IssueAttachment[], group: DeliveryGroup) {
 function createFingerprint(input: {
   issueId: string;
   revisionId: string | null;
-  groups: Array<{ group: DeliveryGroup; attachments: IssueAttachment[] }>;
+  groups?: Array<{ group: DeliveryGroup; attachments: IssueAttachment[] }>;
+  messageOnlyText?: string;
 }) {
   const payload = {
     issueId: input.issueId,
     revisionId: input.revisionId,
-    groups: input.groups.map((group) => ({
+    messageOnlyText: input.messageOnlyText,
+    groups: (input.groups ?? []).map((group) => ({
       key: group.group.key,
       attachmentIds: group.attachments.map((attachment) => attachment.id),
     })),
@@ -229,6 +252,70 @@ export async function deliverIssueAttachmentGroups(input: {
   const contract = parseContract(document.body);
   if (!contract) return { status: "skipped", reason: "unsupported_mode" };
   if (!contract.enabled) return { status: "skipped", reason: "disabled" };
+
+  if (contract.delivery.mode === "message_only") {
+    const fingerprint = createFingerprint({
+      issueId,
+      revisionId: document.latestRevisionId ?? null,
+      messageOnlyText: contract.delivery.text,
+    });
+    const stateKey = deliveryStateKey(issueId, fingerprint);
+    const previous = await input.ctx.state.get({ scopeKind: "instance", stateKey });
+    if (previous) return { status: "skipped", reason: "already_delivered" };
+
+    const messageId = await sendMessage(input.ctx, input.token, input.chatId, contract.delivery.text, {
+      messageThreadId: input.messageThreadId,
+    });
+    const messageIds = messageId ? [messageId] : [];
+    await input.ctx.state.set({ scopeKind: "instance", stateKey }, {
+      issueId,
+      companyId: input.event.companyId,
+      fingerprint,
+      messageIds,
+      deliveredAt: new Date().toISOString(),
+    });
+    await input.ctx.activity.log({
+      companyId: input.event.companyId,
+      message: "Sent Telegram issue message-only notification",
+      entityType: "issue",
+      entityId: issueId,
+      metadata: {
+        fingerprint,
+        messageIds,
+      },
+    });
+    await recordTelegramDeliveryProof({
+      ctx: input.ctx,
+      companyId: input.event.companyId,
+      issueId,
+      chatId: input.chatId,
+      messageThreadId: input.messageThreadId,
+      messageIds,
+      deliveryKind: "message_only",
+      trigger: "issue_done",
+      fingerprint,
+      groupCount: 0,
+      fileCount: 0,
+    });
+    await input.ctx.issues.createComment(
+      issueId,
+      formatAuditComment({
+        groupCount: 0,
+        fileCount: 0,
+        messageIds,
+        fingerprint,
+      }),
+      input.event.companyId,
+    );
+
+    return {
+      status: "sent",
+      fingerprint,
+      messageIds,
+      groupCount: 0,
+      fileCount: 0,
+    };
+  }
 
   const attachments = await input.ctx.issues.listAttachments(issueId, input.event.companyId);
   const resolvedGroups = contract.delivery.groups.map((group) => resolveGroup(attachments, group));
