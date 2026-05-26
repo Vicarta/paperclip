@@ -13,8 +13,8 @@ See: `.planning/company/astrogen/README.md`
 
 Phase: Astrogen growth/content operating system hardening
 Status: Active
-Last activity: 2026-05-25 - Astrogen image contract tightened and live-synced for human-topic cover images. Source and live contracts now require photorealistic premium editorial scenes with real-looking people in specific lived moments for articles about human experience, decisions, relationships, family, children, career, money, emotions, consultation, or personal life context.
-Current phase note: Phase 25 is complete. Telegram delivery proof now uses plugin-owned structured activity ledger events instead of ad hoc manager/comment recovery.
+Last activity: 2026-05-26 - Phase 26 weekly blog Telegram report contract was planned, implemented, live-synced, and scheduled as a CMO-owned Paperclip routine.
+Current phase note: Phase 26 is complete. Telegram now has a compact weekly owner-facing blog/SEO report path; the detailed analytics dashboard remains a future phase.
 
 ## Current Focus
 
@@ -102,6 +102,7 @@ Current phase note: Phase 25 is complete. Telegram delivery proof now uses plugi
 - Live Astrogen article-content contracts were synced from `astrogen-ukraine@67cb9aa` into `/home/paperclip/astrogen` without running workflow lanes. `articleContent.v1` ingestion now has an active reference doc, clean-JSON artifact requirements, separate handoff notes, fail-closed schema validation, and a contract-gap rule that blocks stuck lanes instead of creating ad hoc downstream/operator workarounds.
 - Routine Astrogen blog delivery now uses Payload CMS as the owner-facing review surface. Telegram should send only a concise text notification with the CMS draft/admin URL and article title. Markdown/HTML/image file bundles through Telegram are legacy/explicit-only and require a direct owner request for off-CMS files, archival delivery, or diagnostics.
 - Cover-image contract update: human-topic covers may use a cinematic video-still feeling with stronger but believable facial emotion. For scenes where users read, compare, order, choose, or review information, prefer smartphone/tablet/laptop props over paper; screens must be unreadable and non-specific, and paper/cards/notes must not contain pseudo-writing, unclear symbols, drawings, or other generated marks.
+- Weekly reporting split: Telegram gets the compact owner-facing weekly blog/SEO report; detailed analytics move to a future dashboard. The Telegram version must compare the latest complete week with the previous complete week and include publishing, GSC search visibility, GA4 engagement when available, reliable indexing status when available, highlights, risks, and next actions. If Google Search Console cannot provide a reliable indexed blog/site page count, agents must say so and must not present sitemap-submitted URLs as indexed URLs.
 
 ## Pending Todos
 

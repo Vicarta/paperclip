@@ -672,3 +672,12 @@
   - Live-synced the rule to `/home/paperclip/astrogen/docs/reference/ARTICLE_IMAGE_DESIGN_SYSTEM.md`, `docs/process/65-seo-blog-image-generation.md`, `docs/process/68-seo-blog-article-layout.md`, and `agents/cmo/AGENTS.md`.
   - Live backups were written under `/home/paperclip/astrogen/backups/device-emotion-cover-contract-20260525T134612Z` and `/home/paperclip/astrogen/backups/device-emotion-cover-contract-source-sync-20260525T134631Z`.
   - No Paperclip workflow, heartbeat, or issue lane was manually run during this sync.
+- Planned Phase 26: Weekly Blog Telegram Report.
+  - Added GSD plan `.planning/company/astrogen/phases/26-weekly-blog-telegram-report/PLAN.md`.
+  - Added Astrogen process contract `docs/process/69-weekly-blog-telegram-report.md`.
+  - Updated CMO and SEO Performance Analyst contracts so the weekly owner report compares the latest complete week with the previous complete week and stays compact for Telegram.
+  - Included publishing, GSC, GA4, and indexing indicators. Indexed page counts are allowed only when the plugin/service source can provide a reliable value; sitemap-submitted URLs must not be presented as indexed URLs.
+  - Deferred detailed page/query/cluster analytics to the future dashboard track.
+  - Created active Paperclip routine `a3ed0133-5c27-4371-a76a-0508e32237ac` assigned to CMO, scheduled Wednesday 09:00 Europe/Kiev with `coalesce_if_active` and `skip_missed`.
+  - Live-synced the Stage 69 contract to `/home/paperclip/astrogen` and smoke-checked the CMO, SEO Performance Analyst, and process references.
+  - Live backup was written under `/home/paperclip/astrogen/backups/weekly-blog-report-contract-20260526T082630Z`.
