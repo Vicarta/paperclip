@@ -706,3 +706,8 @@
   - Deployed the rebuilt plugin dist to live Paperclip and restarted the app; live plugin manifest now exposes both new wrapper tools.
   - Updated the live explicit MCP tool allowlist to include both new inspection cache tools.
   - Smoke-checked the MCP batch/cache tools against Astrogen without logging the bearer token.
+- Added live Astrogen `SEO GSC Indexing Auditor`.
+  - Agent id: `642dd56c-ba16-4434-b913-d973d770afb0`; reports to Chief Marketing Officer; `codex_local`; heartbeat disabled with wake-on-demand.
+  - Live instructions synced to `/home/paperclip/astrogen/agents/seo-gsc-indexing-auditor/AGENTS.md`.
+  - Created active routine `08993a70-3d10-4d24-8b0c-811fb9a9a9e1` with schedule `20 6 * * *` Europe/Kiev for daily due-URL indexing audits.
+  - Routine uses deterministic batch GSC URL Inspection tools; fresh/full cadence is enforced by agent logic rather than LLM-per-URL polling.
