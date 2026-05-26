@@ -692,3 +692,11 @@
   - Created active Paperclip routine `a3ed0133-5c27-4371-a76a-0508e32237ac` assigned to CMO, scheduled Wednesday 09:00 Europe/Kiev with `coalesce_if_active` and `skip_missed`.
   - Live-synced the Stage 69 contract to `/home/paperclip/astrogen` and smoke-checked the CMO, SEO Performance Analyst, and process references.
   - Live backup was written under `/home/paperclip/astrogen/backups/weekly-blog-report-contract-20260526T082630Z`.
+- Corrected Phase 26 after the first Telegram smoke report.
+  - Disabled the legacy `paperclip.search-console-mcp-agent-tools` plugin and enabled `paperclip.gsc-bing-ga4-mcp-agent-tools`.
+  - Stored the Astrogen MCP bearer token only as a backend Paperclip secret and configured the plugin through the existing Docker bridge proxy at `http://172.21.0.1:3002/mcp`.
+  - Added plugin-side tenant guards: GSC site `sc-domain:astrogen.com.ua` and GA4 property `484723525`; wrong GA4 property ids are rejected before reaching MCP.
+  - Reworked the MCP transport to use short JSON-RPC POST sessions instead of Streamable HTTP SDK transport, because the Paperclip app container reaches the Tailscale MCP service through a host-side bridge proxy.
+  - Added `payload_cms_list_blog_posts` to the Payload CMS plugin so weekly reports can use CMS publishing counts and draft state instead of sitemap fallback.
+  - Updated the Stage 69 and CMO contracts so the CMO must query CMS + GSC/GA4 adapters before declaring report data unavailable.
+  - Verified smoke checks: Payload CMS published count returns data, GSC/GA4 MCP tool listing works, and the old Search Console-only plugin remains disabled.

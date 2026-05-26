@@ -332,6 +332,75 @@ export async function findBlogPost(
   };
 }
 
+export async function listBlogPosts(
+  input: PayloadCmsRequestInput & {
+    status?: "published" | "draft" | "any";
+    workflowStatus?: string;
+    publishedFrom?: string;
+    publishedTo?: string;
+    updatedFrom?: string;
+    updatedTo?: string;
+    limit?: number;
+    page?: number;
+    depth?: number;
+    sort?: string;
+  },
+) {
+  const limit = Math.min(Math.max(Number(input.limit ?? 50), 1), 100);
+  const query: Record<string, string | number | boolean | null | undefined> = {
+    limit,
+    page: input.page ?? 1,
+    depth: input.depth ?? 0,
+    draft: true,
+    sort: input.sort ?? "-publishedAt",
+  };
+
+  if (input.status && input.status !== "any") {
+    query["where[_status][equals]"] = input.status;
+  }
+  const workflowStatus = readNonEmptyString(input.workflowStatus);
+  if (workflowStatus) query["where[workflowStatus][equals]"] = workflowStatus;
+
+  const publishedFrom = readNonEmptyString(input.publishedFrom);
+  const publishedTo = readNonEmptyString(input.publishedTo);
+  const updatedFrom = readNonEmptyString(input.updatedFrom);
+  const updatedTo = readNonEmptyString(input.updatedTo);
+  if (publishedFrom) query["where[publishedAt][greater_than_equal]"] = publishedFrom;
+  if (publishedTo) query["where[publishedAt][less_than_equal]"] = publishedTo;
+  if (updatedFrom) query["where[updatedAt][greater_than_equal]"] = updatedFrom;
+  if (updatedTo) query["where[updatedAt][less_than_equal]"] = updatedTo;
+
+  const data = await payloadRequest<{
+    docs?: unknown[];
+    totalDocs?: number;
+    page?: number;
+    totalPages?: number;
+    hasNextPage?: boolean;
+    hasPrevPage?: boolean;
+  }>({
+    ...input,
+    pathname: `/${blogPostsCollection(input.config)}`,
+    query,
+  });
+
+  const docs = Array.isArray(data.docs) ? data.docs : [];
+  const totalDocs = typeof data.totalDocs === "number" ? data.totalDocs : docs.length;
+  return {
+    content: `Payload CMS blog posts: ${totalDocs} matched, ${docs.length} returned.`,
+    data: {
+      ...data,
+      filters: {
+        status: input.status ?? "any",
+        workflowStatus: workflowStatus ?? null,
+        publishedFrom: publishedFrom ?? null,
+        publishedTo: publishedTo ?? null,
+        updatedFrom: updatedFrom ?? null,
+        updatedTo: updatedTo ?? null,
+      },
+    },
+  };
+}
+
 export async function listTaxonomy(
   input: PayloadCmsRequestInput & {
     collection: string;

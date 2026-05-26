@@ -1,5 +1,6 @@
 import type { PaperclipPluginManifestV1 } from "@paperclipai/plugin-sdk";
 import {
+  DEFAULT_ALLOWED_GA4_PROPERTY_ID,
   DEFAULT_ALLOWED_SITE_URL,
   DEFAULT_GSC_BING_GA4_MCP_URL,
   EXPORT_NAMES,
@@ -58,6 +59,13 @@ const manifest: PaperclipPluginManifestV1 = {
         description:
           "Plugin-side site allowlist. Calls with another siteUrl/site_url/site are rejected before reaching MCP.",
         default: DEFAULT_ALLOWED_SITE_URL,
+      },
+      allowedGa4PropertyId: {
+        type: "string",
+        title: "Allowed GA4 Property ID",
+        description:
+          "Plugin-side GA4 property allowlist. Calls with another propertyId/property_id/ga4PropertyId/property are rejected before reaching MCP.",
+        default: DEFAULT_ALLOWED_GA4_PROPERTY_ID,
       },
       allowedMcpToolNamesCsv: {
         type: "string",

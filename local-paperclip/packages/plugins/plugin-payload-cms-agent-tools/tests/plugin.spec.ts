@@ -7,6 +7,7 @@ import {
   buildBlogPostPayload,
   createBlogPostDraft,
   healthCheck,
+  listBlogPosts,
   publishBlogPost,
 } from "../src/payload-cms-client.js";
 import { markdownToLexical } from "../src/markdown-to-lexical.js";
@@ -20,18 +21,21 @@ vi.mock("../src/payload-cms-client.js", async () => {
     ...actual,
     healthCheck: vi.fn(),
     createBlogPostDraft: vi.fn(),
+    listBlogPosts: vi.fn(),
     publishBlogPost: vi.fn(),
   };
 });
 
 const healthCheckMock = vi.mocked(healthCheck);
 const createBlogPostDraftMock = vi.mocked(createBlogPostDraft);
+const listBlogPostsMock = vi.mocked(listBlogPosts);
 const publishBlogPostMock = vi.mocked(publishBlogPost);
 
 describe("plugin-payload-cms-agent-tools", () => {
   beforeEach(() => {
     healthCheckMock.mockReset();
     createBlogPostDraftMock.mockReset();
+    listBlogPostsMock.mockReset();
     publishBlogPostMock.mockReset();
   });
 
@@ -94,6 +98,33 @@ describe("plugin-payload-cms-agent-tools", () => {
         }),
       }),
     );
+  });
+
+  it("lists blog posts for CMS-backed publishing reports", async () => {
+    const harness = createTestHarness({ manifest });
+    await plugin.definition.setup(harness.ctx);
+
+    listBlogPostsMock.mockResolvedValueOnce({
+      content: "Payload CMS blog posts: 46 matched, 10 returned.",
+      data: { totalDocs: 46, docs: [] },
+    });
+
+    const result = await harness.executeTool(TOOL_NAMES.listBlogPosts, {
+      status: "published",
+      publishedFrom: "2026-05-18T00:00:00.000+03:00",
+      publishedTo: "2026-05-24T23:59:59.999+03:00",
+      limit: 10,
+    });
+
+    expect(listBlogPostsMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "published",
+        publishedFrom: "2026-05-18T00:00:00.000+03:00",
+        publishedTo: "2026-05-24T23:59:59.999+03:00",
+        limit: 10,
+      }),
+    );
+    expect(result.content).toBe("Payload CMS blog posts: 46 matched, 10 returned.");
   });
 
   it("guards the publish tool with explicit confirmation", async () => {

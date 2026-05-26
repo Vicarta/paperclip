@@ -6,6 +6,7 @@ import {
   getAccess,
   getBuildState,
   healthCheck,
+  listBlogPosts,
   listTaxonomy,
   publishBlogPost,
   type PayloadCmsPluginConfig,
@@ -113,6 +114,49 @@ const plugin = definePlugin({
             slug: typed.slug as string | undefined,
             depth: typed.depth as number | undefined,
             draft: typed.draft as boolean | undefined,
+          }),
+        ));
+      },
+    );
+
+    ctx.tools.register(
+      TOOL_NAMES.listBlogPosts,
+      {
+        displayName: "Payload CMS List Blog Posts",
+        description:
+          "List/count Payload blog posts for publishing reports. Use CMS state instead of sitemap counts when reporting published articles or ready drafts.",
+        parametersSchema: {
+          type: "object",
+          properties: {
+            status: { type: "string", enum: ["published", "draft", "any"] },
+            workflowStatus: { type: "string" },
+            publishedFrom: { type: "string" },
+            publishedTo: { type: "string" },
+            updatedFrom: { type: "string" },
+            updatedTo: { type: "string" },
+            limit: { type: "number" },
+            page: { type: "number" },
+            depth: { type: "number" },
+            sort: { type: "string" },
+          },
+          additionalProperties: false,
+        },
+      },
+      async (params): Promise<ToolResult> => {
+        const typed = readObjectParams(params);
+        return toolResult(await withClientConfig(ctx, (base) =>
+          listBlogPosts({
+            ...base,
+            status: typed.status as "published" | "draft" | "any" | undefined,
+            workflowStatus: typed.workflowStatus as string | undefined,
+            publishedFrom: typed.publishedFrom as string | undefined,
+            publishedTo: typed.publishedTo as string | undefined,
+            updatedFrom: typed.updatedFrom as string | undefined,
+            updatedTo: typed.updatedTo as string | undefined,
+            limit: typed.limit as number | undefined,
+            page: typed.page as number | undefined,
+            depth: typed.depth as number | undefined,
+            sort: typed.sort as string | undefined,
           }),
         ));
       },

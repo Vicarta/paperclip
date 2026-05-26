@@ -3,6 +3,7 @@ export const PLUGIN_VERSION = "0.1.0";
 
 export const DEFAULT_GSC_BING_GA4_MCP_URL = "http://100.98.5.50:3002/mcp";
 export const DEFAULT_ALLOWED_SITE_URL = "sc-domain:astrogen.com.ua";
+export const DEFAULT_ALLOWED_GA4_PROPERTY_ID = "484723525";
 
 export const SLOT_IDS = {
   settingsPage: "gsc-bing-ga4-mcp-agent-tools-settings-page",
@@ -85,6 +86,19 @@ export const SITE_SCOPED_MCP_TOOLS = [
   "inspection_inspect",
   "sitemaps_list",
   "schema_validate",
+] as const satisfies readonly VerifiedMcpToolName[];
+
+export const GA4_PROPERTY_SCOPED_MCP_TOOLS = [
+  "analytics_page_performance",
+  "analytics_traffic_sources",
+  "analytics_organic_landing_pages",
+  "analytics_content_performance",
+  "analytics_conversion_funnel",
+  "analytics_user_behavior",
+  "analytics_audience_segments",
+  "analytics_realtime",
+  "analytics_ecommerce",
+  "analytics_pagespeed_correlation",
 ] as const satisfies readonly VerifiedMcpToolName[];
 
 export const TOOL_NAMES = {

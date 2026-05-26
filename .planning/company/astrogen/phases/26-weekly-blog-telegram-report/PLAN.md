@@ -116,3 +116,16 @@ This phase only prepares the data vocabulary and compact Telegram output.
 - Missing GSC/GA4/indexing data is called out cleanly instead of guessed.
 - The detailed dashboard remains a separate planned track.
 - The live Astrogen workspace contains the Stage 69 contract.
+
+## 2026-05-26 Correction Scope
+
+Owner feedback on the first Telegram smoke report added these requirements:
+
+- publishing counts must come from Payload CMS, not only from sitemap fallback;
+- Telegram paragraphs must be separated by blank lines;
+- blog-scoped Search Console and GA4 data must use the current MCP adapter before
+  the report declares a data gap;
+- indexing wording must be plain Ukrainian and include checked URL problems when
+  Search Console exposes them;
+- the old Search Console-only plugin must stay disabled after the GSC/GA4 MCP
+  adapter is live.

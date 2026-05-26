@@ -33,3 +33,18 @@ Detailed reporting remains a future dashboard phase:
 
 - Live contract references were smoke-checked on `ubuntu-oc`.
 - No routine was manually fired during this phase.
+
+## 2026-05-26 Correction
+
+- Added CMS-backed blog post listing to the Payload CMS plugin for publishing
+  counts and ready-draft checks.
+- Enabled the tenant-scoped GSC/GA4 MCP plugin for Astrogen and kept the legacy
+  Search Console-only plugin disabled.
+- Added backend GA4 property guard for `484723525` and kept the GSC site guard
+  at `sc-domain:astrogen.com.ua`.
+- Updated Stage 69 and CMO contracts so weekly reports must use CMS + GSC/GA4
+  adapters before declaring data unavailable.
+- Verified plugin smoke checks:
+  - Payload CMS list blog posts returns published article counts;
+  - GSC/GA4 MCP list tools works through the server-side bridge;
+  - wrong GA4 property ids are rejected before reaching MCP.

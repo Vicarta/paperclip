@@ -332,6 +332,28 @@ const manifest: PaperclipPluginManifestV1 = {
       },
     },
     {
+      name: TOOL_NAMES.listBlogPosts,
+      displayName: "Payload CMS List Blog Posts",
+      description:
+        "List/count Payload blog posts for publishing reports. Use CMS state instead of sitemap counts when reporting published articles or ready drafts.",
+      parametersSchema: {
+        type: "object",
+        properties: {
+          status: { type: "string", enum: ["published", "draft", "any"] },
+          workflowStatus: { type: "string" },
+          publishedFrom: { type: "string" },
+          publishedTo: { type: "string" },
+          updatedFrom: { type: "string" },
+          updatedTo: { type: "string" },
+          limit: { type: "number" },
+          page: { type: "number" },
+          depth: { type: "number" },
+          sort: { type: "string" },
+        },
+        additionalProperties: false,
+      },
+    },
+    {
       name: TOOL_NAMES.listTaxonomy,
       displayName: "Payload CMS List Taxonomy",
       description: "List categories, tags, or authors in Payload CMS.",

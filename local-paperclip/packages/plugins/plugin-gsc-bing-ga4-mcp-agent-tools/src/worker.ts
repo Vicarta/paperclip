@@ -90,7 +90,6 @@ async function callMcpTool(input: {
     args: input.args,
     config,
     resolveSecret: (secretRef) => input.ctx.secrets.resolve(secretRef),
-    fetchFn: input.ctx.http.fetch as typeof fetch,
   });
 
   return {
@@ -120,7 +119,6 @@ const plugin = definePlugin({
         const result = await listGscBingGa4McpTools({
           config,
           resolveSecret: (secretRef) => ctx.secrets.resolve(secretRef),
-          fetchFn: ctx.http.fetch as typeof fetch,
         });
         return {
           content: result.content,

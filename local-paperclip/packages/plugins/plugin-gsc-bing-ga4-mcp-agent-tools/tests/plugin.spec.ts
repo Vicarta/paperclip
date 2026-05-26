@@ -3,6 +3,7 @@ import { createTestHarness } from "@paperclipai/plugin-sdk/testing";
 import manifest from "../src/manifest.js";
 import plugin from "../src/worker.js";
 import {
+  DEFAULT_ALLOWED_GA4_PROPERTY_ID,
   DEFAULT_ALLOWED_SITE_URL,
   TOOL_NAMES,
   VERIFIED_MCP_TOOL_NAMES,
@@ -150,10 +151,22 @@ describe("plugin-gsc-bing-ga4-mcp-agent-tools", () => {
     expect(
       prepareGscBingGa4McpArguments({
         toolName: "analytics_page_performance",
+        args: {},
+        allowedSiteUrl: DEFAULT_ALLOWED_SITE_URL,
+        allowedGa4PropertyId: DEFAULT_ALLOWED_GA4_PROPERTY_ID,
+      }),
+    ).toEqual({ propertyId: DEFAULT_ALLOWED_GA4_PROPERTY_ID });
+  });
+
+  it("rejects attempts to query another GA4 property", () => {
+    expect(() =>
+      prepareGscBingGa4McpArguments({
+        toolName: "analytics_page_performance",
         args: { propertyId: "123456" },
         allowedSiteUrl: DEFAULT_ALLOWED_SITE_URL,
+        allowedGa4PropertyId: DEFAULT_ALLOWED_GA4_PROPERTY_ID,
       }),
-    ).toEqual({ propertyId: "123456" });
+    ).toThrow(/not allowed/);
   });
 
   it("keeps mutating MCP tools out of the default allowlist", () => {
