@@ -112,6 +112,14 @@ function isGa4PropertyScopedTool(toolName: string) {
   return (GA4_PROPERTY_SCOPED_MCP_TOOLS as readonly string[]).includes(toolName);
 }
 
+function siteArgKeyForTool(toolName: string) {
+  return toolName === "page_analysis" ? "gscSiteUrl" : "siteUrl";
+}
+
+function ga4PropertyArgKeyForTool(toolName: string) {
+  return toolName === "page_analysis" ? "ga4PropertyId" : "propertyId";
+}
+
 function normalizeSiteArgValue(value: unknown) {
   return typeof value === "string" && value.trim().length > 0
     ? value.trim()
@@ -156,7 +164,7 @@ function assertAndInjectAllowedSite(input: {
 }) {
   const next = { ...input.args };
 
-  for (const key of ["siteUrl", "site_url", "site"]) {
+  for (const key of ["siteUrl", "site_url", "site", "gscSiteUrl"]) {
     const value = normalizeSiteArgValue(next[key]);
     if (value && value !== input.allowedSiteUrl) {
       throw new Error(
@@ -165,8 +173,9 @@ function assertAndInjectAllowedSite(input: {
     }
   }
 
-  if (isSiteScopedTool(input.toolName) && !normalizeSiteArgValue(next.siteUrl)) {
-    next.siteUrl = input.allowedSiteUrl;
+  const siteArgKey = siteArgKeyForTool(input.toolName);
+  if (isSiteScopedTool(input.toolName) && !normalizeSiteArgValue(next[siteArgKey])) {
+    next[siteArgKey] = input.allowedSiteUrl;
   }
 
   const inspectionUrl = normalizeSiteArgValue(next.inspectionUrl);
@@ -206,8 +215,9 @@ function assertAndInjectAllowedGa4Property(input: {
     }
   }
 
-  if (isGa4PropertyScopedTool(input.toolName) && !normalizePropertyArgValue(next.propertyId)) {
-    next.propertyId = input.allowedGa4PropertyId;
+  const propertyArgKey = ga4PropertyArgKeyForTool(input.toolName);
+  if (isGa4PropertyScopedTool(input.toolName) && !normalizePropertyArgValue(next[propertyArgKey])) {
+    next[propertyArgKey] = input.allowedGa4PropertyId;
   }
 
   return next;

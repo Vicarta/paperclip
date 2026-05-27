@@ -209,7 +209,10 @@ describe("plugin-gsc-bing-ga4-mcp-agent-tools", () => {
         allowedSiteUrl: DEFAULT_ALLOWED_SITE_URL,
         allowedGa4PropertyId: DEFAULT_ALLOWED_GA4_PROPERTY_ID,
       }),
-    ).toEqual({ propertyId: DEFAULT_ALLOWED_GA4_PROPERTY_ID });
+    ).toEqual({
+      gscSiteUrl: DEFAULT_ALLOWED_SITE_URL,
+      ga4PropertyId: DEFAULT_ALLOWED_GA4_PROPERTY_ID,
+    });
   });
 
   it("rejects attempts to query another GA4 property", () => {
@@ -217,6 +220,26 @@ describe("plugin-gsc-bing-ga4-mcp-agent-tools", () => {
       prepareGscBingGa4McpArguments({
         toolName: "analytics_page_performance",
         args: { propertyId: "123456" },
+        allowedSiteUrl: DEFAULT_ALLOWED_SITE_URL,
+        allowedGa4PropertyId: DEFAULT_ALLOWED_GA4_PROPERTY_ID,
+      }),
+    ).toThrow(/not allowed/);
+  });
+
+  it("rejects attempts to query another site or GA4 property through page_analysis", () => {
+    expect(() =>
+      prepareGscBingGa4McpArguments({
+        toolName: "page_analysis",
+        args: { gscSiteUrl: "sc-domain:example.com" },
+        allowedSiteUrl: DEFAULT_ALLOWED_SITE_URL,
+        allowedGa4PropertyId: DEFAULT_ALLOWED_GA4_PROPERTY_ID,
+      }),
+    ).toThrow(/not allowed/);
+
+    expect(() =>
+      prepareGscBingGa4McpArguments({
+        toolName: "page_analysis",
+        args: { ga4PropertyId: "123456" },
         allowedSiteUrl: DEFAULT_ALLOWED_SITE_URL,
         allowedGa4PropertyId: DEFAULT_ALLOWED_GA4_PROPERTY_ID,
       }),

@@ -89,6 +89,7 @@ export const SITE_SCOPED_MCP_TOOLS = [
   "seo_low_ctr_opportunities",
   "seo_cannibalization",
   "seo_lost_queries",
+  "page_analysis",
   "sites_health_check",
   "inspection_inspect",
   "inspection_batch_inspect",
