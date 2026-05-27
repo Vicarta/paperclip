@@ -1111,6 +1111,7 @@ export function issueRoutes(
       ...updateFields
     } = req.body;
     let interruptedRunId: string | null = null;
+    let reassignedQueuedRunId: string | null = null;
 
     if (interruptRequested) {
       if (!commentBody) {
@@ -1137,6 +1138,39 @@ export function issueRoutes(
             entityType: "heartbeat_run",
             entityId: cancelled.id,
             details: { agentId: cancelled.agentId, source: "issue_comment_interrupt", issueId: existing.id },
+          });
+        }
+      }
+    }
+
+    if (assigneeWillChange && existing.executionRunId) {
+      const nextAssigneeAgentId =
+        req.body.assigneeAgentId === undefined ? existing.assigneeAgentId : req.body.assigneeAgentId;
+      const queuedRun = await heartbeat.getRun(existing.executionRunId);
+      if (queuedRun?.status === "queued" && queuedRun.agentId !== nextAssigneeAgentId) {
+        const cancelled = await heartbeat.cancelRun(queuedRun.id);
+        if (cancelled) {
+          reassignedQueuedRunId = cancelled.id;
+          Object.assign(updateFields, {
+            executionRunId: null,
+            executionAgentNameKey: null,
+            executionLockedAt: null,
+          });
+          await logActivity(db, {
+            companyId: cancelled.companyId,
+            actorType: actor.actorType,
+            actorId: actor.actorId,
+            agentId: actor.agentId,
+            runId: actor.runId,
+            action: "heartbeat.cancelled",
+            entityType: "heartbeat_run",
+            entityId: cancelled.id,
+            details: {
+              agentId: cancelled.agentId,
+              source: "issue_assignee_change_stale_execution",
+              issueId: existing.id,
+              nextAssigneeAgentId,
+            },
           });
         }
       }
@@ -1217,6 +1251,7 @@ export function issueRoutes(
         ...(commentBody ? { source: "comment", comment: commentBody } : {}),
         ...(reopened ? { reopened: true, reopenedFrom: reopenFromStatus } : {}),
         ...(interruptedRunId ? { interruptedRunId } : {}),
+        ...(reassignedQueuedRunId ? { reassignedQueuedRunId } : {}),
         _previous: hasFieldChanges ? previous : undefined,
       },
     });
@@ -1284,6 +1319,7 @@ export function issueRoutes(
             issueId: issue.id,
             mutation: "update",
             ...(interruptedRunId ? { interruptedRunId } : {}),
+            ...(reassignedQueuedRunId ? { reassignedQueuedRunId } : {}),
           },
           requestedByActorType: actor.actorType,
           requestedByActorId: actor.actorId,
@@ -1291,6 +1327,7 @@ export function issueRoutes(
             issueId: issue.id,
             source: "issue.update",
             ...(interruptedRunId ? { interruptedRunId } : {}),
+            ...(reassignedQueuedRunId ? { reassignedQueuedRunId } : {}),
           },
         });
       }
