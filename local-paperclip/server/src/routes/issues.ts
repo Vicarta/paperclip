@@ -52,6 +52,7 @@ const MAX_ISSUE_COMMENT_LIMIT = 500;
 const updateIssueRouteSchema = updateIssueSchema.extend({
   interrupt: z.boolean().optional(),
 });
+const ASSIGNEE_ACTIONABLE_WAKEUP_STATUSES = new Set(["todo", "in_progress"]);
 const CHILD_STATUS_PARENT_WAKEUP_STATUSES = new Set(["done", "blocked", "in_review"]);
 const PARENT_MANAGER_WAKEUP_STATUSES = new Set(["todo", "in_progress", "in_review", "blocked"]);
 
@@ -1261,10 +1262,10 @@ export function issueRoutes(
     }
 
     const assigneeChanged = assigneeWillChange;
-    const statusChangedFromBacklog =
-      existing.status === "backlog" &&
-      issue.status !== "backlog" &&
-      req.body.status !== undefined;
+    const statusChangedToAssigneeActionable =
+      existing.status !== issue.status &&
+      req.body.status !== undefined &&
+      ASSIGNEE_ACTIONABLE_WAKEUP_STATUSES.has(issue.status);
     const childStatusNeedsParentReview =
       existing.status !== issue.status &&
       CHILD_STATUS_PARENT_WAKEUP_STATUSES.has(issue.status) &&
@@ -1294,7 +1295,7 @@ export function issueRoutes(
         });
       }
 
-      if (!assigneeChanged && statusChangedFromBacklog && issue.assigneeAgentId) {
+      if (!assigneeChanged && statusChangedToAssigneeActionable && issue.assigneeAgentId) {
         wakeups.set(issue.assigneeAgentId, {
           source: "automation",
           triggerDetail: "system",

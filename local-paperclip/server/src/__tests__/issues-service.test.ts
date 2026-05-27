@@ -624,6 +624,39 @@ describeEmbeddedPostgres("issueService.list participantAgentId", () => {
       "2026-03-26T10:00:00.000Z",
     );
   });
+
+  it("coalesces open SEO technical findings by origin key", async () => {
+    const companyId = randomUUID();
+    await db.insert(companies).values({
+      id: companyId,
+      name: "Paperclip",
+      issuePrefix: `T${companyId.replace(/-/g, "").slice(0, 6).toUpperCase()}`,
+      requireBoardApprovalForNewAgents: false,
+    });
+
+    const originKind = "seo_technical_finding";
+    const originId = "https://example.test/blog/post/::noindex";
+    const first = await svc.create(companyId, {
+      title: "Remove noindex",
+      status: "todo",
+      priority: "medium",
+      originKind,
+      originId,
+    });
+    const second = await svc.create(companyId, {
+      title: "Duplicate noindex finding",
+      status: "todo",
+      priority: "high",
+      originKind,
+      originId,
+    });
+
+    expect(second.id).toBe(first.id);
+
+    const rows = await db.select().from(issues);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.title).toBe("Remove noindex");
+  });
 });
 
 describeEmbeddedPostgres("issueService.create workspace inheritance", () => {

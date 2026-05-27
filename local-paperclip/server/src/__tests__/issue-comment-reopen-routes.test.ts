@@ -262,4 +262,41 @@ describe("issue comment reopen routes", () => {
       );
     });
   });
+
+  it("wakes the current assignee when a blocked issue becomes actionable again", async () => {
+    const issueId = "11111111-1111-4111-8111-111111111111";
+    const assigneeAgentId = "22222222-2222-4222-8222-222222222222";
+    const existingIssue = makeIssue("blocked", {
+      id: issueId,
+      assigneeAgentId,
+    });
+    const updatedIssue = makeIssue("todo", {
+      id: issueId,
+      assigneeAgentId,
+    });
+    mockIssueService.getById.mockResolvedValue(existingIssue);
+    mockIssueService.update.mockResolvedValue(updatedIssue);
+
+    const res = await request(createApp()).patch(`/api/issues/${issueId}`).send({ status: "todo" });
+
+    expect(res.status).toBe(200);
+    await vi.waitFor(() => {
+      expect(mockHeartbeatService.wakeup).toHaveBeenCalledWith(
+        assigneeAgentId,
+        expect.objectContaining({
+          source: "automation",
+          triggerDetail: "system",
+          reason: "issue_status_changed",
+          payload: expect.objectContaining({
+            issueId,
+            mutation: "update",
+          }),
+          contextSnapshot: expect.objectContaining({
+            issueId,
+            source: "issue.status_change",
+          }),
+        }),
+      );
+    });
+  });
 });

@@ -30,6 +30,7 @@ import { logger } from "./middleware/logger.js";
 import { setupLiveEventsWebSocketServer } from "./realtime/live-events-ws.js";
 import {
   feedbackService,
+  actionableIssueWatchdogService,
   heartbeatService,
   reconcilePersistedRuntimeServicesOnStartup,
   routineService,
@@ -577,6 +578,8 @@ export async function startServer(): Promise<StartedServer> {
   if (config.heartbeatSchedulerEnabled) {
     const heartbeat = heartbeatService(db as any);
     const routines = routineService(db as any);
+    const actionableIssueWatchdog = actionableIssueWatchdogService(db as any, heartbeat);
+    let actionableIssueWatchdogInFlight = false;
   
     // Reap orphaned running runs at startup while in-memory execution state is empty,
     // then resume any persisted queued runs that were waiting on the previous process.
@@ -608,6 +611,23 @@ export async function startServer(): Promise<StartedServer> {
         .catch((err) => {
           logger.error({ err }, "routine scheduler tick failed");
         });
+
+      if (!actionableIssueWatchdogInFlight) {
+        actionableIssueWatchdogInFlight = true;
+        void actionableIssueWatchdog
+          .tick({ now: new Date() })
+          .then((result) => {
+            if (result.queued > 0 || result.failed > 0) {
+              logger.info({ ...result }, "actionable issue watchdog tick completed");
+            }
+          })
+          .catch((err) => {
+            logger.error({ err }, "actionable issue watchdog tick failed");
+          })
+          .finally(() => {
+            actionableIssueWatchdogInFlight = false;
+          });
+      }
   
       // Periodically reap orphaned runs (5-min staleness threshold) and make sure
       // persisted queued work is still being driven forward.

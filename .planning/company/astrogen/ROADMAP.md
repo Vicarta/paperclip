@@ -62,6 +62,7 @@ Human-facing Astrogen communication remains Ukrainian and should not expose inte
 - [x] **Phase 24: LLM Heartbeat Cost Control** - Disabled idle timer heartbeats for Astrogen CEO/CMO/CTO and all active Astrogen agents, kept wake-on-demand active, added `heartbeat.skipIfNoActionableWork`, deployed `paperclip-app:v2026.513.10-heartbeat-cost-20260522`, and verified production health/plugin boot/live heartbeat state.
 - [x] **Phase 25: Telegram Delivery Proof Ledger** - Make Telegram delivery proof a plugin-owned structured activity ledger event so content/CMS tasks do not remain blocked on manual message-id recovery.
 - [x] **Phase 26: Weekly Blog Telegram Report** - Defined and activated a compact weekly owner-facing Telegram report for blog publishing and SEO performance, with week-over-week comparison and explicit GSC/GA4/indexing data-gap handling.
+- [x] **Phase 27: Actionable Issue Orchestration Hardening** - Fixed Paperclip core so assigned actionable issues cannot sit idle after status/routing changes: event-driven wakeup guarantee, deterministic stale actionable watchdog, SEO technical issue dedupe, dedicated SEO CMS Technical Fixer lane, and HIA exclusion for deterministic CMS SEO fixes.
 
 ## Deferred / Future Tracks
 
@@ -69,6 +70,7 @@ Human-facing Astrogen communication remains Ukrainian and should not expose inte
 - [ ] **Image Delivery System Hardening** - Covered by Phase 22 for Telegram package delivery. Image-specific follow-up should focus on generation/provider quality, variant selection, and automated visual QA against the Astrogen premium cover standard, not file transport.
 - [ ] **SEO Monitoring Loop** - Connect GSC/rank/SERP monitoring, article registry, thresholds, and post-publication decision logic on top of the shared `seo_ops` model.
 - [ ] **Detailed Blog SEO Dashboard** - Build the richer version of the weekly report: per-article trends, page-query matrices, indexed/submitted URL history, semantic-cluster coverage, low-CTR opportunities, conversion paths, and owner priority controls.
+- [x] **Actionable Issue Reliability** - Keep Paperclip event-driven without idle LLM polling by combining immediate issue-transition wakeups with a deterministic no-LLM stale actionable issue watchdog.
 - [ ] **Human Interaction And Telegram Quality** - Keep Telegram/HIA messages short, Ukrainian, human-readable, and action-oriented.
 - [ ] **Strategic Growth Review Layer** - Use Product Discovery outputs to generate human-reviewable growth strategy options before execution on new/free products and routes.
 - [ ] **Publication And CMS Integration** - Payload CMS is selected. Source implementation has started with a secret-backed Payload CMS agent-tools plugin for build-state checks, taxonomy lookup, media upload, blog draft create/update, guarded publish, and later production cutover into the article workflow.

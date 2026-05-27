@@ -35,9 +35,11 @@ import { resolveIssueGoalId, resolveNextIssueGoalId } from "./issue-goal-fallbac
 import { getDefaultCompanyGoal } from "./goals.js";
 
 const ALL_ISSUE_STATUSES = ["backlog", "todo", "in_progress", "in_review", "blocked", "done", "cancelled"];
+const OPEN_ISSUE_STATUSES = ["backlog", "todo", "in_progress", "in_review", "blocked"];
 const MAX_ISSUE_COMMENT_PAGE_LIMIT = 500;
 const HUMAN_DECISION_NEEDED_LABEL_NAME = "Human Decision Needed";
 const HUMAN_DECISION_NEEDED_LABEL_COLOR = "#F59E0B";
+const SEO_TECHNICAL_FINDING_ORIGIN_KIND = "seo_technical_finding";
 
 function assertTransition(from: string, to: string) {
   if (from === to) return;
@@ -1154,6 +1156,29 @@ export function issueService(db: Db) {
       return db.transaction(async (tx) => {
         const defaultCompanyGoal = await getDefaultCompanyGoal(tx, companyId);
         const projectGoalId = await getProjectDefaultGoalId(tx, companyId, issueData.projectId);
+        if (issueData.originKind === SEO_TECHNICAL_FINDING_ORIGIN_KIND && issueData.originId) {
+          const existingOpenIssue = await tx
+            .select()
+            .from(issues)
+            .where(
+              and(
+                eq(issues.companyId, companyId),
+                eq(issues.originKind, SEO_TECHNICAL_FINDING_ORIGIN_KIND),
+                eq(issues.originId, issueData.originId),
+                inArray(issues.status, OPEN_ISSUE_STATUSES),
+                isNull(issues.hiddenAt),
+              ),
+            )
+            .orderBy(asc(issues.createdAt))
+            .limit(1)
+            .then((rows) => rows[0] ?? null);
+
+          if (existingOpenIssue) {
+            const [enriched] = await withIssueLabels(tx, [existingOpenIssue]);
+            return enriched;
+          }
+        }
+
         let projectWorkspaceId = issueData.projectWorkspaceId ?? null;
         let executionWorkspaceId = issueData.executionWorkspaceId ?? null;
         let executionWorkspacePreference = issueData.executionWorkspacePreference ?? null;
