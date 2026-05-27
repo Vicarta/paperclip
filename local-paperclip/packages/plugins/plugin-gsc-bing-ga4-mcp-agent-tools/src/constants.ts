@@ -68,6 +68,7 @@ export const VERIFIED_MCP_TOOL_NAMES = [
   "analytics_realtime",
   "analytics_ecommerce",
   "analytics_pagespeed_correlation",
+  "page_analysis",
   // Cross-platform read-only intelligence.
   "opportunity_matrix",
 ] as const;
@@ -108,6 +109,7 @@ export const GA4_PROPERTY_SCOPED_MCP_TOOLS = [
   "analytics_realtime",
   "analytics_ecommerce",
   "analytics_pagespeed_correlation",
+  "page_analysis",
 ] as const satisfies readonly VerifiedMcpToolName[];
 
 export const TOOL_NAMES = {

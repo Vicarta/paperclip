@@ -183,6 +183,8 @@ describe("plugin-gsc-bing-ga4-mcp-agent-tools", () => {
   it("allows verified Bing and GA4 read-only tools by default", () => {
     expect(VERIFIED_MCP_TOOL_NAMES).toContain("bing_analytics_query");
     expect(VERIFIED_MCP_TOOL_NAMES).toContain("analytics_page_performance");
+    expect(VERIFIED_MCP_TOOL_NAMES).toContain("analytics_conversion_funnel");
+    expect(VERIFIED_MCP_TOOL_NAMES).toContain("page_analysis");
     expect(VERIFIED_MCP_TOOL_NAMES).toContain("opportunity_matrix");
     expect(VERIFIED_MCP_TOOL_NAMES).toContain("inspection_batch_inspect");
     expect(VERIFIED_MCP_TOOL_NAMES).toContain("inspection_batch_job_start");
@@ -194,6 +196,15 @@ describe("plugin-gsc-bing-ga4-mcp-agent-tools", () => {
     expect(
       prepareGscBingGa4McpArguments({
         toolName: "analytics_page_performance",
+        args: {},
+        allowedSiteUrl: DEFAULT_ALLOWED_SITE_URL,
+        allowedGa4PropertyId: DEFAULT_ALLOWED_GA4_PROPERTY_ID,
+      }),
+    ).toEqual({ propertyId: DEFAULT_ALLOWED_GA4_PROPERTY_ID });
+
+    expect(
+      prepareGscBingGa4McpArguments({
+        toolName: "page_analysis",
         args: {},
         allowedSiteUrl: DEFAULT_ALLOWED_SITE_URL,
         allowedGa4PropertyId: DEFAULT_ALLOWED_GA4_PROPERTY_ID,

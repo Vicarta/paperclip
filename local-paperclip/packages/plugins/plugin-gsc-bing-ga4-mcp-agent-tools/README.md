@@ -77,6 +77,7 @@ Verified default MCP tools are read-only analytics, diagnostics, and intelligenc
 - `analytics_realtime`
 - `analytics_ecommerce`
 - `analytics_pagespeed_correlation`
+- `page_analysis`
 - `opportunity_matrix`
 
 Mutating tools such as `sites_add`, `sites_delete`, `sitemaps_submit`, `bing_index_now`, and `bing_sitemaps_submit` are intentionally not in the default allowlist.
