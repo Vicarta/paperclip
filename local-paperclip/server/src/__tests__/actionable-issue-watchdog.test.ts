@@ -216,4 +216,45 @@ describeEmbeddedPostgres("actionableIssueWatchdogService", () => {
       }),
     );
   });
+
+  it("does not treat an orphaned deferred issue wakeup as active run evidence", async () => {
+    const { companyId, agentId } = await seedCompanyAndAgent();
+    const now = new Date("2026-05-27T12:00:00.000Z");
+    const staleUpdatedAt = new Date("2026-05-27T11:50:00.000Z");
+    const issueId = randomUUID();
+
+    await db.insert(issues).values({
+      id: issueId,
+      companyId,
+      title: "Issue with orphaned deferred wakeup",
+      status: "todo",
+      priority: "medium",
+      assigneeAgentId: agentId,
+      updatedAt: staleUpdatedAt,
+    });
+    await db.insert(agentWakeupRequests).values({
+      companyId,
+      agentId,
+      source: "assignment",
+      triggerDetail: "system",
+      reason: "issue_execution_deferred",
+      payload: { issueId },
+      status: "deferred_issue_execution",
+    });
+
+    const heartbeat = { wakeup: vi.fn(async () => ({ queued: true })) };
+    const result = await actionableIssueWatchdogService(db, heartbeat).tick({
+      now,
+      staleThresholdMs: 5 * 60 * 1000,
+    });
+
+    expect(result).toMatchObject({ checked: 1, queued: 1, skipped: 0, failed: 0 });
+    expect(heartbeat.wakeup).toHaveBeenCalledWith(
+      agentId,
+      expect.objectContaining({
+        reason: "stale_actionable_issue",
+        payload: expect.objectContaining({ issueId }),
+      }),
+    );
+  });
 });

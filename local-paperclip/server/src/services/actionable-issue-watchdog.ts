@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNotNull, isNull, lt, not, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, isNull, lt, not, or, sql } from "drizzle-orm";
 import type { Db } from "@paperclipai/db";
 import { agentWakeupRequests, agents, heartbeatRuns, issues } from "@paperclipai/db";
 import { logger } from "../middleware/logger.js";
@@ -7,7 +7,7 @@ type WakeupTriggerDetail = "manual" | "ping" | "callback" | "system";
 type WakeupSource = "timer" | "assignment" | "on_demand" | "automation";
 
 const ACTIONABLE_ISSUE_STATUSES = ["todo", "in_progress"];
-const ACTIVE_WAKEUP_STATUSES = ["queued", "deferred_issue_execution", "claimed"];
+const ACTIVE_WAKEUP_STATUSES = ["queued", "claimed"];
 const ACTIVE_RUN_STATUSES = ["queued", "running"];
 const NON_INVOKABLE_AGENT_STATUSES = ["paused", "terminated", "pending_approval"];
 
@@ -71,11 +71,12 @@ export function actionableIssueWatchdogService(
     const run = await db
       .select({ id: heartbeatRuns.id })
       .from(heartbeatRuns)
+      .leftJoin(issues, eq(issues.executionRunId, heartbeatRuns.id))
       .where(
         and(
           eq(heartbeatRuns.companyId, companyId),
           inArray(heartbeatRuns.status, ACTIVE_RUN_STATUSES),
-          sql`${heartbeatRuns.contextSnapshot} ->> 'issueId' = ${issueId}`,
+          or(sql`${heartbeatRuns.contextSnapshot} ->> 'issueId' = ${issueId}`, eq(issues.id, issueId)),
         ),
       )
       .limit(1)
