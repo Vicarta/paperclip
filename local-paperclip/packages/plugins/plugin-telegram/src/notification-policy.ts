@@ -12,6 +12,11 @@ const INTERNAL_TITLE_PATTERNS = [
   /rerun closeout/i,
   /\bcloseout\b/i,
   /notification-contract/i,
+  /\bHIA\b/i,
+  /human escalation/i,
+  /owner authorization gate/i,
+  /escalation response/i,
+  /^\s*\[telegram\]/i,
   /telegram delivery/i,
   /delivery proof/i,
   /adapter/i,
@@ -23,7 +28,7 @@ const INTERNAL_TITLE_PATTERNS = [
 ];
 
 const INTERNAL_COMMENT_PATTERNS = [
-  /##\s*(result|blocked|rerun closeout|delivery evidence)/i,
+  /##\s*(result|blocked|manager closeout|rerun closeout|delivery evidence)/i,
   /not restored/i,
   /diagnosis\/routing lane/i,
   /technical diagnosis/i,
@@ -31,6 +36,17 @@ const INTERNAL_COMMENT_PATTERNS = [
   /deterministically/i,
   /blocked until/i,
   /notification-contract/i,
+  /\bHIA\b/i,
+  /human escalation/i,
+  /escalation id/i,
+  /matched escalation/i,
+  /processed this routed owner reply/i,
+  /canonical owner decision/i,
+  /canonical source issue/i,
+  /recorded the owner decision canonically/i,
+  /\bstage\s+\d+(?:\.\d+)?\b/i,
+  /\bupstream\b/i,
+  /\bdownstream\b/i,
   /message ids?/i,
   /delivery fingerprint/i,
 ];

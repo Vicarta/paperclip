@@ -40,4 +40,31 @@ describe("Telegram issue done notification policy", () => {
     expect(sanitizeIssueDoneComment("## Result\n\nTelegram proof was **not** restored."))
       .toBeNull();
   });
+
+  it("suppresses routed human-escalation response closeouts", () => {
+    expect(shouldSuppressGenericIssueDoneNotification({
+      title: "[Telegram] [Human escalation response] 4",
+      comment: "Telegram Response Processed this routed owner reply and wrote it back canonically to AST-926. Matched escalation id...",
+    })).toBe(true);
+  });
+
+  it("suppresses owner authorization gate closeouts with internal wording", () => {
+    expect(shouldSuppressGenericIssueDoneNotification({
+      title: "HIA owner authorization gate for /solar paid-ads copy scope",
+      comment: "HIA Complete Recorded the owner decision canonically on AST-926.",
+    })).toBe(true);
+  });
+
+  it("suppresses manager closeouts that are not owner-facing notification contracts", () => {
+    expect(shouldSuppressGenericIssueDoneNotification({
+      title: "Новий продукт - Соляр",
+      comment: [
+        "## Manager Closeout",
+        "",
+        "Accepted upstream review is complete, and the optional downstream paid-ads lane remains intentionally deferred by the owner.",
+        "Canonical owner decision: AST-926",
+        "Stage 45 paid-ads copy was not started.",
+      ].join("\n"),
+    })).toBe(true);
+  });
 });
