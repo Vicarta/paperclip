@@ -44,6 +44,7 @@ type StoredEscalation = {
   agentId: string;
   companyId: string;
   reason: EscalationReason;
+  sourceIssueIdentifier?: string;
   agentReasoning: string;
   suggestedReply?: string;
   suggestedActions: string[];
@@ -53,7 +54,8 @@ type StoredEscalation = {
   originMessageId?: string;
   escalationChatId: string;
   escalationMessageId: string;
-  status: "pending" | "resolved" | "timed_out";
+  status: "pending" | "resolved" | "timed_out" | "superseded";
+  supersededByEscalationId?: string;
   createdAt: string;
   timeoutAt: string;
   defaultAction: "defer" | "auto_reply" | "close";
@@ -70,6 +72,10 @@ const REASON_LABELS: Record<EscalationReason, string> = {
 
 function esc(s: string): string {
   return escapeMarkdownV2(s);
+}
+
+function extractIssueIdentifier(text: string): string | undefined {
+  return text.match(/\b[A-Z][A-Z0-9]{1,12}-\d+\b/)?.[0];
 }
 
 export class EscalationManager {
@@ -131,12 +137,14 @@ export class EscalationManager {
     }
 
     const timeoutAt = new Date(Date.now() + event.timeout.durationMs).toISOString();
+    const sourceIssueIdentifier = extractIssueIdentifier(event.context.agentReasoning ?? "");
 
     const stored: StoredEscalation = {
       escalationId: event.escalationId,
       agentId: event.agentId,
       companyId: event.companyId,
       reason: event.reason,
+      sourceIssueIdentifier,
       agentReasoning: event.context.agentReasoning,
       suggestedReply: event.context.suggestedReply,
       suggestedActions: event.context.suggestedActions,
@@ -175,15 +183,18 @@ export class EscalationManager {
       scopeKind: "instance",
       stateKey: "escalation_pending_ids",
     }) as string[] | null) ?? [];
-    pendingIds.push(event.escalationId);
+    const nextPendingIds = Array.from(new Set([...pendingIds, event.escalationId]));
     await ctx.state.set(
       { scopeKind: "instance", stateKey: "escalation_pending_ids" },
-      pendingIds,
+      nextPendingIds,
     );
+
+    await this.supersedePreviousPending(ctx, token, stored);
 
     ctx.logger.info("Escalation created", {
       escalationId: event.escalationId,
       reason: event.reason,
+      sourceIssueIdentifier,
       timeoutAt,
     });
   }
@@ -281,6 +292,18 @@ export class EscalationManager {
     stored: StoredEscalation,
     response: EscalationResponse,
   ): Promise<void> {
+    if (response.action === "reply_to_customer" && response.responseText) {
+      const routed = await this.routeReply(ctx, stored, response);
+      if (!routed) {
+        ctx.logger.error("Escalation reply writeback failed; keeping escalation pending", {
+          escalationId: stored.escalationId,
+          sourceIssueIdentifier: stored.sourceIssueIdentifier,
+          transport: stored.transport,
+        });
+        return;
+      }
+    }
+
     stored.status = "resolved";
     await ctx.state.set(
       { scopeKind: "instance", stateKey: `escalation_${stored.escalationId}` },
@@ -299,35 +322,6 @@ export class EscalationManager {
       { parseMode: "MarkdownV2" },
     );
 
-    // Route reply back via the correct transport
-    if (response.action === "reply_to_customer" && response.responseText) {
-      if (stored.transport === "native" && stored.agentId) {
-        await wakeAgentWithIssue(
-          ctx,
-          stored.agentId,
-          stored.companyId,
-          `[Human escalation response] ${response.responseText}`,
-          "escalation_reply",
-        );
-      } else if (stored.transport === "acp" && stored.sessionId) {
-        // Route back via ACP event
-        ctx.events.emit("acp-spawn", stored.companyId, {
-          type: "message",
-          sessionId: stored.sessionId,
-          text: `[Human escalation response] ${response.responseText}`,
-        });
-      }
-
-      // Also send to the originating Telegram chat if available
-      if (stored.originChatId) {
-        await sendMessage(ctx, token, stored.originChatId, esc(response.responseText), {
-          parseMode: "MarkdownV2",
-          messageThreadId: stored.originThreadId ? Number(stored.originThreadId) : undefined,
-          replyToMessageId: stored.originMessageId ? Number(stored.originMessageId) : undefined,
-        });
-      }
-    }
-
     // Emit resolution event - companyId is SECOND arg
     ctx.events.emit("escalation.resolved", stored.companyId, {
       escalationId: stored.escalationId,
@@ -342,6 +336,159 @@ export class EscalationManager {
       action: response.action,
       responderId: response.responderId,
     });
+  }
+
+  private async supersedePreviousPending(
+    ctx: PluginContext,
+    token: string,
+    current: StoredEscalation,
+  ): Promise<void> {
+    const currentSourceIssueIdentifier =
+      current.sourceIssueIdentifier ?? extractIssueIdentifier(current.agentReasoning ?? "");
+    if (!currentSourceIssueIdentifier) return;
+
+    const pendingIds = (await ctx.state.get({
+      scopeKind: "instance",
+      stateKey: "escalation_pending_ids",
+    }) as string[] | null) ?? [];
+
+    const remaining = new Set(pendingIds);
+    for (const escalationId of pendingIds) {
+      if (escalationId === current.escalationId) continue;
+
+      const previous = await ctx.state.get({
+        scopeKind: "instance",
+        stateKey: `escalation_${escalationId}`,
+      }) as StoredEscalation | null;
+
+      if (!previous || previous.status !== "pending") {
+        remaining.delete(escalationId);
+        continue;
+      }
+
+      const previousSourceIssueIdentifier =
+        previous.sourceIssueIdentifier ?? extractIssueIdentifier(previous.agentReasoning ?? "");
+      const sameSource =
+        previous.companyId === current.companyId &&
+        previous.agentId === current.agentId &&
+        previous.reason === current.reason &&
+        previousSourceIssueIdentifier === currentSourceIssueIdentifier;
+      if (!sameSource) continue;
+
+      previous.status = "superseded";
+      previous.supersededByEscalationId = current.escalationId;
+      await ctx.state.set(
+        { scopeKind: "instance", stateKey: `escalation_${previous.escalationId}` },
+        previous,
+      );
+      remaining.delete(previous.escalationId);
+
+      await ctx.state.set(
+        { scopeKind: "instance", stateKey: `msg_${previous.escalationChatId}_${previous.escalationMessageId}` },
+        {
+          entityId: previous.escalationId,
+          entityType: "superseded_escalation",
+          companyId: previous.companyId,
+          replacementEscalationId: current.escalationId,
+        },
+      );
+
+      try {
+        await editMessage(
+          ctx,
+          token,
+          previous.escalationChatId,
+          Number(previous.escalationMessageId),
+          `${esc("⚠️")} *Escalation Superseded*\n\n${esc("This request was replaced by a newer message. Please reply to the latest Telegram prompt.")}\n\nID: \`${esc(previous.escalationId)}\`\nNew ID: \`${esc(current.escalationId)}\``,
+          { parseMode: "MarkdownV2" },
+        );
+      } catch (error) {
+        ctx.logger.warn("Failed to edit superseded Telegram escalation message", {
+          escalationId: previous.escalationId,
+          replacementEscalationId: current.escalationId,
+          error: String(error),
+        });
+      }
+    }
+
+    await ctx.state.set(
+      { scopeKind: "instance", stateKey: "escalation_pending_ids" },
+      Array.from(remaining),
+    );
+  }
+
+  private async routeReply(
+    ctx: PluginContext,
+    stored: StoredEscalation,
+    response: EscalationResponse,
+  ): Promise<boolean> {
+    if (stored.transport === "acp" && stored.sessionId) {
+      ctx.events.emit("acp-spawn", stored.companyId, {
+        type: "message",
+        sessionId: stored.sessionId,
+        text: `[Human escalation response] ${response.responseText}`,
+      });
+      return true;
+    }
+
+    const sourceIssueIdentifier =
+      stored.sourceIssueIdentifier ?? extractIssueIdentifier(stored.agentReasoning ?? "");
+
+    if (sourceIssueIdentifier) {
+      const sourceIssue = await this.findIssueByIdentifier(ctx, stored.companyId, sourceIssueIdentifier);
+      if (sourceIssue) {
+        try {
+          await ctx.issues.createComment(
+            sourceIssue.id,
+            [
+              "## Telegram owner reply",
+              "",
+              `Escalation: \`${stored.escalationId}\``,
+              `Responder: \`${response.responderId}\``,
+              "",
+              response.responseText,
+            ].join("\n"),
+            stored.companyId,
+          );
+          return true;
+        } catch (error) {
+          ctx.logger.error("Failed to write Telegram escalation reply to source issue", {
+            escalationId: stored.escalationId,
+            sourceIssueIdentifier,
+            error: String(error),
+          });
+          return false;
+        }
+      }
+    }
+
+    if (stored.transport === "native" && stored.agentId) {
+      const issueId = await wakeAgentWithIssue(
+        ctx,
+        stored.agentId,
+        stored.companyId,
+        `[Human escalation response] ${response.responseText}`,
+        "escalation_reply",
+      );
+      return Boolean(issueId);
+    }
+
+    return true;
+  }
+
+  private async findIssueByIdentifier(
+    ctx: PluginContext,
+    companyId: string,
+    identifier: string,
+  ): Promise<{ id: string } | null> {
+    const pageSize = 100;
+    for (let offset = 0; offset < 500; offset += pageSize) {
+      const issues = await ctx.issues.list({ companyId, limit: pageSize, offset });
+      const match = issues.find((issue) => issue.identifier === identifier);
+      if (match) return { id: match.id };
+      if (issues.length < pageSize) break;
+    }
+    return null;
   }
 
   async checkTimeouts(ctx: PluginContext, token: string): Promise<void> {

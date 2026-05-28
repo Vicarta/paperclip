@@ -1223,6 +1223,23 @@ async function handleUpdate(
         escalationId: mapping.entityId,
         from: msg.from?.username,
       });
+    } else if (mapping && mapping.entityType === "superseded_escalation") {
+      await sendMessage(
+        ctx,
+        token,
+        chatId,
+        escapeMarkdownV2("Це повідомлення вже замінене новішим запитом. Будь ласка, відповідайте на останнє повідомлення з актуальним питанням."),
+        {
+          parseMode: "MarkdownV2",
+          messageThreadId: threadId,
+          replyToMessageId: msg.message_id,
+        },
+      );
+      ctx.logger.info("Ignored reply to superseded Telegram escalation", {
+        escalationId: mapping.entityId,
+        replacementEscalationId: (mapping as { replacementEscalationId?: string }).replacementEscalationId,
+        from: msg.from?.username,
+      });
     } else if (mapping && mapping.entityType === "issue") {
       try {
         // Use the SDK (not ctx.http.fetch) because the plugin sandbox blocks

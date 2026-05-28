@@ -7,6 +7,9 @@ let sentMessages: Array<{ chatId: string; text: string; options?: Record<string,
 let editedMessages: Array<{ chatId: string; messageId: number; text: string; options?: Record<string, unknown> }> = [];
 let stateStore: Record<string, unknown> = {};
 let emittedEvents: Array<{ event: string; companyId: string; payload: unknown }> = [];
+let createdIssueComments: Array<{ issueId: string; body: string; companyId: string }> = [];
+let listedIssues: Array<{ id: string; identifier: string | null }> = [];
+let wakeAgentCalls: Array<unknown[]> = [];
 
 vi.mock("../src/telegram-api.js", async () => {
   const actual = await vi.importActual("../src/telegram-api.js") as Record<string, unknown>;
@@ -14,7 +17,7 @@ vi.mock("../src/telegram-api.js", async () => {
     ...actual,
     sendMessage: vi.fn(async (_ctx: unknown, _token: string, chatId: string, text: string, options?: Record<string, unknown>) => {
       sentMessages.push({ chatId, text, options });
-      return 42;
+      return 41 + sentMessages.length;
     }),
     editMessage: vi.fn(async (_ctx: unknown, _token: string, chatId: string, messageId: number, text: string, options?: Record<string, unknown>) => {
       editedMessages.push({ chatId, messageId, text, options });
@@ -22,6 +25,13 @@ vi.mock("../src/telegram-api.js", async () => {
     }),
   };
 });
+
+vi.mock("../src/acp-bridge.js", () => ({
+  wakeAgentWithIssue: vi.fn(async (...args: unknown[]) => {
+    wakeAgentCalls.push(args);
+    return "fallback-issue-id";
+  }),
+}));
 
 function mockCtx(): PluginContext {
   return {
@@ -44,6 +54,13 @@ function mockCtx(): PluginContext {
         sendMessage: vi.fn(),
         close: vi.fn(),
       },
+    },
+    issues: {
+      list: vi.fn(async () => listedIssues),
+      createComment: vi.fn(async (issueId: string, body: string, companyId: string) => {
+        createdIssueComments.push({ issueId, body, companyId });
+        return { id: "comment-1", issueId, body, companyId };
+      }),
     },
   } as unknown as PluginContext;
 }
@@ -79,6 +96,9 @@ beforeEach(() => {
   editedMessages = [];
   stateStore = {};
   emittedEvents = [];
+  createdIssueComments = [];
+  listedIssues = [];
+  wakeAgentCalls = [];
 });
 
 describe("EscalationManager.create", () => {
@@ -190,6 +210,41 @@ describe("EscalationManager.create", () => {
 
     const pendingIds = stateStore["escalation_pending_ids"] as string[];
     expect(pendingIds).toEqual(["esc-000", "esc-001"]);
+  });
+
+  it("supersedes older pending escalation for the same source issue", async () => {
+    const manager = new EscalationManager();
+    const ctx = mockCtx();
+
+    await manager.create(ctx, "token", makeEvent({
+      escalationId: "esc-old",
+      context: {
+        conversationHistory: [],
+        agentReasoning: "[AST-926] old decision prompt",
+        suggestedActions: [],
+      },
+    }), "esc-chat-1");
+
+    await manager.create(ctx, "token", makeEvent({
+      escalationId: "esc-new",
+      context: {
+        conversationHistory: [],
+        agentReasoning: "[AST-926] corrected decision prompt",
+        suggestedActions: [],
+      },
+    }), "esc-chat-1");
+
+    const oldStored = stateStore["escalation_esc-old"] as Record<string, unknown>;
+    const newStored = stateStore["escalation_esc-new"] as Record<string, unknown>;
+    const pendingIds = stateStore["escalation_pending_ids"] as string[];
+    const oldMapping = stateStore["msg_esc-chat-1_42"] as Record<string, unknown>;
+
+    expect(oldStored.status).toBe("superseded");
+    expect(oldStored.supersededByEscalationId).toBe("esc-new");
+    expect(newStored.status).toBe("pending");
+    expect(pendingIds).toEqual(["esc-new"]);
+    expect(oldMapping.entityType).toBe("superseded_escalation");
+    expect(editedMessages.some((message) => message.text.includes("Superseded"))).toBe(true);
   });
 
   it("includes suggested actions in message", async () => {
@@ -527,6 +582,81 @@ describe("EscalationManager.respond", () => {
 
     const stored = stateStore["escalation_esc-001"] as Record<string, unknown>;
     expect(stored.status).toBe("resolved");
+  });
+
+  it("writes native replies back to the source issue before resolving", async () => {
+    const manager = new EscalationManager();
+    const ctx = mockCtx();
+    listedIssues = [{ id: "issue-ast-926", identifier: "AST-926" }];
+
+    stateStore["escalation_esc-001"] = {
+      escalationId: "esc-001",
+      agentId: "agent-1",
+      companyId: "company-1",
+      reason: "explicit_request",
+      sourceIssueIdentifier: "AST-926",
+      agentReasoning: "[AST-926] decision",
+      suggestedActions: [],
+      escalationChatId: "esc-chat-1",
+      escalationMessageId: "42",
+      status: "pending",
+      createdAt: new Date().toISOString(),
+      timeoutAt: new Date(Date.now() + 60000).toISOString(),
+      defaultAction: "defer",
+      transport: "native",
+    };
+    stateStore["escalation_pending_ids"] = ["esc-001"];
+
+    await manager.respond(ctx, "token", "esc-001", {
+      escalationId: "esc-001",
+      responderId: "telegram:owner",
+      responseText: "1,2",
+      action: "reply_to_customer",
+    });
+
+    expect(createdIssueComments).toHaveLength(1);
+    expect(createdIssueComments[0]).toMatchObject({
+      issueId: "issue-ast-926",
+      companyId: "company-1",
+    });
+    expect(createdIssueComments[0].body).toContain("1,2");
+    expect(wakeAgentCalls).toHaveLength(0);
+    expect((stateStore["escalation_esc-001"] as Record<string, unknown>).status).toBe("resolved");
+  });
+
+  it("keeps escalation pending when source issue writeback fails", async () => {
+    const manager = new EscalationManager();
+    const ctx = mockCtx();
+    listedIssues = [{ id: "issue-ast-926", identifier: "AST-926" }];
+    (ctx.issues.createComment as unknown as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error("write failed"));
+
+    stateStore["escalation_esc-001"] = {
+      escalationId: "esc-001",
+      agentId: "agent-1",
+      companyId: "company-1",
+      reason: "explicit_request",
+      sourceIssueIdentifier: "AST-926",
+      agentReasoning: "[AST-926] decision",
+      suggestedActions: [],
+      escalationChatId: "esc-chat-1",
+      escalationMessageId: "42",
+      status: "pending",
+      createdAt: new Date().toISOString(),
+      timeoutAt: new Date(Date.now() + 60000).toISOString(),
+      defaultAction: "defer",
+      transport: "native",
+    };
+    stateStore["escalation_pending_ids"] = ["esc-001"];
+
+    await manager.respond(ctx, "token", "esc-001", {
+      escalationId: "esc-001",
+      responderId: "telegram:owner",
+      responseText: "1,2",
+      action: "reply_to_customer",
+    });
+
+    expect((stateStore["escalation_esc-001"] as Record<string, unknown>).status).toBe("pending");
+    expect(editedMessages).toHaveLength(0);
   });
 
   it("ignores respond for non-pending escalation", async () => {
