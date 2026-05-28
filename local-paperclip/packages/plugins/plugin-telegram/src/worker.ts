@@ -1169,6 +1169,11 @@ async function handleUpdate(
 
   const text = msg.text;
 
+  if (config.enableInbound && msg.reply_to_message?.from?.is_bot) {
+    const routed = await routeBotReply(ctx, token, msg, chatId, threadId, text);
+    if (routed) return;
+  }
+
   // Route thread messages to agent sessions
   if (threadId) {
     const isCommand = text.startsWith("/");
@@ -1201,64 +1206,84 @@ async function handleUpdate(
     await handleCommand(ctx, token, chatId, command, args, threadId, baseUrl, publicUrl, companyId, boardApiToken, config.maxAgentsPerThread);
     return;
   }
+}
 
-  if (config.enableInbound && msg.reply_to_message?.from?.is_bot) {
-    const replyToId = msg.reply_to_message.message_id;
-    const mapping = await ctx.state.get({
-      scopeKind: "instance",
-      stateKey: `msg_${chatId}_${replyToId}`,
-    }) as { entityId: string; entityType: string; companyId: string } | null;
+async function routeBotReply(
+  ctx: PluginContext,
+  token: string,
+  msg: NonNullable<TelegramUpdate["message"]>,
+  chatId: string,
+  threadId: number | undefined,
+  text: string,
+): Promise<boolean> {
+  const replyToId = msg.reply_to_message?.message_id;
+  if (!replyToId) return false;
 
-    if (mapping && mapping.entityType === "escalation") {
-      const escalationManager = new EscalationManager();
-      const responderId = `telegram:${msg.from?.username ?? msg.from?.id ?? chatId}`;
-      await escalationManager.respond(ctx, token, mapping.entityId, {
-        escalationId: mapping.entityId,
-        responderId,
-        responseText: text,
-        action: "reply_to_customer",
-      });
-      await ctx.metrics.write(METRIC_NAMES.inboundRouted, 1);
-      ctx.logger.info("Routed Telegram reply to escalation", {
-        escalationId: mapping.entityId,
-        from: msg.from?.username,
-      });
-    } else if (mapping && mapping.entityType === "superseded_escalation") {
-      await sendMessage(
-        ctx,
-        token,
-        chatId,
-        escapeMarkdownV2("Це повідомлення вже замінене новішим запитом. Будь ласка, відповідайте на останнє повідомлення з актуальним питанням."),
-        {
-          parseMode: "MarkdownV2",
-          messageThreadId: threadId,
-          replyToMessageId: msg.message_id,
-        },
-      );
-      ctx.logger.info("Ignored reply to superseded Telegram escalation", {
-        escalationId: mapping.entityId,
-        replacementEscalationId: (mapping as { replacementEscalationId?: string }).replacementEscalationId,
-        from: msg.from?.username,
-      });
-    } else if (mapping && mapping.entityType === "issue") {
-      try {
-        // Use the SDK (not ctx.http.fetch) because the plugin sandbox blocks
-        // outbound fetches to private IPs like 127.0.0.1 for SSRF protection.
-        // The SDK's createComment goes through the plugin RPC bridge instead.
-        await ctx.issues.createComment(mapping.entityId, text, mapping.companyId);
-        await ctx.metrics.write(METRIC_NAMES.inboundRouted, 1);
-        ctx.logger.info("Routed Telegram reply to issue comment", {
-          issueId: mapping.entityId,
-          from: msg.from?.username,
-        });
-      } catch (err) {
-        ctx.logger.error("Failed to route inbound message", {
-          issueId: mapping.entityId,
-          error: String(err),
-        });
-      }
-    }
+  const mapping = await ctx.state.get({
+    scopeKind: "instance",
+    stateKey: `msg_${chatId}_${replyToId}`,
+  }) as { entityId: string; entityType: string; companyId: string; replacementEscalationId?: string } | null;
+
+  if (!mapping) return false;
+
+  if (mapping.entityType === "escalation") {
+    const escalationManager = new EscalationManager();
+    const responderId = `telegram:${msg.from?.username ?? msg.from?.id ?? chatId}`;
+    await escalationManager.respond(ctx, token, mapping.entityId, {
+      escalationId: mapping.entityId,
+      responderId,
+      responseText: text,
+      action: "reply_to_customer",
+    });
+    await ctx.metrics.write(METRIC_NAMES.inboundRouted, 1);
+    ctx.logger.info("Routed Telegram reply to escalation", {
+      escalationId: mapping.entityId,
+      from: msg.from?.username,
+    });
+    return true;
   }
+
+  if (mapping.entityType === "superseded_escalation") {
+    await sendMessage(
+      ctx,
+      token,
+      chatId,
+      escapeMarkdownV2("Це повідомлення вже замінене новішим запитом. Будь ласка, відповідайте на останнє повідомлення з актуальним питанням."),
+      {
+        parseMode: "MarkdownV2",
+        messageThreadId: threadId,
+        replyToMessageId: msg.message_id,
+      },
+    );
+    ctx.logger.info("Ignored reply to superseded Telegram escalation", {
+      escalationId: mapping.entityId,
+      replacementEscalationId: mapping.replacementEscalationId,
+      from: msg.from?.username,
+    });
+    return true;
+  }
+
+  if (mapping.entityType === "issue") {
+    try {
+      // Use the SDK (not ctx.http.fetch) because the plugin sandbox blocks
+      // outbound fetches to private IPs like 127.0.0.1 for SSRF protection.
+      // The SDK's createComment goes through the plugin RPC bridge instead.
+      await ctx.issues.createComment(mapping.entityId, text, mapping.companyId);
+      await ctx.metrics.write(METRIC_NAMES.inboundRouted, 1);
+      ctx.logger.info("Routed Telegram reply to issue comment", {
+        issueId: mapping.entityId,
+        from: msg.from?.username,
+      });
+    } catch (err) {
+      ctx.logger.error("Failed to route inbound message", {
+        issueId: mapping.entityId,
+        error: String(err),
+      });
+    }
+    return true;
+  }
+
+  return false;
 }
 
 async function handleCallbackQuery(

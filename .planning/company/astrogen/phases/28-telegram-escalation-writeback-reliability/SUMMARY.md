@@ -12,6 +12,7 @@ Phase 28 is complete and deployed to production.
 - Replies to active native escalations now write a comment to the source Paperclip issue before the escalation is marked resolved.
 - If source-issue writeback fails, the escalation stays pending instead of silently losing the owner answer.
 - Replies to superseded Telegram messages receive a short Ukrainian clarification instead of being ignored.
+- Replies to bot escalation messages are routed before generic Telegram thread/agent-session routing, so HIA answers in group topics cannot be consumed as ordinary thread messages.
 
 ## Verification
 
@@ -31,9 +32,9 @@ All checks passed locally:
 ## Production
 
 - Deployed package path:
-  `/paperclip/.paperclip/plugins/local-packages/paperclip-plugin-telegram-0.3.1-paperclip.2`
+  `/paperclip/.paperclip/plugins/local-packages/paperclip-plugin-telegram-0.3.1-paperclip.3`
 - Live plugin registry:
-  `paperclip-plugin-telegram@0.3.1-paperclip.2`
+  `paperclip-plugin-telegram@0.3.1-paperclip.3`
 - Production health:
   `/api/health` returned `status=ok`.
 - Plugin loader:

@@ -63,7 +63,7 @@ Human-facing Astrogen communication remains Ukrainian and should not expose inte
 - [x] **Phase 25: Telegram Delivery Proof Ledger** - Make Telegram delivery proof a plugin-owned structured activity ledger event so content/CMS tasks do not remain blocked on manual message-id recovery.
 - [x] **Phase 26: Weekly Blog Telegram Report** - Defined and activated a compact weekly owner-facing Telegram report for blog publishing and SEO performance, with week-over-week comparison and explicit GSC/GA4/indexing data-gap handling.
 - [x] **Phase 27: Actionable Issue Orchestration Hardening** - Fixed Paperclip core so assigned actionable issues cannot sit idle after status/routing changes: event-driven wakeup guarantee, deterministic stale actionable watchdog, SEO technical issue dedupe, dedicated SEO CMS Technical Fixer lane, and HIA exclusion for deterministic CMS SEO fixes.
-- [x] **Phase 28: Telegram Escalation Writeback Reliability** - Fixed HIA Telegram escalation replacement and reply writeback so superseded prompts are closed and owner replies become canonical Paperclip issue comments before an escalation resolves. Deployed as `paperclip-plugin-telegram@0.3.1-paperclip.2`.
+- [x] **Phase 28: Telegram Escalation Writeback Reliability** - Fixed HIA Telegram escalation replacement and reply writeback so superseded prompts are closed and owner replies become canonical Paperclip issue comments before an escalation resolves. Follow-up fix routes escalation replies before generic thread routing, so owner answers in Telegram topics are not consumed as ordinary agent-session messages. Deployed as `paperclip-plugin-telegram@0.3.1-paperclip.3`.
 
 ## Deferred / Future Tracks
 
