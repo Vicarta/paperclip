@@ -8,7 +8,7 @@ It records deployable structure, plugin inventory, scheduled jobs, company-visib
 
 - Production host: `ubuntu-oc.tailbd4e1c.ts.net`
 - Compose directory: `/home/paperclip/apps/paperclip`
-- App image: `paperclip-app:v2026.513.2-openrouter-protocol-skills-20260518`
+- App image: `paperclip-app:v2026.529.1-plugin-comment-wakeup-20260529`
 - App health endpoint: `http://127.0.0.1:3200/api/health`
 - Runtime exposure: private/Tailscale for Paperclip admin; client portal is separate.
 - Database: `postgres:17-alpine`

@@ -7,15 +7,30 @@ RUN corepack enable
 FROM base AS build
 WORKDIR /app
 COPY . .
-RUN pnpm install --no-frozen-lockfile
+RUN pnpm install --prod=false --no-frozen-lockfile
 RUN pnpm --filter @paperclipai/ui build
 RUN pnpm --filter @paperclipai/plugin-sdk build
+RUN for plugin in \
+    packages/plugins/plugin-dataforseo-agent-tools \
+    packages/plugins/plugin-diskinternals-bigquery-growth \
+    packages/plugins/plugin-exa-agent-tools \
+    packages/plugins/plugin-gsc-bing-ga4-mcp-agent-tools \
+    packages/plugins/plugin-payload-cms-agent-tools \
+    packages/plugins/plugin-perfex-crm-agent-tools \
+    packages/plugins/plugin-search-console-mcp-agent-tools \
+    packages/plugins/plugin-semantic-core-mcp-agent-tools \
+    packages/plugins/plugin-seo-performance-loop \
+    packages/plugins/plugin-serper-agent-tools \
+    packages/plugins/plugin-winning-structure-mcp-agent-tools \
+    packages/plugins/plugin-telegram; \
+  do (cd "$plugin" && pnpm build); done
 RUN pnpm --filter @paperclipai/server build
 RUN test -f server/dist/index.js || (echo "ERROR: server build output missing" && exit 1)
 
 FROM base AS production
 WORKDIR /app
 COPY --chown=node:node --from=build /app /app
+RUN ln -s /app/node_modules /node_modules
 RUN npm install --global --omit=dev @anthropic-ai/claude-code@latest @openai/codex@latest opencode-ai \
   && mkdir -p /paperclip \
   && chown node:node /paperclip

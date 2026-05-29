@@ -15,7 +15,7 @@ services:
       - paperclip_pgdata:/var/lib/postgresql/data
 
   app:
-    image: ${PAPERCLIP_APP_IMAGE:-paperclip-app:v2026.513.2-openrouter-protocol-skills-20260518}
+    image: ${PAPERCLIP_APP_IMAGE:-paperclip-app:v2026.529.1-plugin-comment-wakeup-20260529}
     restart: unless-stopped
     depends_on:
       db:

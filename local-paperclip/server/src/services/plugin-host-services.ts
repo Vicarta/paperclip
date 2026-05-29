@@ -56,6 +56,7 @@ const SEARCH_CONSOLE_MCP_PLUGIN_KEY = "paperclip.search-console-mcp-agent-tools"
 const GSC_BING_GA4_MCP_PLUGIN_KEY = "paperclip.gsc-bing-ga4-mcp-agent-tools";
 const WINNING_STRUCTURE_MCP_PLUGIN_KEY = "paperclip.winning-structure-mcp-agent-tools";
 const SEMANTIC_CORE_MCP_PLUGIN_KEY = "paperclip.semantic-core-mcp-agent-tools";
+const TERMINAL_ISSUE_STATUSES = new Set(["done", "cancelled"]);
 
 /**
  * Narrow private-network exception for trusted server-side connector plugins.
@@ -942,12 +943,73 @@ export function buildHostServices(
       async createComment(params) {
         const companyId = ensureCompanyId(params.companyId);
         await ensurePluginAvailableForCompany(companyId);
-        requireInCompany("Issue", await issues.getById(params.issueId), companyId);
-        return (await issues.addComment(
+        const issue = requireInCompany("Issue", await issues.getById(params.issueId), companyId);
+        const comment = await issues.addComment(
           params.issueId,
           params.body,
           {},
-        )) as IssueComment;
+        ) as IssueComment;
+
+        void (async () => {
+          const wakeups = new Map<string, Parameters<typeof heartbeat.wakeup>[1]>();
+
+          if (issue.assigneeAgentId && !TERMINAL_ISSUE_STATUSES.has(issue.status)) {
+            wakeups.set(issue.assigneeAgentId, {
+              source: "automation",
+              triggerDetail: "system",
+              reason: "issue_commented",
+              payload: {
+                issueId: issue.id,
+                commentId: comment.id,
+                mutation: "comment",
+              },
+              requestedByActorType: "system",
+              requestedByActorId: pluginId,
+              contextSnapshot: {
+                issueId: issue.id,
+                taskId: issue.id,
+                commentId: comment.id,
+                source: "issue.comment",
+                wakeReason: "issue_commented",
+              },
+            });
+          }
+
+          let mentionedIds: string[] = [];
+          try {
+            mentionedIds = await issues.findMentionedAgents(issue.companyId, params.body);
+          } catch (err) {
+            logger.warn({ err, issueId: issue.id, pluginId }, "failed to resolve @-mentions from plugin issue comment");
+          }
+
+          for (const mentionedId of mentionedIds) {
+            if (wakeups.has(mentionedId)) continue;
+            wakeups.set(mentionedId, {
+              source: "automation",
+              triggerDetail: "system",
+              reason: "issue_comment_mentioned",
+              payload: { issueId: issue.id, commentId: comment.id },
+              requestedByActorType: "system",
+              requestedByActorId: pluginId,
+              contextSnapshot: {
+                issueId: issue.id,
+                taskId: issue.id,
+                commentId: comment.id,
+                wakeCommentId: comment.id,
+                wakeReason: "issue_comment_mentioned",
+                source: "comment.mention",
+              },
+            });
+          }
+
+          for (const [agentId, wakeup] of wakeups.entries()) {
+            heartbeat
+              .wakeup(agentId, wakeup)
+              .catch((err) => logger.warn({ err, issueId: issue.id, agentId, pluginId }, "failed to wake agent on plugin issue comment"));
+          }
+        })();
+
+        return comment;
       },
       async listAttachments(params) {
         const companyId = ensureCompanyId(params.companyId);
