@@ -17,7 +17,8 @@ Agency Core contains reusable Paperclip operating-system assets that should work
 - [x] **Phase 9: Provider Cost Accounting Ledger** - Make paid external provider usage auditable across shared Paperclip plugins: Serper, Exa, Bright Data, DataForSEO, Semantic Core MCP, and adapter-reported LLM costs should write canonical `cost_events` or documented zero-cost/subscription entries with tests and production smoke.
 - [x] **Phase 10: Fast Blog Article Production Loop** - Removed the hourly manager gap for article lanes: live CMO heartbeat is 10 minutes, child status changes wake parent managers immediately, and Telegram CMS draft-ready messages now include the direct draft URL/button instead of a generic completion.
 - [x] **Phase 11: SEO Indexing Snapshots And Page Findings** - Extend the existing `seo_ops` model with durable GSC URL Inspection snapshots and generic deduplicated page findings, reusing `pages`, `project_pages`, and `discovery_runs` instead of creating a parallel page registry.
+- [x] **Phase 12: CrawlObserver SEO Crawl Adapter** - Add a reusable Paperclip plugin adapter for the Tailnet-only CrawlObserver REST API so agents can start controlled crawls, inspect session/page/link/SEO crawl evidence, and feed Paperclip-owned SEO workflows without exposing API keys or making crawl-derived decisions inside the adapter.
 
 ## Current Next Step
 
-Next reusable step: connect the SEO GSC Indexing Auditor contract/plugin flow to `seo_ops.indexing_inspection_snapshots` and `seo_ops.page_findings`, so daily or three-day audits write durable evidence before routing fix issues.
+Next reusable step: configure the CrawlObserver API key/project in production, then connect CrawlObserver crawl evidence to SEO Ops page registry and findings so periodic crawl data, GSC URL Inspection snapshots, and CMS/live HTML checks become one consistent operational view.
