@@ -90,7 +90,9 @@ Plugin config fields:
 - `gscBingGa4McpUrl`: private MCP Streamable HTTP endpoint.
 - `allowedSiteUrl`: GSC site allowlist.
 - `allowedMcpToolNamesCsv`: optional comma-separated backend tool allowlist. Empty means verified defaults only.
-- `requestTimeoutMs`: timeout for one MCP connect/call cycle.
+- `requestTimeoutMs`: timeout for one MCP connect/call cycle. Default is `120000`
+  because URL Inspection batch calls can exceed 30 seconds when MCP needs fresh
+  Google API calls instead of cached data.
 
 ## Tool Surface
 

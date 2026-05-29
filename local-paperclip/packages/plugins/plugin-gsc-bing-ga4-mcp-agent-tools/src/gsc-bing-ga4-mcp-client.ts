@@ -4,6 +4,7 @@ import {
   DEFAULT_ALLOWED_GA4_PROPERTY_ID,
   DEFAULT_ALLOWED_SITE_URL,
   DEFAULT_GSC_BING_GA4_MCP_URL,
+  DEFAULT_REQUEST_TIMEOUT_MS,
   GA4_PROPERTY_SCOPED_MCP_TOOLS,
   SITE_SCOPED_MCP_TOOLS,
   VERIFIED_MCP_TOOL_NAMES,
@@ -82,7 +83,7 @@ function normalizeConfig(config: GscBingGa4McpPluginConfig) {
     allowedGa4PropertyId:
       readNonEmptyString(config.allowedGa4PropertyId) ?? DEFAULT_ALLOWED_GA4_PROPERTY_ID,
     allowedToolNames,
-    requestTimeoutMs: readPositiveNumber(config.requestTimeoutMs) ?? 60_000,
+    requestTimeoutMs: readPositiveNumber(config.requestTimeoutMs) ?? DEFAULT_REQUEST_TIMEOUT_MS,
   };
 }
 

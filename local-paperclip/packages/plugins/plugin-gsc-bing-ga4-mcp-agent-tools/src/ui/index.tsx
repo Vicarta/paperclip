@@ -9,6 +9,7 @@ import type { PluginSettingsPageProps } from "@paperclipai/plugin-sdk/ui";
 import {
   DEFAULT_ALLOWED_SITE_URL,
   DEFAULT_GSC_BING_GA4_MCP_URL,
+  DEFAULT_REQUEST_TIMEOUT_MS,
   VERIFIED_MCP_TOOL_NAMES,
 } from "../constants.js";
 
@@ -111,7 +112,7 @@ function formatSecretStatus(secret: CompanySecret | undefined) {
 
 function readPositiveNumber(value: string) {
   const numeric = Number(value);
-  return Number.isFinite(numeric) && numeric > 0 ? numeric : 60_000;
+  return Number.isFinite(numeric) && numeric > 0 ? numeric : DEFAULT_REQUEST_TIMEOUT_MS;
 }
 
 export function GscBingGa4McpSettingsPage({ context }: PluginSettingsPageProps) {
@@ -125,7 +126,7 @@ export function GscBingGa4McpSettingsPage({ context }: PluginSettingsPageProps) 
   const [mcpUrl, setMcpUrl] = useState(DEFAULT_GSC_BING_GA4_MCP_URL);
   const [allowedSiteUrl, setAllowedSiteUrl] = useState(DEFAULT_ALLOWED_SITE_URL);
   const [allowedMcpToolNamesCsv, setAllowedMcpToolNamesCsv] = useState("");
-  const [requestTimeoutMs, setRequestTimeoutMs] = useState("60000");
+  const [requestTimeoutMs, setRequestTimeoutMs] = useState(String(DEFAULT_REQUEST_TIMEOUT_MS));
   const [replaceToken, setReplaceToken] = useState(false);
   const [token, setToken] = useState("");
 
@@ -163,7 +164,7 @@ export function GscBingGa4McpSettingsPage({ context }: PluginSettingsPageProps) 
           typeof nextConfig.requestTimeoutMs === "number" &&
             Number.isFinite(nextConfig.requestTimeoutMs)
             ? String(nextConfig.requestTimeoutMs)
-            : "60000",
+            : String(DEFAULT_REQUEST_TIMEOUT_MS),
         );
         setAllowedMcpToolNamesCsv(
           typeof nextConfig.allowedMcpToolNamesCsv === "string"

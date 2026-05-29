@@ -3,6 +3,7 @@ import {
   DEFAULT_ALLOWED_GA4_PROPERTY_ID,
   DEFAULT_ALLOWED_SITE_URL,
   DEFAULT_GSC_BING_GA4_MCP_URL,
+  DEFAULT_REQUEST_TIMEOUT_MS,
   EXPORT_NAMES,
   PLUGIN_ID,
   PLUGIN_VERSION,
@@ -77,8 +78,9 @@ const manifest: PaperclipPluginManifestV1 = {
       requestTimeoutMs: {
         type: "number",
         title: "Request Timeout Ms",
-        description: "Timeout for one MCP connection/call.",
-        default: 60000,
+        description:
+          "Timeout for one MCP connection/call. URL Inspection batch calls can legitimately take longer than 30 seconds when cache misses require Google API calls.",
+        default: DEFAULT_REQUEST_TIMEOUT_MS,
       },
     },
   },

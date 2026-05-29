@@ -5,6 +5,7 @@ import plugin from "../src/worker.js";
 import {
   DEFAULT_ALLOWED_GA4_PROPERTY_ID,
   DEFAULT_ALLOWED_SITE_URL,
+  DEFAULT_REQUEST_TIMEOUT_MS,
   TOOL_NAMES,
   VERIFIED_MCP_TOOL_NAMES,
 } from "../src/constants.js";
@@ -33,6 +34,13 @@ describe("plugin-gsc-bing-ga4-mcp-agent-tools", () => {
   beforeEach(() => {
     callGscBingGa4McpToolMock.mockReset();
     listGscBingGa4McpToolsMock.mockReset();
+  });
+
+  it("uses a URL-inspection-safe MCP request timeout by default", () => {
+    expect(
+      manifest.instanceConfigSchema.properties.requestTimeoutMs.default,
+    ).toBe(DEFAULT_REQUEST_TIMEOUT_MS);
+    expect(DEFAULT_REQUEST_TIMEOUT_MS).toBeGreaterThanOrEqual(120_000);
   });
 
   it("registers allowlisted wrapper tools and forwards through backend config", async () => {
