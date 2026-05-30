@@ -711,3 +711,14 @@
   - Live instructions synced to `/home/paperclip/astrogen/agents/seo-gsc-indexing-auditor/AGENTS.md`.
   - Created active routine `08993a70-3d10-4d24-8b0c-811fb9a9a9e1` with schedule `20 6 * * *` Europe/Kiev for daily due-URL indexing audits.
   - Routine uses deterministic batch GSC URL Inspection tools; fresh/full cadence is enforced by agent logic rather than LLM-per-URL polling.
+- Planned and executed Phase 31: New Product SEO Continuation And GSC Unblock.
+  - Added the GSD plan at `.planning/company/astrogen/phases/31-new-product-seo-continuation-and-gsc-unblock/PLAN.md`.
+  - Tightened the Astrogen CMO contract so a new-product SEO parent cannot close after one CMS draft unless the approved starter package is explicitly one article and no traffic-expansion follow-up is due.
+  - Mirrored the independent-channel and new-product SEO completion rules into the reusable agency-core CMO contract.
+  - Tightened the SEO GSC Indexing Auditor contract so indexing audit issues must exit as `done`, `cancelled`, or a named system gap instead of accumulating stale `blocked` tasks.
+  - Tightened the SEO CMS Technical Fixer contract so concrete GSC URL Inspection findings are in scope and duplicate URL/problem tasks are treated as superseded.
+  - Live-synced the updated contracts to `/home/paperclip/astrogen`.
+  - Created live follow-up [AST-967](/AST/issues/AST-967) for continuing the `/solar` starter article package and SEO traffic expansion through CMO.
+  - Created live follow-up [AST-968](/AST/issues/AST-968) for consolidating the GSC indexing blocked backlog and routing URL-level fixes through SEO GSC Indexing Auditor.
+  - Cancelled stale [AST-965](/AST/issues/AST-965), which was superseded by the completed `/solar` Payload delivery bridge work.
+  - Woke both assigned agents; [AST-967](/AST/issues/AST-967) and [AST-968](/AST/issues/AST-968) entered `in_progress`.
