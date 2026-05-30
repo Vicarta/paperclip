@@ -309,12 +309,14 @@ async function postJsonRpc(input: {
   mcpUrl: string;
   token: string;
   requestTimeoutMs: number;
-  body: unknown;
+  body?: unknown;
+  method?: "POST" | "DELETE";
   sessionId?: string | null;
 }) {
   const url = new URL(input.mcpUrl);
   const transport = url.protocol === "https:" ? https : http;
-  const body = JSON.stringify(input.body);
+  const body = input.body === undefined ? null : JSON.stringify(input.body);
+  const method = input.method ?? "POST";
 
   return await new Promise<{ payload: JsonRpcResponse; sessionId: string | null }>((resolve, reject) => {
     const req = transport.request(
@@ -323,12 +325,16 @@ async function postJsonRpc(input: {
         hostname: url.hostname,
         port: url.port,
         path: `${url.pathname}${url.search}`,
-        method: "POST",
+        method,
         headers: {
           Authorization: `Bearer ${input.token}`,
-          "Content-Type": "application/json",
           Accept: "application/json, text/event-stream",
-          "Content-Length": Buffer.byteLength(body),
+          ...(body === null
+            ? {}
+            : {
+                "Content-Type": "application/json",
+                "Content-Length": Buffer.byteLength(body),
+              }),
           ...(input.sessionId ? { "mcp-session-id": input.sessionId } : {}),
         },
         timeout: input.requestTimeoutMs,
@@ -362,8 +368,27 @@ async function postJsonRpc(input: {
     );
     req.on("timeout", () => req.destroy(new Error("GSC/Bing/GA4 MCP request timed out")));
     req.on("error", reject);
-    req.end(body);
+    req.end(body ?? undefined);
   });
+}
+
+async function terminateMcpSession(input: {
+  mcpUrl: string;
+  token: string;
+  requestTimeoutMs: number;
+  sessionId: string;
+}) {
+  try {
+    await postJsonRpc({
+      mcpUrl: input.mcpUrl,
+      token: input.token,
+      requestTimeoutMs: input.requestTimeoutMs,
+      sessionId: input.sessionId,
+      method: "DELETE",
+    });
+  } catch {
+    // Best-effort cleanup. The MCP server also expires idle sessions server-side.
+  }
 }
 
 async function withMcpSession<T>(input: {
@@ -381,6 +406,7 @@ async function withMcpSession<T>(input: {
   const normalized = normalizeConfig(input.config);
   const token = await resolveToken(input);
   let nextId = 1;
+  let sessionId: string | null = null;
 
   const init = await postJsonRpc({
     mcpUrl: normalized.mcpUrl,
@@ -400,7 +426,7 @@ async function withMcpSession<T>(input: {
       },
     },
   });
-  const sessionId = init.sessionId;
+  sessionId = init.sessionId;
   if (!sessionId) throw new Error("GSC/Bing/GA4 MCP initialize did not return a session id");
 
   await postJsonRpc({
@@ -433,12 +459,21 @@ async function withMcpSession<T>(input: {
     },
   };
 
-  return await input.run(
-    session,
-    normalized.allowedSiteUrl,
-    normalized.allowedGa4PropertyId,
-    normalized.allowedToolNames,
-  );
+  try {
+    return await input.run(
+      session,
+      normalized.allowedSiteUrl,
+      normalized.allowedGa4PropertyId,
+      normalized.allowedToolNames,
+    );
+  } finally {
+    await terminateMcpSession({
+      mcpUrl: normalized.mcpUrl,
+      token,
+      requestTimeoutMs: normalized.requestTimeoutMs,
+      sessionId,
+    });
+  }
 }
 
 export async function listGscBingGa4McpTools(input: {
