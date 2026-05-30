@@ -24,6 +24,7 @@ export const TOOL_NAMES = {
   findBlogPost: "payload_cms_find_blog_post",
   listBlogPosts: "payload_cms_list_blog_posts",
   listTaxonomy: "payload_cms_list_taxonomy",
+  ensureTaxonomyTerm: "payload_cms_ensure_taxonomy_term",
   uploadMedia: "payload_cms_upload_media",
   createBlogPostDraft: "payload_cms_create_blog_post_draft",
   updateBlogPostDraft: "payload_cms_update_blog_post_draft",

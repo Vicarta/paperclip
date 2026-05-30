@@ -6,6 +6,7 @@ import {
   getAccess,
   getBuildState,
   healthCheck,
+  ensureTaxonomyTerm,
   listBlogPosts,
   listTaxonomy,
   publishBlogPost,
@@ -190,6 +191,46 @@ const plugin = definePlugin({
             collection,
             limit: typed.limit as number | undefined,
             depth: typed.depth as number | undefined,
+          }),
+        ));
+      },
+    );
+
+    ctx.tools.register(
+      TOOL_NAMES.ensureTaxonomyTerm,
+      {
+        displayName: "Payload CMS Ensure Taxonomy Term",
+        description:
+          "Find or create a Payload category/tag by slug and title. Use before blog draft creation when a newly approved product route has no CMS category yet.",
+        parametersSchema: {
+          type: "object",
+          properties: {
+            collection: { type: "string", enum: ["categories", "tags"] },
+            title: { type: "string" },
+            slug: { type: "string" },
+            description: { type: "string" },
+          },
+          required: ["collection", "title"],
+          additionalProperties: false,
+        },
+      },
+      async (params): Promise<ToolResult> => {
+        const typed = readObjectParams(params);
+        if (typeof typed.collection !== "string") {
+          throw new Error("Payload taxonomy collection is required");
+        }
+        if (typeof typed.title !== "string" || typed.title.trim().length === 0) {
+          throw new Error("Payload taxonomy title is required");
+        }
+        const collection = typed.collection;
+        const title = typed.title;
+        return toolResult(await withClientConfig(ctx, (base) =>
+          ensureTaxonomyTerm({
+            ...base,
+            collection,
+            title,
+            slug: typed.slug as string | undefined,
+            description: typed.description as string | undefined,
           }),
         ));
       },

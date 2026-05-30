@@ -6,6 +6,7 @@ import { TOOL_NAMES } from "../src/constants.js";
 import {
   buildBlogPostPayload,
   createBlogPostDraft,
+  ensureTaxonomyTerm,
   healthCheck,
   listBlogPosts,
   publishBlogPost,
@@ -21,6 +22,7 @@ vi.mock("../src/payload-cms-client.js", async () => {
     ...actual,
     healthCheck: vi.fn(),
     createBlogPostDraft: vi.fn(),
+    ensureTaxonomyTerm: vi.fn(),
     listBlogPosts: vi.fn(),
     publishBlogPost: vi.fn(),
   };
@@ -28,6 +30,7 @@ vi.mock("../src/payload-cms-client.js", async () => {
 
 const healthCheckMock = vi.mocked(healthCheck);
 const createBlogPostDraftMock = vi.mocked(createBlogPostDraft);
+const ensureTaxonomyTermMock = vi.mocked(ensureTaxonomyTerm);
 const listBlogPostsMock = vi.mocked(listBlogPosts);
 const publishBlogPostMock = vi.mocked(publishBlogPost);
 
@@ -35,6 +38,7 @@ describe("plugin-payload-cms-agent-tools", () => {
   beforeEach(() => {
     healthCheckMock.mockReset();
     createBlogPostDraftMock.mockReset();
+    ensureTaxonomyTermMock.mockReset();
     listBlogPostsMock.mockReset();
     publishBlogPostMock.mockReset();
   });
@@ -127,6 +131,31 @@ describe("plugin-payload-cms-agent-tools", () => {
     expect(result.content).toBe("Payload CMS blog posts: 46 matched, 10 returned.");
   });
 
+  it("ensures taxonomy terms for newly approved product routes", async () => {
+    const harness = createTestHarness({ manifest });
+    await plugin.definition.setup(harness.ctx);
+
+    ensureTaxonomyTermMock.mockResolvedValueOnce({
+      content: "Payload CMS categories term created. Payload CMS document: id=7, title=\"Соляр\", slug=solar",
+      data: { doc: { id: 7, title: "Соляр", slug: "solar" }, created: true },
+    });
+
+    const result = await harness.executeTool(TOOL_NAMES.ensureTaxonomyTerm, {
+      collection: "categories",
+      title: "Соляр",
+      slug: "solar",
+    });
+
+    expect(ensureTaxonomyTermMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        collection: "categories",
+        title: "Соляр",
+        slug: "solar",
+      }),
+    );
+    expect(result.content).toContain("Соляр");
+  });
+
   it("guards the publish tool with explicit confirmation", async () => {
     const harness = createTestHarness({ manifest });
     await plugin.definition.setup(harness.ctx);
@@ -175,6 +204,9 @@ describe("Payload CMS content helpers", () => {
         ],
       },
       coverImage: 49,
+      categorySlug: "solar",
+      categoryTitle: "Соляр",
+      ensureCategory: true,
       extraFields: { createdBy: 1 },
     });
     expect(payload).toMatchObject({
@@ -192,6 +224,9 @@ describe("Payload CMS content helpers", () => {
       ],
     });
     expect(payload.content).toBeUndefined();
+    expect(payload.categorySlug).toBeUndefined();
+    expect(payload.categoryTitle).toBeUndefined();
+    expect(payload.ensureCategory).toBeUndefined();
   });
 
   it("accepts iconList blocks with registered icons only", () => {

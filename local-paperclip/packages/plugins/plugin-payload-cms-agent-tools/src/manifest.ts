@@ -188,6 +188,9 @@ const blogPostFieldsSchema = {
     ogImage: { type: ["number", "string"] },
     author: { type: ["number", "string"] },
     category: { type: ["number", "string"] },
+    categorySlug: { type: "string" },
+    categoryTitle: { type: "string" },
+    ensureCategory: { type: "boolean" },
     tags: {
       type: "array",
       items: { type: ["number", "string"] },
@@ -365,6 +368,23 @@ const manifest: PaperclipPluginManifestV1 = {
           depth: { type: "number" },
         },
         required: ["collection"],
+        additionalProperties: false,
+      },
+    },
+    {
+      name: TOOL_NAMES.ensureTaxonomyTerm,
+      displayName: "Payload CMS Ensure Taxonomy Term",
+      description:
+        "Find or create a Payload category/tag by slug and title. Use before blog draft creation when a newly approved product route has no CMS category yet.",
+      parametersSchema: {
+        type: "object",
+        properties: {
+          collection: { type: "string", enum: ["categories", "tags"] },
+          title: { type: "string" },
+          slug: { type: "string" },
+          description: { type: "string" },
+        },
+        required: ["collection", "title"],
         additionalProperties: false,
       },
     },

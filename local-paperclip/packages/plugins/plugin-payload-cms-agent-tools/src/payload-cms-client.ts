@@ -42,6 +42,9 @@ export type BlogPostFields = {
   seoDescription?: string;
   canonicalUrl?: string;
   noindex?: boolean;
+  categorySlug?: string;
+  categoryTitle?: string;
+  ensureCategory?: boolean;
   extraFields?: Record<string, unknown>;
 };
 
@@ -57,6 +60,13 @@ export type PayloadCmsUploadMediaInput = PayloadCmsRequestInput & {
   caption?: string;
   credit?: string;
   sourceUrl?: string;
+};
+
+export type PayloadCmsEnsureTaxonomyTermInput = PayloadCmsRequestInput & {
+  collection: string;
+  title: string;
+  slug?: string;
+  description?: string;
 };
 
 function readNonEmptyString(value: unknown) {
@@ -115,6 +125,10 @@ function taxonomyCollection(config: PayloadCmsPluginConfig, collection: string) 
     return normalizeCollectionSlug(config.authorsCollectionSlug, DEFAULT_AUTHORS_COLLECTION);
   }
   throw new Error(`Unsupported taxonomy collection: ${collection}`);
+}
+
+function taxonomyTitleField(collection: string) {
+  return collection === "authors" ? "name" : "title";
 }
 
 function endpoint(config: PayloadCmsPluginConfig, pathname: string) {
@@ -188,6 +202,39 @@ async function payloadRequest<T>(
       signal: controller.signal,
     });
 
+    return (await readPayloadResponse(response)) as T;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function payloadMultipartRequest<T>(
+  input: PayloadCmsRequestInput & {
+    method?: string;
+    pathname: string;
+    query?: Record<string, string | number | boolean | null | undefined>;
+    formData: FormData;
+  },
+): Promise<T> {
+  const apiKey = await resolveApiKey(input);
+  const url = endpoint(input.config, input.pathname);
+  if (input.query) appendQuery(url, input.query);
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs(input.config));
+  try {
+    // The current plugin host HTTP bridge serializes non-string bodies with
+    // String(body), which destroys multipart FormData. Use native fetch only for
+    // multipart uploads; normal JSON/read calls still go through ctx.http.fetch.
+    const response = await fetch(url.toString(), {
+      method: input.method ?? "POST",
+      headers: {
+        Authorization: `${authCollection(input.config)} API-Key ${apiKey}`,
+        Accept: "application/json",
+      },
+      body: input.formData,
+      signal: controller.signal,
+    });
     return (await readPayloadResponse(response)) as T;
   } finally {
     clearTimeout(timer);
@@ -420,6 +467,92 @@ export async function listTaxonomy(
   };
 }
 
+export async function findTaxonomyTerm(
+  input: PayloadCmsRequestInput & {
+    collection: string;
+    slug?: string;
+    title?: string;
+    limit?: number;
+    depth?: number;
+  },
+) {
+  const collection = taxonomyCollection(input.config, input.collection);
+  const slug = readNonEmptyString(input.slug);
+  const title = readNonEmptyString(input.title);
+  if (!slug && !title) throw new Error("Payload taxonomy term requires slug or title");
+
+  const query: Record<string, string | number | boolean> = {
+    limit: input.limit ?? 1,
+    depth: input.depth ?? 0,
+  };
+  if (slug) {
+    query["where[slug][equals]"] = slug;
+  } else if (title) {
+    query[`where[${taxonomyTitleField(input.collection)}][equals]`] = title;
+  }
+
+  const data = await payloadRequest<{ docs?: unknown[] }>({
+    ...input,
+    pathname: `/${collection}`,
+    query,
+  });
+  const first = Array.isArray(data.docs) ? data.docs[0] ?? null : null;
+  return {
+    content: first
+      ? summarizeDoc(first)
+      : `No Payload CMS ${input.collection} term found for ${slug ? `slug: ${slug}` : `title: ${title}`}`,
+    data: {
+      ...data,
+      doc: first,
+    },
+  };
+}
+
+export async function ensureTaxonomyTerm(input: PayloadCmsEnsureTaxonomyTermInput) {
+  if (!["categories", "tags"].includes(input.collection)) {
+    throw new Error("Payload taxonomy creation is supported only for categories and tags");
+  }
+  const title = readNonEmptyString(input.title);
+  if (!title) throw new Error("Payload taxonomy title is required");
+  const slug = readNonEmptyString(input.slug);
+  const existing = await findTaxonomyTerm({
+    ...input,
+    slug: slug ?? undefined,
+    title,
+    limit: 1,
+    depth: 0,
+  });
+  const existingDoc = (existing.data as { doc?: unknown }).doc;
+  if (existingDoc) {
+    return {
+      content: `Payload CMS ${input.collection} term already exists. ${summarizeDoc(existingDoc)}`,
+      data: {
+        doc: existingDoc,
+        created: false,
+      },
+    };
+  }
+
+  const body: Record<string, unknown> = {
+    title,
+    ...(slug ? { slug } : {}),
+    ...(readNonEmptyString(input.description) ? { description: input.description?.trim() } : {}),
+  };
+  const data = await payloadRequest<unknown>({
+    ...input,
+    method: "POST",
+    pathname: `/${taxonomyCollection(input.config, input.collection)}`,
+    body,
+  });
+  return {
+    content: `Payload CMS ${input.collection} term created. ${summarizeDoc(data)}`,
+    data: {
+      doc: data,
+      created: true,
+    },
+  };
+}
+
 function mimeTypeForFile(filePath: string) {
   const ext = path.extname(filePath).toLowerCase();
   if (ext === ".png") return "image/png";
@@ -434,7 +567,10 @@ export async function uploadMedia(input: PayloadCmsUploadMediaInput) {
   const fileBytes = await readFile(input.filePath);
   const form = new FormData();
   const filename = path.basename(input.filePath);
-  form.append("file", new Blob([fileBytes], { type: mimeTypeForFile(input.filePath) }), filename);
+  const file = typeof File === "function"
+    ? new File([fileBytes], filename, { type: mimeTypeForFile(input.filePath) })
+    : new Blob([fileBytes], { type: mimeTypeForFile(input.filePath) });
+  form.append("file", file, filename);
   form.append("_payload", JSON.stringify({
     alt: input.alt,
     ...(readNonEmptyString(input.caption) ? { caption: input.caption?.trim() } : {}),
@@ -442,7 +578,7 @@ export async function uploadMedia(input: PayloadCmsUploadMediaInput) {
     ...(readNonEmptyString(input.sourceUrl) ? { sourceUrl: input.sourceUrl?.trim() } : {}),
   }));
 
-  const data = await payloadRequest<unknown>({
+  const data = await payloadMultipartRequest<unknown>({
     ...input,
     method: "POST",
     pathname: `/${mediaCollection(input.config)}`,
@@ -454,14 +590,49 @@ export async function uploadMedia(input: PayloadCmsUploadMediaInput) {
   };
 }
 
+async function resolveBlogPostFields(input: PayloadCmsRequestInput & BlogPostFields) {
+  const fields: BlogPostFields = { ...input };
+  if (fields.category === undefined || fields.category === null || String(fields.category).trim().length === 0) {
+    const categorySlug = readNonEmptyString(fields.categorySlug);
+    const categoryTitle = readNonEmptyString(fields.categoryTitle);
+    if (categorySlug || categoryTitle) {
+      const term = fields.ensureCategory
+        ? await ensureTaxonomyTerm({
+            ...input,
+            collection: "categories",
+            title: categoryTitle ?? categorySlug ?? "",
+            slug: categorySlug ?? undefined,
+          })
+        : await findTaxonomyTerm({
+            ...input,
+            collection: "categories",
+            slug: categorySlug ?? undefined,
+            title: categoryTitle ?? undefined,
+          });
+      const doc = (term.data as { doc?: { id?: unknown } }).doc;
+      if (!doc?.id) {
+        throw new Error(
+          `Payload CMS category was not found for ${categorySlug ? `slug ${categorySlug}` : `title ${categoryTitle}`}; pass ensureCategory=true to create it when allowed`,
+        );
+      }
+      fields.category = doc.id as string | number;
+    }
+  }
+  delete fields.categorySlug;
+  delete fields.categoryTitle;
+  delete fields.ensureCategory;
+  return fields;
+}
+
 export async function createBlogPostDraft(
   input: PayloadCmsRequestInput & BlogPostFields,
 ) {
+  const fields = await resolveBlogPostFields(input);
   const data = await payloadRequest<unknown>({
     ...input,
     method: "POST",
     pathname: `/${blogPostsCollection(input.config)}`,
-    body: buildBlogPostPayload(input),
+    body: buildBlogPostPayload(fields),
   });
   return {
     content: summarizeDoc(data),
@@ -490,7 +661,12 @@ export async function updateBlogPostDraft(
     ...input,
     method: "PATCH",
     pathname: `/${blogPostsCollection(input.config)}/${encodeURIComponent(String(id))}`,
-    body: buildBlogPostPayload(input.fields),
+    body: buildBlogPostPayload(await resolveBlogPostFields({
+      config: input.config,
+      resolveSecret: input.resolveSecret,
+      fetchFn: input.fetchFn,
+      ...input.fields,
+    })),
   });
   return {
     content: summarizeDoc(data),
