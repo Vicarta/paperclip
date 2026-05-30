@@ -260,7 +260,8 @@ export async function withBrightDataClient<T>(input: {
     await client.connect(transport);
     return await input.fn(client);
   } finally {
-    await client.close();
+    await transport.terminateSession().catch(() => undefined);
+    await client.close().catch(() => undefined);
   }
 }
 

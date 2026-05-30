@@ -96,6 +96,7 @@ export async function callExaMcpTool(input: {
     });
     return normalizeExaToolResult(result as McpCallToolResult);
   } finally {
-    await client.close();
+    await transport.terminateSession().catch(() => undefined);
+    await client.close().catch(() => undefined);
   }
 }

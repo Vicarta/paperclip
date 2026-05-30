@@ -1048,6 +1048,7 @@ async function withClient<T>(input: {
     return await input.run(client, normalized);
   } finally {
     clearTimeout(timeout);
+    await transport.terminateSession().catch(() => undefined);
     await client.close().catch(() => undefined);
   }
 }
