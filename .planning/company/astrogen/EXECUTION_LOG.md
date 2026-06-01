@@ -722,3 +722,12 @@
   - Created live follow-up [AST-968](/AST/issues/AST-968) for consolidating the GSC indexing blocked backlog and routing URL-level fixes through SEO GSC Indexing Auditor.
   - Cancelled stale [AST-965](/AST/issues/AST-965), which was superseded by the completed `/solar` Payload delivery bridge work.
   - Woke both assigned agents; [AST-967](/AST/issues/AST-967) and [AST-968](/AST/issues/AST-968) entered `in_progress`.
+- Planned and executed Phase 32: Image Runtime Executor And Company Settings.
+  - Added company-level image generation settings for Astrogen at `/astrogen/docs/reference/image-generation-settings.json`; provider/model are now configuration, not per-issue hardcoding.
+  - Added `SEO Blog Image Runtime Executor` as the narrow Stage 65 provider-dispatch role.
+  - Updated CMO and Stage 65 contracts so ordinary blog cover image generation routes to the image runtime executor, not to owner HIA, CTO, or `SEO CMS Technical Fixer`.
+  - Updated the Stage 65 helper so it can read `credentialEnv` from settings JSON and normalize raw OpenRouter keys into `Authorization: Bearer ...`.
+  - Live-synced Astrogen contracts and helper updates to `/home/paperclip/astrogen`.
+  - Created live agent `SEO Blog Image Runtime Executor` with `OPENROUTER_API_KEY` injected from the existing Paperclip company secret `openrouter-api-key`.
+  - Created and ran [AST-992](/AST/issues/AST-992) / [AST-993](/AST/issues/AST-993) for the Tarot beginner article image bundle. The final retry succeeded: provider dispatch returned `200 OK`, `hero-image.png` exists, and image QA passed.
+  - Closed stale owner/CMS-fixer blocker tasks as superseded after the system route was fixed.

@@ -67,6 +67,7 @@ Human-facing Astrogen communication remains Ukrainian and should not expose inte
 - [x] **Phase 29: Dynamic Product Route Delivery Contract** - Fixed the `/solar` Stage 64 blocker by making product-route delivery contracts catalog-driven instead of old hardcoded route enums. Added Solar product references, sanitizer/delivery helper fallback from `product-catalog.yaml`, and CMO/process rules that treat missing helper route support as a contract bug, not a human decision or CTO runtime issue.
 - [x] **Phase 30: Payload CMS Route Taxonomy And Media Bridge** - Added a CMS-supported route taxonomy bridge and repaired multipart media upload for article cover images, so newly approved product routes such as `/solar` can become Payload CMS drafts with cover images and Telegram draft-link notification through the normal agent workflow.
 - [ ] **Phase 31: New Product SEO Continuation And GSC Unblock** - Harden CMO/GSC contracts so new products continue through the full starter article package plus traffic expansion, and GSC indexing audits route URL-level fixes instead of accumulating stale blocked tasks.
+- [x] **Phase 32: Image Runtime Executor And Company Settings** - Make blog cover-image generation a dedicated runtime lane with company-level provider/model settings and a properly secret-injected `SEO Blog Image Runtime Executor`.
 
 ## Deferred / Future Tracks
 
