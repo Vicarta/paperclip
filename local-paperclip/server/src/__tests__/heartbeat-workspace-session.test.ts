@@ -13,6 +13,7 @@ import {
   resolveRuntimeSessionParamsForWorkspace,
   stripWorkspaceRuntimeFromExecutionRunConfig,
   shouldResetTaskSessionForWake,
+  validateTimerHeartbeatException,
   type ResolvedWorkspaceForRun,
 } from "../services/heartbeat.ts";
 
@@ -326,6 +327,76 @@ describe("shouldResetTaskSessionForWake", () => {
         wakeTriggerDetail: "callback",
       }),
     ).toBe(false);
+  });
+});
+
+describe("validateTimerHeartbeatException", () => {
+  const now = new Date("2026-05-22T12:00:00.000Z");
+
+  it("allows a temporary human-approved timer exception with a reason and future expiry", () => {
+    expect(
+      validateTimerHeartbeatException({
+        intervalSec: 3600,
+        now,
+        heartbeat: {
+          timerException: {
+            reason: "temporary production incident follow-up",
+            humanApproved: true,
+            expiresAt: "2026-05-22T15:00:00.000Z",
+          },
+        },
+      }),
+    ).toMatchObject({ allowed: true });
+  });
+
+  it("rejects timer exceptions below one hour", () => {
+    expect(
+      validateTimerHeartbeatException({
+        intervalSec: 3599,
+        now,
+        heartbeat: {
+          timerException: {
+            reason: "temporary production incident follow-up",
+            humanApproved: true,
+            expiresAt: "2026-05-22T15:00:00.000Z",
+          },
+        },
+      }),
+    ).toEqual({ allowed: false, reason: "interval_below_minimum" });
+  });
+
+  it("rejects timer exceptions without reason, human approval, or future expiry", () => {
+    expect(validateTimerHeartbeatException({ intervalSec: 3600, now, heartbeat: {} })).toEqual({
+      allowed: false,
+      reason: "missing_reason",
+    });
+    expect(
+      validateTimerHeartbeatException({
+        intervalSec: 3600,
+        now,
+        heartbeat: { timerException: { reason: "temporary follow-up", expiresAt: "2026-05-22T15:00:00.000Z" } },
+      }),
+    ).toEqual({ allowed: false, reason: "missing_human_approval" });
+    expect(
+      validateTimerHeartbeatException({
+        intervalSec: 3600,
+        now,
+        heartbeat: { timerException: { reason: "temporary follow-up", humanApproved: true } },
+      }),
+    ).toEqual({ allowed: false, reason: "missing_expiry" });
+    expect(
+      validateTimerHeartbeatException({
+        intervalSec: 3600,
+        now,
+        heartbeat: {
+          timerException: {
+            reason: "temporary follow-up",
+            humanApproved: true,
+            expiresAt: "2026-05-22T11:59:59.000Z",
+          },
+        },
+      }),
+    ).toEqual({ allowed: false, reason: "expired" });
   });
 });
 

@@ -75,6 +75,7 @@ const DETACHED_PROCESS_ERROR_CODE = "process_detached";
 const startLocksByAgent = new Map<string, Promise<void>>();
 const REPO_ONLY_CWD_SENTINEL = "/__paperclip_repo_only__";
 const MANAGED_WORKSPACE_GIT_CLONE_TIMEOUT_MS = 10 * 60 * 1000;
+const MIN_TIMER_HEARTBEAT_INTERVAL_SEC = 60 * 60;
 const execFile = promisify(execFileCallback);
 const SESSIONED_LOCAL_ADAPTERS = new Set([
   "claude_local",
@@ -378,6 +379,44 @@ export function prioritizeProjectWorkspaceCandidatesForRun<T extends ProjectWork
 
 function readNonEmptyString(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value : null;
+}
+
+export function validateTimerHeartbeatException(input: {
+  heartbeat: unknown;
+  intervalSec: number;
+  now?: Date;
+}): { allowed: true; expiresAt: Date } | { allowed: false; reason: string } {
+  const heartbeat = parseObject(input.heartbeat);
+  const exception = parseObject(heartbeat.timerException ?? heartbeat.timerHeartbeatException ?? heartbeat.exception);
+  const reason =
+    readNonEmptyString(exception.reason) ??
+    readNonEmptyString(heartbeat.timerReason) ??
+    readNonEmptyString(heartbeat.reason);
+  const expiryRaw =
+    readNonEmptyString(exception.expiresAt) ??
+    readNonEmptyString(exception.expiry) ??
+    readNonEmptyString(heartbeat.timerExpiresAt) ??
+    readNonEmptyString(heartbeat.expiresAt) ??
+    readNonEmptyString(heartbeat.expiry);
+  const approved =
+    asBoolean(exception.humanApproved ?? exception.humanApproval ?? exception.approvedByHuman, false) ||
+    asBoolean(heartbeat.humanApproved ?? heartbeat.humanApproval ?? heartbeat.approvedByHuman, false) ||
+    readNonEmptyString(exception.approvedByHuman) !== null ||
+    readNonEmptyString(exception.approvedBy) !== null ||
+    readNonEmptyString(heartbeat.approvedByHuman) !== null ||
+    readNonEmptyString(heartbeat.approvedBy) !== null;
+
+  if (input.intervalSec < MIN_TIMER_HEARTBEAT_INTERVAL_SEC) return { allowed: false, reason: "interval_below_minimum" };
+  if (!reason) return { allowed: false, reason: "missing_reason" };
+  if (!approved) return { allowed: false, reason: "missing_human_approval" };
+  if (!expiryRaw) return { allowed: false, reason: "missing_expiry" };
+
+  const expiresAt = new Date(expiryRaw);
+  const expiresAtMs = expiresAt.getTime();
+  if (!Number.isFinite(expiresAtMs)) return { allowed: false, reason: "invalid_expiry" };
+  if (expiresAtMs <= (input.now ?? new Date()).getTime()) return { allowed: false, reason: "expired" };
+
+  return { allowed: true, expiresAt };
 }
 
 export function shouldFailSucceededIssueRunAsSilentNoop(input: {
@@ -3449,6 +3488,17 @@ export function heartbeatService(db: Db) {
       await writeSkippedRequest("heartbeat.disabled");
       return null;
     }
+    if (source === "timer") {
+      const runtimeConfig = parseObject(agent.runtimeConfig);
+      const timerException = validateTimerHeartbeatException({
+        heartbeat: runtimeConfig.heartbeat,
+        intervalSec: policy.intervalSec,
+      });
+      if (!timerException.allowed) {
+        await writeSkippedRequest(`heartbeat.timerException.${timerException.reason}`);
+        return null;
+      }
+    }
     if (source !== "timer" && !policy.wakeOnDemand) {
       await writeSkippedRequest("heartbeat.wakeOnDemand.disabled");
       return null;
@@ -4218,6 +4268,20 @@ export function heartbeatService(db: Db) {
         if (!policy.enabled || policy.intervalSec <= 0) continue;
 
         checked += 1;
+        const runtimeConfig = parseObject(agent.runtimeConfig);
+        const timerException = validateTimerHeartbeatException({
+          heartbeat: runtimeConfig.heartbeat,
+          intervalSec: policy.intervalSec,
+          now,
+        });
+        if (!timerException.allowed) {
+          skipped += 1;
+          logger.warn(
+            { agentId: agent.id, agentName: agent.name, reason: timerException.reason },
+            "skipping timer heartbeat without a valid temporary exception",
+          );
+          continue;
+        }
         const baseline = new Date(agent.lastHeartbeatAt ?? agent.createdAt).getTime();
         const elapsedMs = now.getTime() - baseline;
         if (elapsedMs < policy.intervalSec * 1000) continue;
