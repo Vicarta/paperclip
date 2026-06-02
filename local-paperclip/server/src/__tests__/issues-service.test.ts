@@ -625,6 +625,83 @@ describeEmbeddedPostgres("issueService.list participantAgentId", () => {
     );
   });
 
+  it("lists comments after an anchor comment without binding Date objects in raw SQL", async () => {
+    const companyId = randomUUID();
+    const issueId = randomUUID();
+    const olderCommentId = "11111111-1111-4111-8111-111111111111";
+    const anchorCommentId = "22222222-2222-4222-8222-222222222222";
+    const sameTimeLaterCommentId = "33333333-3333-4333-8333-333333333333";
+    const newerCommentId = "44444444-4444-4444-8444-444444444444";
+
+    await db.insert(companies).values({
+      id: companyId,
+      name: "Paperclip",
+      issuePrefix: `T${companyId.replace(/-/g, "").slice(0, 6).toUpperCase()}`,
+      requireBoardApprovalForNewAgents: false,
+    });
+
+    await db.insert(issues).values({
+      id: issueId,
+      companyId,
+      title: "Issue with incremental comments",
+      status: "todo",
+      priority: "medium",
+      updatedAt: new Date("2026-03-26T10:00:00.000Z"),
+    });
+
+    await db.insert(issueComments).values([
+      {
+        id: olderCommentId,
+        companyId,
+        issueId,
+        body: "Older comment",
+        createdAt: new Date("2026-03-26T10:00:00.000Z"),
+        updatedAt: new Date("2026-03-26T10:00:00.000Z"),
+      },
+      {
+        id: anchorCommentId,
+        companyId,
+        issueId,
+        body: "Anchor comment",
+        createdAt: new Date("2026-03-26T11:00:00.000Z"),
+        updatedAt: new Date("2026-03-26T11:00:00.000Z"),
+      },
+      {
+        id: sameTimeLaterCommentId,
+        companyId,
+        issueId,
+        body: "Same timestamp later id",
+        createdAt: new Date("2026-03-26T11:00:00.000Z"),
+        updatedAt: new Date("2026-03-26T11:00:00.000Z"),
+      },
+      {
+        id: newerCommentId,
+        companyId,
+        issueId,
+        body: "Newer comment",
+        createdAt: new Date("2026-03-26T12:00:00.000Z"),
+        updatedAt: new Date("2026-03-26T12:00:00.000Z"),
+      },
+    ]);
+
+    const afterAscending = await svc.listComments(issueId, {
+      afterCommentId: anchorCommentId,
+      order: "asc",
+    });
+
+    expect(afterAscending.map((comment) => comment.id)).toEqual([
+      sameTimeLaterCommentId,
+      newerCommentId,
+    ]);
+
+    const afterDescending = await svc.listComments(issueId, {
+      afterCommentId: anchorCommentId,
+      order: "desc",
+    });
+
+    expect(afterDescending.map((comment) => comment.id)).toEqual([olderCommentId]);
+  });
+
   it("coalesces open SEO technical findings by origin key", async () => {
     const companyId = randomUUID();
     await db.insert(companies).values({
