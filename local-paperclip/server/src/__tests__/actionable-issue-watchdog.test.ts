@@ -211,8 +211,14 @@ describeEmbeddedPostgres("actionableIssueWatchdogService", () => {
     expect(heartbeat.wakeup).toHaveBeenCalledWith(
       agentId,
       expect.objectContaining({
+        source: "assignment",
         reason: "stale_actionable_issue",
         payload: expect.objectContaining({ issueId: eligibleIssueId }),
+        contextSnapshot: expect.objectContaining({
+          issueId: eligibleIssueId,
+          source: "actionable_issue_watchdog",
+          wakeReason: "stale_actionable_issue",
+        }),
       }),
     );
   });
@@ -252,6 +258,7 @@ describeEmbeddedPostgres("actionableIssueWatchdogService", () => {
     expect(heartbeat.wakeup).toHaveBeenCalledWith(
       agentId,
       expect.objectContaining({
+        source: "assignment",
         reason: "stale_actionable_issue",
         payload: expect.objectContaining({ issueId }),
       }),

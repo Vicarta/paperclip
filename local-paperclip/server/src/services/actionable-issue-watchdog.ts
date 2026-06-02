@@ -156,7 +156,7 @@ export function actionableIssueWatchdogService(
 
         try {
           const wakeup = await heartbeat.wakeup(issue.assigneeAgentId, {
-            source: "automation",
+            source: "assignment",
             triggerDetail: "system",
             reason: "stale_actionable_issue",
             payload: {
