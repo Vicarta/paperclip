@@ -249,16 +249,22 @@ export interface PluginRouteBridgeDeps {
 /** Request body for POST /api/plugins/tools/execute */
 interface PluginToolExecuteRequest {
   /** Fully namespaced tool name (e.g., "acme.linear:search-issues"). */
-  tool: string;
+  tool?: string;
+  /** MCP-style alias for tool, accepted for agent compatibility. */
+  name?: string;
   /** Parameters matching the tool's declared JSON Schema. */
   parameters?: unknown;
+  /** MCP-style alias for parameters, accepted for agent compatibility. */
+  arguments?: unknown;
   /** Agent run context. */
   runContext: ToolRunContext;
 }
 
 interface AgentPluginToolExecuteRequest {
-  tool: string;
+  tool?: string;
+  name?: string;
   parameters?: unknown;
+  arguments?: unknown;
   projectId?: string;
   runContext?: Partial<ToolRunContext>;
 }
@@ -609,11 +615,13 @@ export function pluginRoutes(
       return;
     }
 
-    const { tool, parameters, runContext } = body;
+    const tool = body.tool ?? body.name;
+    const parameters = body.parameters ?? body.arguments;
+    const { runContext } = body;
 
     // Validate required fields
     if (!tool || typeof tool !== "string") {
-      res.status(400).json({ error: '"tool" is required and must be a string' });
+      res.status(400).json({ error: '"tool" is required and must be a string; MCP-style "name" is also accepted' });
       return;
     }
 

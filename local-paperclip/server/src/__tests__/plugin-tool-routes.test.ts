@@ -122,6 +122,39 @@ describe("plugin tool routes", () => {
     );
   });
 
+  it("accepts MCP-style name and arguments aliases for agent tool execution", async () => {
+    const dispatcher = createToolDispatcherStub();
+    const app = createApp({
+      actor: {
+        type: "agent",
+        agentId: "agent-1",
+        companyId: "company-1",
+        runId: "run-1",
+      },
+      issueRows: [{ id: "issue-1", projectId: "project-1" }],
+      dispatcher,
+    });
+
+    const res = await request(app)
+      .post("/api/agents/me/plugin-tools/execute")
+      .send({
+        name: "paperclip.dataforseo:search-volume",
+        arguments: { keyword: "соляр" },
+      });
+
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    expect(dispatcher.executeTool).toHaveBeenCalledWith(
+      "paperclip.dataforseo:search-volume",
+      { keyword: "соляр" },
+      {
+        agentId: "agent-1",
+        runId: "run-1",
+        companyId: "company-1",
+        projectId: "project-1",
+      },
+    );
+  });
+
   it("keeps board execution on the explicit runContext contract", async () => {
     const dispatcher = createToolDispatcherStub();
     const app = createApp({
