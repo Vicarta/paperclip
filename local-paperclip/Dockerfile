@@ -38,15 +38,18 @@ COPY packages/adapters/openrouter/package.json packages/adapters/openrouter/
 COPY packages/adapters/pi-local/package.json packages/adapters/pi-local/
 COPY packages/plugins/create-paperclip-plugin/package.json packages/plugins/create-paperclip-plugin/
 COPY packages/plugins/plugin-bright-data-agent-tools/package.json packages/plugins/plugin-bright-data-agent-tools/
+COPY packages/plugins/plugin-crawlobserver-agent-tools/package.json packages/plugins/plugin-crawlobserver-agent-tools/
 COPY packages/plugins/plugin-dataforseo-agent-tools/package.json packages/plugins/plugin-dataforseo-agent-tools/
 COPY packages/plugins/plugin-diskinternals-bigquery-growth/package.json packages/plugins/plugin-diskinternals-bigquery-growth/
 COPY packages/plugins/plugin-exa-agent-tools/package.json packages/plugins/plugin-exa-agent-tools/
+COPY packages/plugins/plugin-gsc-bing-ga4-mcp-agent-tools/package.json packages/plugins/plugin-gsc-bing-ga4-mcp-agent-tools/
 COPY packages/plugins/plugin-payload-cms-agent-tools/package.json packages/plugins/plugin-payload-cms-agent-tools/
 COPY packages/plugins/plugin-perfex-crm-agent-tools/package.json packages/plugins/plugin-perfex-crm-agent-tools/
 COPY packages/plugins/plugin-seo-performance-loop/package.json packages/plugins/plugin-seo-performance-loop/
 COPY packages/plugins/plugin-serper-agent-tools/package.json packages/plugins/plugin-serper-agent-tools/
 COPY packages/plugins/plugin-search-console-mcp-agent-tools/package.json packages/plugins/plugin-search-console-mcp-agent-tools/
 COPY packages/plugins/plugin-semantic-core-mcp-agent-tools/package.json packages/plugins/plugin-semantic-core-mcp-agent-tools/
+COPY packages/plugins/plugin-telegram/package.json packages/plugins/plugin-telegram/
 COPY packages/plugins/plugin-winning-structure-mcp-agent-tools/package.json packages/plugins/plugin-winning-structure-mcp-agent-tools/
 COPY packages/plugins/examples/plugin-authoring-smoke-example/package.json packages/plugins/examples/plugin-authoring-smoke-example/
 COPY packages/plugins/examples/plugin-file-browser-example/package.json packages/plugins/examples/plugin-file-browser-example/
@@ -68,11 +71,15 @@ RUN pnpm --filter @paperclipai/plugin-serper-agent-tools build
 RUN pnpm --filter @paperclipai/plugin-dataforseo-agent-tools build
 RUN pnpm --filter @paperclipai/plugin-diskinternals-bigquery-growth build
 RUN pnpm --filter @paperclipai/plugin-bright-data-agent-tools build
+RUN pnpm --filter @paperclipai/plugin-crawlobserver-agent-tools build
+RUN pnpm --filter @paperclipai/plugin-gsc-bing-ga4-mcp-agent-tools build
 RUN pnpm --filter @paperclipai/plugin-payload-cms-agent-tools build
 RUN pnpm --filter @paperclipai/plugin-perfex-crm-agent-tools build
+RUN pnpm --filter @paperclipai/plugin-seo-performance-loop build
 RUN pnpm --filter @paperclipai/plugin-search-console-mcp-agent-tools build
 RUN pnpm --filter @paperclipai/plugin-semantic-core-mcp-agent-tools build
 RUN pnpm --filter @paperclipai/plugin-winning-structure-mcp-agent-tools build
+RUN pnpm --filter paperclip-plugin-telegram build
 RUN pnpm --filter @paperclipai/server build
 RUN test -f server/dist/index.js || (echo "ERROR: server build output missing" && exit 1)
 
