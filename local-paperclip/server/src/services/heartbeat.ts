@@ -433,6 +433,26 @@ export function shouldFailSucceededIssueRunAsSilentNoop(input: {
   return input.runCommentCount === 0;
 }
 
+export function extractAssignmentRunFinalOutputText(
+  adapterResult: Pick<AdapterExecutionResult, "summary" | "resultJson">,
+  maxLength = 12_000,
+): string | null {
+  const candidates: unknown[] = [
+    adapterResult.summary,
+    adapterResult.resultJson?.summary,
+    adapterResult.resultJson?.result,
+    adapterResult.resultJson?.message,
+  ];
+
+  for (const candidate of candidates) {
+    const value = readNonEmptyString(candidate);
+    if (!value) continue;
+    return value.length > maxLength ? `${value.slice(0, maxLength).trimEnd()}\n\n[truncated]` : value;
+  }
+
+  return null;
+}
+
 export function isActionableForTimerHeartbeat(input: {
   issueStatus: string | null | undefined;
   issueUpdatedAt?: Date | null;
@@ -1072,6 +1092,100 @@ export function heartbeatService(db: Db) {
       issueStatus: issue.status,
       runCommentCount,
     };
+  }
+
+  async function captureFinalOutputForAssignmentRun(input: {
+    run: typeof heartbeatRuns.$inferSelect;
+    outcome: "succeeded" | "failed" | "cancelled" | "timed_out";
+    adapterResult: AdapterExecutionResult;
+    agent: typeof agents.$inferSelect;
+  }): Promise<void> {
+    if (input.run.invocationSource !== "assignment" || input.outcome !== "succeeded") return;
+
+    const context = parseObject(input.run.contextSnapshot);
+    const issueId = readNonEmptyString(context.issueId) ?? readNonEmptyString(context.taskId);
+    if (!issueId) return;
+
+    const issue = await db
+      .select({
+        id: issues.id,
+        companyId: issues.companyId,
+        identifier: issues.identifier,
+        status: issues.status,
+        assigneeAgentId: issues.assigneeAgentId,
+      })
+      .from(issues)
+      .where(and(eq(issues.id, issueId), eq(issues.companyId, input.run.companyId)))
+      .then((rows) => rows[0] ?? null);
+    if (!issue || !["backlog", "todo"].includes(issue.status)) return;
+
+    const runCommentCount = await db
+      .select({ body: issueComments.body })
+      .from(issueComments)
+      .where(
+        and(
+          eq(issueComments.companyId, input.run.companyId),
+          eq(issueComments.issueId, issue.id),
+          eq(issueComments.createdByRunId, input.run.id),
+        ),
+      )
+      .limit(20)
+      .then((rows) => rows.filter((row) => !row.body.trim().startsWith("## Workspace Ready")).length);
+    if (runCommentCount > 0) return;
+
+    const finalOutput = extractAssignmentRunFinalOutputText(input.adapterResult);
+    if (!finalOutput) return;
+
+    const routedToManager = readNonEmptyString(input.agent.reportsTo);
+    const body = [
+      "## Captured Agent Result",
+      "",
+      "Paperclip captured the agent's final response because this assignment run completed without writing an issue comment or status update through the issue API.",
+      routedToManager
+        ? "The issue was routed back to the agent's manager for the next decision instead of retrying the same specialist repeatedly."
+        : "The issue was moved to review so Paperclip does not retry the same specialist repeatedly.",
+      "",
+      finalOutput,
+    ].join("\n");
+
+    await issuesSvc.addComment(issue.id, body, { agentId: input.agent.id, runId: input.run.id });
+
+    if (routedToManager) {
+      await db
+        .update(issues)
+        .set({
+          status: "todo",
+          assigneeAgentId: routedToManager,
+          executionRunId: null,
+          executionAgentNameKey: null,
+          executionLockedAt: null,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(issues.id, issue.id),
+            eq(issues.companyId, input.run.companyId),
+            inArray(issues.status, ["backlog", "todo"]),
+          ),
+        );
+    } else {
+      await db
+        .update(issues)
+        .set({
+          status: "in_review",
+          executionRunId: null,
+          executionAgentNameKey: null,
+          executionLockedAt: null,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(issues.id, issue.id),
+            eq(issues.companyId, input.run.companyId),
+            inArray(issues.status, ["backlog", "todo"]),
+          ),
+        );
+    }
   }
 
   async function getRuntimeState(agentId: string) {
@@ -2963,6 +3077,8 @@ export function heartbeatService(db: Db) {
       } else {
         outcome = "failed";
       }
+
+      await captureFinalOutputForAssignmentRun({ run, outcome, adapterResult, agent });
 
       const silentNoop = await detectSilentNoopSucceededIssueRun({ run, outcome });
       if (silentNoop) {
