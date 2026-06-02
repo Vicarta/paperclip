@@ -69,7 +69,10 @@ Run the upgrade against a restored production-like DB before production:
 - Enter quiet window.
 - Take final backup.
 - Update compose image tag.
-- Pull/start app.
+- Build from the source-controlled repo Dockerfile, not an ad hoc production-only Dockerfile.
+- Confirm every production plugin is built in an individual fail-closed step. Do not use a shell
+  loop that can continue after plugin build failures.
+- Start app.
 - Watch migrations and logs.
 - Run production smoke.
 - Update manifests and README with final image tag and verification date.

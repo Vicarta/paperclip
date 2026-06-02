@@ -21,23 +21,57 @@ Last updated: 2026-06-02
   - waves: baseline/build, runtime wakeups, Telegram, Payload CMS,
     MCP/provider plugins, SEO Ops schema/routines, UI/operator experience,
     planning/ops overlay
+- Hardened current production branch before deploy:
+  - `0f56dd96` - guard timer heartbeats with temporary exceptions
+  - `7be2c734` - include production plugins in Docker build
+- Took production backups before cutover:
+  - server path: `/home/paperclip/apps/paperclip/backups/phase13-20260602T111136Z`
+  - Postgres dump: `paperclip-db.dump`
+  - source/compose snapshot: `compose-and-source.tgz`
+  - selective data-volume snapshot: `paperclip-data-selective.tgz`
+  - restore notes: `RESTORE.md`
+- Deployed production image:
+  - image: `paperclip-app:v2026.529.0-vicarta.13-7be2c734`
+  - release metadata: `PAPERCLIP_RELEASE_TAG=v2026.529.0-vicarta.13`
+  - git metadata: `PAPERCLIP_GIT_REVISION=7be2c734`
+  - source metadata: `https://github.com/Vicarta/paperclip/tree/codex/upstream-v2026.403.0-convergence`
+- Replaced the ad hoc production Dockerfile with the repo Dockerfile after proving strict build.
+  The old production Dockerfile allowed plugin build errors inside a shell loop and could produce
+  images with missing plugin artifacts. The repo Dockerfile now builds production plugins as
+  separate fail-closed steps.
 
-## Not Started
+## Production Smoke
 
-- No code has been ported to the upgrade branch yet.
-- No Docker image has been built.
-- No staging or production deployment has started.
-- No database migration has been run.
+- `GET /api/health`: OK.
+- UI root `/`: HTTP 200.
+- Container status: `paperclip-app-1` running image `paperclip-app:v2026.529.0-vicarta.13-7be2c734`.
+- Plugin loader:
+  - total: `14`
+  - succeeded: `14`
+  - failed: `0`
+- Confirmed loaded plugins include:
+  - Telegram
+  - Payload CMS
+  - GSC/Bing/GA4 MCP
+  - CrawlObserver
+  - SEO Performance Loop
+  - DataForSEO
+  - Serper
+  - Exa
+  - Bright Data
+  - Semantic Core MCP
 
-## Current Blocker
+## Deferred
 
-The next step is Wave 0 in the upgrade worktree: prove the upstream
-`v2026.529.0` baseline builds and runs before applying local patches.
-This is required because the current local convergence branch and upstream
-`v2026.529.0` should not be merged directly.
+- The separate upstream `v2026.529.0` upgrade worktree still exists for future clean-port work.
+  Current production was stabilized and deployed from the existing Vicarta convergence branch
+  because it already contained the required Phase 13 operational features.
+- Full data-volume backup was replaced with a selective snapshot because the full archive was too
+  slow for the deployment window. The Postgres dump and selective Paperclip data snapshot completed.
 
 ## Next Step
 
-Run Wave 0 from `PORTING_ORDER.md` in:
-
-`/Users/savitsky/CodexProjects/paperclip-v2026.529.0-upgrade`
+- Keep future production builds on the repo Dockerfile path.
+- Continue the clean upstream-port branch separately when there is a staging window.
+- Run targeted agent/task checks for Astrogen after this deploy rather than manually pushing
+  individual domain workflows.
