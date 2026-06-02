@@ -16,6 +16,11 @@ Last updated: 2026-06-02
     - `40` review against upstream
     - `93` planning/ops only
     - `8` manual review
+- Created topic-by-topic porting order:
+  - `PORTING_ORDER.md`
+  - waves: baseline/build, runtime wakeups, Telegram, Payload CMS,
+    MCP/provider plugins, SEO Ops schema/routines, UI/operator experience,
+    planning/ops overlay
 
 ## Not Started
 
@@ -26,18 +31,13 @@ Last updated: 2026-06-02
 
 ## Current Blocker
 
-The next step is manual review of `port required` and `review against upstream`
-groups before touching code. This is required because the current local
-convergence branch and upstream `v2026.529.0` should not be merged directly.
+The next step is Wave 0 in the upgrade worktree: prove the upstream
+`v2026.529.0` baseline builds and runs before applying local patches.
+This is required because the current local convergence branch and upstream
+`v2026.529.0` should not be merged directly.
 
 ## Next Step
 
-Create a topic-by-topic porting order:
+Run Wave 0 from `PORTING_ORDER.md` in:
 
-1. Runtime/issue wakeup and workspace lifecycle fixes.
-2. Telegram plugin behavior.
-3. Payload CMS plugin behavior.
-4. MCP/provider plugins and session-close hygiene.
-5. SEO Ops schema/plugins.
-6. UI removals/customizations.
-7. Planning/ops overlay alignment.
+`/Users/savitsky/CodexProjects/paperclip-v2026.529.0-upgrade`
