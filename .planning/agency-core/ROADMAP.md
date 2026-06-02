@@ -18,7 +18,8 @@ Agency Core contains reusable Paperclip operating-system assets that should work
 - [x] **Phase 10: Fast Blog Article Production Loop** - Removed the hourly manager gap for article lanes: live CMO heartbeat is 10 minutes, child status changes wake parent managers immediately, and Telegram CMS draft-ready messages now include the direct draft URL/button instead of a generic completion.
 - [x] **Phase 11: SEO Indexing Snapshots And Page Findings** - Extend the existing `seo_ops` model with durable GSC URL Inspection snapshots and generic deduplicated page findings, reusing `pages`, `project_pages`, and `discovery_runs` instead of creating a parallel page registry.
 - [x] **Phase 12: CrawlObserver SEO Crawl Adapter** - Add a reusable Paperclip plugin adapter for the Tailnet-only CrawlObserver REST API so agents can start controlled crawls, inspect session/page/link/SEO crawl evidence, and feed Paperclip-owned SEO workflows without exposing API keys or making crawl-derived decisions inside the adapter.
+- [ ] **Phase 13: Paperclip v2026.529.0 Upgrade And Future-Proof Update Structure** - Move the production Paperclip source baseline to upstream `v2026.529.0` without losing local functionality, reconcile production/Git drift, preserve Astrogen/DiskInternals plugins and operating contracts, and introduce a repeatable vendor-plus-overlay update structure for future releases.
 
 ## Current Next Step
 
-Next reusable step: configure the CrawlObserver API key/project in production, then connect CrawlObserver crawl evidence to SEO Ops page registry and findings so periodic crawl data, GSC URL Inspection snapshots, and CMS/live HTML checks become one consistent operational view.
+Next reusable step: plan and execute the Paperclip `v2026.529.0` upgrade through Phase 13, starting with production/Git drift reconciliation and a no-data-loss backup/export gate before any deployment.
