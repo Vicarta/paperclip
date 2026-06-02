@@ -1168,6 +1168,27 @@ export function heartbeatService(db: Db) {
             inArray(issues.status, ["backlog", "todo"]),
           ),
         );
+
+      await enqueueWakeup(routedToManager, {
+        source: "assignment",
+        triggerDetail: "system",
+        reason: "captured_assignment_output_manager_review",
+        payload: {
+          issueId: issue.id,
+          previousAgentId: input.agent.id,
+          capturedFromRunId: input.run.id,
+        },
+        requestedByActorType: "system",
+        requestedByActorId: null,
+        contextSnapshot: {
+          issueId: issue.id,
+          source: "assignment_final_output_capture",
+          wakeReason: "captured_assignment_output_manager_review",
+          previousAgentId: input.agent.id,
+          capturedFromRunId: input.run.id,
+        },
+        idempotencyKey: `captured-output-manager-review:${issue.id}:${input.run.id}:${routedToManager}`,
+      });
     } else {
       await db
         .update(issues)
