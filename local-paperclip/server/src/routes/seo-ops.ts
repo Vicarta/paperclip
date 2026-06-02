@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { Db } from "@paperclipai/db";
 import {
@@ -1073,50 +1073,39 @@ export function seoOpsRoutes(db: Db) {
           .returning();
         snapshotCount += 1;
 
+        if (!snapshot) continue;
+
         const finding = classifyIndexingInspectionFinding(result);
-        if (!finding || !snapshot) continue;
-        const fingerprint = [
+        const fingerprintScopePrefix = [
           "gsc_url_inspection",
           input.siteId,
           page?.id ?? urlNormalized,
-          finding.findingType,
-          finding.problemClass,
         ].join(":");
-        await db
-          .insert(seoOpsPageFindings)
-          .values({
-            companyId: input.companyId,
-            projectId: input.projectId ?? projectPage?.projectId ?? null,
-            siteId: input.siteId,
-            pageId: page?.id ?? null,
-            projectPageId: projectPage?.id ?? null,
-            source: "gsc_url_inspection",
-            findingType: finding.findingType,
-            problemClass: finding.problemClass,
-            severity: finding.severity,
-            status: "open",
-            firstSeenAt: checkedAt,
-            lastSeenAt: checkedAt,
-            fingerprint,
-            latestSnapshotId: snapshot.id,
-            evidenceSummary: [
-              result.coverageState,
-              result.indexingState,
-              result.verdict,
-            ].filter(Boolean).join(" / "),
-            evidenceRefs: { snapshotId: snapshot.id, discoveryRunId: run.id },
-            policySnapshot: {},
-          })
-          .onConflictDoUpdate({
-            target: [seoOpsPageFindings.companyId, seoOpsPageFindings.fingerprint],
-            set: {
+        const fingerprint = finding
+          ? [
+            fingerprintScopePrefix,
+            finding.findingType,
+            finding.problemClass,
+          ].join(":")
+          : null;
+
+        if (finding && fingerprint) {
+          await db
+            .insert(seoOpsPageFindings)
+            .values({
+              companyId: input.companyId,
               projectId: input.projectId ?? projectPage?.projectId ?? null,
+              siteId: input.siteId,
               pageId: page?.id ?? null,
               projectPageId: projectPage?.id ?? null,
+              source: "gsc_url_inspection",
+              findingType: finding.findingType,
+              problemClass: finding.problemClass,
               severity: finding.severity,
               status: "open",
+              firstSeenAt: checkedAt,
               lastSeenAt: checkedAt,
-              resolvedAt: null,
+              fingerprint,
               latestSnapshotId: snapshot.id,
               evidenceSummary: [
                 result.coverageState,
@@ -1124,12 +1113,60 @@ export function seoOpsRoutes(db: Db) {
                 result.verdict,
               ].filter(Boolean).join(" / "),
               evidenceRefs: { snapshotId: snapshot.id, discoveryRunId: run.id },
-              updatedAt: now,
-            },
-          });
-        findingCount += 1;
-        findingTypeCounts[`${finding.findingType}:${finding.problemClass}`] =
-          (findingTypeCounts[`${finding.findingType}:${finding.problemClass}`] ?? 0) + 1;
+              policySnapshot: {},
+            })
+            .onConflictDoUpdate({
+              target: [seoOpsPageFindings.companyId, seoOpsPageFindings.fingerprint],
+              set: {
+                projectId: input.projectId ?? projectPage?.projectId ?? null,
+                pageId: page?.id ?? null,
+                projectPageId: projectPage?.id ?? null,
+                severity: finding.severity,
+                status: "open",
+                lastSeenAt: checkedAt,
+                resolvedAt: null,
+                latestSnapshotId: snapshot.id,
+                evidenceSummary: [
+                  result.coverageState,
+                  result.indexingState,
+                  result.verdict,
+                ].filter(Boolean).join(" / "),
+                evidenceRefs: { snapshotId: snapshot.id, discoveryRunId: run.id },
+                updatedAt: now,
+              },
+            });
+          findingCount += 1;
+          findingTypeCounts[`${finding.findingType}:${finding.problemClass}`] =
+            (findingTypeCounts[`${finding.findingType}:${finding.problemClass}`] ?? 0) + 1;
+        }
+
+        const fingerprintScopeLike = `${fingerprintScopePrefix}:%`;
+        const scopeCondition = page
+          ? sql`(${seoOpsPageFindings.pageId} = ${page.id} or ${seoOpsPageFindings.fingerprint} like ${fingerprintScopeLike})`
+          : sql`${seoOpsPageFindings.fingerprint} like ${fingerprintScopeLike}`;
+        await db
+          .update(seoOpsPageFindings)
+          .set({
+            status: "resolved",
+            resolvedAt: checkedAt,
+            latestSnapshotId: snapshot.id,
+            evidenceSummary: [
+              "Resolved by fresh GSC URL Inspection",
+              result.coverageState,
+              result.indexingState,
+              result.verdict,
+            ].filter(Boolean).join(" / "),
+            evidenceRefs: { snapshotId: snapshot.id, discoveryRunId: run.id },
+            updatedAt: now,
+          })
+          .where(and(
+            eq(seoOpsPageFindings.companyId, input.companyId),
+            eq(seoOpsPageFindings.siteId, input.siteId),
+            eq(seoOpsPageFindings.source, "gsc_url_inspection"),
+            eq(seoOpsPageFindings.status, "open"),
+            scopeCondition,
+            fingerprint ? ne(seoOpsPageFindings.fingerprint, fingerprint) : undefined,
+          ));
       }
 
       res.status(201).json({
