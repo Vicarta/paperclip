@@ -68,6 +68,7 @@ Human-facing Astrogen communication remains Ukrainian and should not expose inte
 - [x] **Phase 30: Payload CMS Route Taxonomy And Media Bridge** - Added a CMS-supported route taxonomy bridge and repaired multipart media upload for article cover images, so newly approved product routes such as `/solar` can become Payload CMS drafts with cover images and Telegram draft-link notification through the normal agent workflow.
 - [ ] **Phase 31: New Product SEO Continuation And GSC Unblock** - Harden CMO/GSC contracts so new products continue through the full starter article package plus traffic expansion, and GSC indexing audits route URL-level fixes instead of accumulating stale blocked tasks.
 - [x] **Phase 32: Image Runtime Executor And Company Settings** - Make blog cover-image generation a dedicated runtime lane with company-level provider/model settings and a properly secret-injected `SEO Blog Image Runtime Executor`.
+- [x] **Phase 33: SEO Blog Humanizer Workflow** - Add a dedicated post-validation `SEO Blog Humanizer` lane and route newly generated traffic articles through Humanizer before layout/CMS delivery.
 
 ## Deferred / Future Tracks
 

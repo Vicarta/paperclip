@@ -731,3 +731,8 @@
   - Created live agent `SEO Blog Image Runtime Executor` with `OPENROUTER_API_KEY` injected from the existing Paperclip company secret `openrouter-api-key`.
   - Created and ran [AST-992](/AST/issues/AST-992) / [AST-993](/AST/issues/AST-993) for the Tarot beginner article image bundle. The final retry succeeded: provider dispatch returned `200 OK`, `hero-image.png` exists, and image QA passed.
   - Closed stale owner/CMS-fixer blocker tasks as superseded after the system route was fixed.
+- Planned and executed Phase 33: SEO Blog Humanizer Workflow.
+  - Added source and agency-core contracts for `SEO Blog Humanizer` as a narrow post-validation polish lane.
+  - Updated CMO routing so generated SEO blog articles normally move from accepted Stage 61 validation to `SEO Blog Humanizer` before Stage 64/68 packaging/layout/CMS delivery.
+  - Kept owner-provided or expert-authored no-rewrite articles exempt unless the owner explicitly asks for polish.
+  - Updated Stage 61 and Stage 64 process docs so Humanizer is a bounded post-acceptance pass, not a second freeform rewrite and not a replacement for validation.
