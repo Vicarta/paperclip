@@ -6,6 +6,7 @@ import { TOOL_NAMES } from "../src/constants.js";
 import {
   buildBlogPostPayload,
   createBlogPostDraft,
+  ensureAuthor,
   ensureTaxonomyTerm,
   healthCheck,
   listBlogPosts,
@@ -22,6 +23,7 @@ vi.mock("../src/payload-cms-client.js", async () => {
     ...actual,
     healthCheck: vi.fn(),
     createBlogPostDraft: vi.fn(),
+    ensureAuthor: vi.fn(),
     ensureTaxonomyTerm: vi.fn(),
     listBlogPosts: vi.fn(),
     publishBlogPost: vi.fn(),
@@ -30,6 +32,7 @@ vi.mock("../src/payload-cms-client.js", async () => {
 
 const healthCheckMock = vi.mocked(healthCheck);
 const createBlogPostDraftMock = vi.mocked(createBlogPostDraft);
+const ensureAuthorMock = vi.mocked(ensureAuthor);
 const ensureTaxonomyTermMock = vi.mocked(ensureTaxonomyTerm);
 const listBlogPostsMock = vi.mocked(listBlogPosts);
 const publishBlogPostMock = vi.mocked(publishBlogPost);
@@ -38,6 +41,7 @@ describe("plugin-payload-cms-agent-tools", () => {
   beforeEach(() => {
     healthCheckMock.mockReset();
     createBlogPostDraftMock.mockReset();
+    ensureAuthorMock.mockReset();
     ensureTaxonomyTermMock.mockReset();
     listBlogPostsMock.mockReset();
     publishBlogPostMock.mockReset();
@@ -154,6 +158,33 @@ describe("plugin-payload-cms-agent-tools", () => {
       }),
     );
     expect(result.content).toContain("Соляр");
+  });
+
+  it("ensures authors for owner-provided expert articles", async () => {
+    const harness = createTestHarness({ manifest });
+    await plugin.definition.setup(harness.ctx);
+
+    ensureAuthorMock.mockResolvedValueOnce({
+      content: "Payload CMS author created. Payload CMS document: id=3, slug=viktoriya-s",
+      data: { doc: { id: 3, name: "Вікторія С", slug: "viktoriya-s" }, created: true },
+    });
+
+    const result = await harness.executeTool(TOOL_NAMES.ensureAuthor, {
+      name: "Вікторія С",
+      slug: "viktoriya-s",
+      expertUrl: "https://astrogen.com.ua/experts/taro/viktoriya%20-s-1757667515089",
+      roleTitle: "Таролог",
+    });
+
+    expect(ensureAuthorMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "Вікторія С",
+        slug: "viktoriya-s",
+        expertUrl: "https://astrogen.com.ua/experts/taro/viktoriya%20-s-1757667515089",
+        roleTitle: "Таролог",
+      }),
+    );
+    expect(result.content).toContain("author created");
   });
 
   it("guards the publish tool with explicit confirmation", async () => {

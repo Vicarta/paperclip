@@ -2,6 +2,7 @@ import { definePlugin, runWorker, type ToolResult } from "@paperclipai/plugin-sd
 import { PLUGIN_ID, TOOL_NAMES } from "./constants.js";
 import {
   createBlogPostDraft,
+  ensureAuthor,
   findBlogPost,
   getAccess,
   getBuildState,
@@ -231,6 +232,47 @@ const plugin = definePlugin({
             title,
             slug: typed.slug as string | undefined,
             description: typed.description as string | undefined,
+          }),
+        ));
+      },
+    );
+
+    ctx.tools.register(
+      TOOL_NAMES.ensureAuthor,
+      {
+        displayName: "Payload CMS Ensure Author",
+        description:
+          "Find or create a Payload blog author by slug/name. Use before CMS draft creation when an owner-provided article must keep a specific expert author.",
+        parametersSchema: {
+          type: "object",
+          properties: {
+            name: { type: "string" },
+            slug: { type: "string" },
+            expertUrl: { type: "string" },
+            bio: { type: "string" },
+            roleTitle: { type: "string" },
+            photo: { type: ["number", "string"] },
+            extraFields: { type: "object", additionalProperties: true },
+          },
+          required: ["name"],
+          additionalProperties: false,
+        },
+      },
+      async (params): Promise<ToolResult> => {
+        const typed = readObjectParams(params);
+        if (typeof typed.name !== "string" || typed.name.trim().length === 0) {
+          throw new Error("Payload author name is required");
+        }
+        return toolResult(await withClientConfig(ctx, (base) =>
+          ensureAuthor({
+            ...base,
+            name: typed.name as string,
+            slug: typed.slug as string | undefined,
+            expertUrl: typed.expertUrl as string | undefined,
+            bio: typed.bio as string | undefined,
+            roleTitle: typed.roleTitle as string | undefined,
+            photo: typed.photo as string | number | undefined,
+            extraFields: readObjectParams(typed.extraFields),
           }),
         ));
       },

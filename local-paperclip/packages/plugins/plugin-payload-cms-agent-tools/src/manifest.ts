@@ -389,6 +389,26 @@ const manifest: PaperclipPluginManifestV1 = {
       },
     },
     {
+      name: TOOL_NAMES.ensureAuthor,
+      displayName: "Payload CMS Ensure Author",
+      description:
+        "Find or create a Payload blog author by slug/name. Use before CMS draft creation when an owner-provided article must keep a specific expert author.",
+      parametersSchema: {
+        type: "object",
+        properties: {
+          name: { type: "string" },
+          slug: { type: "string" },
+          expertUrl: { type: "string" },
+          bio: { type: "string" },
+          roleTitle: { type: "string" },
+          photo: { type: ["number", "string"] },
+          extraFields: looseObjectSchema,
+        },
+        required: ["name"],
+        additionalProperties: false,
+      },
+    },
+    {
       name: TOOL_NAMES.uploadMedia,
       displayName: "Payload CMS Upload Media",
       description:

@@ -7,6 +7,7 @@ Server-side Paperclip plugin for Payload CMS blog operations.
 - Reads Payload build state and access metadata.
 - Finds blog posts by `id` or `slug`.
 - Lists configured taxonomy collections: categories, tags, authors.
+- Finds or creates blog authors by `name`/`slug` before draft delivery.
 - Uploads media files to the configured media collection.
 - Creates blog post drafts.
 - Updates existing blog post drafts.
@@ -63,3 +64,14 @@ examples.
   `confirmPublish=true`.
 - The plugin does not delete CMS content.
 - The plugin does not write secrets to logs, issue comments, or Git.
+
+## Author Mapping
+
+Use `payload_cms_ensure_author` when an owner-provided or expert-authored
+article must keep a specific CMS author. The tool searches by slug first, then
+by name. If no author exists, it creates one using only supported Payload author
+fields: `name`, `slug`, `bio`, `photo`, `roleTitle`, and `socialLinks`.
+
+If `expertUrl` is provided, it is stored as a normal social link labeled
+`Профіль експерта Astrogen`. Do not substitute a different author when the issue
+requires a named expert author.

@@ -69,6 +69,16 @@ export type PayloadCmsEnsureTaxonomyTermInput = PayloadCmsRequestInput & {
   description?: string;
 };
 
+export type PayloadCmsEnsureAuthorInput = PayloadCmsRequestInput & {
+  name: string;
+  slug?: string;
+  expertUrl?: string;
+  bio?: string;
+  roleTitle?: string;
+  photo?: number | string;
+  extraFields?: Record<string, unknown>;
+};
+
 function readNonEmptyString(value: unknown) {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
 }
@@ -129,6 +139,17 @@ function taxonomyCollection(config: PayloadCmsPluginConfig, collection: string) 
 
 function taxonomyTitleField(collection: string) {
   return collection === "authors" ? "name" : "title";
+}
+
+function slugifyAuthor(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9а-яіїєґё]+/giu, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
 }
 
 function endpoint(config: PayloadCmsPluginConfig, pathname: string) {
@@ -546,6 +567,75 @@ export async function ensureTaxonomyTerm(input: PayloadCmsEnsureTaxonomyTermInpu
   });
   return {
     content: `Payload CMS ${input.collection} term created. ${summarizeDoc(data)}`,
+    data: {
+      doc: data,
+      created: true,
+    },
+  };
+}
+
+export async function ensureAuthor(input: PayloadCmsEnsureAuthorInput) {
+  const name = readNonEmptyString(input.name);
+  if (!name) throw new Error("Payload author name is required");
+
+  const explicitSlug = readNonEmptyString(input.slug);
+  const slug = explicitSlug ?? slugifyAuthor(name);
+  const existingBySlug = await findTaxonomyTerm({
+    ...input,
+    collection: "authors",
+    slug,
+    limit: 1,
+    depth: 0,
+  });
+  const existingBySlugDoc = (existingBySlug.data as { doc?: unknown }).doc;
+  const existingByName = existingBySlugDoc
+    ? null
+    : await findTaxonomyTerm({
+        ...input,
+        collection: "authors",
+        title: name,
+        limit: 1,
+        depth: 0,
+      });
+  const existingDoc = existingBySlugDoc ?? (existingByName?.data as { doc?: unknown } | undefined)?.doc;
+  if (existingDoc) {
+    return {
+      content: `Payload CMS author already exists. ${summarizeDoc(existingDoc)}`,
+      data: {
+        doc: existingDoc,
+        created: false,
+      },
+    };
+  }
+
+  const extraFields = input.extraFields ?? {};
+  if (
+    Object.prototype.hasOwnProperty.call(extraFields, "id") ||
+    Object.prototype.hasOwnProperty.call(extraFields, "createdAt") ||
+    Object.prototype.hasOwnProperty.call(extraFields, "updatedAt")
+  ) {
+    throw new Error("Author extraFields must not override system fields");
+  }
+
+  const body: Record<string, unknown> = {
+    ...extraFields,
+    name,
+    slug,
+    ...(readNonEmptyString(input.bio) ? { bio: input.bio?.trim() } : {}),
+    ...(readNonEmptyString(input.roleTitle) ? { roleTitle: input.roleTitle?.trim() } : {}),
+    ...(input.photo !== undefined && input.photo !== null && String(input.photo).trim().length > 0 ? { photo: input.photo } : {}),
+    ...(readNonEmptyString(input.expertUrl)
+      ? { socialLinks: [{ label: "Профіль експерта Astrogen", url: input.expertUrl?.trim() }] }
+      : {}),
+  };
+  const data = await payloadRequest<unknown>({
+    ...input,
+    method: "POST",
+    pathname: `/${taxonomyCollection(input.config, "authors")}`,
+    body,
+  });
+  return {
+    content: `Payload CMS author created. ${summarizeDoc(data)}`,
     data: {
       doc: data,
       created: true,
