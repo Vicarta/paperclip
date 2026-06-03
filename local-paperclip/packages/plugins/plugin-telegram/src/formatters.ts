@@ -53,6 +53,55 @@ function isPayloadDraftReadyComment(comment: string | null): boolean {
   return containsPayloadDraftReadyEvidence(comment);
 }
 
+function extractFirstUrl(text: string | null): string | null {
+  if (!text) return null;
+  const match = text.match(/https:\/\/[^\s)<]+/);
+  return match?.[0]?.replace(/[.,;:]+$/, "") ?? null;
+}
+
+function hasSeoCmsFixEvidence(title: string, comment: string | null): boolean {
+  const haystack = `${title}\n${comment ?? ""}`;
+  return /published blog noindex|noindex|canonical|sitemap/i.test(haystack)
+    && /live after|after live html|no robots noindex|canonical|sitemap/i.test(haystack)
+    && /https:\/\/astrogen\.com\.ua\/blog\//i.test(haystack);
+}
+
+function formatSeoCmsFixDone(
+  identifier: string,
+  companyName: string | null,
+  title: string,
+  comment: string | null,
+  opts?: IssueLinksOpts,
+): FormattedMessage {
+  const url = extractFirstUrl(comment) ?? extractFirstUrl(title);
+  const fixedNoindex = /noindex/i.test(`${title}\n${comment ?? ""}`);
+  const fixedCanonical = /canonical/i.test(`${title}\n${comment ?? ""}`);
+  const fixedSitemap = /sitemap/i.test(`${title}\n${comment ?? ""}`);
+
+  const fixed: string[] = [];
+  if (fixedNoindex) fixed.push("прибрано заборону індексації");
+  if (fixedCanonical) fixed.push("вирівняно canonical");
+  if (fixedSitemap) fixed.push("сторінку повернуто в sitemap");
+
+  const lines: string[] = [`${esc("✅")} ${bold("Виправлено індексацію статті")}`];
+  if (companyName) lines.push(`${bold("Компанія")}: ${esc(companyName)}`);
+  if (url) lines.push(`${bold("Сторінка")}: ${esc(url)}`);
+  lines.push("");
+  lines.push(`${bold("Що було")}: ${esc("стаття була опублікована, але Google не міг нормально взяти її в індекс через технічні SEO-налаштування сторінки.")}`);
+  lines.push(`${bold("Що зроблено")}: ${esc(fixed.length > 0 ? fixed.join(", ") + "." : "виправлено технічні SEO-налаштування сторінки.")}`);
+  lines.push(`${bold("Що це означає")}: ${esc("сторінка тепер відкрита для індексації. Search Console може показати старий статус ще деякий час, доки Google повторно не перевірить URL.")}`);
+
+  const button = issueButton(identifier, opts);
+  return {
+    text: lines.join("\n"),
+    options: {
+      parseMode: "MarkdownV2",
+      disableWebPagePreview: true,
+      ...(button ? { inlineKeyboard: [[button]] } : {}),
+    },
+  };
+}
+
 function agentButton(agentId: string, label: string, publicUrl?: string): { text: string; url: string } | null {
   if (publicUrl && isExternalUrl(publicUrl)) {
     return { text: label, url: `${publicUrl}/agents/${agentId}` };
@@ -149,6 +198,10 @@ export function formatIssueDone(event: PluginEvent, opts?: IssueLinksOpts): Form
   const comment = p.comment ? String(p.comment) : null;
   const companyName = p.companyName ? String(p.companyName) : null;
   const draftUrl = extractPayloadDraftUrl(comment);
+
+  if (hasSeoCmsFixEvidence(title, comment)) {
+    return formatSeoCmsFixDone(identifier, companyName, title, comment, opts);
+  }
 
   if (draftUrl && isPayloadDraftReadyComment(comment)) {
     const lines: string[] = [`${esc("✅")} ${bold("Чернетка готова")}`];

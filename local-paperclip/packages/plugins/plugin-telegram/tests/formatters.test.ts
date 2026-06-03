@@ -141,6 +141,31 @@ describe("formatIssueDone", () => {
     expect(msg.options.inlineKeyboard?.[0]?.[0]).toEqual({ text: "Відкрити чернетку", url: draftUrl });
     expect(msg.options.inlineKeyboard?.[1]?.[0]?.text).toBe("Відкрити задачу");
   });
+
+  it("uses an owner-facing SEO indexing fix explanation", () => {
+    const msg = formatIssueDone(
+      mockEvent({
+        identifier: "AST-1043",
+        companyName: "Astrogen",
+        title: "Fix published blog noindex and sitemap visibility for sumisnosti-znakiv-zodiaku-yak-chytaty-tablytsiu",
+        comment: [
+          "## Fixed",
+          "- URL: `https://astrogen.com.ua/blog/stosunky/sumisnosti-znakiv-zodiaku-yak-chytaty-tablytsiu/`",
+          "- Fields changed in CMS post `45`: `noindex` `true -> false`; `canonicalUrl` changed.",
+          "- Live after: category URL returns `200`, no robots `noindex` meta is present, canonical is correct, and the URL is now present in the live blog sitemap.",
+        ].join("\n"),
+      }),
+      { baseUrl: "https://paperclip.example", issuePrefix: "AST" },
+    );
+
+    expect(msg.text).toContain("Виправлено індексацію статті");
+    expect(msg.text).toContain("Що було");
+    expect(msg.text).toContain("Що це означає");
+    expect(msg.text).toContain("Search Console");
+    expect(msg.text).not.toContain("Fields changed");
+    expect(msg.text).not.toContain("CMS post");
+    expect(msg.options.disableWebPagePreview).toBe(true);
+  });
 });
 
 describe("formatIssueAssigned", () => {

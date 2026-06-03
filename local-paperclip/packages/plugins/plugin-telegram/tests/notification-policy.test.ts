@@ -67,4 +67,16 @@ describe("Telegram issue done notification policy", () => {
       ].join("\n"),
     })).toBe(true);
   });
+
+  it("suppresses indexing audit parent closeouts with dedup metadata", () => {
+    expect(shouldSuppressGenericIssueDoneNotification({
+      title: "Rerun Astrogen GSC indexing audit with micro-batch fallback",
+      comment: [
+        "## Status",
+        "Audit closeout is complete.",
+        "Verified dedup metadata now persists on both child follow-up issues.",
+        "Both now carry `originKind=seo_technical_finding`.",
+      ].join("\n"),
+    })).toBe(true);
+  });
 });

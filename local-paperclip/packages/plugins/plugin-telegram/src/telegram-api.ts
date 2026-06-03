@@ -18,6 +18,7 @@ export type SendMessageOptions = {
   messageThreadId?: number;
   inlineKeyboard?: InlineKeyboard;
   disableNotification?: boolean;
+  disableWebPagePreview?: boolean;
 };
 
 export async function sendMessage(
@@ -36,6 +37,7 @@ export async function sendMessage(
   if (options.replyToMessageId) body.reply_to_message_id = options.replyToMessageId;
   if (options.messageThreadId) body.message_thread_id = options.messageThreadId;
   if (options.disableNotification) body.disable_notification = true;
+  if (options.disableWebPagePreview) body.disable_web_page_preview = true;
 
   if (options.inlineKeyboard) {
     body.reply_markup = {
