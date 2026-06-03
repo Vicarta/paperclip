@@ -554,11 +554,19 @@ const plugin = definePlugin({
         const payload = event.payload as Record<string, unknown>;
         if (payload.status !== "done") return;
         if (!doneDedupe(`done|${event.entityId}`)) return;
-        // Enrich with title if missing (issue.updated events often omit it)
-        if (!payload.title && event.entityId) {
+        // Enrich with issue fields often omitted from issue.updated activity details.
+        if (
+          event.entityId &&
+          (!payload.title || !payload.originKind || !payload.originId || !payload.originRunId)
+        ) {
           try {
             const issue = await ctx.issues.get(event.entityId, event.companyId);
-            if (issue) payload.title = issue.title;
+            if (issue) {
+              payload.title = payload.title ?? issue.title;
+              payload.originKind = issue.originKind ?? payload.originKind;
+              payload.originId = issue.originId ?? payload.originId;
+              payload.originRunId = issue.originRunId ?? payload.originRunId;
+            }
           } catch { /* best effort */ }
         }
         // Enrich with latest comment (completion summary)

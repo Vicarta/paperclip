@@ -105,10 +105,12 @@ describe("formatIssueDone", () => {
     expect(msg.text).not.toContain("##");
   });
 
-  it("truncates long comments", () => {
+  it("keeps generic completion comments long enough to be useful", () => {
     const longComment = Array(80).fill("word").join(" ");
     const msg = formatIssueDone(mockEvent({ comment: longComment }));
-    expect(msg.text).toContain("\\.\\.\\.");
+    expect(msg.text).toContain("Що зроблено");
+    expect(msg.text).toContain(Array(20).fill("word").join(" "));
+    expect(msg.text).not.toContain("\\.\\.\\.");
   });
 
   it("omits comment section when no comment", () => {
@@ -164,6 +166,28 @@ describe("formatIssueDone", () => {
     expect(msg.text).toContain("Search Console");
     expect(msg.text).not.toContain("Fields changed");
     expect(msg.text).not.toContain("CMS post");
+    expect(msg.options.disableWebPagePreview).toBe(true);
+  });
+
+  it("uses an owner-facing GSC canonical finding explanation for SEO technical findings", () => {
+    const msg = formatIssueDone(
+      mockEvent({
+        identifier: "AST-1046",
+        companyName: "Astrogen",
+        title: "Fix or clear GSC duplicate-canonical finding for koly-obyraty-eksperta-a-koly-dostatno-ai-analizu",
+        originKind: "seo_technical_finding",
+        originId: "https://astrogen.com.ua/blog/eksperty/koly-obyraty-eksperta-a-koly-dostatno-ai-analizu::google_selected_different_canonical",
+        comment: "## Update\nПроблема для Google вже не підтверджується на живій сторінці: стаття віддається як окрема індексована URL-адреса.",
+      }),
+      { baseUrl: "https://paperclip.example", issuePrefix: "AST" },
+    );
+
+    expect(msg.text).toContain("Перевірено проблему індексації");
+    expect(msg.text).toContain("не була вибрана канонічна версія");
+    expect(msg.text).toContain("проблема більше не підтверджується");
+    expect(msg.text).toContain("від вас зараз рішення не потрібне");
+    expect(msg.text).toContain("https://astrogen\\.com\\.ua/blog/eksperty/koly\\-obyraty\\-eksperta\\-a\\-koly\\-dostatno\\-ai\\-analizu");
+    expect(msg.text).not.toContain("Що зроблено\\: Update");
     expect(msg.options.disableWebPagePreview).toBe(true);
   });
 });

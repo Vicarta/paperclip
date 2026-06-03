@@ -10,6 +10,8 @@ type FormattedMessage = {
   options: SendMessageOptions;
 };
 
+const GENERIC_DONE_COMMENT_LIMIT = 1200;
+
 function esc(s: string): string {
   return escapeMarkdownV2(s);
 }
@@ -59,6 +61,12 @@ function extractFirstUrl(text: string | null): string | null {
   return match?.[0]?.replace(/[.,;:]+$/, "") ?? null;
 }
 
+function extractOriginUrl(originId: unknown): string | null {
+  if (typeof originId !== "string") return null;
+  const [url] = originId.split("::");
+  return url?.startsWith("https://") ? url : null;
+}
+
 function hasSeoCmsFixEvidence(title: string, comment: string | null): boolean {
   const haystack = `${title}\n${comment ?? ""}`;
   return /published blog noindex|noindex|canonical|sitemap/i.test(haystack)
@@ -90,6 +98,46 @@ function formatSeoCmsFixDone(
   lines.push(`${bold("Що було")}: ${esc("стаття була опублікована, але Google не міг нормально взяти її в індекс через технічні SEO-налаштування сторінки.")}`);
   lines.push(`${bold("Що зроблено")}: ${esc(fixed.length > 0 ? fixed.join(", ") + "." : "виправлено технічні SEO-налаштування сторінки.")}`);
   lines.push(`${bold("Що це означає")}: ${esc("сторінка тепер відкрита для індексації. Search Console може показати старий статус ще деякий час, доки Google повторно не перевірить URL.")}`);
+
+  const button = issueButton(identifier, opts);
+  return {
+    text: lines.join("\n"),
+    options: {
+      parseMode: "MarkdownV2",
+      disableWebPagePreview: true,
+      ...(button ? { inlineKeyboard: [[button]] } : {}),
+    },
+  };
+}
+
+function hasGscCanonicalFindingEvidence(payload: Payload, title: string, comment: string | null): boolean {
+  const haystack = `${title}\n${comment ?? ""}\n${String(payload.originId ?? "")}`;
+  return payload.originKind === "seo_technical_finding"
+    && /canonical|duplicate-canonical|duplicate canonical|каноніч/i.test(haystack);
+}
+
+function formatGscCanonicalFindingDone(
+  identifier: string,
+  companyName: string | null,
+  payload: Payload,
+  title: string,
+  comment: string | null,
+  opts?: IssueLinksOpts,
+): FormattedMessage {
+  const url = extractOriginUrl(payload.originId) ?? extractFirstUrl(comment) ?? extractFirstUrl(title);
+  const haystack = `${title}\n${comment ?? ""}`;
+  const noLongerConfirmed =
+    /не підтверджується|no longer|not confirmed|clear(?:ed)?|окрема індексована URL/i.test(haystack);
+
+  const lines: string[] = [`${esc("✅")} ${bold("Перевірено проблему індексації")}`];
+  if (companyName) lines.push(`${bold("Компанія")}: ${esc(companyName)}`);
+  if (url) lines.push(`${bold("Сторінка")}: ${esc(url)}`);
+  lines.push("");
+  lines.push(`${bold("Що було")}: ${esc("Google Search Console показував, що для цієї сторінки не була вибрана канонічна версія. Через це Google міг не індексувати саме цю URL або міг обрати іншу сторінку як основну.")}`);
+  lines.push(`${bold("Що зроблено")}: ${esc(noLongerConfirmed
+    ? "Paperclip перевірив сторінку повторно. За поточними даними проблема більше не підтверджується: сторінка віддається як окрема індексована URL."
+    : "Paperclip перевірив сторінку й оновив технічний статус проблеми. Якщо потрібне CMS-виправлення, воно має бути оформлене окремою технічною задачею.")}`);
+  lines.push(`${bold("Що це означає")}: ${esc("від вас зараз рішення не потрібне. Search Console може ще деякий час показувати старий статус, доки Google повторно не обробить сторінку.")}`);
 
   const button = issueButton(identifier, opts);
   return {
@@ -203,6 +251,10 @@ export function formatIssueDone(event: PluginEvent, opts?: IssueLinksOpts): Form
     return formatSeoCmsFixDone(identifier, companyName, title, comment, opts);
   }
 
+  if (hasGscCanonicalFindingEvidence(p, title, comment)) {
+    return formatGscCanonicalFindingDone(identifier, companyName, p, title, comment, opts);
+  }
+
   if (draftUrl && isPayloadDraftReadyComment(comment)) {
     const lines: string[] = [`${esc("✅")} ${bold("Чернетка готова")}`];
     if (companyName) lines.push(`${bold("Компанія")}: ${esc(companyName)}`);
@@ -227,7 +279,7 @@ export function formatIssueDone(event: PluginEvent, opts?: IssueLinksOpts): Form
 
   const safeComment = sanitizeIssueDoneComment(comment);
   if (safeComment) {
-    const truncated = truncateAtWord(safeComment, 125);
+    const truncated = truncateAtWord(safeComment, GENERIC_DONE_COMMENT_LIMIT);
     lines.push(`${bold("Що зроблено")}: ${esc(truncated)}`);
   }
 
