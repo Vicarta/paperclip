@@ -3164,7 +3164,7 @@ export function heartbeatService(db: Db) {
           silentNoop
             ? "silent_noop"
             : outcome === "timed_out"
-              ? "timeout"
+              ? (adapterResult.errorCode ?? "timeout")
               : outcome === "cancelled"
                 ? "cancelled"
                 : outcome === "failed"

@@ -10,6 +10,7 @@ export interface RunProcessResult {
   exitCode: number | null;
   signal: string | null;
   timedOut: boolean;
+  timeoutReason?: "total" | "idle" | null;
   stdout: string;
   stderr: string;
   pid: number | null;
@@ -754,6 +755,7 @@ export async function runChildProcess(
     cwd: string;
     env: Record<string, string>;
     timeoutSec: number;
+    idleTimeoutSec?: number;
     graceSec: number;
     onLog: (stream: "stdout" | "stderr", chunk: string) => Promise<void>;
     onLogError?: (err: unknown, runId: string, message: string) => void;
@@ -806,25 +808,55 @@ export async function runChildProcess(
         runningProcesses.set(runId, { child, graceSec: opts.graceSec });
 
         let timedOut = false;
+        let timeoutReason: RunProcessResult["timeoutReason"] = null;
         let stdout = "";
         let stderr = "";
         let logChain: Promise<void> = Promise.resolve();
 
+        const killForTimeout = (reason: Exclude<RunProcessResult["timeoutReason"], null>) => {
+          if (timedOut) return;
+          timedOut = true;
+          timeoutReason = reason;
+          const message =
+            reason === "idle"
+              ? `[paperclip] Process produced no output for ${opts.idleTimeoutSec}s; terminating as idle timeout.\n`
+              : `[paperclip] Process exceeded total timeout of ${opts.timeoutSec}s; terminating.\n`;
+          stderr = appendWithCap(stderr, message);
+          logChain = logChain
+            .then(() => opts.onLog("stderr", message))
+            .catch((err) => onLogError(err, runId, "failed to append timeout log chunk"));
+          child.kill("SIGTERM");
+          setTimeout(() => {
+            if (!child.killed) {
+              child.kill("SIGKILL");
+            }
+          }, Math.max(1, opts.graceSec) * 1000);
+        };
+
         const timeout =
           opts.timeoutSec > 0
             ? setTimeout(() => {
-                timedOut = true;
-                child.kill("SIGTERM");
-                setTimeout(() => {
-                  if (!child.killed) {
-                    child.kill("SIGKILL");
-                  }
-                }, Math.max(1, opts.graceSec) * 1000);
+                killForTimeout("total");
               }, opts.timeoutSec * 1000)
             : null;
+        let idleTimer: NodeJS.Timeout | null = null;
+        const resetIdleTimeout = () => {
+          if (!opts.idleTimeoutSec || opts.idleTimeoutSec <= 0) return;
+          if (idleTimer) clearTimeout(idleTimer);
+          idleTimer = setTimeout(() => {
+            killForTimeout("idle");
+          }, opts.idleTimeoutSec * 1000);
+        };
+        const clearIdleTimeout = () => {
+          if (!idleTimer) return;
+          clearTimeout(idleTimer);
+          idleTimer = null;
+        };
+        resetIdleTimeout();
 
         child.stdout?.on("data", (chunk: unknown) => {
           const text = String(chunk);
+          resetIdleTimeout();
           stdout = appendWithCap(stdout, text);
           logChain = logChain
             .then(() => opts.onLog("stdout", text))
@@ -833,6 +865,7 @@ export async function runChildProcess(
 
         child.stderr?.on("data", (chunk: unknown) => {
           const text = String(chunk);
+          resetIdleTimeout();
           stderr = appendWithCap(stderr, text);
           logChain = logChain
             .then(() => opts.onLog("stderr", text))
@@ -841,6 +874,7 @@ export async function runChildProcess(
 
         child.on("error", (err: Error) => {
           if (timeout) clearTimeout(timeout);
+          clearIdleTimeout();
           runningProcesses.delete(runId);
           const errno = (err as NodeJS.ErrnoException).code;
           const pathValue = mergedEnv.PATH ?? mergedEnv.Path ?? "";
@@ -853,12 +887,14 @@ export async function runChildProcess(
 
         child.on("close", (code: number | null, signal: NodeJS.Signals | null) => {
           if (timeout) clearTimeout(timeout);
+          clearIdleTimeout();
           runningProcesses.delete(runId);
           void logChain.finally(() => {
             resolve({
               exitCode: code,
               signal,
               timedOut,
+              timeoutReason,
               stdout,
               stderr,
               pid: child.pid ?? null,
