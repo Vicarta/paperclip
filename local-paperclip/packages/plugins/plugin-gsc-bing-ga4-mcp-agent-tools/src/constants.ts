@@ -1,7 +1,7 @@
 export const PLUGIN_ID = "paperclip.gsc-bing-ga4-mcp-agent-tools";
-export const PLUGIN_VERSION = "0.1.1";
+export const PLUGIN_VERSION = "0.1.2";
 
-export const DEFAULT_GSC_BING_GA4_MCP_URL = "http://100.98.5.50:3002/mcp";
+export const DEFAULT_GSC_BING_GA4_MCP_URL = "http://172.21.0.1:3002/mcp";
 export const DEFAULT_ALLOWED_SITE_URL = "sc-domain:astrogen.com.ua";
 export const DEFAULT_ALLOWED_GA4_PROPERTY_ID = "484723525";
 export const DEFAULT_REQUEST_TIMEOUT_MS = 120_000;

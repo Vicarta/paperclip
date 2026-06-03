@@ -154,7 +154,7 @@ const manifest: PaperclipPluginManifestV1 = {
       name: TOOL_NAMES.inspectionBatchInspect,
       displayName: "GSC URL Inspection Batch",
       description:
-        "Call MCP `inspection_batch_inspect` for multiple URLs on the configured allowed GSC site. Use this for indexing audits; MCP remains acquisition/cache only.",
+        "Call MCP `inspection_batch_inspect` for small URL Inspection checks only. Large audits must use async job tools.",
       parametersSchema: looseObjectSchema,
     },
     {
@@ -173,7 +173,7 @@ const manifest: PaperclipPluginManifestV1 = {
     {
       name: TOOL_NAMES.inspectionBatchJobResults,
       displayName: "GSC URL Inspection Batch Job Results",
-      description: "Call MCP `inspection_batch_job_results` with paging.",
+      description: "Call MCP `inspection_batch_job_results` with pagination, for example { jobId, offset, limit }.",
       parametersSchema: looseObjectSchema,
     },
     {

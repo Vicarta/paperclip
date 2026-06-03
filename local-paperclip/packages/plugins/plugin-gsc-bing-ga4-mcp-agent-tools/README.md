@@ -9,7 +9,7 @@ This plugin lets Paperclip agents call backend-allowlisted MCP tools for Google 
 Default endpoint:
 
 ```text
-http://100.98.5.50:3002/mcp
+http://172.21.0.1:3002/mcp
 ```
 
 Default allowed GSC site:
@@ -52,6 +52,10 @@ Verified default MCP tools are read-only analytics, diagnostics, and intelligenc
 - `sites_health_check`
 - `inspection_inspect`
 - `inspection_batch_inspect`
+- `inspection_batch_job_start`
+- `inspection_batch_job_status`
+- `inspection_batch_job_results`
+- `inspection_batch_job_cancel`
 - `inspection_cache_stats`
 - `sitemaps_list`
 - `pagespeed_analyze`
@@ -90,9 +94,31 @@ Plugin config fields:
 - `gscBingGa4McpUrl`: private MCP Streamable HTTP endpoint.
 - `allowedSiteUrl`: GSC site allowlist.
 - `allowedMcpToolNamesCsv`: optional comma-separated backend tool allowlist. Empty means verified defaults only.
-- `requestTimeoutMs`: timeout for one MCP connect/call cycle. Default is `120000`
-  because URL Inspection batch calls can exceed 30 seconds when MCP needs fresh
-  Google API calls instead of cached data.
+- `requestTimeoutMs`: timeout for one MCP connect/call cycle. Default is
+  `120000`. The MCP server also applies Google API timeout guards; do not use
+  this as a reason to send large URL Inspection lists through sync batch calls.
+
+## Streamable HTTP Session Lifecycle
+
+The adapter opens a short-lived MCP Streamable HTTP session for each Paperclip
+tool call-cycle:
+
+1. `initialize`
+2. `notifications/initialized`
+3. one MCP tool/list call
+4. `DELETE /mcp` with the returned `mcp-session-id`
+
+Do not hold MCP sessions between Paperclip heartbeats, runs, or separate tool
+calls. If MCP returns `503 too many active MCP sessions`, treat it as evidence
+that a client path is not closing sessions or too many call-cycles are running
+concurrently.
+
+MCP operational limits as of the current Astrogen endpoint:
+
+- Session TTL: 5 minutes.
+- Max concurrent sessions: 50.
+- Google API timeout guard: 110 seconds.
+- URL Inspection async job chunk size: 5.
 
 ## Tool Surface
 
@@ -105,14 +131,20 @@ Paperclip tools:
 - `analytics-query`: wrapper for `analytics_query`.
 - `seo-low-ctr-opportunities`: wrapper for `seo_low_ctr_opportunities`.
 - `inspection-inspect`: wrapper for `inspection_inspect`.
-- `inspection-batch-inspect`: wrapper for `inspection_batch_inspect`.
+- `inspection-batch-inspect`: wrapper for `inspection_batch_inspect`; use only
+  for small smoke/sync checks.
+- `inspection-batch-job-start`: wrapper for `inspection_batch_job_start`.
+- `inspection-batch-job-status`: wrapper for `inspection_batch_job_status`.
+- `inspection-batch-job-results`: wrapper for `inspection_batch_job_results`;
+  always use pagination, for example `{ "jobId": "...", "offset": 0, "limit": 100 }`.
+- `inspection-batch-job-cancel`: wrapper for `inspection_batch_job_cancel`.
 - `inspection-cache-stats`: wrapper for `inspection_cache_stats`.
 - `sitemaps-list`: wrapper for `sitemaps_list`.
 - `pagespeed-analyze`: wrapper for `pagespeed_analyze`.
 
 ## Live Docker Networking Note
 
-On the live Paperclip host, the MCP endpoint is bound to the host Tailscale address `100.98.5.50:3002`. If the Paperclip app runs inside Docker and cannot connect to that address directly, use the existing narrow host-side bridge proxy pattern:
+On the live Paperclip host, the MCP endpoint is reached from the Paperclip app container through the existing narrow bridge proxy:
 
 ```text
 Paperclip app container -> http://172.21.0.1:3002/mcp -> 100.98.5.50:3002
@@ -123,6 +155,14 @@ Operational constraints:
 - The backend SSRF guard remains enabled for plugins by default.
 - `paperclip.gsc-bing-ga4-mcp-agent-tools` has a hardcoded allowlist for exactly `100.98.5.50:3002` and `172.21.0.1:3002`.
 - Do not add broader private-network access without a new explicit review.
+
+## Agent Handoff
+
+Use GSC/Bing/GA4 MCP as a short-lived provider adapter only. Open a Streamable
+HTTP session, call the needed tool, then terminate the session with `DELETE
+/mcp`. For large URL Inspection runs, use async job tools instead of sync batch.
+Read job results with pagination and store snapshots/decisions in Paperclip
+PostgreSQL, not in MCP.
 
 Manual token setup:
 

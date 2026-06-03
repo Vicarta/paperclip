@@ -429,37 +429,37 @@ async function withMcpSession<T>(input: {
   sessionId = init.sessionId;
   if (!sessionId) throw new Error("GSC/Bing/GA4 MCP initialize did not return a session id");
 
-  await postJsonRpc({
-    mcpUrl: normalized.mcpUrl,
-    token,
-    requestTimeoutMs: normalized.requestTimeoutMs,
-    sessionId,
-    body: {
-      jsonrpc: "2.0",
-      method: "notifications/initialized",
-      params: {},
-    },
-  });
-
-  const session = {
-    async call(method: string, params?: Record<string, unknown>) {
-      const response = await postJsonRpc({
-        mcpUrl: normalized.mcpUrl,
-        token,
-        requestTimeoutMs: normalized.requestTimeoutMs,
-        sessionId,
-        body: {
-          jsonrpc: "2.0",
-          id: nextId++,
-          method,
-          params: params ?? {},
-        },
-      });
-      return response.payload.result;
-    },
-  };
-
   try {
+    await postJsonRpc({
+      mcpUrl: normalized.mcpUrl,
+      token,
+      requestTimeoutMs: normalized.requestTimeoutMs,
+      sessionId,
+      body: {
+        jsonrpc: "2.0",
+        method: "notifications/initialized",
+        params: {},
+      },
+    });
+
+    const session = {
+      async call(method: string, params?: Record<string, unknown>) {
+        const response = await postJsonRpc({
+          mcpUrl: normalized.mcpUrl,
+          token,
+          requestTimeoutMs: normalized.requestTimeoutMs,
+          sessionId,
+          body: {
+            jsonrpc: "2.0",
+            id: nextId++,
+            method,
+            params: params ?? {},
+          },
+        });
+        return response.payload.result;
+      },
+    };
+
     return await input.run(
       session,
       normalized.allowedSiteUrl,

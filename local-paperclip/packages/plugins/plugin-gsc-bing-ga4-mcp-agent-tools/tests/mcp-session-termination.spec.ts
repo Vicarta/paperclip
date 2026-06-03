@@ -87,6 +87,71 @@ describe("GSC/Bing/GA4 MCP streamable HTTP sessions", () => {
     expect(result.content).toBe("ok");
     expect(requests).toContainEqual({ method: "DELETE", sessionId });
   });
+
+  it("terminates the MCP session when initialized notification fails", async () => {
+    const requests: Array<{ method?: string; sessionId?: string }> = [];
+    const sessionId = "failed-init-session";
+
+    server = http.createServer(async (req, res) => {
+      requests.push({
+        method: req.method,
+        sessionId: Array.isArray(req.headers["mcp-session-id"])
+          ? req.headers["mcp-session-id"][0]
+          : req.headers["mcp-session-id"],
+      });
+
+      if (req.method === "DELETE") {
+        res.writeHead(200, { "content-type": "application/json" });
+        res.end("");
+        return;
+      }
+
+      const body = await readJsonBody(req);
+      if (body?.method === "initialize") {
+        res.writeHead(200, {
+          "content-type": "application/json",
+          "mcp-session-id": sessionId,
+        });
+        res.end(JSON.stringify({
+          jsonrpc: "2.0",
+          id: body.id,
+          result: {
+            protocolVersion: "2025-06-18",
+            capabilities: {},
+            serverInfo: { name: "fake-mcp", version: "1.0.0" },
+          },
+        }));
+        return;
+      }
+
+      if (body?.method === "notifications/initialized") {
+        res.writeHead(500, { "content-type": "application/json" });
+        res.end(JSON.stringify({
+          jsonrpc: "2.0",
+          error: { code: -32000, message: "initialized failed" },
+        }));
+        return;
+      }
+
+      res.writeHead(400, { "content-type": "application/json" });
+      res.end(JSON.stringify({ error: { message: "unexpected request" } }));
+    });
+
+    await new Promise<void>((resolve) => server!.listen(0, "127.0.0.1", resolve));
+    const port = (server.address() as AddressInfo).port;
+
+    await expect(callGscBingGa4McpTool({
+      toolName: "sites_list",
+      args: {},
+      config: {
+        gscBingGa4McpTokenSecretRef: "secret",
+        gscBingGa4McpUrl: `http://127.0.0.1:${port}/mcp`,
+      },
+      resolveSecret: async () => "tenant-token",
+    })).rejects.toThrow("initialized failed");
+
+    expect(requests).toContainEqual({ method: "DELETE", sessionId });
+  });
 });
 
 async function readJsonBody(req: http.IncomingMessage) {
