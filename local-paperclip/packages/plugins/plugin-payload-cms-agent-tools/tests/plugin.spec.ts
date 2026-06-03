@@ -213,6 +213,36 @@ describe("plugin-payload-cms-agent-tools", () => {
     );
   });
 
+  it("passes deterministic SEO fields through the publish tool", async () => {
+    const harness = createTestHarness({ manifest });
+    await plugin.definition.setup(harness.ctx);
+
+    publishBlogPostMock.mockResolvedValueOnce({
+      content: "Payload CMS document: id=19, status=published",
+      data: { id: 19, _status: "published", noindex: true },
+    });
+
+    await harness.executeTool(TOOL_NAMES.publishBlogPost, {
+      id: 19,
+      confirmPublish: true,
+      fields: {
+        canonicalUrl: "https://astrogen.com.ua/blog/stosunky/shcho-take-analiz-sumisnosti-pary-v-astrogen/",
+        noindex: true,
+      },
+    });
+
+    expect(publishBlogPostMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 19,
+        confirmPublish: true,
+        fields: expect.objectContaining({
+          canonicalUrl: "https://astrogen.com.ua/blog/stosunky/shcho-take-analiz-sumisnosti-pary-v-astrogen/",
+          noindex: true,
+        }),
+      }),
+    );
+  });
+
   it("cleans up technical blog drafts only through the guarded cleanup tool", async () => {
     const harness = createTestHarness({ manifest });
     await plugin.definition.setup(harness.ctx);
@@ -288,6 +318,24 @@ describe("Payload CMS content helpers", () => {
     expect(payload.categorySlug).toBeUndefined();
     expect(payload.categoryTitle).toBeUndefined();
     expect(payload.ensureCategory).toBeUndefined();
+  });
+
+  it("builds publish payloads with SEO fields for published-document updates", () => {
+    const payload = buildBlogPostPayload(
+      {
+        canonicalUrl: "https://astrogen.com.ua/blog/stosunky/shcho-take-analiz-sumisnosti-pary-v-astrogen/",
+        noindex: true,
+      },
+      { publish: true },
+    );
+
+    expect(payload).toMatchObject({
+      _status: "published",
+      canonicalUrl: "https://astrogen.com.ua/blog/stosunky/shcho-take-analiz-sumisnosti-pary-v-astrogen/",
+      noindex: true,
+    });
+    expect(payload.workflowStatus).toBeUndefined();
+    expect(payload.publishedAt).toEqual(expect.any(String));
   });
 
   it("accepts iconList blocks with registered icons only", () => {

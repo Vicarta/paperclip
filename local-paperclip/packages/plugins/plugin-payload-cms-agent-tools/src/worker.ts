@@ -401,6 +401,7 @@ const plugin = definePlugin({
             slug: { type: "string" },
             confirmPublish: { type: "boolean" },
             publishedAt: { type: "string" },
+            fields: { type: "object", additionalProperties: true },
           },
           required: ["confirmPublish"],
           additionalProperties: false,
@@ -415,6 +416,7 @@ const plugin = definePlugin({
             slug: typed.slug as string | undefined,
             confirmPublish: typed.confirmPublish as boolean | undefined,
             publishedAt: typed.publishedAt as string | undefined,
+            fields: readObjectParams(typed.fields),
           }),
         ));
       },

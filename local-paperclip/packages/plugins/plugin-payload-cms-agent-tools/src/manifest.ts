@@ -471,7 +471,7 @@ const manifest: PaperclipPluginManifestV1 = {
       name: TOOL_NAMES.publishBlogPost,
       displayName: "Payload CMS Publish Blog Post",
       description:
-        "Publish an existing Payload blog post. Requires `confirmPublish=true`; agents should call this only after explicit human approval.",
+        "Publish an existing Payload blog post. Requires `confirmPublish=true`; agents should call this only after explicit human approval. Optional fields are applied to the published document in the same CMS write, so deterministic SEO fixes such as canonicalUrl/noindex are not left only in draft state.",
       parametersSchema: {
         type: "object",
         properties: {
@@ -479,6 +479,7 @@ const manifest: PaperclipPluginManifestV1 = {
           slug: { type: "string" },
           confirmPublish: { type: "boolean" },
           publishedAt: { type: "string" },
+          fields: blogPostFieldsSchema,
         },
         required: ["confirmPublish"],
         additionalProperties: false,

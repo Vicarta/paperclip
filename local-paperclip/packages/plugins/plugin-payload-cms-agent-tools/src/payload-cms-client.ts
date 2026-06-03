@@ -858,6 +858,7 @@ export async function publishBlogPost(
     slug?: string;
     confirmPublish?: boolean;
     publishedAt?: string;
+    fields?: BlogPostFields;
   },
 ) {
   if (input.confirmPublish !== true) {
@@ -878,7 +879,13 @@ export async function publishBlogPost(
     ...input,
     method: "PATCH",
     pathname: `/${blogPostsCollection(input.config)}/${encodeURIComponent(String(id))}`,
-    body: buildBlogPostPayload({ publishedAt: input.publishedAt }, { publish: true }),
+    body: buildBlogPostPayload(
+      {
+        ...(input.fields ?? {}),
+        publishedAt: input.publishedAt ?? input.fields?.publishedAt,
+      },
+      { publish: true },
+    ),
   });
   return {
     content: summarizeDoc(data),
