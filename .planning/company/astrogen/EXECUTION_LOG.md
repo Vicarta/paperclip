@@ -1,5 +1,23 @@
 # Execution Log: Astrogen
 
+## 2026-06-03
+
+- Tightened the Astrogen cover-image variation contract after repeated
+  near-duplicate blog covers appeared in the public grid.
+  - Added `cover_image_near_duplicate` as a validation blocker for covers that
+    repeat nearby category/product-lane compositions even when CMS media ids and
+    filenames differ.
+  - Updated local Stage 68 layout process plus layout editor/validator contracts
+    so cover QA rejects repeated room/window/table setups, solitary
+    notebook/device scenes, wardrobe color, camera angle, prop clusters, and
+    emotional beats.
+  - Live-synced the same rule to `/home/paperclip/astrogen` Stage 65 image
+    generation, Stage 68 layout, image design system, layout editor/validator,
+    and image runtime executor contracts.
+  - Created [AST-1090](/AST/issues/AST-1090) to replace the duplicate-looking
+    finance cover and [AST-1091](/AST/issues/AST-1091) to replace the left Solar
+    decryption article cover with a more original image.
+
 ## 2026-05-26
 
 - Tested the weekly Astrogen blog/SEO Telegram report routine for the latest complete Monday-based week.

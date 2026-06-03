@@ -91,6 +91,15 @@ If the layout package is missing, return `blocked` with blocker class `missing_l
   - reject human covers that feel posed instead of lived: direct-to-camera models, generic smiles, glossy stock-photo perfection, lifeless laptop/coffee scenes, or people with no visible action, decision, conversation, preparation, or emotional context;
   - accept human covers only when the image shows a concrete lived moment and natural micro-emotion, with enough context to understand the article topic without text;
   - reject covers that feel like cheap stock imagery, generic wellness consultation, neon-purple astrology, mystical clutter, stereotyped cultural decoration, random zodiac-wheel decoration, or a scene that could fit almost any Astrogen article;
+  - reject covers that are near-duplicates of nearby Astrogen blog covers in the
+    same category/product lane or of recently generated covers. This applies even
+    when the CMS media ids and filenames differ. Near-duplicate means repeated
+    room/window/table setup, solitary person posture, wardrobe color, camera
+    angle, prop cluster, or emotional beat that makes two article cards look like
+    the same photo at a glance;
+  - adjacent blog cards must be clearly distinguishable by scene concept, action,
+    crop, subject arrangement, and emotional moment. Brand consistency is
+    required, but template repetition is a validation defect;
   - reject covers with malformed hands/faces, uncanny faces, warped astrology symbols, fake glyphs, muddy edges, inconsistent lighting, or low-resolution/compression artifacts;
   - require the handoff to name two or three topic-specific semantic anchors and explain why the image communicates the article within two seconds;
   - require Astrogen visual fit: calm modern expertise, soft neutral base, deep burgundy/wine accents, warm gold detail, and restrained esoteric signal;
@@ -130,6 +139,7 @@ For `returned_for_revision`, include structured blocker classes such as:
 - `cover_image_weak_topic_signal`
 - `cover_image_ai_artifacts`
 - `cover_image_quality_below_brand_standard`
+- `cover_image_near_duplicate`
 - `inline_illustration_not_supported`
 - `article_content_schema_field_mismatch`
 - `claim_added_without_validation`

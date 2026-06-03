@@ -185,6 +185,18 @@ Astrogen visual direction:
 - avoid generic smiling models, direct-to-camera posing, glossy stock-photo perfection, and lifeless "person with laptop/coffee" scenes;
 - use realistic human imagery when the human situation is central to the article meaning; otherwise prefer a high-end symbolic still life, refined diagram-like composition, or premium editorial illustration;
 - the image should answer "what is this article about?" within two seconds without relying on the article title.
+- cover images must also pass a series-variation check. Before accepting a
+  cover, compare it with nearby published/draft Astrogen blog covers in the same
+  category/product lane and with recently generated covers. Reject near-duplicate
+  compositions even when the CMS media ids or filenames differ. A cover is a
+  near-duplicate when it repeats the same room, window/table setup, seated
+  posture, solitary woman-at-notebook/device scene, wardrobe color, camera angle,
+  prop cluster, or emotional beat closely enough that two article cards look like
+  the same photo at a glance.
+- when two articles are adjacent in the blog grid, their covers must be visually
+  distinguishable by scene concept, action, crop, subject arrangement, and
+  emotional moment. Brand consistency is required, but template repetition is a
+  blocking defect.
 
 The image generation handoff must include:
 
@@ -193,12 +205,21 @@ The image generation handoff must include:
 - two or three concrete semantic anchors from the article topic;
 - Astrogen style anchors from the visual direction above;
 - hard negatives: no text, no letters, no numbers, no readable UI, no fake glyphs, no distorted hands/faces, no random symbols, no pseudo-writing on paper/screens, no generic stock scene;
+- series negatives: do not reuse the same window, same table, same seated pose,
+  same solitary woman writing/looking down, same cup/notebook/device arrangement,
+  same clothing color, or same camera angle as nearby Astrogen article covers;
 - aspect ratio and crop safety for CMS cover usage;
 - a short reason why the image fits the article.
 
 A generic or weakly connected cover is a blocking package defect, not a cosmetic note. CMO should route a cover-generation/replacement step before Payload CMS draft delivery or Telegram/editorial notification. The final CMS draft must have the topic-specific image set as `coverImage`.
 
 Generated images should be rejected and regenerated when they contain visible text, text-like pseudo-glyphs, readable or fake screen UI, ambiguous marks on paper/cards, malformed hands/faces, warped symbols, plastic/uncanny faces, muddy edges, incoherent astrology marks, or a scene that could fit almost any wellness article.
+
+Generated images should also be rejected and regenerated when they are visually
+too similar to another Astrogen blog cover, especially in the same category or
+product lane. This includes cases where two different CMS media records look
+like the same generated photo. Treat this as `cover_image_near_duplicate`, not
+as an optional taste preference.
 
 When useful, the layout handoff may recommend an internal non-photo illustration, diagram, or simple editorial visual. Internal visuals should explain the article, not decorate it. Do not add unsupported inline image blocks to `articleContent.v1`; keep the recommendation in the handoff until the CMS schema explicitly supports inline illustrations.
 

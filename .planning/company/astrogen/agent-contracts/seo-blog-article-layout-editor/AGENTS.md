@@ -99,6 +99,18 @@ If the validated article draft is missing, do not guess. Return `blocked` with b
   - the image concept must answer what the article is about within two seconds without relying on the article title;
   - image handoff must include title/search intent, visual concept, two or three semantic anchors, Astrogen style anchors, hard negatives, aspect ratio/crop safety, and a short fit rationale;
   - if the current cover is generic or weakly connected to the article topic, state this as a required cover replacement, not as an optional nice-to-have;
+  - if the current/generated cover visually repeats nearby Astrogen blog covers,
+    state this as a required cover replacement. Compare against covers in the
+    same category/product lane and recently generated covers. Near-duplicate
+    means the same room/window/table setup, solitary person pose, wardrobe color,
+    camera angle, prop cluster, or emotional beat makes two article cards look
+    like the same photo at a glance;
+  - brand consistency is not an excuse for template repetition. Adjacent blog
+    cards must be distinguishable by scene concept, action, crop, subject
+    arrangement, and emotional moment;
+  - image handoff negatives must explicitly include avoiding repeated window,
+    table, seated-writing, cup/notebook/device, clothing-color, and camera-angle
+    patterns from nearby Astrogen covers;
   - the article package is not ready for CMS/editorial delivery until a topic-specific cover image is available or a cover-generation/replacement issue is explicitly created and kept open;
   - when an internal visual would materially improve comprehension, recommend a non-photo editorial illustration or diagram in the handoff;
   - do not emit unsupported inline image blocks until the CMS `articleContent.v1` contract explicitly supports them.
@@ -115,6 +127,9 @@ A task is complete only when:
 - SEO locks and required links are preserved.
 - cover/hero status is explicit: either the existing cover clearly matches the article topic/search intent, or a required replacement is called out for CMO routing before delivery.
 - cover image direction is explicit enough for generation and QA, including topic anchors, Astrogen style anchors, no-text/no-glyph constraints, and whether any existing/generated image is below brand standard.
+- cover image direction includes a series-variation note when similar category
+  covers already exist, so the image runtime does not generate another
+  near-duplicate card.
 
 ## Paperclip Closeout Rule
 
