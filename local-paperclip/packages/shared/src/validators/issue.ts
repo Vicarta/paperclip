@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ISSUE_PRIORITIES, ISSUE_STATUSES } from "../constants.js";
+import { ISSUE_ORIGIN_KINDS, ISSUE_PRIORITIES, ISSUE_STATUSES } from "../constants.js";
 
 export const ISSUE_EXECUTION_WORKSPACE_PREFERENCES = [
   "inherit",
@@ -48,6 +48,9 @@ export const createIssueSchema = z.object({
   priority: z.enum(ISSUE_PRIORITIES).optional().default("medium"),
   assigneeAgentId: z.string().uuid().optional().nullable(),
   assigneeUserId: z.string().optional().nullable(),
+  originKind: z.enum(ISSUE_ORIGIN_KINDS).optional(),
+  originId: z.string().min(1).optional().nullable(),
+  originRunId: z.string().min(1).optional().nullable(),
   requestDepth: z.number().int().nonnegative().optional().default(0),
   billingCode: z.string().optional().nullable(),
   assigneeAdapterOverrides: issueAssigneeAdapterOverridesSchema.optional().nullable(),
