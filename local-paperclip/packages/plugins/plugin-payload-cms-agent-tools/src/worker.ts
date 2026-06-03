@@ -283,7 +283,8 @@ const plugin = definePlugin({
       TOOL_NAMES.uploadMedia,
       {
         displayName: "Payload CMS Upload Media",
-        description: "Upload a local file to the configured Payload media collection.",
+        description:
+          "Upload a local file to the configured Payload media collection. The plugin sends a unique filename to prevent Payload responsive-image filename collisions.",
         parametersSchema: {
           type: "object",
           properties: {

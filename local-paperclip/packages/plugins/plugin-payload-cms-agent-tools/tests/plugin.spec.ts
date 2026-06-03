@@ -4,6 +4,7 @@ import manifest from "../src/manifest.js";
 import plugin from "../src/worker.js";
 import { TOOL_NAMES } from "../src/constants.js";
 import {
+  buildUniqueUploadFilename,
   buildBlogPostPayload,
   cleanupTechnicalBlogPostDraft,
   createBlogPostDraft,
@@ -49,6 +50,16 @@ describe("plugin-payload-cms-agent-tools", () => {
     ensureTaxonomyTermMock.mockReset();
     listBlogPostsMock.mockReset();
     publishBlogPostMock.mockReset();
+  });
+
+  it("generates unique upload filenames to avoid Payload responsive image collisions", () => {
+    const first = buildUniqueUploadFilename("/tmp/hero-image-6.png");
+    const second = buildUniqueUploadFilename("/tmp/hero-image-6.jpg");
+
+    expect(first).toMatch(/^hero-image-6-[a-z0-9]+-[a-f0-9-]+\.png$/);
+    expect(second).toMatch(/^hero-image-6-[a-z0-9]+-[a-f0-9-]+\.jpg$/);
+    expect(first).not.toBe(second);
+    expect(first.replace(/\.[^.]+$/, "")).not.toBe(second.replace(/\.[^.]+$/, ""));
   });
 
   it("registers Payload CMS tools and forwards secret-backed config", async () => {

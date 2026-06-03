@@ -8,7 +8,9 @@ Server-side Paperclip plugin for Payload CMS blog operations.
 - Finds blog posts by `id` or `slug`.
 - Lists configured taxonomy collections: categories, tags, authors.
 - Finds or creates blog authors by `name`/`slug` before draft delivery.
-- Uploads media files to the configured media collection.
+- Uploads media files to the configured media collection with a unique uploaded
+  filename, so Payload-generated responsive image variants do not collide when
+  agents reuse generic local names like `hero-image-6.jpg`.
 - Creates blog post drafts.
 - Updates existing blog post drafts.
 - Publishes existing blog posts only when `confirmPublish=true`.

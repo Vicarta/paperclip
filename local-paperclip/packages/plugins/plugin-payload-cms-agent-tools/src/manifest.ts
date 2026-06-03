@@ -412,7 +412,7 @@ const manifest: PaperclipPluginManifestV1 = {
       name: TOOL_NAMES.uploadMedia,
       displayName: "Payload CMS Upload Media",
       description:
-        "Upload a local image/file to the configured Payload media collection. Use for article cover images before creating/updating drafts.",
+        "Upload a local image/file to the configured Payload media collection. Use for article cover images before creating/updating drafts. The uploaded filename is made unique server-side to prevent responsive-image collisions in Payload.",
       parametersSchema: {
         type: "object",
         properties: {

@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
 import path from "node:path";
 import {
   DEFAULT_AUTHORS_COLLECTION,
@@ -680,10 +681,24 @@ function mimeTypeForFile(filePath: string) {
   return "application/octet-stream";
 }
 
+export function buildUniqueUploadFilename(filePath: string) {
+  const ext = path.extname(filePath).toLowerCase();
+  const rawBase = path.basename(filePath, ext);
+  const safeBase = rawBase
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .toLowerCase()
+    .slice(0, 72) || "payload-media";
+  const suffix = `${Date.now().toString(36)}-${randomUUID().slice(0, 8)}`;
+  return `${safeBase}-${suffix}${ext || ".bin"}`;
+}
+
 export async function uploadMedia(input: PayloadCmsUploadMediaInput) {
   const fileBytes = await readFile(input.filePath);
   const form = new FormData();
-  const filename = path.basename(input.filePath);
+  const filename = buildUniqueUploadFilename(input.filePath);
   const file = typeof File === "function"
     ? new File([fileBytes], filename, { type: mimeTypeForFile(input.filePath) })
     : new Blob([fileBytes], { type: mimeTypeForFile(input.filePath) });
