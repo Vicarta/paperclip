@@ -450,6 +450,24 @@ const manifest: PaperclipPluginManifestV1 = {
       },
     },
     {
+      name: TOOL_NAMES.cleanupTechnicalBlogPostDraft,
+      displayName: "Payload CMS Cleanup Technical Blog Post Draft",
+      description:
+        "Delete an unpublished technical smoke/test blog draft only after strict guard checks. Never use for editorial content.",
+      parametersSchema: {
+        type: "object",
+        properties: {
+          id: { type: ["number", "string"] },
+          slug: { type: "string" },
+          expectedSlug: { type: "string" },
+          expectedTitle: { type: "string" },
+          confirmTechnicalDraftCleanup: { type: "boolean" },
+        },
+        required: ["confirmTechnicalDraftCleanup"],
+        additionalProperties: false,
+      },
+    },
+    {
       name: TOOL_NAMES.publishBlogPost,
       displayName: "Payload CMS Publish Blog Post",
       description:

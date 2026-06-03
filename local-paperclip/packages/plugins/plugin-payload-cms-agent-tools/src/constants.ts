@@ -29,6 +29,7 @@ export const TOOL_NAMES = {
   uploadMedia: "payload_cms_upload_media",
   createBlogPostDraft: "payload_cms_create_blog_post_draft",
   updateBlogPostDraft: "payload_cms_update_blog_post_draft",
+  cleanupTechnicalBlogPostDraft: "payload_cms_cleanup_technical_blog_post_draft",
   publishBlogPost: "payload_cms_publish_blog_post",
 } as const;
 

@@ -2,6 +2,7 @@ import { definePlugin, runWorker, type ToolResult } from "@paperclipai/plugin-sd
 import { PLUGIN_ID, TOOL_NAMES } from "./constants.js";
 import {
   createBlogPostDraft,
+  cleanupTechnicalBlogPostDraft,
   ensureAuthor,
   findBlogPost,
   getAccess,
@@ -348,6 +349,40 @@ const plugin = definePlugin({
             id: typed.id as string | number | undefined,
             slug: typed.slug as string | undefined,
             fields,
+          }),
+        ));
+      },
+    );
+
+    ctx.tools.register(
+      TOOL_NAMES.cleanupTechnicalBlogPostDraft,
+      {
+        displayName: "Payload CMS Cleanup Technical Blog Post Draft",
+        description:
+          "Delete an unpublished technical smoke/test blog draft only after strict guard checks. Never use for editorial content.",
+        parametersSchema: {
+          type: "object",
+          properties: {
+            id: { type: ["number", "string"] },
+            slug: { type: "string" },
+            expectedSlug: { type: "string" },
+            expectedTitle: { type: "string" },
+            confirmTechnicalDraftCleanup: { type: "boolean" },
+          },
+          required: ["confirmTechnicalDraftCleanup"],
+          additionalProperties: false,
+        },
+      },
+      async (params): Promise<ToolResult> => {
+        const typed = readObjectParams(params);
+        return toolResult(await withClientConfig(ctx, (base) =>
+          cleanupTechnicalBlogPostDraft({
+            ...base,
+            id: typed.id as string | number | undefined,
+            slug: typed.slug as string | undefined,
+            expectedSlug: typed.expectedSlug as string | undefined,
+            expectedTitle: typed.expectedTitle as string | undefined,
+            confirmTechnicalDraftCleanup: typed.confirmTechnicalDraftCleanup as boolean | undefined,
           }),
         ));
       },

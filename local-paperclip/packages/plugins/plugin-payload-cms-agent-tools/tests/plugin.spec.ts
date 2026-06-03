@@ -5,6 +5,7 @@ import plugin from "../src/worker.js";
 import { TOOL_NAMES } from "../src/constants.js";
 import {
   buildBlogPostPayload,
+  cleanupTechnicalBlogPostDraft,
   createBlogPostDraft,
   ensureAuthor,
   ensureTaxonomyTerm,
@@ -23,6 +24,7 @@ vi.mock("../src/payload-cms-client.js", async () => {
     ...actual,
     healthCheck: vi.fn(),
     createBlogPostDraft: vi.fn(),
+    cleanupTechnicalBlogPostDraft: vi.fn(),
     ensureAuthor: vi.fn(),
     ensureTaxonomyTerm: vi.fn(),
     listBlogPosts: vi.fn(),
@@ -32,6 +34,7 @@ vi.mock("../src/payload-cms-client.js", async () => {
 
 const healthCheckMock = vi.mocked(healthCheck);
 const createBlogPostDraftMock = vi.mocked(createBlogPostDraft);
+const cleanupTechnicalBlogPostDraftMock = vi.mocked(cleanupTechnicalBlogPostDraft);
 const ensureAuthorMock = vi.mocked(ensureAuthor);
 const ensureTaxonomyTermMock = vi.mocked(ensureTaxonomyTerm);
 const listBlogPostsMock = vi.mocked(listBlogPosts);
@@ -41,6 +44,7 @@ describe("plugin-payload-cms-agent-tools", () => {
   beforeEach(() => {
     healthCheckMock.mockReset();
     createBlogPostDraftMock.mockReset();
+    cleanupTechnicalBlogPostDraftMock.mockReset();
     ensureAuthorMock.mockReset();
     ensureTaxonomyTermMock.mockReset();
     listBlogPostsMock.mockReset();
@@ -205,6 +209,32 @@ describe("plugin-payload-cms-agent-tools", () => {
       expect.objectContaining({
         id: 101,
         confirmPublish: true,
+      }),
+    );
+  });
+
+  it("cleans up technical blog drafts only through the guarded cleanup tool", async () => {
+    const harness = createTestHarness({ manifest });
+    await plugin.definition.setup(harness.ctx);
+
+    cleanupTechnicalBlogPostDraftMock.mockResolvedValueOnce({
+      content: "Deleted technical Payload CMS blog draft: Payload CMS document: id=46",
+      data: { deleted: true },
+    });
+
+    await harness.executeTool(TOOL_NAMES.cleanupTechnicalBlogPostDraft, {
+      id: 46,
+      expectedSlug: "smoke-test-solar-draft-20260530",
+      expectedTitle: "Smoke Test Solar Draft",
+      confirmTechnicalDraftCleanup: true,
+    });
+
+    expect(cleanupTechnicalBlogPostDraftMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 46,
+        expectedSlug: "smoke-test-solar-draft-20260530",
+        expectedTitle: "Smoke Test Solar Draft",
+        confirmTechnicalDraftCleanup: true,
       }),
     );
   });

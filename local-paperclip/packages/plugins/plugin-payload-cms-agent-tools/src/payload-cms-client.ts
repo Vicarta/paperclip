@@ -79,6 +79,14 @@ export type PayloadCmsEnsureAuthorInput = PayloadCmsRequestInput & {
   extraFields?: Record<string, unknown>;
 };
 
+export type PayloadCmsCleanupTechnicalBlogPostDraftInput = PayloadCmsRequestInput & {
+  id?: number | string;
+  slug?: string;
+  expectedSlug?: string;
+  expectedTitle?: string;
+  confirmTechnicalDraftCleanup?: boolean;
+};
+
 function readNonEmptyString(value: unknown) {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
 }
@@ -323,6 +331,25 @@ function summarizeDoc(doc: unknown) {
     typeof record._status === "string" ? `status=${record._status}` : null,
   ].filter(Boolean);
   return parts.length > 0 ? `Payload CMS document: ${parts.join(", ")}` : "Payload CMS returned a document.";
+}
+
+function isPublishedOrApprovedBlogPost(doc: Record<string, unknown>) {
+  return doc._status === "published" || doc.workflowStatus === "approved" || typeof doc.publishedAt === "string";
+}
+
+function isTechnicalDraftCandidate(doc: Record<string, unknown>) {
+  const haystack = [
+    typeof doc.slug === "string" ? doc.slug : "",
+    typeof doc.title === "string" ? doc.title : "",
+  ].join(" ").toLowerCase();
+
+  return [
+    "smoke-test",
+    "smoke test",
+    "raw-category",
+    "technical-test",
+    "test draft",
+  ].some((marker) => haystack.includes(marker));
 }
 
 export async function getBuildState(input: PayloadCmsRequestInput) {
@@ -761,6 +788,67 @@ export async function updateBlogPostDraft(
   return {
     content: summarizeDoc(data),
     data,
+  };
+}
+
+export async function cleanupTechnicalBlogPostDraft(
+  input: PayloadCmsCleanupTechnicalBlogPostDraftInput,
+) {
+  if (input.confirmTechnicalDraftCleanup !== true) {
+    throw new Error("Technical blog draft cleanup requires confirmTechnicalDraftCleanup=true");
+  }
+
+  const found = await findBlogPost({
+    ...input,
+    id: input.id,
+    slug: input.slug,
+    draft: true,
+    depth: 0,
+  });
+  const doc = input.id !== undefined && input.id !== null
+    ? found.data
+    : (found.data as { doc?: unknown }).doc;
+  if (!doc || typeof doc !== "object") {
+    throw new Error("Payload blog post was not found for technical draft cleanup");
+  }
+
+  const record = doc as Record<string, unknown>;
+  const id = record.id;
+  if (id === undefined || id === null || String(id).trim().length === 0) {
+    throw new Error("Payload blog post id is required for technical draft cleanup");
+  }
+
+  const expectedSlug = readNonEmptyString(input.expectedSlug);
+  if (expectedSlug && record.slug !== expectedSlug) {
+    throw new Error(`Refusing cleanup: expected slug ${expectedSlug}, got ${String(record.slug ?? "")}`);
+  }
+
+  const expectedTitle = readNonEmptyString(input.expectedTitle);
+  if (expectedTitle && record.title !== expectedTitle) {
+    throw new Error(`Refusing cleanup: expected title ${expectedTitle}, got ${String(record.title ?? "")}`);
+  }
+
+  if (isPublishedOrApprovedBlogPost(record)) {
+    throw new Error("Refusing cleanup: published, approved, or previously published blog posts cannot be deleted");
+  }
+
+  if (!isTechnicalDraftCandidate(record)) {
+    throw new Error("Refusing cleanup: blog post does not look like a technical smoke/test draft");
+  }
+
+  const data = await payloadRequest<unknown>({
+    ...input,
+    method: "DELETE",
+    pathname: `/${blogPostsCollection(input.config)}/${encodeURIComponent(String(id))}`,
+    query: { draft: true },
+  });
+  return {
+    content: `Deleted technical Payload CMS blog draft: ${summarizeDoc(record)}`,
+    data: {
+      deleted: true,
+      deletedDoc: record,
+      response: data,
+    },
   };
 }
 
