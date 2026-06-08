@@ -1,15 +1,15 @@
 # Production Plugin Manifest
 
-Last verified: 2026-05-23
-Source: Phase 17 live production smoke, plugin inventory, Telegram formatter smoke, Phase 22 source package verification, live Telegram delivery-groups proof on AST-827, Telegram plugin package cutover smoke, Telegram proof ledger smoke, Payload CMS live agent-tool smoke, and secret schema reconciliation smoke.
+Last verified: 2026-06-08
+Source: Phase 17 live production smoke, plugin inventory, Telegram formatter smoke, Phase 22 source package verification, live Telegram delivery-groups proof on AST-827, Telegram plugin package cutover smoke, Telegram proof ledger smoke, Payload CMS live agent-tool smoke, secret schema reconciliation smoke, and Phase 14 SEO report-channel policy deploy smoke.
 Secret handling: config keys and secret refs only; no plaintext secret values. Generic `secretService` create/resolve/rotate is reconciled with the production metadata schema.
 
-Expected status: Astrogen-required plugins `ready`. Optional legacy connector records may remain `error` until their package/runtime wiring is deliberately restored.
+Expected status: Astrogen-required plugins `ready`.
 
 | Plugin key | Package | Expected role |
 | --- | --- | --- |
 | `paperclip-file-browser-example` | `@paperclipai/plugin-file-browser-example` | UI helper. |
-| `paperclip-plugin-telegram` | `paperclip-plugin-telegram@0.3.1-paperclip.2` via `/paperclip/.paperclip/plugins/local-packages/paperclip-plugin-telegram-0.3.1-paperclip.2` | Canonical Telegram lifecycle notifications, watch/escalation jobs, issue attachment delivery groups, completion-noise suppression, structured delivery proof ledger events, escalation superseding, and source-issue reply writeback. |
+| `paperclip-plugin-telegram` | `paperclip-plugin-telegram@0.3.1-paperclip.4` | Canonical Telegram lifecycle notifications, watch/escalation jobs, issue attachment delivery groups, completion-noise suppression, structured delivery proof ledger events, escalation superseding, and source-issue reply writeback. |
 | `paperclip.bright-data-agent-tools` | `@paperclipai/plugin-bright-data-agent-tools` | Bright Data tools. |
 | `paperclip.dataforseo-agent-tools` | `@paperclipai/plugin-dataforseo-agent-tools` | DataForSEO tools and cost ledger events. |
 | `paperclip.diskinternals-bigquery-growth` | `@paperclipai/plugin-diskinternals-bigquery-growth` | DiskInternals-specific growth analytics. |
@@ -18,13 +18,21 @@ Expected status: Astrogen-required plugins `ready`. Optional legacy connector re
 | `paperclip.payload-cms-agent-tools` | `@paperclipai/plugin-payload-cms-agent-tools` | Payload CMS bridge for Astrogen blog drafts, media upload, taxonomy lookup, build-state checks, and guarded publishing. |
 | `paperclip.search-console-mcp-agent-tools` | `@paperclipai/plugin-search-console-mcp-agent-tools` | Google Search Console MCP bridge. |
 | `paperclip.semantic-core-mcp-agent-tools` | `@paperclipai/plugin-semantic-core-mcp-agent-tools` | Semantic Core MCP bridge and cost ledger events. |
-| `paperclip.seo-performance-loop` | `@paperclipai/plugin-seo-performance-loop` | Weekly SEO telemetry and decision loop. |
+| `paperclip.seo-performance-loop` | `@paperclipai/plugin-seo-performance-loop` | Weekly SEO telemetry, report-channel policy, CrawlObserver finding routing, and decision loop. |
 | `paperclip.serper-agent-tools` | `@paperclipai/plugin-serper-agent-tools` | Serper search tools. |
 | `paperclip.winning-structure-mcp-agent-tools` | `@paperclipai/plugin-winning-structure-mcp-agent-tools` | Winning Structure MCP bridge. |
 
 ## Last Smoke
 
-- Ready and loaded: `paperclip-file-browser-example`, `paperclip-plugin-telegram`, `paperclip.dataforseo-agent-tools`, `paperclip.diskinternals-bigquery-growth`, `paperclip.payload-cms-agent-tools`, `paperclip.perfex-crm-agent-tools`, `paperclip.search-console-mcp-agent-tools`, `paperclip.semantic-core-mcp-agent-tools`, `paperclip.seo-performance-loop`, `paperclip.winning-structure-mcp-agent-tools`.
+- 2026-06-08 Phase 14 smoke:
+  - production image `paperclip-app:v2026.529.0-vicarta.25-38904757` is active;
+  - app health returned `HTTP 200`;
+  - plugin loader reported `total=14`, `succeeded=14`, `failed=0`;
+  - `paperclip.seo-performance-loop` registered `10` tools, including `seo-weekly-report-plan-get` and `seo-crawl-finding-route-plan`;
+  - `paperclip.gsc-bing-ga4-mcp-agent-tools` registered async inspection job tools;
+  - `paperclip.crawlobserver-agent-tools` registered `25` tools;
+  - `paperclip.payload-cms-agent-tools` registered `14` tools.
+- Ready and loaded: `paperclip-plugin-telegram`, `paperclip.bright-data-agent-tools`, `paperclip.crawlobserver-agent-tools`, `paperclip.dataforseo-agent-tools`, `paperclip.diskinternals-bigquery-growth`, `paperclip.exa-agent-tools`, `paperclip.gsc-bing-ga4-mcp-agent-tools`, `paperclip.payload-cms-agent-tools`, `paperclip.perfex-crm-agent-tools`, `paperclip.search-console-mcp-agent-tools`, `paperclip.semantic-core-mcp-agent-tools`, `paperclip.seo-performance-loop`, `paperclip.serper-agent-tools`, `paperclip.winning-structure-mcp-agent-tools`.
 - Payload CMS smoke:
   - `payload_cms_get_build_state` returned `HTTP 200`, `lastBuildStatus=queued`, `buildInProgress=false`.
   - `payload_cms_health_check` returned `HTTP 200`, with authenticated access to build state and Payload collections needed for blog drafts/media.

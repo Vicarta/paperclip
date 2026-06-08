@@ -17,6 +17,15 @@
   - `seo-crawl-finding-route-plan`.
 - Moved plugin weekly SEO jobs to Wednesday UTC.
 - Added tests for weekly report windows, delivery channels, and finding routing.
+- Deployed production image `paperclip-app:v2026.529.0-vicarta.25-38904757`.
+
+## Production Smoke
+
+- `/api/health` returned `ok`.
+- Plugin loader reported `14` succeeded, `0` failed.
+- `paperclip.seo-performance-loop` registered `10` tools, including:
+  - `seo-weekly-report-plan-get`;
+  - `seo-crawl-finding-route-plan`.
 
 ## Remaining Follow-Up
 

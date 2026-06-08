@@ -15,7 +15,7 @@ services:
       - paperclip_pgdata:/var/lib/postgresql/data
 
   app:
-    image: ${PAPERCLIP_APP_IMAGE:-paperclip-app:v2026.529.1-plugin-comment-wakeup-20260529}
+    image: ${PAPERCLIP_APP_IMAGE:-paperclip-app:v2026.529.0-vicarta.25-38904757}
     restart: unless-stopped
     depends_on:
       db:

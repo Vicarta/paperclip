@@ -8,11 +8,11 @@ It records deployable structure, plugin inventory, scheduled jobs, company-visib
 
 - Production host: `ubuntu-oc.tailbd4e1c.ts.net`
 - Compose directory: `/home/paperclip/apps/paperclip`
-- App image: `paperclip-app:v2026.529.1-plugin-comment-wakeup-20260529`
+- App image: `paperclip-app:v2026.529.0-vicarta.25-38904757`
 - App health endpoint: `http://127.0.0.1:3200/api/health`
 - Runtime exposure: private/Tailscale for Paperclip admin; client portal is separate.
 - Database: `postgres:17-alpine`
-- Plugin status at last smoke: `9` ready plugin workers loaded; `3` optional plugin records remain in error and are not required for Astrogen.
+- Plugin status at last smoke: `14` loaded, `14` succeeded, `0` failed.
 
 ## Files
 
