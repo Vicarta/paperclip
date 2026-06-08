@@ -3,6 +3,7 @@ import { PLUGIN_ID, TOOL_NAMES } from "./constants.js";
 import {
   createBlogPostDraft,
   cleanupTechnicalBlogPostDraft,
+  deleteTaxonomyTerm,
   ensureAuthor,
   findBlogPost,
   getAccess,
@@ -233,6 +234,47 @@ const plugin = definePlugin({
             title,
             slug: typed.slug as string | undefined,
             description: typed.description as string | undefined,
+          }),
+        ));
+      },
+    );
+
+    ctx.tools.register(
+      TOOL_NAMES.deleteTaxonomyTerm,
+      {
+        displayName: "Payload CMS Delete Taxonomy Term",
+        description:
+          "Delete an orphan Payload category/tag only after deterministic verification. Refuses category deletion when blog posts still reference it.",
+        parametersSchema: {
+          type: "object",
+          properties: {
+            collection: { type: "string", enum: ["categories", "tags"] },
+            id: { type: ["number", "string"] },
+            expectedSlug: { type: "string" },
+            expectedTitle: { type: "string" },
+            confirmDeleteTaxonomyTerm: { type: "boolean" },
+          },
+          required: ["collection", "id", "confirmDeleteTaxonomyTerm"],
+          additionalProperties: false,
+        },
+      },
+      async (params): Promise<ToolResult> => {
+        const typed = readObjectParams(params);
+        if (typeof typed.collection !== "string") {
+          throw new Error("Payload taxonomy collection is required");
+        }
+        if (typed.id === undefined || typed.id === null || String(typed.id).trim().length === 0) {
+          throw new Error("Payload taxonomy term id is required");
+        }
+        const collection = typed.collection;
+        return toolResult(await withClientConfig(ctx, (base) =>
+          deleteTaxonomyTerm({
+            ...base,
+            collection,
+            id: typed.id as string | number,
+            expectedSlug: typed.expectedSlug as string | undefined,
+            expectedTitle: typed.expectedTitle as string | undefined,
+            confirmDeleteTaxonomyTerm: typed.confirmDeleteTaxonomyTerm as boolean | undefined,
           }),
         ));
       },

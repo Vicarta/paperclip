@@ -70,6 +70,14 @@ export type PayloadCmsEnsureTaxonomyTermInput = PayloadCmsRequestInput & {
   description?: string;
 };
 
+export type PayloadCmsDeleteTaxonomyTermInput = PayloadCmsRequestInput & {
+  collection: string;
+  id: number | string;
+  expectedSlug?: string;
+  expectedTitle?: string;
+  confirmDeleteTaxonomyTerm?: boolean;
+};
+
 export type PayloadCmsEnsureAuthorInput = PayloadCmsRequestInput & {
   name: string;
   slug?: string;
@@ -598,6 +606,71 @@ export async function ensureTaxonomyTerm(input: PayloadCmsEnsureTaxonomyTermInpu
     data: {
       doc: data,
       created: true,
+    },
+  };
+}
+
+export async function deleteTaxonomyTerm(input: PayloadCmsDeleteTaxonomyTermInput) {
+  if (!["categories", "tags"].includes(input.collection)) {
+    throw new Error("Payload taxonomy deletion is supported only for categories and tags");
+  }
+  if (input.confirmDeleteTaxonomyTerm !== true) {
+    throw new Error("Payload taxonomy deletion requires confirmDeleteTaxonomyTerm=true");
+  }
+  const id = String(input.id ?? "").trim();
+  if (!id) throw new Error("Payload taxonomy term id is required");
+
+  const collection = taxonomyCollection(input.config, input.collection);
+  const doc = await payloadRequest<Record<string, unknown>>({
+    ...input,
+    pathname: `/${collection}/${encodeURIComponent(id)}`,
+    query: { depth: 0 },
+  });
+
+  const expectedSlug = readNonEmptyString(input.expectedSlug);
+  if (expectedSlug && doc.slug !== expectedSlug) {
+    throw new Error(`Refusing taxonomy deletion: expected slug ${expectedSlug}, got ${String(doc.slug ?? "")}`);
+  }
+
+  const expectedTitle = readNonEmptyString(input.expectedTitle);
+  const titleField = taxonomyTitleField(input.collection);
+  if (expectedTitle && doc[titleField] !== expectedTitle) {
+    throw new Error(
+      `Refusing taxonomy deletion: expected ${titleField} ${expectedTitle}, got ${String(doc[titleField] ?? "")}`,
+    );
+  }
+
+  if (input.collection === "categories") {
+    const linkedPosts = await payloadRequest<{ totalDocs?: number; docs?: unknown[] }>({
+      ...input,
+      pathname: `/${blogPostsCollection(input.config)}`,
+      query: {
+        limit: 1,
+        depth: 0,
+        "where[category][equals]": id,
+      },
+    });
+    const linkedCount = typeof linkedPosts.totalDocs === "number"
+      ? linkedPosts.totalDocs
+      : Array.isArray(linkedPosts.docs)
+        ? linkedPosts.docs.length
+        : 0;
+    if (linkedCount > 0) {
+      throw new Error(`Refusing taxonomy deletion: category ${id} is linked to ${linkedCount} blog post(s)`);
+    }
+  }
+
+  const data = await payloadRequest<unknown>({
+    ...input,
+    method: "DELETE",
+    pathname: `/${collection}/${encodeURIComponent(id)}`,
+  });
+  return {
+    content: `Deleted Payload CMS ${input.collection} term: ${summarizeDoc(doc)}`,
+    data: {
+      deleted: true,
+      deletedDoc: doc,
+      response: data,
     },
   };
 }

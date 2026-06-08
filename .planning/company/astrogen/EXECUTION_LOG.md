@@ -754,3 +754,8 @@
   - Updated CMO routing so generated SEO blog articles normally move from accepted Stage 61 validation to `SEO Blog Humanizer` before Stage 64/68 packaging/layout/CMS delivery.
   - Kept owner-provided or expert-authored no-rewrite articles exempt unless the owner explicitly asks for polish.
   - Updated Stage 61 and Stage 64 process docs so Humanizer is a bounded post-acceptance pass, not a second freeform rewrite and not a replacement for validation.
+- Added a guarded Payload CMS taxonomy cleanup path for GSC/category blockers.
+  - Added `payload_cms_delete_taxonomy_term` to `paperclip.payload-cms-agent-tools`.
+  - The tool deletes only `categories`/`tags`, requires explicit `confirmDeleteTaxonomyTerm=true`, supports expected slug/title verification, and refuses category deletion if any blog post still references the category.
+  - This unblocks the CMS-side path for orphan duplicate categories such as the extra `Експерти` term that left [AST-1098](/AST/issues/AST-1098) blocked.
+  - Verified plugin tests and build locally before production deploy.

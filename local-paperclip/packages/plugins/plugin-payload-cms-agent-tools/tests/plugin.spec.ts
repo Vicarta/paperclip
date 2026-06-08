@@ -8,6 +8,7 @@ import {
   buildBlogPostPayload,
   cleanupTechnicalBlogPostDraft,
   createBlogPostDraft,
+  deleteTaxonomyTerm,
   ensureAuthor,
   ensureTaxonomyTerm,
   healthCheck,
@@ -28,6 +29,7 @@ vi.mock("../src/payload-cms-client.js", async () => {
     cleanupTechnicalBlogPostDraft: vi.fn(),
     ensureAuthor: vi.fn(),
     ensureTaxonomyTerm: vi.fn(),
+    deleteTaxonomyTerm: vi.fn(),
     listBlogPosts: vi.fn(),
     publishBlogPost: vi.fn(),
   };
@@ -36,6 +38,7 @@ vi.mock("../src/payload-cms-client.js", async () => {
 const healthCheckMock = vi.mocked(healthCheck);
 const createBlogPostDraftMock = vi.mocked(createBlogPostDraft);
 const cleanupTechnicalBlogPostDraftMock = vi.mocked(cleanupTechnicalBlogPostDraft);
+const deleteTaxonomyTermMock = vi.mocked(deleteTaxonomyTerm);
 const ensureAuthorMock = vi.mocked(ensureAuthor);
 const ensureTaxonomyTermMock = vi.mocked(ensureTaxonomyTerm);
 const listBlogPostsMock = vi.mocked(listBlogPosts);
@@ -46,6 +49,7 @@ describe("plugin-payload-cms-agent-tools", () => {
     healthCheckMock.mockReset();
     createBlogPostDraftMock.mockReset();
     cleanupTechnicalBlogPostDraftMock.mockReset();
+    deleteTaxonomyTermMock.mockReset();
     ensureAuthorMock.mockReset();
     ensureTaxonomyTermMock.mockReset();
     listBlogPostsMock.mockReset();
@@ -173,6 +177,35 @@ describe("plugin-payload-cms-agent-tools", () => {
       }),
     );
     expect(result.content).toContain("Соляр");
+  });
+
+  it("deletes orphan taxonomy terms only with explicit confirmation", async () => {
+    const harness = createTestHarness({ manifest });
+    await plugin.definition.setup(harness.ctx);
+
+    deleteTaxonomyTermMock.mockResolvedValueOnce({
+      content: "Deleted Payload CMS categories term: Payload CMS document: id=7, title=\"Експерти\", slug=experts",
+      data: { deleted: true, deletedDoc: { id: 7, title: "Експерти", slug: "experts" } },
+    });
+
+    const result = await harness.executeTool(TOOL_NAMES.deleteTaxonomyTerm, {
+      collection: "categories",
+      id: 7,
+      expectedSlug: "experts",
+      expectedTitle: "Експерти",
+      confirmDeleteTaxonomyTerm: true,
+    });
+
+    expect(deleteTaxonomyTermMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        collection: "categories",
+        id: 7,
+        expectedSlug: "experts",
+        expectedTitle: "Експерти",
+        confirmDeleteTaxonomyTerm: true,
+      }),
+    );
+    expect(result.content).toContain("Deleted Payload CMS categories term");
   });
 
   it("ensures authors for owner-provided expert articles", async () => {

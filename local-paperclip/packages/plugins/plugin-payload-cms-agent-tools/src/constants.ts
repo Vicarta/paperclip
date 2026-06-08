@@ -25,6 +25,7 @@ export const TOOL_NAMES = {
   listBlogPosts: "payload_cms_list_blog_posts",
   listTaxonomy: "payload_cms_list_taxonomy",
   ensureTaxonomyTerm: "payload_cms_ensure_taxonomy_term",
+  deleteTaxonomyTerm: "payload_cms_delete_taxonomy_term",
   ensureAuthor: "payload_cms_ensure_author",
   uploadMedia: "payload_cms_upload_media",
   createBlogPostDraft: "payload_cms_create_blog_post_draft",

@@ -389,6 +389,24 @@ const manifest: PaperclipPluginManifestV1 = {
       },
     },
     {
+      name: TOOL_NAMES.deleteTaxonomyTerm,
+      displayName: "Payload CMS Delete Taxonomy Term",
+      description:
+        "Delete an orphan Payload category/tag only after deterministic verification. Refuses category deletion when blog posts still reference it.",
+      parametersSchema: {
+        type: "object",
+        properties: {
+          collection: { type: "string", enum: ["categories", "tags"] },
+          id: { type: ["number", "string"] },
+          expectedSlug: { type: "string" },
+          expectedTitle: { type: "string" },
+          confirmDeleteTaxonomyTerm: { type: "boolean" },
+        },
+        required: ["collection", "id", "confirmDeleteTaxonomyTerm"],
+        additionalProperties: false,
+      },
+    },
+    {
       name: TOOL_NAMES.ensureAuthor,
       displayName: "Payload CMS Ensure Author",
       description:
