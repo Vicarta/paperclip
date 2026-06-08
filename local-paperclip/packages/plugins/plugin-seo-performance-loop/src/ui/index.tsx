@@ -17,6 +17,14 @@ type LoopOverview = {
     rankProvider: string | null;
     rankGeo: string | null;
     rankLanguage: string | null;
+    weeklyReportTimezone: string | null;
+    telegramReportMode: string | null;
+    detailedReportChannel: string | null;
+  };
+  reportPolicy: {
+    telegramMode: string;
+    detailedChannel: string;
+    detailedDeliveryReady: boolean;
   };
 };
 
@@ -42,6 +50,11 @@ function OverviewCard({ title, compact }: { title: string; compact?: boolean }) 
         {data?.configSnapshot.rankLanguage || "n/a"}
       </div>
       <div>Last Collection Run: {data?.lastCollectionRun?.completedAt || "never"}</div>
+      <div>
+        Weekly Report: Telegram {data?.reportPolicy.telegramMode || "n/a"} /{" "}
+        Detailed {data?.reportPolicy.detailedChannel || "n/a"}
+        {data?.reportPolicy.detailedDeliveryReady === false ? " (email recipients missing)" : ""}
+      </div>
       <div>
         Last Decision Run: {data?.lastDecisionRun?.completedAt || "never"}
         {typeof data?.lastDecisionRun?.evaluatedArticleCount === "number"

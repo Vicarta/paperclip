@@ -5,6 +5,12 @@ Paperclip plugin for the first published-page SEO loop:
 - stores published-article registry records in plugin-owned state;
 - records telemetry ingestion requests and supplied GSC / rank-provider snapshots through plugin tools;
 - evaluates weekly hold / watch / benchmark decisions from stored telemetry and configurable thresholds;
+- exposes the canonical report-channel split for weekly SEO reports:
+  Telegram receives only a compact owner digest, while email receives the detailed
+  page/query/indexing appendix;
+- classifies CrawlObserver technical findings into automatic task candidates,
+  ignored policy noise, or record-only evidence before an agent spends LLM
+  tokens on interpretation;
 - keeps external GSC and rank-provider collection behind an integration boundary until provider dispatch is wired.
 
 This is not an article writer, HTML exporter, or CMS publisher. It starts after publication.
@@ -28,6 +34,27 @@ pnpm test
 - `seo-search-telemetry-get`: read recent telemetry snapshots for an article.
 - `seo-performance-decision-get`: read the latest weekly decision.
 - `seo-followup-issue-open`: record a requested follow-up action; host-level issue creation is intentionally out of scope for this slice.
+- `seo-weekly-report-plan-get`: return the report window, comparison window, and
+  delivery-channel policy. Agents must use it before creating weekly report text.
+- `seo-crawl-finding-route-plan`: classify CrawlObserver findings. Deterministic
+  CMS/indexability findings route to the configured technical fixer; known noise
+  such as Cloudflare email-protection URLs and CrawlObserver near-duplicates is
+  ignored by policy.
+
+## Weekly Report Delivery Policy
+
+The weekly owner report is split by channel:
+
+- Telegram: short Ukrainian digest only, blank lines between paragraphs, no raw
+  tables, no issue/run/plugin internals, hard-capped by
+  `telegramSummaryHardCapChars`.
+- Email: full detailed report with KPI tables, page/query movements, GA4
+  breakdowns, indexing/technical appendices, recommended experiments, cooldowns,
+  and monitoring dates.
+- If `detailedReportChannel=email` but `detailedReportRecipientEmails` is empty,
+  the tool marks email delivery as not ready and the host/agent should keep the
+  detailed report as a Paperclip issue document until email transport is
+  configured.
 
 ## Current Boundary
 

@@ -25,6 +25,8 @@ export const TOOL_NAMES = {
   searchTelemetryGet: "seo-search-telemetry-get",
   performanceDecisionGet: "seo-performance-decision-get",
   followupIssueOpen: "seo-followup-issue-open",
+  weeklyReportPlanGet: "seo-weekly-report-plan-get",
+  crawlFindingRoutePlan: "seo-crawl-finding-route-plan",
 } as const;
 
 export const DEFAULT_POLICY = {
@@ -46,7 +48,22 @@ export const DEFAULT_CONFIG = {
   defaultRankGeo: "ua",
   defaultRankLanguage: "uk",
   weeklyCollectionEnabled: true,
-  weeklyCollectionDay: "MO",
-  weeklyCollectionHourUtc: 3,
+  weeklyCollectionDay: "WE",
+  weeklyCollectionHourUtc: 6,
+  weeklyReportTimezone: "Europe/Kiev",
+  weeklyReportDataDelayDays: 2,
+  weeklyReportComparisonWeeks: 1,
+  telegramReportMode: "summary_only",
+  telegramSummaryHardCapChars: 1800,
+  detailedReportChannel: "email",
+  detailedReportRecipientEmails: "",
+  detailedReportFallback: "paperclip_issue_document",
+  automaticFindingTaskCreationEnabled: true,
+  automaticFindingTaskAgent: "SEO CMS Technical Fixer",
+  automaticFindingTaskMaxPerRun: 25,
+  findingCooldownDays: 14,
+  ignoreCloudflareEmailProtection404: true,
+  ignoreCrawlObserverNearDuplicates: true,
+  ignoreJsZeroWordArtifacts: true,
   ...DEFAULT_POLICY,
 } as const;

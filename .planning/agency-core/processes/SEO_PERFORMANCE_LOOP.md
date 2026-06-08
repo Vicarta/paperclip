@@ -36,6 +36,13 @@ The design is multi-company and multi-project by default. A single domain or URL
 6. **SEO actions must be separated into child lanes.**
    Generation, validation, routing/planning, implementation, and monitoring should be separate child issues unless explicitly marked as a small smoke test.
 
+7. **Report channel must match report size.**
+   Telegram is for short owner digests and alerts. Detailed weekly SEO reports
+   with tables, page/query appendices, technical findings, experiment rationale,
+   and monitoring notes should be delivered by email. If email delivery is not
+   configured, keep the detailed report as a Paperclip issue document and send
+   only a compact Telegram summary.
+
 ## Multi-Tenant Data Model
 
 ### Persistence Location
@@ -190,6 +197,32 @@ Enrichment should check:
 - product/category inference.
 
 Enrichment cadence can be lower than sitemap discovery unless a page is new, changed, declining, or in temporary watch.
+
+## CrawlObserver Finding Routing
+
+CrawlObserver is a provider/acquisition layer. It can crawl the site and expose
+technical evidence, but Paperclip owns task routing, decisions, cooldowns, and
+issue lifecycle.
+
+Default automatic routing:
+
+- create technical fix tasks for deterministic CMS/indexability findings:
+  missing meta descriptions, canonical mismatch, noindex, sitemap visibility,
+  redirects, and route/canonical category problems;
+- route those tasks to `SEO CMS Technical Fixer`;
+- do not ask the owner for deterministic CMS SEO fixes;
+- apply the configured cooldown before reopening an equivalent finding.
+
+Default ignored-noise policy:
+
+- ignore Cloudflare `/cdn-cgi/l/email-protection` 404 URLs;
+- ignore CrawlObserver near-duplicate findings until a better duplicate detector
+  is approved;
+- ignore JS zero-word artifacts unless rendered HTML or another approved source
+  confirms the issue.
+
+Automatic shortlist limits, cooldowns, ignored-noise toggles, and the target
+technical-fixer agent are settings. They must not live only in agent prompt text.
 
 ## GSC URL Inspection And Page Findings
 

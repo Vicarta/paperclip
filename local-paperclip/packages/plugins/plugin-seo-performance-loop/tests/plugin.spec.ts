@@ -3,6 +3,7 @@ import { createTestHarness } from "@paperclipai/plugin-sdk/testing";
 import manifest from "../src/manifest.js";
 import plugin from "../src/worker.js";
 import { JOB_KEYS, TOOL_NAMES } from "../src/constants.js";
+import { buildWeeklyReportPlan, routeCrawlFinding } from "../src/report-policy.js";
 
 describe("seo performance loop plugin", () => {
   it("stores registry rows, telemetry snapshots, decisions, jobs, and issue-done observations", async () => {
@@ -267,5 +268,105 @@ describe("seo performance loop plugin", () => {
         snapshotWindowEnd: "2026-04-13T00:00:00.000Z",
       }),
     ).rejects.toThrow("registered article not found for telemetry ingestion request");
+  });
+
+  it("keeps weekly owner reports short in Telegram and detailed over email", async () => {
+    const plan = buildWeeklyReportPlan(
+      {
+        detailedReportChannel: "email",
+        detailedReportRecipientEmails: "owner@example.com, cmo@example.com",
+        telegramSummaryHardCapChars: 1800,
+      },
+      "2026-06-10T06:00:00.000Z",
+    );
+
+    expect(plan.reportWindowStart).toBe("2026-06-01T00:00:00.000Z");
+    expect(plan.reportWindowEnd).toBe("2026-06-08T00:00:00.000Z");
+    expect(plan.comparisonWindowStart).toBe("2026-05-25T00:00:00.000Z");
+    expect(plan.comparisonWindowEnd).toBe("2026-06-01T00:00:00.000Z");
+    expect(plan.telegram.mode).toBe("summary_only");
+    expect(plan.telegram.requiredShape.join(" ")).toContain("no raw tables");
+    expect(plan.detailed.channel).toBe("email");
+    expect(plan.detailed.deliveryReady).toBe(true);
+    expect(plan.detailed.recipientEmails).toEqual(["owner@example.com", "cmo@example.com"]);
+  });
+
+  it("routes CrawlObserver findings without spending LLM tokens on known noise", () => {
+    expect(
+      routeCrawlFinding({
+        url: "https://astrogen.com.ua/cdn-cgi/l/email-protection",
+        findingType: "technical",
+        issueType: "broken_internal",
+        statusCode: 404,
+      }).action,
+    ).toBe("ignore_by_policy");
+
+    expect(
+      routeCrawlFinding({
+        url: "https://astrogen.com.ua/blog/tag/sinastriya/",
+        findingType: "near_duplicate",
+        issueType: "near_duplicate",
+      }).action,
+    ).toBe("ignore_by_policy");
+
+    const missingMetaRoute = routeCrawlFinding({
+      url: "https://astrogen.com.ua/blog/category/solar/",
+      findingType: "content",
+      issueType: "meta_description_missing",
+      isIndexable: true,
+    });
+    expect(missingMetaRoute.action).toBe("create_task");
+    expect(missingMetaRoute.routeToAgent).toBe("SEO CMS Technical Fixer");
+
+    const canonicalRoute = routeCrawlFinding({
+      url: "https://astrogen.com.ua/blog/?category=stosunky",
+      findingType: "canonical",
+      issueType: "canonical_mismatch",
+    });
+    expect(canonicalRoute.action).toBe("create_task");
+    expect(canonicalRoute.taskGroupKey).toContain("canonical_mismatch");
+  });
+
+  it("exposes report and crawl routing plans as agent tools", async () => {
+    const harness = createTestHarness({ manifest });
+    harness.setConfig({
+      detailedReportChannel: "email",
+      detailedReportRecipientEmails: "owner@example.com",
+    });
+    await plugin.definition.setup(harness.ctx);
+
+    const reportPlan = await harness.executeTool<{
+      data: {
+        implemented: boolean;
+        plan: { telegram: { mode: string }; detailed: { channel: string; deliveryReady: boolean } };
+      };
+    }>(TOOL_NAMES.weeklyReportPlanGet, {
+      anchorIso: "2026-06-10T06:00:00.000Z",
+    });
+    expect(reportPlan.data.implemented).toBe(true);
+    expect(reportPlan.data.plan.telegram.mode).toBe("summary_only");
+    expect(reportPlan.data.plan.detailed.channel).toBe("email");
+    expect(reportPlan.data.plan.detailed.deliveryReady).toBe(true);
+
+    const routePlan = await harness.executeTool<{
+      data: { implemented: boolean; createTaskCount: number; ignoredCount: number };
+    }>(TOOL_NAMES.crawlFindingRoutePlan, {
+      findings: [
+        {
+          url: "https://astrogen.com.ua/blog/category/solar/",
+          findingType: "content",
+          issueType: "meta_description_missing",
+          isIndexable: true,
+        },
+        {
+          url: "https://astrogen.com.ua/blog/tag/sinastriya/",
+          findingType: "near_duplicate",
+          issueType: "near_duplicate",
+        },
+      ],
+    });
+    expect(routePlan.data.implemented).toBe(true);
+    expect(routePlan.data.createTaskCount).toBe(1);
+    expect(routePlan.data.ignoredCount).toBe(1);
   });
 });

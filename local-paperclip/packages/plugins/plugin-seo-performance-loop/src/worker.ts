@@ -12,6 +12,10 @@ import {
   PLUGIN_ID,
   TOOL_NAMES,
 } from "./constants.js";
+import {
+  buildWeeklyReportPlan,
+  routeCrawlFinding,
+} from "./report-policy.js";
 
 type LoopConfig = {
   googleSearchConsoleCredentialSecretRef: string;
@@ -31,6 +35,21 @@ type LoopConfig = {
   declineClickDeltaPct: number;
   stableImpressionDeltaPct: number;
   declineImpressionDeltaPct: number;
+  weeklyReportTimezone: string;
+  weeklyReportDataDelayDays: number;
+  weeklyReportComparisonWeeks: number;
+  telegramReportMode: string;
+  telegramSummaryHardCapChars: number;
+  detailedReportChannel: string;
+  detailedReportRecipientEmails: string;
+  detailedReportFallback: string;
+  automaticFindingTaskCreationEnabled: boolean;
+  automaticFindingTaskAgent: string;
+  automaticFindingTaskMaxPerRun: number;
+  findingCooldownDays: number;
+  ignoreCloudflareEmailProtection404: boolean;
+  ignoreCrawlObserverNearDuplicates: boolean;
+  ignoreJsZeroWordArtifacts: boolean;
 } & Record<string, unknown>;
 
 type PageMetrics = {
@@ -154,6 +173,11 @@ type LoopHealthData = {
   lastCollectionRun: Record<string, unknown> | null;
   lastIngestionRun: Record<string, unknown> | null;
   lastDecisionRun: Record<string, unknown> | null;
+  reportPolicy: {
+    telegramMode: string;
+    detailedChannel: string;
+    detailedDeliveryReady: boolean;
+  };
 };
 
 const INDEX_KEY = "registry:index";
@@ -585,12 +609,14 @@ async function recordDecision(ctx: PluginContext, decision: SeoDecision) {
 }
 
 async function buildHealth(ctx: PluginContext): Promise<LoopHealthData> {
-  const [lastCollectionRun, lastIngestionRun, lastDecisionRun, index] = await Promise.all([
+  const [lastCollectionRun, lastIngestionRun, lastDecisionRun, index, config] = await Promise.all([
     getState<Record<string, unknown>>(ctx, "last-collection-run"),
     getState<Record<string, unknown>>(ctx, "last-ingestion-run"),
     getState<Record<string, unknown>>(ctx, "last-decision-run"),
     getIndex(ctx),
+    getConfig(ctx),
   ]);
+  const reportPlan = buildWeeklyReportPlan(config);
 
   return {
     status: "ok",
@@ -601,6 +627,11 @@ async function buildHealth(ctx: PluginContext): Promise<LoopHealthData> {
     lastCollectionRun: lastCollectionRun ?? null,
     lastIngestionRun: lastIngestionRun ?? null,
     lastDecisionRun: lastDecisionRun ?? null,
+    reportPolicy: {
+      telegramMode: reportPlan.telegram.mode,
+      detailedChannel: reportPlan.detailed.channel,
+      detailedDeliveryReady: reportPlan.detailed.deliveryReady,
+    },
   };
 }
 
@@ -852,6 +883,44 @@ async function registerTools(ctx: PluginContext) {
       return toolResult("SEO follow-up request recorded. Host issue creation is intentionally out of scope for this slice.", { request });
     },
   );
+
+  ctx.tools.register(
+    TOOL_NAMES.weeklyReportPlanGet,
+    {
+      displayName: "Get SEO Weekly Report Delivery Plan",
+      description: "Returns the canonical weekly SEO report window and delivery-channel split: Telegram summary, email detailed report.",
+      parametersSchema: {},
+    },
+    async (params: unknown): Promise<ToolResult> => {
+      const input = objectValue(params);
+      const config = await getConfig(ctx);
+      const plan = buildWeeklyReportPlan({ ...config, ...objectValue(input.configOverrides) }, stringValue(input, "anchorIso", nowIso()));
+      return toolResult("SEO weekly report delivery plan resolved.", { plan });
+    },
+  );
+
+  ctx.tools.register(
+    TOOL_NAMES.crawlFindingRoutePlan,
+    {
+      displayName: "Plan CrawlObserver Finding Routing",
+      description: "Classifies CrawlObserver SEO findings into automatic technical tasks, ignored policy noise, or record-only evidence.",
+      parametersSchema: {},
+    },
+    async (params: unknown): Promise<ToolResult> => {
+      const input = objectValue(params);
+      const config = await getConfig(ctx);
+      const findings = Array.isArray(input.findings)
+        ? input.findings.filter((item): item is Record<string, unknown> => Boolean(item && typeof item === "object"))
+        : [input];
+      const routes = findings.map((finding) => routeCrawlFinding(finding, config));
+      return toolResult("CrawlObserver finding routing plan resolved.", {
+        routes,
+        createTaskCount: routes.filter((route) => route.action === "create_task").length,
+        ignoredCount: routes.filter((route) => route.action === "ignore_by_policy").length,
+        recordOnlyCount: routes.filter((route) => route.action === "record_only").length,
+      });
+    },
+  );
 }
 
 const plugin = definePlugin({
@@ -883,6 +952,9 @@ const plugin = definePlugin({
           rankProvider: config.defaultRankProvider || null,
           rankGeo: config.defaultRankGeo || null,
           rankLanguage: config.defaultRankLanguage || null,
+          weeklyReportTimezone: config.weeklyReportTimezone || null,
+          telegramReportMode: config.telegramReportMode || null,
+          detailedReportChannel: config.detailedReportChannel || null,
         },
       };
     });

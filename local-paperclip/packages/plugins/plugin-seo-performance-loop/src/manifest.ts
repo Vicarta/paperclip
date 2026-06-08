@@ -75,6 +75,81 @@ const manifest: PaperclipPluginManifestV1 = {
         title: "Weekly Collection Hour UTC",
         default: DEFAULT_CONFIG.weeklyCollectionHourUtc,
       },
+      weeklyReportTimezone: {
+        type: "string",
+        title: "Weekly Report Timezone",
+        default: DEFAULT_CONFIG.weeklyReportTimezone,
+      },
+      weeklyReportDataDelayDays: {
+        type: "number",
+        title: "Weekly Report Data Delay Days",
+        default: DEFAULT_CONFIG.weeklyReportDataDelayDays,
+      },
+      weeklyReportComparisonWeeks: {
+        type: "number",
+        title: "Weekly Report Comparison Weeks",
+        default: DEFAULT_CONFIG.weeklyReportComparisonWeeks,
+      },
+      telegramReportMode: {
+        type: "string",
+        title: "Telegram Report Mode",
+        default: DEFAULT_CONFIG.telegramReportMode,
+      },
+      telegramSummaryHardCapChars: {
+        type: "number",
+        title: "Telegram Summary Hard Cap Characters",
+        default: DEFAULT_CONFIG.telegramSummaryHardCapChars,
+      },
+      detailedReportChannel: {
+        type: "string",
+        title: "Detailed Report Channel",
+        default: DEFAULT_CONFIG.detailedReportChannel,
+      },
+      detailedReportRecipientEmails: {
+        type: "string",
+        title: "Detailed Report Recipient Emails",
+        default: DEFAULT_CONFIG.detailedReportRecipientEmails,
+      },
+      detailedReportFallback: {
+        type: "string",
+        title: "Detailed Report Fallback",
+        default: DEFAULT_CONFIG.detailedReportFallback,
+      },
+      automaticFindingTaskCreationEnabled: {
+        type: "boolean",
+        title: "Enable Automatic Finding Task Creation",
+        default: DEFAULT_CONFIG.automaticFindingTaskCreationEnabled,
+      },
+      automaticFindingTaskAgent: {
+        type: "string",
+        title: "Automatic Finding Task Agent",
+        default: DEFAULT_CONFIG.automaticFindingTaskAgent,
+      },
+      automaticFindingTaskMaxPerRun: {
+        type: "number",
+        title: "Automatic Finding Task Max Per Run",
+        default: DEFAULT_CONFIG.automaticFindingTaskMaxPerRun,
+      },
+      findingCooldownDays: {
+        type: "number",
+        title: "Finding Cooldown Days",
+        default: DEFAULT_CONFIG.findingCooldownDays,
+      },
+      ignoreCloudflareEmailProtection404: {
+        type: "boolean",
+        title: "Ignore Cloudflare Email-Protection 404",
+        default: DEFAULT_CONFIG.ignoreCloudflareEmailProtection404,
+      },
+      ignoreCrawlObserverNearDuplicates: {
+        type: "boolean",
+        title: "Ignore CrawlObserver Near-Duplicate Findings",
+        default: DEFAULT_CONFIG.ignoreCrawlObserverNearDuplicates,
+      },
+      ignoreJsZeroWordArtifacts: {
+        type: "boolean",
+        title: "Ignore JS Zero-Word Artifacts",
+        default: DEFAULT_CONFIG.ignoreJsZeroWordArtifacts,
+      },
       stableWindowWeeks: {
         type: "number",
         title: "Stable Window Weeks",
@@ -127,13 +202,13 @@ const manifest: PaperclipPluginManifestV1 = {
       jobKey: JOB_KEYS.collectWeeklySearchTelemetry,
       displayName: "Collect Weekly Search Telemetry",
       description: "Plans weekly GSC and rank-provider telemetry ingestion requests for published articles without making provider calls.",
-      schedule: "0 3 * * 1",
+      schedule: "0 6 * * 3",
     },
     {
       jobKey: JOB_KEYS.evaluateWeeklySeoDecisions,
       displayName: "Evaluate Weekly SEO Decisions",
       description: "Evaluates policy thresholds and records hold/watch/refresh decisions.",
-      schedule: "30 3 * * 1",
+      schedule: "30 6 * * 3",
     },
   ],
   tools: [
@@ -299,6 +374,40 @@ const manifest: PaperclipPluginManifestV1 = {
           summary: { type: "string" },
         },
         required: ["articleId", "decision"],
+      },
+    },
+    {
+      name: TOOL_NAMES.weeklyReportPlanGet,
+      displayName: "Get SEO Weekly Report Delivery Plan",
+      description:
+        "Returns the canonical weekly SEO report window and delivery-channel split: Telegram gets the compact digest; email gets the detailed report.",
+      parametersSchema: {
+        type: "object",
+        properties: {
+          anchorIso: { type: "string" },
+          configOverrides: { type: "object" },
+        },
+      },
+    },
+    {
+      name: TOOL_NAMES.crawlFindingRoutePlan,
+      displayName: "Plan CrawlObserver Finding Routing",
+      description:
+        "Classifies CrawlObserver SEO findings into automatic technical tasks, ignored policy noise, or record-only evidence.",
+      parametersSchema: {
+        type: "object",
+        properties: {
+          findings: { type: "array", items: { type: "object" } },
+          url: { type: "string" },
+          findingType: { type: "string" },
+          issueType: { type: "string" },
+          severity: { type: "string" },
+          statusCode: { type: "number" },
+          isIndexable: { type: "boolean" },
+          wordCount: { type: "number" },
+          source: { type: "string" },
+          details: { type: "object" },
+        },
       },
     },
   ],
