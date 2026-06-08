@@ -42,6 +42,8 @@ type LoopConfig = {
   telegramSummaryHardCapChars: number;
   detailedReportChannel: string;
   detailedReportRecipientEmails: string;
+  detailedReportFromEmail: string;
+  resendApiKeySecretRef: string;
   detailedReportFallback: string;
   automaticFindingTaskCreationEnabled: boolean;
   automaticFindingTaskAgent: string;
@@ -205,12 +207,32 @@ function numberValue(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
+function booleanValue(params: Record<string, unknown>, key: string, fallback = false): boolean {
+  const value = params[key];
+  return typeof value === "boolean" ? value : fallback;
+}
+
 function arrayOfStrings(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
 }
 
 function objectValue(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function splitRecipients(value: string): string[] {
+  return value
+    .split(/[,\n;]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function isReasonableEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function truncate(value: string, max = 500): string {
+  return value.length > max ? `${value.slice(0, max)}...` : value;
 }
 
 async function getConfig(ctx: PluginContext): Promise<LoopConfig> {
@@ -226,6 +248,84 @@ async function getState<T>(ctx: PluginContext, stateKey: string): Promise<T | nu
 
 async function setState(ctx: PluginContext, stateKey: string, value: unknown) {
   await ctx.state.set({ scopeKind: "instance", stateKey }, value);
+}
+
+async function sendDetailedReportEmail(ctx: PluginContext, params: Record<string, unknown>) {
+  const config = await getConfig(ctx);
+  const subject = stringValue(params, "subject");
+  const text = stringValue(params, "text");
+  const html = stringValue(params, "html");
+  const dryRun = booleanValue(params, "dryRun");
+  const explicitRecipients = Array.isArray(params.recipientEmails) ? arrayOfStrings(params.recipientEmails) : [];
+  const recipients = explicitRecipients.length ? explicitRecipients : splitRecipients(config.detailedReportRecipientEmails);
+  const from = stringValue(config, "detailedReportFromEmail", DEFAULT_CONFIG.detailedReportFromEmail);
+  const secretRef = stringValue(config, "resendApiKeySecretRef");
+
+  if (!subject) throw new Error("subject is required for detailed report email");
+  if (!text) throw new Error("text is required for detailed report email");
+  if (!from || !isReasonableEmail(from)) throw new Error("detailedReportFromEmail must be configured as a valid email address");
+  if (!recipients.length) throw new Error("detailedReportRecipientEmails must contain at least one recipient");
+  const invalidRecipients = recipients.filter((recipient) => !isReasonableEmail(recipient));
+  if (invalidRecipients.length) throw new Error(`invalid detailed report recipient email(s): ${invalidRecipients.join(", ")}`);
+  if (!secretRef) throw new Error("resendApiKeySecretRef is required for email transport");
+
+  const deliveryId = `seo_email_${stableHash({ subject, recipients, at: nowIso() })}`;
+  if (dryRun) {
+    const proof = {
+      id: deliveryId,
+      dryRun: true,
+      provider: "resend",
+      from,
+      recipients,
+      subject,
+      sentAt: null,
+      providerMessageId: null,
+    };
+    await setState(ctx, emailDeliveryKey(deliveryId), proof);
+    return { proof };
+  }
+
+  const apiKey = await ctx.secrets.resolve(secretRef);
+  const response = await ctx.http.fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from,
+      to: recipients,
+      subject,
+      text,
+      ...(html ? { html } : {}),
+    }),
+  });
+
+  const responseText = await response.text();
+  let responseJson: Record<string, unknown> = {};
+  try {
+    responseJson = responseText ? objectValue(JSON.parse(responseText)) : {};
+  } catch {
+    responseJson = {};
+  }
+
+  if (!response.ok) {
+    throw new Error(`Resend email delivery failed with HTTP ${response.status}: ${truncate(responseText)}`);
+  }
+
+  const providerMessageId = typeof responseJson.id === "string" ? responseJson.id : null;
+  const proof = {
+    id: deliveryId,
+    dryRun: false,
+    provider: "resend",
+    from,
+    recipients,
+    subject,
+    sentAt: nowIso(),
+    providerMessageId,
+  };
+  await setState(ctx, emailDeliveryKey(deliveryId), proof);
+  return { proof };
 }
 
 async function getIndex(ctx: PluginContext): Promise<ArticleIndex> {
@@ -245,6 +345,7 @@ const ingestionKey = (articleId: string) => `ingestion:${articleId}`;
 const ingestionRunKey = (runId: string) => `ingestion-run:${runId}`;
 const telemetryKey = (articleId: string) => `telemetry:${articleId}`;
 const decisionKey = (articleId: string) => `decisions:${articleId}`;
+const emailDeliveryKey = (id: string) => `email-delivery:${id}`;
 
 async function getArticle(ctx: PluginContext, selector: Record<string, unknown>): Promise<PublishedArticle | null> {
   const index = await getIndex(ctx);
@@ -896,6 +997,19 @@ async function registerTools(ctx: PluginContext) {
       const config = await getConfig(ctx);
       const plan = buildWeeklyReportPlan({ ...config, ...objectValue(input.configOverrides) }, stringValue(input, "anchorIso", nowIso()));
       return toolResult("SEO weekly report delivery plan resolved.", { plan });
+    },
+  );
+
+  ctx.tools.register(
+    TOOL_NAMES.detailedReportEmailSend,
+    {
+      displayName: "Send SEO Detailed Report Email",
+      description: "Sends the detailed weekly SEO report through the configured Resend transport.",
+      parametersSchema: {},
+    },
+    async (params: unknown): Promise<ToolResult> => {
+      const result = await sendDetailedReportEmail(ctx, objectValue(params));
+      return toolResult(result.proof.dryRun ? "SEO detailed report email dry-run validated." : "SEO detailed report email sent.", result);
     },
   );
 

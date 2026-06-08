@@ -8,6 +8,8 @@ export type SeoLoopReportConfig = {
   telegramSummaryHardCapChars: number;
   detailedReportChannel: "email" | "paperclip_issue_document";
   detailedReportRecipientEmails: string;
+  detailedReportFromEmail: string;
+  resendApiKeySecretRef: string;
   detailedReportFallback: "paperclip_issue_document";
   automaticFindingTaskCreationEnabled: boolean;
   automaticFindingTaskAgent: string;
@@ -33,6 +35,8 @@ export type WeeklyReportPlan = {
   detailed: {
     channel: "email" | "paperclip_issue_document";
     recipientEmails: string[];
+    fromEmail: string | null;
+    transportConfigured: boolean;
     fallback: "paperclip_issue_document";
     requiredShape: string[];
     deliveryReady: boolean;
@@ -83,6 +87,8 @@ export function normalizeReportConfig(raw: Record<string, unknown> = {}): SeoLoo
       ? "email"
       : "paperclip_issue_document",
     detailedReportRecipientEmails: stringFromConfig(raw.detailedReportRecipientEmails, DEFAULT_CONFIG.detailedReportRecipientEmails),
+    detailedReportFromEmail: stringFromConfig(raw.detailedReportFromEmail, DEFAULT_CONFIG.detailedReportFromEmail),
+    resendApiKeySecretRef: stringFromConfig(raw.resendApiKeySecretRef, DEFAULT_CONFIG.resendApiKeySecretRef),
     detailedReportFallback: "paperclip_issue_document",
     automaticFindingTaskCreationEnabled: booleanFromConfig(
       raw.automaticFindingTaskCreationEnabled,
@@ -135,6 +141,7 @@ export function buildWeeklyReportPlan(rawConfig: Record<string, unknown> = {}, a
   const comparisonWindowEnd = addDays(reportWindowStart, 0);
   const comparisonWindowStart = addDays(comparisonWindowEnd, -7 * config.weeklyReportComparisonWeeks);
   const recipientEmails = splitRecipients(config.detailedReportRecipientEmails);
+  const transportConfigured = Boolean(config.resendApiKeySecretRef && config.detailedReportFromEmail);
 
   return {
     reportWindowStart: reportWindowStart.toISOString(),
@@ -156,8 +163,12 @@ export function buildWeeklyReportPlan(rawConfig: Record<string, unknown> = {}, a
     detailed: {
       channel: config.detailedReportChannel,
       recipientEmails,
+      fromEmail: config.detailedReportFromEmail || null,
+      transportConfigured,
       fallback: config.detailedReportFallback,
-      deliveryReady: config.detailedReportChannel === "email" ? recipientEmails.length > 0 : true,
+      deliveryReady: config.detailedReportChannel === "email"
+        ? recipientEmails.length > 0 && transportConfigured
+        : true,
       requiredShape: [
         "full KPI table and page-level appendix",
         "GSC query/page movements",

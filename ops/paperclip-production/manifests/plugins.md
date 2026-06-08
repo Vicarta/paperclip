@@ -18,7 +18,7 @@ Expected status: Astrogen-required plugins `ready`.
 | `paperclip.payload-cms-agent-tools` | `@paperclipai/plugin-payload-cms-agent-tools` | Payload CMS bridge for Astrogen blog drafts, media upload, taxonomy lookup, build-state checks, and guarded publishing. |
 | `paperclip.search-console-mcp-agent-tools` | `@paperclipai/plugin-search-console-mcp-agent-tools` | Google Search Console MCP bridge. |
 | `paperclip.semantic-core-mcp-agent-tools` | `@paperclipai/plugin-semantic-core-mcp-agent-tools` | Semantic Core MCP bridge and cost ledger events. |
-| `paperclip.seo-performance-loop` | `@paperclipai/plugin-seo-performance-loop` | Weekly SEO telemetry, report-channel policy, CrawlObserver finding routing, and decision loop. |
+| `paperclip.seo-performance-loop` | `@paperclipai/plugin-seo-performance-loop` | Weekly SEO telemetry, report-channel policy, Resend detailed-report email delivery, CrawlObserver finding routing, and decision loop. |
 | `paperclip.serper-agent-tools` | `@paperclipai/plugin-serper-agent-tools` | Serper search tools. |
 | `paperclip.winning-structure-mcp-agent-tools` | `@paperclipai/plugin-winning-structure-mcp-agent-tools` | Winning Structure MCP bridge. |
 
@@ -28,7 +28,7 @@ Expected status: Astrogen-required plugins `ready`.
   - production image `paperclip-app:v2026.529.0-vicarta.25-38904757` is active;
   - app health returned `HTTP 200`;
   - plugin loader reported `total=14`, `succeeded=14`, `failed=0`;
-  - `paperclip.seo-performance-loop` registered `10` tools, including `seo-weekly-report-plan-get` and `seo-crawl-finding-route-plan`;
+  - `paperclip.seo-performance-loop` registered `11` tools, including `seo-weekly-report-plan-get`, `seo-detailed-report-email-send`, and `seo-crawl-finding-route-plan`;
   - `paperclip.gsc-bing-ga4-mcp-agent-tools` registered async inspection job tools;
   - `paperclip.crawlobserver-agent-tools` registered `25` tools;
   - `paperclip.payload-cms-agent-tools` registered `14` tools.

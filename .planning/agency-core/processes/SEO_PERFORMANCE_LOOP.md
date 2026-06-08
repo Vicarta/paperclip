@@ -41,7 +41,9 @@ The design is multi-company and multi-project by default. A single domain or URL
    with tables, page/query appendices, technical findings, experiment rationale,
    and monitoring notes should be delivered by email. If email delivery is not
    configured, keep the detailed report as a Paperclip issue document and send
-   only a compact Telegram summary.
+   only a compact Telegram summary. Email is considered configured only when
+   recipients, a sender address, and a Resend API key secret reference are set;
+   raw API keys must never be written into plugin config, issues, docs, or Git.
 
 ## Multi-Tenant Data Model
 

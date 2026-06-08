@@ -27,9 +27,11 @@
   - `seo-weekly-report-plan-get`;
   - `seo-crawl-finding-route-plan`.
 
-## Remaining Follow-Up
+## Email Transport Follow-Up
 
-- Configure a real email transport/provider and recipient list for each company
-  that should receive detailed SEO reports by email.
-- Keep the compact Telegram report routine, but stop sending long appendices or
-  detailed tables there.
+- SEO Performance Loop now supports Resend-backed detailed report delivery via
+  `seo-detailed-report-email-send`.
+- A company is delivery-ready only when recipient emails, `detailedReportFromEmail`,
+  and `resendApiKeySecretRef` are configured.
+- Compact Telegram report routine stays summary-only; long appendices and tables
+  belong in email or, if email is not ready, a Paperclip issue document.

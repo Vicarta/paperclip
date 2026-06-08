@@ -275,6 +275,7 @@ describe("seo performance loop plugin", () => {
       {
         detailedReportChannel: "email",
         detailedReportRecipientEmails: "owner@example.com, cmo@example.com",
+        resendApiKeySecretRef: "00000000-0000-4000-8000-000000000001",
         telegramSummaryHardCapChars: 1800,
       },
       "2026-06-10T06:00:00.000Z",
@@ -288,7 +289,23 @@ describe("seo performance loop plugin", () => {
     expect(plan.telegram.requiredShape.join(" ")).toContain("no raw tables");
     expect(plan.detailed.channel).toBe("email");
     expect(plan.detailed.deliveryReady).toBe(true);
+    expect(plan.detailed.fromEmail).toBe("paperclip@aibizmate.com");
+    expect(plan.detailed.transportConfigured).toBe(true);
     expect(plan.detailed.recipientEmails).toEqual(["owner@example.com", "cmo@example.com"]);
+  });
+
+  it("does not mark detailed email delivery ready until recipients and Resend transport are configured", () => {
+    const plan = buildWeeklyReportPlan(
+      {
+        detailedReportChannel: "email",
+        detailedReportRecipientEmails: "owner@example.com",
+      },
+      "2026-06-10T06:00:00.000Z",
+    );
+
+    expect(plan.detailed.channel).toBe("email");
+    expect(plan.detailed.deliveryReady).toBe(false);
+    expect(plan.detailed.transportConfigured).toBe(false);
   });
 
   it("routes CrawlObserver findings without spending LLM tokens on known noise", () => {
@@ -332,6 +349,7 @@ describe("seo performance loop plugin", () => {
     harness.setConfig({
       detailedReportChannel: "email",
       detailedReportRecipientEmails: "owner@example.com",
+      resendApiKeySecretRef: "00000000-0000-4000-8000-000000000001",
     });
     await plugin.definition.setup(harness.ctx);
 
@@ -347,6 +365,18 @@ describe("seo performance loop plugin", () => {
     expect(reportPlan.data.plan.telegram.mode).toBe("summary_only");
     expect(reportPlan.data.plan.detailed.channel).toBe("email");
     expect(reportPlan.data.plan.detailed.deliveryReady).toBe(true);
+
+    const dryRun = await harness.executeTool<{
+      data: { proof: { dryRun: boolean; provider: string; recipients: string[]; providerMessageId: string | null } };
+    }>(TOOL_NAMES.detailedReportEmailSend, {
+      subject: "Astrogen detailed SEO report",
+      text: "Detailed report body",
+      dryRun: true,
+    });
+    expect(dryRun.data.proof.dryRun).toBe(true);
+    expect(dryRun.data.proof.provider).toBe("resend");
+    expect(dryRun.data.proof.recipients).toEqual(["owner@example.com"]);
+    expect(dryRun.data.proof.providerMessageId).toBeNull();
 
     const routePlan = await harness.executeTool<{
       data: { implemented: boolean; createTaskCount: number; ignoredCount: number };
@@ -368,5 +398,42 @@ describe("seo performance loop plugin", () => {
     expect(routePlan.data.implemented).toBe(true);
     expect(routePlan.data.createTaskCount).toBe(1);
     expect(routePlan.data.ignoredCount).toBe(1);
+  });
+
+  it("sends detailed report email through Resend without returning the resolved secret", async () => {
+    const originalFetch = globalThis.fetch;
+    const calls: Array<{ url: string; init?: RequestInit }> = [];
+    globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
+      calls.push({ url: String(url), init });
+      return new Response(JSON.stringify({ id: "email-provider-id" }), { status: 200 });
+    }) as typeof fetch;
+
+    try {
+      const harness = createTestHarness({ manifest });
+      harness.setConfig({
+        detailedReportChannel: "email",
+        detailedReportRecipientEmails: "owner@example.com",
+        resendApiKeySecretRef: "00000000-0000-4000-8000-000000000001",
+      });
+      await plugin.definition.setup(harness.ctx);
+
+      const result = await harness.executeTool<{
+        data: { proof: { dryRun: boolean; providerMessageId: string | null } };
+      }>(TOOL_NAMES.detailedReportEmailSend, {
+        subject: "Astrogen detailed SEO report",
+        text: "Detailed report body",
+      });
+
+      expect(result.data.proof.dryRun).toBe(false);
+      expect(result.data.proof.providerMessageId).toBe("email-provider-id");
+      expect(calls).toHaveLength(1);
+      expect(calls[0].url).toBe("https://api.resend.com/emails");
+      expect(calls[0].init?.headers).toMatchObject({
+        Authorization: "Bearer resolved:00000000-0000-4000-8000-000000000001",
+      });
+      expect(JSON.stringify(result.data)).not.toContain("resolved:");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 });

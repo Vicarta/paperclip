@@ -21,9 +21,11 @@ const manifest: PaperclipPluginManifestV1 = {
   capabilities: [
     "agent.tools.register",
     "events.subscribe",
+    "http.outbound",
     "jobs.schedule",
     "plugin.state.read",
     "plugin.state.write",
+    "secrets.read-ref",
     "instance.settings.register",
     "ui.dashboardWidget.register"
   ],
@@ -109,6 +111,17 @@ const manifest: PaperclipPluginManifestV1 = {
         type: "string",
         title: "Detailed Report Recipient Emails",
         default: DEFAULT_CONFIG.detailedReportRecipientEmails,
+      },
+      detailedReportFromEmail: {
+        type: "string",
+        title: "Detailed Report From Email",
+        default: DEFAULT_CONFIG.detailedReportFromEmail,
+      },
+      resendApiKeySecretRef: {
+        type: "string",
+        format: "secret-ref",
+        title: "Resend API Key Secret Ref",
+        default: DEFAULT_CONFIG.resendApiKeySecretRef,
       },
       detailedReportFallback: {
         type: "string",
@@ -387,6 +400,23 @@ const manifest: PaperclipPluginManifestV1 = {
           anchorIso: { type: "string" },
           configOverrides: { type: "object" },
         },
+      },
+    },
+    {
+      name: TOOL_NAMES.detailedReportEmailSend,
+      displayName: "Send SEO Detailed Report Email",
+      description:
+        "Sends the detailed weekly SEO report through the configured Resend transport. Use only for detailed report email delivery, not Telegram summaries.",
+      parametersSchema: {
+        type: "object",
+        properties: {
+          subject: { type: "string" },
+          text: { type: "string" },
+          html: { type: "string" },
+          recipientEmails: { type: "array", items: { type: "string" } },
+          dryRun: { type: "boolean" },
+        },
+        required: ["subject", "text"],
       },
     },
     {

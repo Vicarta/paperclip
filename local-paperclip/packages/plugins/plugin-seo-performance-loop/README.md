@@ -51,10 +51,14 @@ The weekly owner report is split by channel:
 - Email: full detailed report with KPI tables, page/query movements, GA4
   breakdowns, indexing/technical appendices, recommended experiments, cooldowns,
   and monitoring dates.
-- If `detailedReportChannel=email` but `detailedReportRecipientEmails` is empty,
-  the tool marks email delivery as not ready and the host/agent should keep the
-  detailed report as a Paperclip issue document until email transport is
-  configured.
+- If `detailedReportChannel=email` but recipients, `detailedReportFromEmail`, or
+  `resendApiKeySecretRef` are missing, the plan marks email delivery as not
+  ready and the host/agent should keep the detailed report as a Paperclip issue
+  document until email transport is configured.
+- Resend transport is configured through `resendApiKeySecretRef` only. Do not
+  store a raw Resend API key in plugin config, issue comments, docs, or Git.
+- Agents send the detailed report with `seo-detailed-report-email-send`. Use
+  `dryRun=true` for validation before first live delivery.
 
 ## Current Boundary
 

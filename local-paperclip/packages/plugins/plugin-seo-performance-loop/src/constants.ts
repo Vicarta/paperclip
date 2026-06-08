@@ -1,5 +1,5 @@
 export const PLUGIN_ID = "paperclip.seo-performance-loop";
-export const PLUGIN_VERSION = "0.1.0";
+export const PLUGIN_VERSION = "0.1.1";
 
 export const SLOT_IDS = {
   settingsPage: "seo-performance-loop-settings-page",
@@ -26,6 +26,7 @@ export const TOOL_NAMES = {
   performanceDecisionGet: "seo-performance-decision-get",
   followupIssueOpen: "seo-followup-issue-open",
   weeklyReportPlanGet: "seo-weekly-report-plan-get",
+  detailedReportEmailSend: "seo-detailed-report-email-send",
   crawlFindingRoutePlan: "seo-crawl-finding-route-plan",
 } as const;
 
@@ -57,6 +58,8 @@ export const DEFAULT_CONFIG = {
   telegramSummaryHardCapChars: 1800,
   detailedReportChannel: "email",
   detailedReportRecipientEmails: "",
+  detailedReportFromEmail: "paperclip@aibizmate.com",
+  resendApiKeySecretRef: "",
   detailedReportFallback: "paperclip_issue_document",
   automaticFindingTaskCreationEnabled: true,
   automaticFindingTaskAgent: "SEO CMS Technical Fixer",
