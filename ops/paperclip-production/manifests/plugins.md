@@ -24,11 +24,12 @@ Expected status: Astrogen-required plugins `ready`.
 
 ## Last Smoke
 
-- 2026-06-08 Phase 14 smoke:
-  - production image `paperclip-app:v2026.529.0-vicarta.25-38904757` is active;
+- 2026-06-08 Phase 14 email transport smoke:
+  - production image `paperclip-app:v2026.529.0-vicarta.26-f9207c32` is active;
   - app health returned `HTTP 200`;
   - plugin loader reported `total=14`, `succeeded=14`, `failed=0`;
   - `paperclip.seo-performance-loop` registered `11` tools, including `seo-weekly-report-plan-get`, `seo-detailed-report-email-send`, and `seo-crawl-finding-route-plan`;
+  - Astrogen detailed SEO report email config is set to `email` channel with Resend secret-ref transport, sender `paperclip@aibizmate.com`, and owner recipient configured;
   - `paperclip.gsc-bing-ga4-mcp-agent-tools` registered async inspection job tools;
   - `paperclip.crawlobserver-agent-tools` registered `25` tools;
   - `paperclip.payload-cms-agent-tools` registered `14` tools.
