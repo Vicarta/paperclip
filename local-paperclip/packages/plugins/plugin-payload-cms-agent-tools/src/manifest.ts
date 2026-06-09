@@ -389,6 +389,44 @@ const manifest: PaperclipPluginManifestV1 = {
       },
     },
     {
+      name: TOOL_NAMES.updateTaxonomyTerm,
+      displayName: "Payload CMS Update Taxonomy Term",
+      description:
+        "Patch a category/tag/author term after deterministic verification. Use for category SEO metadata, slug normalization, or orphan-term neutralization when delete is not allowed.",
+      parametersSchema: {
+        type: "object",
+        properties: {
+          collection: { type: "string", enum: ["categories", "tags", "authors"] },
+          id: { type: ["number", "string"] },
+          slug: { type: "string" },
+          expectedSlug: { type: "string" },
+          expectedTitle: { type: "string" },
+          fields: {
+            type: "object",
+            properties: {
+              title: { type: "string" },
+              name: { type: "string" },
+              slug: { type: "string" },
+              description: { type: "string" },
+              seoTitle: { type: "string" },
+              seoDescription: { type: "string" },
+              bio: { type: "string" },
+              roleTitle: { type: "string" },
+              photo: { type: ["number", "string"] },
+              socialLinks: {
+                type: "array",
+                items: { type: "object", additionalProperties: true },
+              },
+              extraFields: looseObjectSchema,
+            },
+            additionalProperties: false,
+          },
+        },
+        required: ["collection", "fields"],
+        additionalProperties: false,
+      },
+    },
+    {
       name: TOOL_NAMES.deleteTaxonomyTerm,
       displayName: "Payload CMS Delete Taxonomy Term",
       description:

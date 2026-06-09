@@ -7,6 +7,7 @@ Server-side Paperclip plugin for Payload CMS blog operations.
 - Reads Payload build state and access metadata.
 - Finds blog posts by `id` or `slug`.
 - Lists configured taxonomy collections: categories, tags, authors.
+- Finds, creates, updates, and guarded-deletes taxonomy terms when the contract allows it.
 - Finds or creates blog authors by `name`/`slug` before draft delivery.
 - Uploads media files to the configured media collection with a unique uploaded
   filename, so Payload-generated responsive image variants do not collide when
@@ -64,7 +65,7 @@ examples.
 - Draft creation and updates also force `workflowStatus: "draft"`.
 - Publishing requires the separate `payload_cms_publish_blog_post` tool with
   `confirmPublish=true`.
-- The plugin does not delete CMS content.
+- Taxonomy deletion is guarded and refuses category deletes when blog posts still reference the category.
 - The plugin does not write secrets to logs, issue comments, or Git.
 
 ## Author Mapping

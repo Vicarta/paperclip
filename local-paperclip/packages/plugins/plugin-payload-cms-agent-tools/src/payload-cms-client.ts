@@ -78,6 +78,27 @@ export type PayloadCmsDeleteTaxonomyTermInput = PayloadCmsRequestInput & {
   confirmDeleteTaxonomyTerm?: boolean;
 };
 
+export type PayloadCmsUpdateTaxonomyTermInput = PayloadCmsRequestInput & {
+  collection: string;
+  id?: number | string;
+  slug?: string;
+  expectedSlug?: string;
+  expectedTitle?: string;
+  fields: {
+    title?: string;
+    name?: string;
+    slug?: string;
+    description?: string;
+    seoTitle?: string;
+    seoDescription?: string;
+    bio?: string;
+    roleTitle?: string;
+    photo?: number | string;
+    socialLinks?: Array<Record<string, unknown>>;
+    extraFields?: Record<string, unknown>;
+  };
+};
+
 export type PayloadCmsEnsureAuthorInput = PayloadCmsRequestInput & {
   name: string;
   slug?: string;
@@ -606,6 +627,124 @@ export async function ensureTaxonomyTerm(input: PayloadCmsEnsureTaxonomyTermInpu
     data: {
       doc: data,
       created: true,
+    },
+  };
+}
+
+export async function updateTaxonomyTerm(input: PayloadCmsUpdateTaxonomyTermInput) {
+  if (!["categories", "tags", "authors"].includes(input.collection)) {
+    throw new Error("Payload taxonomy update is supported only for categories, tags, and authors");
+  }
+
+  const id = input.id !== undefined && input.id !== null && String(input.id).trim().length > 0
+    ? String(input.id).trim()
+    : null;
+  const slugSelector = readNonEmptyString(input.slug);
+  if (!id && !slugSelector) {
+    throw new Error("Payload taxonomy update requires id or slug");
+  }
+
+  let target: Record<string, unknown> | null;
+  if (id) {
+    target = await payloadRequest<Record<string, unknown>>({
+      ...input,
+      pathname: `/${taxonomyCollection(input.config, input.collection)}/${encodeURIComponent(id)}`,
+      query: { depth: 0 },
+    });
+  } else {
+    const lookup = await findTaxonomyTerm({
+      ...input,
+      collection: input.collection,
+      slug: slugSelector ?? undefined,
+      limit: 1,
+      depth: 0,
+    });
+    target = ((lookup.data as { doc?: Record<string, unknown> }).doc ?? null);
+  }
+
+  if (!target) {
+    throw new Error(`No Payload CMS ${input.collection} term found for ${id ? `id ${id}` : `slug ${slugSelector}`}`);
+  }
+
+  const expectedSlug = readNonEmptyString(input.expectedSlug);
+  if (expectedSlug && target.slug !== expectedSlug) {
+    throw new Error(`Refusing taxonomy update: expected slug ${expectedSlug}, got ${String(target.slug ?? "")}`);
+  }
+
+  const expectedTitle = readNonEmptyString(input.expectedTitle);
+  const titleField = taxonomyTitleField(input.collection);
+  if (expectedTitle && target[titleField] !== expectedTitle) {
+    throw new Error(
+      `Refusing taxonomy update: expected ${titleField} ${expectedTitle}, got ${String(target[titleField] ?? "")}`,
+    );
+  }
+
+  const fields = input.fields && typeof input.fields === "object" && !Array.isArray(input.fields)
+    ? input.fields
+    : null;
+  if (!fields) throw new Error("Payload taxonomy update requires fields");
+
+  const extraFields = fields.extraFields ?? {};
+  if (
+    Object.prototype.hasOwnProperty.call(extraFields, "id") ||
+    Object.prototype.hasOwnProperty.call(extraFields, "createdAt") ||
+    Object.prototype.hasOwnProperty.call(extraFields, "updatedAt")
+  ) {
+    throw new Error("Taxonomy extraFields must not override system fields");
+  }
+
+  const body: Record<string, unknown> = {
+    ...extraFields,
+  };
+
+  if (input.collection === "authors") {
+    const name = readNonEmptyString(fields.name);
+    if (name) body.name = name;
+    const slug = readNonEmptyString(fields.slug);
+    if (slug) body.slug = slug;
+    const bio = readNonEmptyString(fields.bio);
+    if (bio) body.bio = bio;
+    const roleTitle = readNonEmptyString(fields.roleTitle);
+    if (roleTitle) body.roleTitle = roleTitle;
+    if (fields.photo !== undefined && fields.photo !== null && String(fields.photo).trim().length > 0) {
+      body.photo = fields.photo;
+    }
+    if (Array.isArray(fields.socialLinks)) {
+      body.socialLinks = fields.socialLinks;
+    }
+  } else {
+    const title = readNonEmptyString(fields.title);
+    if (title) body.title = title;
+    const slug = readNonEmptyString(fields.slug);
+    if (slug) body.slug = slug;
+    const description = readNonEmptyString(fields.description);
+    if (description) body.description = description;
+    const seoTitle = readNonEmptyString(fields.seoTitle);
+    if (seoTitle) body.seoTitle = seoTitle;
+    const seoDescription = readNonEmptyString(fields.seoDescription);
+    if (seoDescription) body.seoDescription = seoDescription;
+  }
+
+  if (Object.keys(body).length === 0) {
+    throw new Error("Payload taxonomy update produced an empty patch body");
+  }
+
+  const targetId = String(target.id ?? "").trim();
+  if (!targetId) throw new Error("Payload taxonomy update target is missing id");
+
+  const data = await payloadRequest<unknown>({
+    ...input,
+    method: "PATCH",
+    pathname: `/${taxonomyCollection(input.config, input.collection)}/${encodeURIComponent(targetId)}`,
+    body,
+  });
+
+  return {
+    content: `Updated Payload CMS ${input.collection} term. ${summarizeDoc(data)}`,
+    data: {
+      before: target,
+      after: data,
+      updated: true,
     },
   };
 }

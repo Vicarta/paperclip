@@ -1,5 +1,5 @@
 export const PLUGIN_ID = "paperclip.payload-cms-agent-tools";
-export const PLUGIN_VERSION = "0.1.0";
+export const PLUGIN_VERSION = "0.1.1";
 
 export const DEFAULT_PAYLOAD_API_BASE_URL = "https://cms.astrogen.com.ua/api";
 export const DEFAULT_BLOG_POSTS_COLLECTION = "blogPosts";
@@ -25,6 +25,7 @@ export const TOOL_NAMES = {
   listBlogPosts: "payload_cms_list_blog_posts",
   listTaxonomy: "payload_cms_list_taxonomy",
   ensureTaxonomyTerm: "payload_cms_ensure_taxonomy_term",
+  updateTaxonomyTerm: "payload_cms_update_taxonomy_term",
   deleteTaxonomyTerm: "payload_cms_delete_taxonomy_term",
   ensureAuthor: "payload_cms_ensure_author",
   uploadMedia: "payload_cms_upload_media",

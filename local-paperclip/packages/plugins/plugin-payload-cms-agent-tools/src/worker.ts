@@ -14,6 +14,7 @@ import {
   listTaxonomy,
   publishBlogPost,
   type PayloadCmsPluginConfig,
+  updateTaxonomyTerm,
   updateBlogPostDraft,
   uploadMedia,
 } from "./payload-cms-client.js";
@@ -234,6 +235,68 @@ const plugin = definePlugin({
             title,
             slug: typed.slug as string | undefined,
             description: typed.description as string | undefined,
+          }),
+        ));
+      },
+    );
+
+    ctx.tools.register(
+      TOOL_NAMES.updateTaxonomyTerm,
+      {
+        displayName: "Payload CMS Update Taxonomy Term",
+        description:
+          "Patch a category/tag/author term after deterministic verification. Use for category SEO metadata, slug normalization, or orphan-term neutralization when delete is not allowed.",
+        parametersSchema: {
+          type: "object",
+          properties: {
+            collection: { type: "string", enum: ["categories", "tags", "authors"] },
+            id: { type: ["number", "string"] },
+            slug: { type: "string" },
+            expectedSlug: { type: "string" },
+            expectedTitle: { type: "string" },
+            fields: {
+              type: "object",
+              properties: {
+                title: { type: "string" },
+                name: { type: "string" },
+                slug: { type: "string" },
+                description: { type: "string" },
+                seoTitle: { type: "string" },
+                seoDescription: { type: "string" },
+                bio: { type: "string" },
+                roleTitle: { type: "string" },
+                photo: { type: ["number", "string"] },
+                socialLinks: {
+                  type: "array",
+                  items: { type: "object", additionalProperties: true },
+                },
+                extraFields: { type: "object", additionalProperties: true },
+              },
+              additionalProperties: false,
+            },
+          },
+          required: ["collection", "fields"],
+          additionalProperties: false,
+        },
+      },
+      async (params): Promise<ToolResult> => {
+        const typed = readObjectParams(params);
+        if (typeof typed.collection !== "string") {
+          throw new Error("Payload taxonomy collection is required");
+        }
+        const collection = typed.collection;
+        return toolResult(await withClientConfig(ctx, (base) =>
+          updateTaxonomyTerm({
+            ...base,
+            collection,
+            id: typed.id as string | number | undefined,
+            slug: typed.slug as string | undefined,
+            expectedSlug: typed.expectedSlug as string | undefined,
+            expectedTitle: typed.expectedTitle as string | undefined,
+            fields: {
+              ...readObjectParams(typed.fields),
+              extraFields: readObjectParams(readObjectParams(typed.fields).extraFields),
+            },
           }),
         ));
       },

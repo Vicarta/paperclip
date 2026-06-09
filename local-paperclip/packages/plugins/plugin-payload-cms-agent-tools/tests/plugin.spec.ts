@@ -14,6 +14,7 @@ import {
   healthCheck,
   listBlogPosts,
   publishBlogPost,
+  updateTaxonomyTerm,
 } from "../src/payload-cms-client.js";
 import { markdownToLexical } from "../src/markdown-to-lexical.js";
 
@@ -30,6 +31,7 @@ vi.mock("../src/payload-cms-client.js", async () => {
     ensureAuthor: vi.fn(),
     ensureTaxonomyTerm: vi.fn(),
     deleteTaxonomyTerm: vi.fn(),
+    updateTaxonomyTerm: vi.fn(),
     listBlogPosts: vi.fn(),
     publishBlogPost: vi.fn(),
   };
@@ -41,6 +43,7 @@ const cleanupTechnicalBlogPostDraftMock = vi.mocked(cleanupTechnicalBlogPostDraf
 const deleteTaxonomyTermMock = vi.mocked(deleteTaxonomyTerm);
 const ensureAuthorMock = vi.mocked(ensureAuthor);
 const ensureTaxonomyTermMock = vi.mocked(ensureTaxonomyTerm);
+const updateTaxonomyTermMock = vi.mocked(updateTaxonomyTerm);
 const listBlogPostsMock = vi.mocked(listBlogPosts);
 const publishBlogPostMock = vi.mocked(publishBlogPost);
 
@@ -52,6 +55,7 @@ describe("plugin-payload-cms-agent-tools", () => {
     deleteTaxonomyTermMock.mockReset();
     ensureAuthorMock.mockReset();
     ensureTaxonomyTermMock.mockReset();
+    updateTaxonomyTermMock.mockReset();
     listBlogPostsMock.mockReset();
     publishBlogPostMock.mockReset();
   });
@@ -206,6 +210,46 @@ describe("plugin-payload-cms-agent-tools", () => {
       }),
     );
     expect(result.content).toContain("Deleted Payload CMS categories term");
+  });
+
+  it("updates taxonomy terms for category SEO metadata and orphan neutralization", async () => {
+    const harness = createTestHarness({ manifest });
+    await plugin.definition.setup(harness.ctx);
+
+    updateTaxonomyTermMock.mockResolvedValueOnce({
+      content: "Updated Payload CMS categories term. Payload CMS document: id=3, title=\"Стосунки\", slug=stosunky",
+      data: {
+        updated: true,
+        after: { id: 3, title: "Стосунки", slug: "stosunky", seoTitle: "Стосунки - Astrogen" },
+      },
+    });
+
+    const result = await harness.executeTool(TOOL_NAMES.updateTaxonomyTerm, {
+      collection: "categories",
+      slug: "stosunky",
+      expectedSlug: "stosunky",
+      expectedTitle: "Стосунки",
+      fields: {
+        seoTitle: "Стосунки - Astrogen",
+        seoDescription: "Матеріали про стосунки в блозі Astrogen.",
+        description: "Окремий архів матеріалів про стосунки.",
+      },
+    });
+
+    expect(updateTaxonomyTermMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        collection: "categories",
+        slug: "stosunky",
+        expectedSlug: "stosunky",
+        expectedTitle: "Стосунки",
+        fields: expect.objectContaining({
+          seoTitle: "Стосунки - Astrogen",
+          seoDescription: "Матеріали про стосунки в блозі Astrogen.",
+          description: "Окремий архів матеріалів про стосунки.",
+        }),
+      }),
+    );
+    expect(result.content).toContain("Updated Payload CMS categories term");
   });
 
   it("ensures authors for owner-provided expert articles", async () => {
