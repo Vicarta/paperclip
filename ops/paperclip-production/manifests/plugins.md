@@ -25,7 +25,7 @@ Expected status: Astrogen-required plugins `ready`.
 ## Last Smoke
 
 - 2026-06-09 Phase 14 email language guard and CrawlObserver secret rotation smoke:
-  - production image `paperclip-app:v2026.529.0-vicarta.27-3ede7f22` is expected after deploy;
+  - production image `paperclip-app:v2026.529.0-vicarta.27-ee7a8153` is expected after deploy;
   - `paperclip.seo-performance-loop` enforces `detailedReportLanguage=uk` for detailed report email delivery and rejects obvious English fallback reports before calling Resend;
   - Astrogen SEO Performance Loop config explicitly sets `detailedReportLanguage=uk`;
   - CrawlObserver API key secret was rotated through `secretService.rotate`; config still stores only the secret ref.
