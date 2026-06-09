@@ -4,6 +4,12 @@
 
 Make `seo_ops` the operational page registry for Astrogen blog work, so published articles, keyword targets, content snapshots, and post-publication performance monitoring are connected in one place.
 
+This phase is now the Astrogen implementation profile for the shared
+`SEO_PERFORMANCE_LOOP`, not a separate blog-only monitor. The regular cycle
+must connect Payload CMS publishing state, public sitemap discovery, Google
+Search Console, GA4, URL Inspection, and CrawlObserver evidence into one
+settings-driven loop.
+
 ## Current State
 
 - Owner approved all three Wave 1 article topics.
@@ -24,6 +30,18 @@ Make `seo_ops` the operational page registry for Astrogen blog work, so publishe
 
 ## Scope
 
+0. **Operating cadence**
+   - Use the shared agency-core `SEO_PERFORMANCE_LOOP` cadence:
+     - daily CMS/sitemap/CrawlObserver page discovery;
+     - daily fresh-URL indexability checks for new or changed pages;
+     - every-3-days product/service/landing/expert URL checks;
+     - weekly Wednesday report for the previous Monday-Sunday week after the
+       GSC/GA4 freshness delay;
+     - monthly or monitoring-window experiment review.
+   - Do not create a second blog-only timer that duplicates the shared loop.
+   - Thresholds, cooldowns, shortlist sizes, URL class cadence, ignored-noise
+     classes, and report recipients must come from settings.
+
 1. **Sitemap discovery**
    - Poll `https://astrogen.com.ua/sitemap.xml` on a schedule.
    - Filter blog URLs from the full sitemap.
@@ -37,7 +55,11 @@ Make `seo_ops` the operational page registry for Astrogen blog work, so publishe
    - Store sitemap lastmod, live status, content hash, and registry completeness.
 
 3. **Content enrichment**
-   - Prefer structured CMS/public site data when available.
+   - Prefer Payload CMS structured data as the primary source for article
+     publishing state, draft/readiness counts, category, author, cover image,
+     workflow status, and content snapshots.
+   - Use public sitemap and live HTML as verification, not as the primary CMS
+     publication count when the CMS adapter is available.
    - Fall back to live page metadata extraction only when structured data is unavailable.
    - Store title, H1/title fallback, meta description, category, tags, image, author metadata, content text, and content block count.
    - Do not store secrets, CMS credentials, or raw private API keys in planning docs or Git.
@@ -48,11 +70,26 @@ Make `seo_ops` the operational page registry for Astrogen blog work, so publishe
    - Attach primary and supporting keyword targets to `seo_ops.page_keyword_targets` only after a match is explicit.
 
 5. **Post-publication monitoring**
-   - After a page is registered and matched to keyword targets, start the weekly GSC/rank monitoring loop.
+   - After a page is registered and matched to keyword targets, enroll it in
+     the shared weekly GSC/GA4/indexing/CrawlObserver monitoring loop.
    - Store time-series observations separately from the page registry.
    - Use short decision windows for action recommendations while preserving full historical data.
+   - Create follow-up issues automatically for deterministic CMS/indexability
+     findings that pass dedupe and cooldown. Route those to `SEO CMS Technical
+     Fixer`; do not ask the owner for noindex/canonical/sitemap fixes.
 
-6. **Manual publication workflow**
+6. **CrawlObserver integration**
+   - Consume the latest Astrogen CrawlObserver project crawl through the
+     Paperclip adapter/API.
+   - Import page status, indexability, canonical, robots/noindex, title/H1/meta,
+     internal-link, sitemap-coverage, redirect, structured-data, and resource
+     summaries into the SEO loop.
+   - Ignore CrawlObserver near-duplicate findings for now; the current detector
+     is not reliable enough for automatic action.
+   - Use CrawlObserver for technical SEO and internal-linking evidence, while
+     Paperclip keeps issue routing, decisions, settings, cooldowns, and history.
+
+7. **Manual publication workflow**
    - Paperclip generates article drafts.
    - Human publishes the article on the site.
    - Discovery detects the new URL.
@@ -68,6 +105,13 @@ Make `seo_ops` the operational page registry for Astrogen blog work, so publishe
 - New article registration is linked to the approved article opportunity or creates a clear review task when no match is safe.
 - Keyword targets for each registered article are explicit: `pending`, `matched`, or `needs_review`.
 - Weekly monitoring can read the registry and identify which pages/keywords need rank and GSC checks.
+- Weekly Wednesday reporting reads CMS publishing state, GSC, GA4, URL
+  Inspection/indexing findings, and CrawlObserver technical summaries from the
+  regular loop.
+- CrawlObserver and GSC findings create or update deduplicated
+  `seo_ops.page_findings` rows before any Paperclip child issue is opened.
+- Telegram receives a compact owner-facing summary; detailed weekly SEO
+  evidence is delivered by email and/or a reviewable issue document.
 
 ## Out Of Scope
 
@@ -82,3 +126,7 @@ Make `seo_ops` the operational page registry for Astrogen blog work, so publishe
 - SQL sample of enriched blog article rows with title/content hash/content word count.
 - Simulated sitemap diff against a fixture or known new URL.
 - Paperclip issue created when a new URL cannot be matched to an approved article opportunity.
+- Weekly report evidence checklist showing CMS, GSC, GA4, URL Inspection, and
+  CrawlObserver acquisition status.
+- Sample `seo_ops.page_findings` rows proving dedupe/cooldown for noindex,
+  canonical, sitemap, redirect, and status-code classes.

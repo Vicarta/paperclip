@@ -119,6 +119,7 @@
 ### Operator Documentation And Notifications
 
 - **DOC-01**: Maintain a DiskInternals-specific human usage guide that explains Paperclip from business tasks to configured workflows, agent roles, plugins, approvals, Perfex handoff, and result review.
+- **DOC-02**: Non-trivial owner decisions and review packages must be issue documents with annotations where useful. Telegram and comments are notification/summary/writeback channels, not the durable review surface.
 - **NOTIF-01**: Telegram issue completion notifications must explain `Що зроблено` in human language. Generic one-line fallbacks are not acceptable; the resolver must use available issue evidence and enforce a 150-250 word quality gate when the source summary is too short or agent-facing.
 
 ## Out of Scope
@@ -189,6 +190,7 @@
 | PERFEX-04 | Phase 11 | In Progress |
 | PERFEX-05 | Phase 11 | In Progress |
 | DOC-01 | Phase 12 | Complete |
+| DOC-02 | Phase 12 follow-up | Complete |
 | NOTIF-01 | Phase 12 | Complete |
 
 **Coverage:**

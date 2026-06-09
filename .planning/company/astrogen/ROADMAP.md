@@ -50,7 +50,7 @@ Human-facing Astrogen communication remains Ukrainian and should not expose inte
 ## In Progress
 
 - [ ] **Phase 11: Client Portal Pilot** - Continue the standalone client portal work in `/path/to/paperclip-cs-portal`. Paperclip now owns the client-safe semantic-core API; the separate portal owns auth/session/access and UI. Public Nginx/Let's Encrypt activation remains a portal-project/server-network task.
-- [ ] **Phase 19: Blog Page Registry And Publication Monitor** - Turn the initial sitemap import into a scheduled publication monitor: detect new manually published blog URLs, enrich content snapshots, match them to approved article opportunities and keyword targets, and start the post-publication monitoring loop.
+- [x] **Phase 19: Blog Page Registry And Publication Monitor** - Folded into the shared SEO Performance Loop as the Astrogen implementation profile: Payload CMS publishing state, sitemap discovery, GSC/GA4, URL Inspection, and CrawlObserver evidence now belong to one regular settings-driven cycle.
 - [x] **Phase 22: Telegram Attachment Delivery Groups** - Source implementation, local tests, production package cutover, plugin restart, and live proof are complete. [AST-827](/AST/issues/AST-827) produced Telegram message id `628`; the live registry now reports `paperclip-plugin-telegram@0.3.1-paperclip.1`.
 - [ ] **Phase 15: Paperclip Server Release Update** - Attempted and rolled back. Keep as evidence of the controlled update attempt, backup, failure mode, and rollback state.
 - [x] **Phase 16: Paperclip Plugin Compatibility Upgrade** - Compatibility gate and production cutover are complete for `v2026.513.0`: plugin packaging, manifest migration, secret/config smoke, worker dependency resolution, deterministic provenance, Astrogen portal endpoint smoke, and production plugin boot check all passed.
@@ -66,7 +66,7 @@ Human-facing Astrogen communication remains Ukrainian and should not expose inte
 - [x] **Phase 28: Telegram Escalation Writeback Reliability** - Fixed HIA Telegram escalation replacement and reply writeback so superseded prompts are closed and owner replies become canonical Paperclip issue comments before an escalation resolves. Follow-up fix routes escalation replies before generic thread routing, so owner answers in Telegram topics are not consumed as ordinary agent-session messages. Deployed as `paperclip-plugin-telegram@0.3.1-paperclip.3`.
 - [x] **Phase 29: Dynamic Product Route Delivery Contract** - Fixed the `/solar` Stage 64 blocker by making product-route delivery contracts catalog-driven instead of old hardcoded route enums. Added Solar product references, sanitizer/delivery helper fallback from `product-catalog.yaml`, and CMO/process rules that treat missing helper route support as a contract bug, not a human decision or CTO runtime issue.
 - [x] **Phase 30: Payload CMS Route Taxonomy And Media Bridge** - Added a CMS-supported route taxonomy bridge and repaired multipart media upload for article cover images, so newly approved product routes such as `/solar` can become Payload CMS drafts with cover images and Telegram draft-link notification through the normal agent workflow.
-- [ ] **Phase 31: New Product SEO Continuation And GSC Unblock** - Harden CMO/GSC contracts so new products continue through the full starter article package plus traffic expansion, and GSC indexing audits route URL-level fixes instead of accumulating stale blocked tasks.
+- [x] **Phase 31: New Product SEO Continuation And GSC Unblock** - Hardened the planned contract so new-product parents cannot close after one article, starter packages continue into traffic expansion, and GSC aggregate audits exit through routed URL-level findings, cancellation/supersession, or named system gaps.
 - [x] **Phase 32: Image Runtime Executor And Company Settings** - Make blog cover-image generation a dedicated runtime lane with company-level provider/model settings and a properly secret-injected `SEO Blog Image Runtime Executor`.
 - [x] **Phase 33: SEO Blog Humanizer Workflow** - Add a dedicated post-validation `SEO Blog Humanizer` lane and route newly generated traffic articles through Humanizer before layout/CMS delivery.
 
@@ -74,7 +74,7 @@ Human-facing Astrogen communication remains Ukrainian and should not expose inte
 
 - [ ] **Content Contracts And Quality Gates** - Stabilize Ukrainian article contracts, sanitizer checks, product confidence tone, internal links, synonyms, and HTML packaging.
 - [ ] **Image Delivery System Hardening** - Covered by Phase 22 for Telegram package delivery. Image-specific follow-up should focus on generation/provider quality, variant selection, and automated visual QA against the Astrogen premium cover standard, not file transport.
-- [ ] **SEO Monitoring Loop** - Connect GSC/rank/SERP monitoring, article registry, thresholds, and post-publication decision logic on top of the shared `seo_ops` model.
+- [x] **SEO Monitoring Loop** - Reframed as the regular SEO Performance Loop: daily CMS/sitemap/CrawlObserver discovery, fresh URL indexing checks, every-3-days high-value URL checks, Wednesday weekly GSC/GA4/CrawlObserver reporting, and monitoring-window experiment review.
 - [ ] **Detailed Blog SEO Dashboard** - Build the richer version of the weekly report: per-article trends, page-query matrices, indexed/submitted URL history, semantic-cluster coverage, low-CTR opportunities, conversion paths, and owner priority controls.
 - [x] **Actionable Issue Reliability** - Keep Paperclip event-driven without idle LLM polling by combining immediate issue-transition wakeups with a deterministic no-LLM stale actionable issue watchdog.
 - [ ] **Human Interaction And Telegram Quality** - Keep Telegram/HIA messages short, Ukrainian, human-readable, and action-oriented.
@@ -83,21 +83,16 @@ Human-facing Astrogen communication remains Ukrainian and should not expose inte
 
 ## Current Next Step
 
-Next owner-facing step: review the updated Chinese horoscope draft in Payload CMS and publish manually if accepted. After the owner manually publishes an article on the site, Phase 19 connects publication back into the page registry:
+Current SEO operating model: Astrogen blog and product SEO now follows the shared regular SEO Performance Loop. Payload CMS is the primary source for publishing/draft state, public sitemap and live HTML verify public visibility, GSC/GA4 provide search and engagement evidence, URL Inspection provides indexing evidence, and CrawlObserver provides technical/internal-link evidence.
 
 ```text
-approved article briefs
--> article drafts
--> Stage 64 markdown/HTML package
--> Stage 65 hero image package
--> articleContent.v1 layout package
--> Telegram editorial delivery
--> human manual publication
--> sitemap discovery
--> page registry enrichment
--> keyword target mapping
--> weekly GSC/rank monitoring
--> performance feedback
+CMS/publication discovery
+-> page registry and keyword target mapping
+-> GSC/GA4/indexing/CrawlObserver evidence
+-> deduped page findings and weekly report
+-> technical fixes, refreshes, internal-linking, backlinks, or new content waves
+-> monitoring-window review
+-> next decision
 ```
 
 Do not create pages for every accepted keyword. Do not run SERP similarity for the entire semantic core by default. LLM evaluation of keyword/opportunity sets must be batch-first with stable row IDs, not one LLM call per keyword.

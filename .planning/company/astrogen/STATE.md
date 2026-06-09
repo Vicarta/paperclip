@@ -13,8 +13,8 @@ See: `.planning/company/astrogen/README.md`
 
 Phase: Astrogen growth/content operating system hardening
 Status: Active
-Last activity: 2026-05-26 - Phase 26 weekly blog Telegram report contract was planned, implemented, live-synced, and scheduled as a CMO-owned Paperclip routine.
-Current phase note: Phase 26 is complete. Telegram now has a compact weekly owner-facing blog/SEO report path; the detailed analytics dashboard remains a future phase.
+Last activity: 2026-06-09 - Folded Phase 19 and the deferred SEO Monitoring Loop into the shared agency-core SEO Performance Loop, with Astrogen-specific CMS/GSC/GA4/CrawlObserver cadence and Phase 31 completion states.
+Current phase note: Phase 19 and Phase 31 are complete as planning/contract hardening. Astrogen SEO monitoring now uses the shared regular SEO Performance Loop: daily CMS/sitemap/CrawlObserver discovery, fresh URL indexability checks, every-3-days high-value URL checks, Wednesday weekly GSC/GA4/CrawlObserver reporting, and monitoring-window experiment review.
 
 ## Current Focus
 
@@ -114,8 +114,8 @@ Current phase note: Phase 26 is complete. Telegram now has a compact weekly owne
 - Decide whether Semantic Core MCP should be enabled for Astrogen immediately or after the next semantic-core workflow pass.
 - Keep future commits scoped and documented.
 - Add direct references to agency-core execution governance in live CEO/CMO/CTO/HIA/Observability contracts during the next live contract maintenance pass.
-- Build SEO Performance Loop ingestion/runners on top of the implemented shared `seo_ops` schema when SEO monitoring work resumes.
-- Add a scheduled Astrogen blog sitemap discovery job that detects manually published articles, registers new/changed/removed blog pages in `seo_ops`, enriches content snapshots, links the page to the approved article opportunity when possible, and starts the post-publication GSC/rank monitoring loop.
+- Build or verify the code-backed SEO Performance Loop routines that implement the documented Astrogen cadence: CMS/sitemap/CrawlObserver discovery, URL Inspection snapshots, weekly Wednesday GSC/GA4 reporting, and monitoring-window experiment review.
+- Keep Astrogen SEO loop thresholds, cooldowns, shortlist limits, ignored-noise classes, URL class cadence, report recipients, and email/Telegram settings in configuration rather than agent prompt text.
 - Review the Astrogen Semantic Core layer 1 GUI batch from [AST-708](/AST/issues/AST-708) in the deployed web UI; do not run layer 2 until accepted/review decisions are made or accepted-only import is explicitly approved.
 - Execute the Client Portal Foundation before making owner review a regular process outside Paperclip.
 - Execute agency-core Phase 7 and Astrogen Phase 12 so the client portal becomes the canonical living semantic-core management surface, not only a layer review form.

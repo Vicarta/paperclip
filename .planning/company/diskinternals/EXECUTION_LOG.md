@@ -1,5 +1,30 @@
 # Execution Log
 
+## 2026-06-09
+
+Applied document-backed decision/review governance to DiskInternals live
+contracts.
+
+Planning changes:
+- Added `DOC-02`: non-trivial owner decisions and review packages must be issue
+  documents with annotations where useful.
+- Updated DiskInternals state so the previous follow-up about live SEO review
+  contract maintenance is no longer pending.
+
+Live contract changes:
+- Updated `/home/paperclip/companies/diskinternals/docs/foundation/HUMAN_DECISION_REQUEST.md`
+  with the decision document rule.
+- Updated live `CMO` instructions so manager-owned owner decisions create or
+  update `owner-decision-brief` before HIA notification when the decision is not
+  a one-sentence operational confirmation.
+- Updated live `OPS Human Interaction Agent` instructions so non-trivial
+  decision requests must point to a reviewable source issue document.
+- Updated live `SEO Performance Analyst` and `SEO Internal Linking Indexation
+  Agent` instructions so URL batches, KPI rows, SEO recommendations, and
+  Perfex-ready payloads are issue documents, not Telegram/long-comment/raw-MCP
+  artifacts.
+- No DiskInternals workflow, heartbeat, issue, or Perfex write was run.
+
 ## 2026-05-05
 
 Updated DiskInternals Semantic Core MCP rules after the canonical MCP agent guide added policy-driven layer decisions.

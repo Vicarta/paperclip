@@ -186,6 +186,102 @@ Discovery should update:
 - `discovery_status`
 - `last_discovery_run_id`
 
+## Regular Operating Cadence
+
+The SEO Performance Loop is a recurring operating cycle, not a one-off report
+and not an LLM heartbeat.
+
+Default cadence:
+
+| Cadence | Owner | Work | Creates issues automatically? |
+|---|---|---|---|
+| Daily | backend/plugin routine | Refresh page registry from CMS, sitemap, GSC page evidence when available, and recent CrawlObserver crawl outputs. Detect new, changed, removed, noindex, canonical, redirect, sitemap, and status-code changes. | Yes, only for deterministic findings that pass dedupe/cooldown and have an approved implementation path. |
+| Daily for fresh URLs | SEO GSC Indexing Auditor through provider/plugin tools | Inspect newly published or recently changed URLs with URL Inspection. Store snapshots and update findings. | Yes, for actionable indexing/canonical/noindex/sitemap problems. |
+| Every 3 days | backend/plugin routine + SEO GSC Indexing Auditor | Recheck product, service, landing, expert, and other high-value non-blog URLs. Blog URLs follow configured cadence unless fresh or changed. | Yes, for actionable technical SEO findings. |
+| Weekly, Wednesday | CMO + SEO Performance Analyst + indexing auditor | Analyze the previous complete Monday-Sunday week after GSC/GA4 freshness delay. Compare publishing, GSC, GA4, indexing, CrawlObserver technical state, and open experiments. Send compact Telegram summary and detailed email/document. | Yes, for new opportunities, unresolved technical findings, experiments, and content-wave actions. |
+| Monthly or after monitoring window | SEO Performance Analyst + CMO | Review experiment outcomes, page refresh impact, internal-linking impact, external-linking candidates, and content wave performance. | Yes, when the configured thresholds say to continue, revert, refresh, link, or create new content. |
+
+Why Wednesday:
+
+- GSC and GA4 data can lag by 2-3 days.
+- The reporting week is always the previous complete Monday-Sunday week.
+- Monday reports should not be used for final weekly SEO decisions unless the
+  task is explicitly a partial pulse.
+
+Discovery and audit routines should be mostly code, not LLM:
+
+- fetch data from provider/plugin APIs;
+- normalize URLs and metric rows;
+- write `seo_ops.discovery_runs`, page registry rows, snapshots, and findings;
+- dedupe by stable fingerprints;
+- apply settings-driven shortlist limits and cooldowns;
+- return compact summaries to agents.
+
+Agents interpret compact summaries and make business decisions. They should not
+loop over raw per-URL or per-query payloads with LLM calls.
+
+## Settings-Controlled Automation
+
+Company/project settings must control the loop. Do not hardcode these values in
+agent prompts:
+
+- reporting weekday and timezone;
+- comparison window and freshness delay;
+- publication discovery sources and path filters;
+- fresh URL recheck cadence;
+- product/service/landing/expert URL recheck cadence;
+- blog URL recheck cadence and the URL-count threshold that switches blog URLs
+  to a lower-frequency cycle;
+- automatic technical finding shortlist size;
+- finding cooldowns;
+- ignored-noise classes;
+- target agent for deterministic CMS/technical fixes;
+- thresholds for CTR, impressions, clicks, position, sessions, engagement,
+  indexability, and stale experiments;
+- rank tracking tier policies;
+- experiment monitoring windows;
+- Telegram recipients and email recipients/transport.
+
+If settings are missing, agents should block on configuration rather than
+inventing thresholds.
+
+## CrawlObserver Scheduled Crawl Role
+
+CrawlObserver may run its own scheduled crawl. Paperclip should consume the
+latest crawl sessions through a Paperclip plugin/adapter and store only the
+operational state it needs.
+
+CrawlObserver owns:
+
+- crawl execution;
+- crawl session progress;
+- raw crawl pages, links, resources, redirects, PageRank, structured data, and
+  export files;
+- transient provider/crawler evidence.
+
+Paperclip owns:
+
+- page registry membership;
+- normalized findings and lifecycle;
+- issue routing;
+- owner decisions;
+- settings, cooldowns, and ignored-noise policy;
+- performance experiments and monitoring.
+
+Default CrawlObserver imports:
+
+- pages and canonical URLs;
+- indexability, robots/noindex, status codes, redirects, titles, H1, meta
+  descriptions, internal links, orphan/near-orphan evidence, sitemap coverage,
+  and structured-data summary;
+- internal-link opportunities when the crawl evidence is stable enough;
+- exclude near-duplicate findings by default until a reliable duplicate policy
+  is approved.
+
+Do not create an issue for every crawl row. Create or update issues only for
+deduped, actionable findings that pass settings, cooldown, and implementation
+path checks.
+
 ## Page Enrichment
 
 Sitemap presence does not prove indexability or good SEO state.

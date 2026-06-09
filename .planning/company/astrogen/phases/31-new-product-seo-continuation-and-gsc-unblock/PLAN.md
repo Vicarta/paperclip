@@ -56,6 +56,39 @@ aggregate audit as done/superseded.
    - Clean stale `/solar` and GSC blocked issue state only as workflow routing,
      not by doing the domain work manually.
 
+## Completion Addendum
+
+This phase is complete only when contracts make the continuation states
+unambiguous.
+
+New-product SEO parent states:
+
+| State | Meaning | Next action |
+|---|---|---|
+| `starter_package_in_progress` | Owner-approved beginner/how-to/helpful articles are not all CMS drafts yet. | Continue article/image/layout/CMS child lanes. |
+| `starter_package_complete` | All approved starter articles are CMS drafts with cover images and owner notification. | Open traffic-expansion lane unless owner explicitly deferred it. |
+| `starter_package_reduced_by_owner` | Owner explicitly approved a smaller starter set. | Record what is parked, then open traffic-expansion unless deferred. |
+| `traffic_expansion_in_progress` | Semantic-core/blog planning is expanding beyond exact product terms. | Validate Stage 53 artifact, then produce Stage 56 blog plan/waves. |
+| `monitoring_enrolled` | Published/draft URLs and planned opportunities are enrolled in the SEO monitoring loop. | Parent can close with a human-readable summary. |
+| `system_gap` | Tool/credential/runtime/contract gap prevents the next state. | Block with owner of the gap and recovery path. |
+
+CMO must not close a product parent in any earlier state. One delivered article
+is not enough unless the owner explicitly approved a one-article starter package
+and explicitly deferred traffic expansion.
+
+GSC aggregate audit exit states:
+
+| State | Meaning | Next action |
+|---|---|---|
+| `routed_url_findings` | URL-level findings were deduped and child fix issues were created/linked. | Close aggregate audit as done. |
+| `all_findings_resolved_or_ignored` | Current findings are resolved, stale, duplicate, or policy-ignored. | Close aggregate audit as done with summary. |
+| `provider_or_permission_gap` | MCP/API/plugin/permission prevents acquisition or issue routing. | Block with concrete missing capability. |
+| `superseded_by_new_audit` | A fresher audit owns the same scope. | Cancel/supersede the stale issue. |
+
+Aggregate GSC audit issues must not remain blocked after actionable URL-level
+findings exist. Paperclip should route URL-level work, close the aggregate, and
+let the regular SEO loop monitor the result.
+
 ## Acceptance Criteria
 
 - CMO contract states that one CMS draft is not enough to complete a new-product
@@ -69,3 +102,8 @@ aggregate audit as done/superseded.
   dedupe keys.
 - Live Astrogen contract files match the source-controlled contract files.
 - A live Paperclip task exists for continuing `/solar` beyond the first article.
+- New-product parent issues cannot close before `monitoring_enrolled`,
+  `starter_package_reduced_by_owner`, or `system_gap`.
+- GSC aggregate audit issues end as `done`, `cancelled`, or a named
+  permission/runtime gap; they do not stay blocked merely because child
+  technical fixes are pending.

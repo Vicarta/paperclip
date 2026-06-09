@@ -1,5 +1,26 @@
 # Execution Log: Astrogen
 
+## 2026-06-09
+
+- Reframed Phase 19 and the deferred SEO Monitoring Loop into one regular SEO
+  Performance Loop instead of parallel blog-only monitoring.
+  - Added agency-core cadence: daily CMS/sitemap/CrawlObserver discovery, daily
+    fresh URL inspection, every-3-days high-value URL checks, Wednesday weekly
+    GSC/GA4/CrawlObserver reporting for the previous Monday-Sunday week, and
+    monthly/monitoring-window experiment review.
+  - Updated Phase 19 as the Astrogen implementation profile: Payload CMS is the
+    primary publication/draft source; sitemap/live HTML verify public
+    discoverability; GSC/GA4, URL Inspection, and CrawlObserver feed `seo_ops`.
+  - Updated Phase 31 with explicit new-product parent states and GSC aggregate
+    audit exit states so `/solar`-style parents cannot close after one article
+    and indexing audits cannot remain blocked after URL-level findings exist.
+  - Marked Phase 19, Phase 31, and SEO Monitoring Loop as completed/reframed in
+    the Astrogen roadmap.
+  - Added Astrogen process `docs/process/71-regular-seo-operating-cycle.md` and
+    synced it with live CMO and SEO Performance Analyst contracts.
+  - Live sync changed only contracts/docs under `/home/paperclip/astrogen`.
+    No Paperclip workflow, heartbeat, or issue lane was manually run.
+
 ## 2026-06-03
 
 - Tightened the Astrogen cover-image variation contract after repeated

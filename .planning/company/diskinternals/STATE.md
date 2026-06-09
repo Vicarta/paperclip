@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-04-29)
 
 **Core value:** Every Paperclip action should turn trustworthy product, URL, and funnel data into measurable growth work for visitors, trial downloads, order-page visits, and license purchases.
-**Current focus:** Phase 12 is complete; next work is future owner-approved Perfex write activation, BigQuery follow-up persistence, and any new DiskInternals operating improvements.
+**Current focus:** Phase 12 is complete; document-backed review governance is now applied to live DiskInternals decision/SEO lanes. Next work is future owner-approved Perfex write activation, BigQuery follow-up persistence, and any new DiskInternals operating improvements.
 
 ## Current Position
 
 Phase: 12 complete
 Plan: Operator guide and Telegram summary quality
 Status: Complete
-Last activity: 2026-05-02 - Created the DiskInternals human guide and deployed the Telegram completion-summary quality gate
+Last activity: 2026-06-09 - Applied document-backed decision/review rules to DiskInternals live CMO, HIA, SEO Performance Analyst, and SEO Internal Linking Indexation Agent contracts.
 
 Progress: [##########] 100%
 
@@ -66,7 +66,7 @@ Recent decisions affecting current work:
 - Semantic Core MCP output is generation/provenance evidence only; content plans, page briefs, Perfex tasks, and monitoring targets are downstream Paperclip workflows.
 - Semantic Core import artifacts should preserve recall/debug evidence, including `recall_ledger`, `serp_competitor_candidates`, `competitor_expansion_debug`, `competitor_expansion_endpoint`, and `serp_result_classification_reason`.
 - Live `CMO`, `CTO`, `SEO Semantic Core Strategist`, and `SEO Semantic Core Validator` instructions include the competitor SERP recall and provider-cache/cost/pagination rules.
-- Follow-up: audit and, if needed, update live DiskInternals SEO Performance Analyst and SEO Internal Linking Indexation Agent contracts for explicit SEO/MCP lane separation language. Do this as a separate live-agent contract change, not as part of the planning-only governance overlay.
+- Live DiskInternals decision/review governance now requires source issue documents for non-trivial owner decisions and reviewable SEO/Perfex packages. Telegram and comments are transport/summary only.
 - Phase 1-10 readiness plans are complete. Phase 7 live BigQuery now has initial sitemap URL inventory, GA4/GSC fact ingestion, opportunity marts, and crawl smoke snapshots.
 - Phase 11 is planned to add a Perfex CRM MCP plugin so approved Paperclip opportunities become human implementation tasks.
 - Phase 11 plugin MVP is implemented and deployed with read-only health/tool/status/comment tools and dry-run task/comment write gates.
@@ -82,6 +82,7 @@ Recent decisions affecting current work:
 - Parent/child work must use explicit handoff: completing a child issue does not automatically complete the parent coordination issue.
 - Plugins and MCP-backed tools must be used only through Paperclip's live plugin registry and agent capabilities; desktop-local connectors or raw external MCP assumptions are not valid inside Paperclip.
 - SEO/MCP work should stay split into child lanes for generation, validation, review/routing, implementation, and monitoring unless the manager marks the issue as a small smoke test.
+- Non-trivial owner decisions, SEO recommendation packages, URL batches, KPI rows, and Perfex-ready implementation payloads should be issue documents with annotations where useful. Do not make Telegram, long comments, or raw MCP/provider output the durable review surface.
 
 ### Roadmap Evolution
 
