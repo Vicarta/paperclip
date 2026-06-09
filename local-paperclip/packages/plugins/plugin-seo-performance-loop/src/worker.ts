@@ -40,6 +40,7 @@ type LoopConfig = {
   weeklyReportComparisonWeeks: number;
   telegramReportMode: string;
   telegramSummaryHardCapChars: number;
+  detailedReportLanguage: string;
   detailedReportChannel: string;
   detailedReportRecipientEmails: string;
   detailedReportFromEmail: string;
@@ -231,6 +232,32 @@ function isReasonableEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
+function looksLikeEnglishSeoReport(value: string): boolean {
+  const normalized = value.toLowerCase();
+  const markers = [
+    "reporting week",
+    "comparison week",
+    "executive summary",
+    "freshness note",
+    "page-level appendix",
+    "recommended experiments",
+    "indexing evidence",
+    "search visibility",
+  ];
+  return markers.filter((marker) => normalized.includes(marker)).length >= 2;
+}
+
+function assertReportLanguage(params: { subject: string; text: string; html?: string; language: string }) {
+  const language = params.language.trim().toLowerCase();
+  if (!language.startsWith("uk")) return;
+
+  const visibleText = `${params.subject}\n${params.text}\n${params.html ?? ""}`;
+  const cyrillicCount = (visibleText.match(/[А-Яа-яІіЇїЄєҐґ]/g) ?? []).length;
+  if (cyrillicCount >= 40 && !looksLikeEnglishSeoReport(visibleText)) return;
+
+  throw new Error("detailed report email must be written in Ukrainian/company language before delivery");
+}
+
 function truncate(value: string, max = 500): string {
   return value.length > max ? `${value.slice(0, max)}...` : value;
 }
@@ -256,6 +283,7 @@ async function sendDetailedReportEmail(ctx: PluginContext, params: Record<string
   const text = stringValue(params, "text");
   const html = stringValue(params, "html");
   const dryRun = booleanValue(params, "dryRun");
+  const reportLanguage = stringValue(config, "detailedReportLanguage", DEFAULT_CONFIG.detailedReportLanguage);
   const explicitRecipients = Array.isArray(params.recipientEmails) ? arrayOfStrings(params.recipientEmails) : [];
   const recipients = explicitRecipients.length ? explicitRecipients : splitRecipients(config.detailedReportRecipientEmails);
   const from = stringValue(config, "detailedReportFromEmail", DEFAULT_CONFIG.detailedReportFromEmail);
@@ -268,6 +296,7 @@ async function sendDetailedReportEmail(ctx: PluginContext, params: Record<string
   const invalidRecipients = recipients.filter((recipient) => !isReasonableEmail(recipient));
   if (invalidRecipients.length) throw new Error(`invalid detailed report recipient email(s): ${invalidRecipients.join(", ")}`);
   if (!secretRef) throw new Error("resendApiKeySecretRef is required for email transport");
+  assertReportLanguage({ subject, text, html, language: reportLanguage });
 
   const deliveryId = `seo_email_${stableHash({ subject, recipients, at: nowIso() })}`;
   if (dryRun) {

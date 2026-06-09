@@ -6,6 +6,7 @@ export type SeoLoopReportConfig = {
   weeklyReportComparisonWeeks: number;
   telegramReportMode: "summary_only";
   telegramSummaryHardCapChars: number;
+  detailedReportLanguage: string;
   detailedReportChannel: "email" | "paperclip_issue_document";
   detailedReportRecipientEmails: string;
   detailedReportFromEmail: string;
@@ -27,13 +28,16 @@ export type WeeklyReportPlan = {
   comparisonWindowEnd: string;
   timezone: string;
   dataDelayDays: number;
+  language: string;
   telegram: {
     mode: "summary_only";
+    language: string;
     hardCapChars: number;
     requiredShape: string[];
   };
   detailed: {
     channel: "email" | "paperclip_issue_document";
+    language: string;
     recipientEmails: string[];
     fromEmail: string | null;
     transportConfigured: boolean;
@@ -83,6 +87,7 @@ export function normalizeReportConfig(raw: Record<string, unknown> = {}): SeoLoo
     weeklyReportComparisonWeeks: numberFromConfig(raw.weeklyReportComparisonWeeks, DEFAULT_CONFIG.weeklyReportComparisonWeeks, 1),
     telegramReportMode: "summary_only",
     telegramSummaryHardCapChars: numberFromConfig(raw.telegramSummaryHardCapChars, DEFAULT_CONFIG.telegramSummaryHardCapChars, 600),
+    detailedReportLanguage: stringFromConfig(raw.detailedReportLanguage, DEFAULT_CONFIG.detailedReportLanguage),
     detailedReportChannel: stringFromConfig(raw.detailedReportChannel, DEFAULT_CONFIG.detailedReportChannel) === "email"
       ? "email"
       : "paperclip_issue_document",
@@ -150,11 +155,13 @@ export function buildWeeklyReportPlan(rawConfig: Record<string, unknown> = {}, a
     comparisonWindowEnd: comparisonWindowEnd.toISOString(),
     timezone: config.weeklyReportTimezone,
     dataDelayDays: config.weeklyReportDataDelayDays,
+    language: config.detailedReportLanguage,
     telegram: {
       mode: "summary_only",
+      language: config.detailedReportLanguage,
       hardCapChars: config.telegramSummaryHardCapChars,
       requiredShape: [
-        "one compact owner-facing digest",
+        `one compact owner-facing digest in ${config.detailedReportLanguage}`,
         "blank line between paragraphs",
         "week-over-week deltas only for core KPIs",
         "no raw tables, issue ids, run ids, plugin names, SQL, or provider internals",
@@ -162,6 +169,7 @@ export function buildWeeklyReportPlan(rawConfig: Record<string, unknown> = {}, a
     },
     detailed: {
       channel: config.detailedReportChannel,
+      language: config.detailedReportLanguage,
       recipientEmails,
       fromEmail: config.detailedReportFromEmail || null,
       transportConfigured,
@@ -170,7 +178,7 @@ export function buildWeeklyReportPlan(rawConfig: Record<string, unknown> = {}, a
         ? recipientEmails.length > 0 && transportConfigured
         : true,
       requiredShape: [
-        "full KPI table and page-level appendix",
+        `full KPI table and page-level appendix in ${config.detailedReportLanguage}`,
         "GSC query/page movements",
         "GA4 blog-to-product event and landing-page breakdown",
         "indexing and technical SEO findings grouped by action",

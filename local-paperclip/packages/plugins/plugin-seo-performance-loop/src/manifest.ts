@@ -102,6 +102,13 @@ const manifest: PaperclipPluginManifestV1 = {
         title: "Telegram Summary Hard Cap Characters",
         default: DEFAULT_CONFIG.telegramSummaryHardCapChars,
       },
+      detailedReportLanguage: {
+        type: "string",
+        title: "Detailed Report Language",
+        description:
+          "BCP-47-style language code for owner-facing detailed reports. Astrogen uses uk; agents must write the email in this language.",
+        default: DEFAULT_CONFIG.detailedReportLanguage,
+      },
       detailedReportChannel: {
         type: "string",
         title: "Detailed Report Channel",
@@ -393,7 +400,7 @@ const manifest: PaperclipPluginManifestV1 = {
       name: TOOL_NAMES.weeklyReportPlanGet,
       displayName: "Get SEO Weekly Report Delivery Plan",
       description:
-        "Returns the canonical weekly SEO report window and delivery-channel split: Telegram gets the compact digest; email gets the detailed report.",
+        "Returns the canonical weekly SEO report window, report language, and delivery-channel split: Telegram gets the compact digest; email gets the detailed report.",
       parametersSchema: {
         type: "object",
         properties: {
@@ -406,7 +413,7 @@ const manifest: PaperclipPluginManifestV1 = {
       name: TOOL_NAMES.detailedReportEmailSend,
       displayName: "Send SEO Detailed Report Email",
       description:
-        "Sends the detailed weekly SEO report through the configured Resend transport. Use only for detailed report email delivery, not Telegram summaries.",
+        "Sends the detailed weekly SEO report through the configured Resend transport. Use only for detailed report email delivery, not Telegram summaries. The subject and body must be written in the configured detailedReportLanguage.",
       parametersSchema: {
         type: "object",
         properties: {

@@ -285,9 +285,12 @@ describe("seo performance loop plugin", () => {
     expect(plan.reportWindowEnd).toBe("2026-06-08T00:00:00.000Z");
     expect(plan.comparisonWindowStart).toBe("2026-05-25T00:00:00.000Z");
     expect(plan.comparisonWindowEnd).toBe("2026-06-01T00:00:00.000Z");
+    expect(plan.language).toBe("uk");
     expect(plan.telegram.mode).toBe("summary_only");
+    expect(plan.telegram.language).toBe("uk");
     expect(plan.telegram.requiredShape.join(" ")).toContain("no raw tables");
     expect(plan.detailed.channel).toBe("email");
+    expect(plan.detailed.language).toBe("uk");
     expect(plan.detailed.deliveryReady).toBe(true);
     expect(plan.detailed.fromEmail).toBe("paperclip@aibizmate.com");
     expect(plan.detailed.transportConfigured).toBe(true);
@@ -369,8 +372,8 @@ describe("seo performance loop plugin", () => {
     const dryRun = await harness.executeTool<{
       data: { proof: { dryRun: boolean; provider: string; recipients: string[]; providerMessageId: string | null } };
     }>(TOOL_NAMES.detailedReportEmailSend, {
-      subject: "Astrogen detailed SEO report",
-      text: "Detailed report body",
+      subject: "Astrogen: детальний SEO-звіт",
+      text: "Детальний SEO-звіт українською мовою: публікації, пошук Google, GA4, індексація, технічні проблеми, експерименти та наступні дати моніторингу.",
       dryRun: true,
     });
     expect(dryRun.data.proof.dryRun).toBe(true);
@@ -420,8 +423,8 @@ describe("seo performance loop plugin", () => {
       const result = await harness.executeTool<{
         data: { proof: { dryRun: boolean; providerMessageId: string | null } };
       }>(TOOL_NAMES.detailedReportEmailSend, {
-        subject: "Astrogen detailed SEO report",
-        text: "Detailed report body",
+        subject: "Astrogen: детальний SEO-звіт",
+        text: "Детальний SEO-звіт українською мовою: публікації, пошук Google, GA4, індексація, технічні проблеми, експерименти та наступні дати моніторингу.",
       });
 
       expect(result.data.proof.dryRun).toBe(false);
@@ -435,5 +438,23 @@ describe("seo performance loop plugin", () => {
     } finally {
       globalThis.fetch = originalFetch;
     }
+  });
+
+  it("rejects English detailed report email when Ukrainian report language is configured", async () => {
+    const harness = createTestHarness({ manifest });
+    harness.setConfig({
+      detailedReportChannel: "email",
+      detailedReportRecipientEmails: "owner@example.com",
+      resendApiKeySecretRef: "00000000-0000-4000-8000-000000000001",
+      detailedReportLanguage: "uk",
+    });
+    await plugin.definition.setup(harness.ctx);
+
+    await expect(
+      harness.executeTool(TOOL_NAMES.detailedReportEmailSend, {
+        subject: "Astrogen weekly SEO report",
+        text: "Reporting week: 2026-06-01 to 2026-06-07\nComparison week: 2026-05-25 to 2026-05-31\nExecutive summary: publishing accelerated. Indexing evidence is mixed.",
+      }),
+    ).rejects.toThrow("Ukrainian/company language");
   });
 });

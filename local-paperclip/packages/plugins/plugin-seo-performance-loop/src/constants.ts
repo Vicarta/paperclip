@@ -1,5 +1,5 @@
 export const PLUGIN_ID = "paperclip.seo-performance-loop";
-export const PLUGIN_VERSION = "0.1.1";
+export const PLUGIN_VERSION = "0.1.2";
 
 export const SLOT_IDS = {
   settingsPage: "seo-performance-loop-settings-page",
@@ -56,6 +56,7 @@ export const DEFAULT_CONFIG = {
   weeklyReportComparisonWeeks: 1,
   telegramReportMode: "summary_only",
   telegramSummaryHardCapChars: 1800,
+  detailedReportLanguage: "uk",
   detailedReportChannel: "email",
   detailedReportRecipientEmails: "",
   detailedReportFromEmail: "paperclip@aibizmate.com",

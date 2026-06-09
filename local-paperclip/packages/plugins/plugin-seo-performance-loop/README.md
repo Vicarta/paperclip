@@ -48,9 +48,10 @@ The weekly owner report is split by channel:
 - Telegram: short Ukrainian digest only, blank lines between paragraphs, no raw
   tables, no issue/run/plugin internals, hard-capped by
   `telegramSummaryHardCapChars`.
-- Email: full detailed report with KPI tables, page/query movements, GA4
-  breakdowns, indexing/technical appendices, recommended experiments, cooldowns,
-  and monitoring dates.
+- Email: full detailed report in the configured company report language
+  (`detailedReportLanguage`, `uk` for Astrogen) with KPI tables, page/query
+  movements, GA4 breakdowns, indexing/technical appendices, recommended
+  experiments, cooldowns, and monitoring dates.
 - If `detailedReportChannel=email` but recipients, `detailedReportFromEmail`, or
   `resendApiKeySecretRef` are missing, the plan marks email delivery as not
   ready and the host/agent should keep the detailed report as a Paperclip issue
@@ -59,6 +60,9 @@ The weekly owner report is split by channel:
   store a raw Resend API key in plugin config, issue comments, docs, or Git.
 - Agents send the detailed report with `seo-detailed-report-email-send`. Use
   `dryRun=true` for validation before first live delivery.
+- The email tool rejects an obviously wrong-language detailed report for
+  Ukrainian companies before calling Resend, so agents must rewrite the report
+  instead of sending an English fallback.
 
 ## Current Boundary
 

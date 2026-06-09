@@ -1,6 +1,6 @@
 # Production Plugin Manifest
 
-Last verified: 2026-06-08
+Last verified: 2026-06-09
 Source: Phase 17 live production smoke, plugin inventory, Telegram formatter smoke, Phase 22 source package verification, live Telegram delivery-groups proof on AST-827, Telegram plugin package cutover smoke, Telegram proof ledger smoke, Payload CMS live agent-tool smoke, secret schema reconciliation smoke, and Phase 14 SEO report-channel policy deploy smoke.
 Secret handling: config keys and secret refs only; no plaintext secret values. Generic `secretService` create/resolve/rotate is reconciled with the production metadata schema.
 
@@ -24,8 +24,13 @@ Expected status: Astrogen-required plugins `ready`.
 
 ## Last Smoke
 
+- 2026-06-09 Phase 14 email language guard and CrawlObserver secret rotation smoke:
+  - production image `paperclip-app:v2026.529.0-vicarta.27-3ede7f22` is expected after deploy;
+  - `paperclip.seo-performance-loop` enforces `detailedReportLanguage=uk` for detailed report email delivery and rejects obvious English fallback reports before calling Resend;
+  - Astrogen SEO Performance Loop config explicitly sets `detailedReportLanguage=uk`;
+  - CrawlObserver API key secret was rotated through `secretService.rotate`; config still stores only the secret ref.
 - 2026-06-08 Phase 14 email transport smoke:
-  - production image `paperclip-app:v2026.529.0-vicarta.26-f9207c32` is active;
+  - production image `paperclip-app:v2026.529.0-vicarta.26-f9207c32` was active;
   - app health returned `HTTP 200`;
   - plugin loader reported `total=14`, `succeeded=14`, `failed=0`;
   - `paperclip.seo-performance-loop` registered `11` tools, including `seo-weekly-report-plan-get`, `seo-detailed-report-email-send`, and `seo-crawl-finding-route-plan`;
