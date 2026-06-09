@@ -50,6 +50,29 @@ For a new blog article request, CMO keeps the parent issue open until the reques
 
 Existing accepted article packages may still be imported as additional CMS operations, but that does not satisfy a request for a new article.
 
+## Document Review Policy
+
+Astrogen owner decisions, article review packets, detailed SEO reports, and
+technical-finding batches should be document-backed, not comment-only.
+
+Required issue documents:
+
+- owner decision brief when a human approval or choice is needed;
+- article brief and validation packet;
+- layout handoff / `articleContent.v1` package;
+- CMS draft delivery summary when a draft is created or materially updated;
+- weekly detailed SEO report and experiment recommendation;
+- GSC/CrawlObserver finding batch summary.
+
+Use comments for short handoffs, status changes, and one-step fix closeouts.
+Use document annotations when the feedback concerns an exact paragraph, KPI row,
+URL, CMS field, title/meta pair, product mention, CTA, or image-quality defect.
+
+After CMO accepts a document-backed artifact, the accepted document is frozen.
+Later edits require a new revision document or child correction issue. Agents
+must not silently rewrite accepted artifacts and then continue as if the same
+document had always been approved.
+
 ## Blog Layout Pipeline
 
 Validated article drafts must flow through:

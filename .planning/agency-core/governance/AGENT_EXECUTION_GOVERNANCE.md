@@ -73,6 +73,32 @@ The parent issue remains the manager-owned coordination lane. Child completion i
 
 When a manager opens an execution child issue and the child is running or ready to run, the parent should normally stay `in_progress`, not `blocked`. Use `blocked` on the parent only for a real external blocker or owner decision. In Paperclip, `blocked` auto-adds `Human Decision Needed`, so using it as "waiting for my child" creates a false human gate.
 
+## Document And Annotation Rule
+
+Use comments for short state changes. Use issue documents for reviewable work products.
+
+A canonical issue document is required when the work product is any of these:
+
+- an owner decision or approval packet;
+- a strategy, plan, content plan, article brief, validation package, or report;
+- a CMS delivery summary where a human may need to inspect what was delivered;
+- a technical finding batch where URL-level evidence, rows, or field changes matter;
+- a detailed weekly/monthly performance report;
+- a handoff that another agent must use as source material, not just a status note.
+
+Comments are sufficient for:
+
+- one-step technical closeouts;
+- wakeup/retry/recovery notes;
+- short parent/child handoffs;
+- "done/blocked/cancelled" state transitions when the full work product already lives in a document or external artifact.
+
+Reviewers should use inline document annotations when feedback depends on an exact sentence, table row, URL, KPI, CMS field, or claim. Do not ask the owner to describe "where in the report" something is wrong if the reviewer can annotate the exact place.
+
+After a document is accepted, approved, or used as downstream source material, treat it as locked/frozen. Later changes must create a new revision document, a child correction issue, or a clearly labelled amendment. Do not silently rewrite an accepted document and leave downstream agents unable to tell which version was approved.
+
+Telegram and other short notification channels should point to the document or issue and summarize the human meaning. They should not duplicate the full internal artifact, raw rows, or agent-to-agent instructions.
+
 ## Delegation Execution State Rule
 
 When a manager creates a child issue for work that should start now, the child issue must be executable, not parked.
@@ -109,6 +135,8 @@ Required flow inside Paperclip:
 Agents must not assume that Codex desktop tools, local MCP resources, GitHub connectors, Figma connectors, or external MCP endpoints are available inside Paperclip unless exposed through Paperclip's plugin/capability model or explicitly granted in the company runtime.
 
 Secrets, bearer tokens, and provider credentials must remain server-side and must not be written into prompts, issue comments, run logs, or planning files.
+
+Production plugin configuration must store secret references, not secret values. Company-specific provider credentials must be resolved by company/project context at tool execution time, not by a single global credential unless the plugin is explicitly single-tenant. When the Paperclip UI exposes a secret binding control, plugin settings should use SecretBindingPicker-compatible fields so operators choose existing secrets instead of pasting raw keys.
 
 ## Workspace Mount Permission Rule
 

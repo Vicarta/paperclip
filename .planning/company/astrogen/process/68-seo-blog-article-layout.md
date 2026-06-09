@@ -37,6 +37,21 @@ The layout editor produces a CMS-ready `articleContent.v1` object:
 }
 ```
 
+The layout package must be stored as a reviewable issue document or referenced
+from one. The document should include:
+
+- exact article title and slug;
+- source validated draft reference;
+- `articleContent.v1` package or canonical file reference;
+- cover-image concept and QA result;
+- product/service link decisions;
+- any layout validator annotations or revision notes.
+
+After the layout validator accepts the package and CMO routes it to Payload CMS,
+the accepted layout document is frozen. If the CMS draft needs correction later,
+create a revision document or child correction issue. Do not silently edit the
+accepted layout package.
+
 Allowed block types:
 
 - `paragraph`

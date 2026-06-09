@@ -1,8 +1,8 @@
 # Production Plugin Manifest
 
 Last verified: 2026-06-09
-Source: Phase 17 live production smoke, plugin inventory, Telegram formatter smoke, Phase 22 source package verification, live Telegram delivery-groups proof on AST-827, Telegram plugin package cutover smoke, Telegram proof ledger smoke, Payload CMS live agent-tool smoke, secret schema reconciliation smoke, and Phase 14 SEO report-channel policy deploy smoke.
-Secret handling: config keys and secret refs only; no plaintext secret values. Generic `secretService` create/resolve/rotate is reconciled with the production metadata schema.
+Source: Phase 17 live production smoke, plugin inventory, Telegram formatter smoke, Phase 22 source package verification, live Telegram delivery-groups proof on AST-827, Telegram plugin package cutover smoke, Telegram proof ledger smoke, Payload CMS live agent-tool smoke, secret schema reconciliation smoke, Phase 14 SEO report-channel policy deploy smoke, and Phase 15 document/annotation/secret-config rollout.
+Secret handling: config keys and secret refs only; no plaintext secret values. Generic `secretService` create/resolve/rotate is reconciled with the production metadata schema. Plugin config UIs should expose SecretBindingPicker-compatible fields for credential settings where Paperclip supports them.
 
 Expected status: Astrogen-required plugins `ready`.
 
@@ -76,11 +76,13 @@ Expected status: Astrogen-required plugins `ready`.
 - Telegram issue lifecycle notifications must have one path: `paperclip-plugin-telegram`.
 - Telegram issue-done messages must be human-facing Ukrainian operator text. They must not expose internal stage labels such as `HIA`, `Stage 55`, `Wave`, raw agent lane names, artifact paths, or fallback summaries like `Задачу ... завершено`.
 - Issue-done messages should use short fields: `Тема`, `Що сталося`, and `Далі`. The `Далі` line must say whether the owner needs to act now.
+- Owner-facing Telegram messages are not the durable review surface for long artifacts. When the result is a decision packet, detailed SEO report, article package, or technical-finding batch, Telegram must summarize the human meaning and link to the issue/document; the document or email carries the full detail.
 - Telegram article-draft classification must not match the bare word `draft`. `CMS state: draft`, Payload drafts, cover image updates, media uploads, and `coverImage` updates are CMS operations, not Stage 59 article-draft completion.
 - Telegram Payload CMS draft-ready messages must include the direct CMS draft/admin URL and a `Відкрити чернетку` button. A generic forwarded `issue.updated` lifecycle notification is not delivery proof for a ready blog draft.
 - Article package delivery is separate from noisy issue lifecycle notifications: a delivery issue may attach markdown, HTML, and image artifacts and send a concise Telegram package summary. Source-controlled plugin package `paperclip-plugin-telegram@0.3.1-paperclip.2` owns `delivery_groups`; direct operator Bot API delivery should not be used for normal article package delivery.
 - `telegram-daily-digest` must remain absent unless deliberately reintroduced with a new product decision.
 - DataForSEO and Semantic Core MCP cost attribution uses `costs.write` and `ctx.costs.createEvent(...)`; this is not replaced by `metrics.write`.
 - Shared MCP/provider plugins must not be switched to company-specific secrets through global instance config without company-aware secret resolution.
+- Shared provider/plugin settings must store secret refs and resolve them at execution time using company/project context. Secret values must not appear in plugin config, exported manifests, issue documents, comments, Telegram, email, or logs.
 - Payload CMS publish remains guarded: agents may create/update drafts by default; publishing requires the explicit `payload_cms_publish_blog_post` tool with `confirmPublish=true`.
 - Payload CMS blog text must be sent as `articleContent.v1`. Agents must not send raw Lexical JSON, markdown, raw HTML, inline styles, CSS classes, unsupported article blocks, or unsafe CTA URLs to the blog post create/update tools.

@@ -20,7 +20,8 @@ Agency Core contains reusable Paperclip operating-system assets that should work
 - [x] **Phase 12: CrawlObserver SEO Crawl Adapter** - Add a reusable Paperclip plugin adapter for the Tailnet-only CrawlObserver REST API so agents can start controlled crawls, inspect session/page/link/SEO crawl evidence, and feed Paperclip-owned SEO workflows without exposing API keys or making crawl-derived decisions inside the adapter.
 - [x] **Phase 13: Paperclip v2026.529.0 Upgrade And Future-Proof Update Structure** - Move the production Paperclip source baseline to upstream `v2026.529.0` without losing local functionality, reconcile production/Git drift, preserve Astrogen/DiskInternals plugins and operating contracts, and introduce a repeatable vendor-plus-overlay update structure for future releases.
 - [x] **Phase 14: SEO Report Channels And CrawlObserver Finding Policy** - Split weekly SEO reporting by channel so Telegram carries only short owner digests and email carries detailed reports; add deterministic CrawlObserver finding routing policy for automatic CMS SEO tasks, configured thresholds, cooldowns, and ignored-noise classes.
+- [x] **Phase 15: Paperclip Document Annotations And Secret Config Rollout** - Adopt the useful `v2026.529.0` collaboration/config features in Agency Core contracts: issue documents for reviewable decisions and reports, inline annotation expectations, document locking after acceptance, and secret-ref based plugin settings compatible with SecretBindingPicker-style configuration.
 
 ## Current Next Step
 
-Next reusable step: wire a real email transport/provider for detailed SEO reports where a company has configured recipients, then move the detailed report body out of Telegram entirely.
+Next reusable step: roll the document-backed review/decision and secret-ref configuration rules into other company contract repos, starting with DiskInternals only after checking its current artifact and notification conventions.

@@ -45,6 +45,14 @@ The design is multi-company and multi-project by default. A single domain or URL
    recipients, a sender address, and a Resend API key secret reference are set;
    raw API keys must never be written into plugin config, issues, docs, or Git.
 
+8. **Reviewable SEO outputs are documents.**
+   A weekly report, experiment proposal, technical-finding batch, or content
+   refresh recommendation should be an issue/project document when it contains
+   page rows, query evidence, KPI tables, or owner decisions. Use inline
+   annotations for exact URL, metric, paragraph, title/meta, or link-placement
+   feedback. Telegram carries the summary; the document carries the durable
+   evidence and review surface.
+
 ## Multi-Tenant Data Model
 
 ### Persistence Location
@@ -262,6 +270,12 @@ LLM agents should not reason over raw per-URL inspection payloads. Backend/plugi
 - repeated open findings;
 - findings already linked to open issues;
 - API/cache usage.
+
+When a finding batch routes into Paperclip issues, the batch summary should also
+exist as a document on the parent audit/routing issue. Child fix issues may stay
+comment-only when they cover one URL and one deterministic fix, but the parent
+batch document is the reviewable surface for what was found, what was ignored,
+what was fixed, and what remains open.
 
 ## GSC Query Ingestion
 
