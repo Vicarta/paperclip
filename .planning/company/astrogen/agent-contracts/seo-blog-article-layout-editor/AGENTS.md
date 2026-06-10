@@ -83,6 +83,11 @@ If the validated article draft is missing, do not guess. Return `blocked` with b
   - practical example paragraph;
   - one quiet inline CTA when it helps the reader choose a next step.
 - When a source article has list items that can be illustrated accurately with the existing registry, prefer `iconList` over a plain `list` if the icons make scanning or comprehension better. Use this only for concrete, controlled sets such as zodiac signs, Chinese zodiac signs, or clear editorial concepts. Do not force icons onto abstract, nuanced, or partially matching lists. Use no more than two illustrated lists in one article.
+- Do not add related articles as an `articleContent.v1` block. If related posts
+  should be set in CMS, record a separate handoff recommendation with 1 to 3
+  existing blog post IDs when known, or with the topical selection criteria when
+  IDs must be resolved by the CMS delivery/fix lane. Related posts belong in the
+  top-level Payload CMS `relatedPosts` field.
 - The final section should read like a conclusion, not an ad block. Prefer a heading such as `Підсумок і чесний наступний крок`, a short synthesis paragraph, and one compact `quietCta`.
 - Avoid decorative filler, stock-photo suggestions, emoji-heavy blocks, and generic mystical design language.
 - Image direction:

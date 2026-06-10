@@ -197,6 +197,7 @@ const blogPostFieldsSchema = {
     },
     relatedPosts: {
       type: "array",
+      maxItems: 3,
       items: { type: ["number", "string"] },
     },
     workflowStatus: { type: "string" },

@@ -179,6 +179,27 @@ function taxonomyTitleField(collection: string) {
   return collection === "authors" ? "name" : "title";
 }
 
+function normalizeBlogPostRelationIds(value: unknown, fieldName: string) {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value)) throw new Error(`${fieldName} must be an array of numeric blog post ids`);
+  if (value.length > 3) throw new Error(`${fieldName} must contain at most 3 blog post ids`);
+
+  const ids = value.map((item, index) => {
+    const raw = typeof item === "string" ? item.trim() : item;
+    const parsed = typeof raw === "number" ? raw : typeof raw === "string" && /^\d+$/.test(raw) ? Number(raw) : NaN;
+    if (!Number.isSafeInteger(parsed) || parsed <= 0) {
+      throw new Error(`${fieldName}[${index}] must be a positive numeric blog post id`);
+    }
+    return parsed;
+  });
+
+  if (new Set(ids).size !== ids.length) {
+    throw new Error(`${fieldName} must not contain duplicate blog post ids`);
+  }
+
+  return ids;
+}
+
 function slugifyAuthor(value: string) {
   return value
     .trim()
@@ -326,7 +347,6 @@ export function buildBlogPostPayload(fields: BlogPostFields, opts?: { publish?: 
     "author",
     "category",
     "tags",
-    "relatedPosts",
     "workflowStatus",
     "publishedAt",
     "scheduledPublishAt",
@@ -344,6 +364,9 @@ export function buildBlogPostPayload(fields: BlogPostFields, opts?: { publish?: 
   if (fields.articleContent !== undefined) {
     payload.articleContent = validateArticleContentV1(fields.articleContent);
   }
+
+  const relatedPosts = normalizeBlogPostRelationIds(fields.relatedPosts, "relatedPosts");
+  if (relatedPosts !== undefined) payload.relatedPosts = relatedPosts;
 
   payload._status = opts?.publish ? "published" : "draft";
   if (!opts?.publish) payload.workflowStatus = "draft";

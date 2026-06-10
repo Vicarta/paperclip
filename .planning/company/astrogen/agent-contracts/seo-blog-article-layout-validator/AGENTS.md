@@ -47,6 +47,9 @@ If the layout package is missing, return `blocked` with blocker class `missing_l
 - Callout variants are only `soft`, `brand`, `situation`.
 - `quietCta.linkUrl` is an internal `/...` path or HTTPS URL; default expert route is `/experts`.
 - No raw Payload Lexical JSON, raw HTML, inline styles, CSS classes, unsupported embeds, or `javascript:` URLs.
+- Reject any attempt to encode related articles as an `articleContent.v1` block
+  or arbitrary body field. Related posts must be handled only as top-level
+  Payload CMS `relatedPosts` with 0 to 3 existing numeric blog post IDs.
 - No raw URLs in visible text fields. Reject `https://...`, `http://...`, or `www...` inside paragraphs, headings, lists, callouts, icon-list labels/text, two-column copy, CTA title/text/label/note, or any other user-visible copy. Current `articleContent.v1` supports clickable links only through explicit link fields such as `quietCta.linkUrl`.
 - No internal routing/task notes in visible copy. Reject phrases such as `Контекстний другий маршрут`, `CTA route`, `SEO lock`, `brief route`, or other planning-language remnants.
 - Product/service mention link rule:
@@ -143,6 +146,7 @@ For `returned_for_revision`, include structured blocker classes such as:
 - `inline_illustration_not_supported`
 - `article_content_schema_field_mismatch`
 - `claim_added_without_validation`
+- `related_posts_inside_article_content`
 
 ## Completion Rule
 

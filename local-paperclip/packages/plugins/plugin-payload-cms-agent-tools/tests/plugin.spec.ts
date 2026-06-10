@@ -426,6 +426,38 @@ describe("Payload CMS content helpers", () => {
     expect(payload.publishedAt).toEqual(expect.any(String));
   });
 
+  it("accepts up to three relatedPosts ids as top-level numeric relationships", () => {
+    const payload = buildBlogPostPayload({
+      title: "Article",
+      relatedPosts: [12, "35", 41],
+    });
+
+    expect(payload.relatedPosts).toEqual([12, 35, 41]);
+  });
+
+  it("rejects invalid relatedPosts relationships", () => {
+    expect(() =>
+      buildBlogPostPayload({
+        title: "Article",
+        relatedPosts: [12, 35, 41, 52],
+      }),
+    ).toThrow(/at most 3/);
+
+    expect(() =>
+      buildBlogPostPayload({
+        title: "Article",
+        relatedPosts: [12, 12],
+      }),
+    ).toThrow(/duplicate/);
+
+    expect(() =>
+      buildBlogPostPayload({
+        title: "Article",
+        relatedPosts: ["/blog/example"] as any,
+      }),
+    ).toThrow(/positive numeric/);
+  });
+
   it("accepts iconList blocks with registered icons only", () => {
     const payload = buildBlogPostPayload({
       title: "Article",

@@ -305,3 +305,26 @@ Expected blocker classes:
 ## Completion
 
 The stage is complete only when the layout validator accepts the `articleContent.v1` package and CMO can safely route it to Payload CMS as an unpublished draft/update.
+
+## Related Posts
+
+Related articles are not an `articleContent.v1` block and must not be embedded
+inside article body content.
+
+When the layout handoff has enough topical context to recommend related
+articles, record the recommendation separately for the CMS delivery/fix lane.
+The Payload CMS field is top-level `blogPosts.relatedPosts` and accepts 0 to 3
+existing numeric blog post IDs.
+
+Selection rules:
+
+- closest topic and reader intent first;
+- same category or useful supporting explanation second;
+- CrawlObserver internal PageRank and internal-link evidence only as a
+  tie-breaker between already relevant candidates;
+- no current article ID;
+- no duplicate IDs;
+- no slugs, URLs, titles, search terms, or generated recommendation copy.
+
+Adding or changing only related-post relationships is a deterministic
+internal-linking/CMS SEO fix and does not require owner approval.
