@@ -17,6 +17,8 @@ In scope:
 - define a recurring, owner-facing weekly Telegram report contract;
 - compare the latest complete week with the previous complete week;
 - include publishing, GSC, GA4, and indexing indicators when available;
+- include business outcome: total sales/orders and Organic Search-attributed
+  sales/orders, with revenue when GA4 ecommerce revenue is available;
 - keep the message compact and Ukrainian;
 - update Astrogen CMO and SEO Performance Analyst contracts;
 - sync the contract to the live Paperclip Astrogen workspace;
@@ -57,6 +59,14 @@ Required KPIs:
   - organic blog sessions or users;
   - engaged sessions / engagement rate;
   - blog-to-product or important route clicks, when tracked;
+- business outcome from GA4 ecommerce/funnel data:
+  - total sales/orders and revenue for the reporting week and comparison week;
+  - sales/orders and revenue attributed to Organic Search;
+  - if exact blog-to-sale attribution is unavailable, use whole-site total sales
+    plus Organic Search-attributed sales;
+  - do not replace sales with sessions, users, landing rows, or engagement;
+  - if ecommerce data is unavailable, state the gap and route tracking/data
+    acquisition work instead of sending a normal-looking report;
 - indexing:
   - indexed blog pages or indexed site pages if the plugin/GSC source can return
     a reliable count;

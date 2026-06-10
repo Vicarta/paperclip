@@ -289,6 +289,11 @@ describe("seo performance loop plugin", () => {
     expect(plan.telegram.mode).toBe("summary_only");
     expect(plan.telegram.language).toBe("uk");
     expect(plan.telegram.requiredShape.join(" ")).toContain("no raw tables");
+    expect(plan.telegram.requiredShape.join(" ")).toContain("total sales");
+    expect(plan.telegram.requiredShape.join(" ")).toContain("do not present sessions");
+    expect(plan.businessKpis.requiredMetrics.join(" ")).toContain("Organic Search");
+    expect(plan.businessKpis.preferredAcquisitionTools).toContain("analytics_ecommerce");
+    expect(plan.businessKpis.fallbackPolicy.join(" ")).toContain("route a tracking/data gap");
     expect(plan.detailed.channel).toBe("email");
     expect(plan.detailed.language).toBe("uk");
     expect(plan.detailed.deliveryReady).toBe(true);

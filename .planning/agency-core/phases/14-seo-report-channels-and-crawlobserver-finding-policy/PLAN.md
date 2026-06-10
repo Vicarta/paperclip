@@ -48,6 +48,13 @@ Out of scope:
 - Telegram gets only the compact owner digest.
 - Email gets the detailed report: KPI tables, page/query movements, GA4
   breakdowns, indexing findings, experiments, cooldowns, and monitoring dates.
+- Weekly reports must separate traffic from business outcome. GA4 sessions,
+  users, landing rows, engagement, and route transitions are traffic context;
+  they are not sales. The required business KPI set is total sales/orders, total
+  revenue when available, Organic Search-attributed sales/orders, and Organic
+  Search-attributed revenue when available. If ecommerce data is unavailable,
+  the report must say so and route a tracking/data acquisition gap instead of
+  presenting traffic metrics as a sales substitute.
 - If email recipients are not configured, the detailed report must stay as a
   Paperclip issue document and must not be pushed into Telegram.
 - CrawlObserver near-duplicates are ignored by policy for now.

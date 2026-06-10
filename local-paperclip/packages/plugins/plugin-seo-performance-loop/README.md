@@ -50,8 +50,16 @@ The weekly owner report is split by channel:
   `telegramSummaryHardCapChars`.
 - Email: full detailed report in the configured company report language
   (`detailedReportLanguage`, `uk` for Astrogen) with KPI tables, page/query
-  movements, GA4 breakdowns, indexing/technical appendices, recommended
-  experiments, cooldowns, and monitoring dates.
+  movements, GA4 ecommerce sales/revenue breakdowns, indexing/technical
+  appendices, recommended experiments, cooldowns, and monitoring dates.
+- Weekly reports must separate traffic from business outcome. Sessions, users,
+  and engagement are traffic context; they are not a substitute for purchases,
+  orders, or revenue.
+- The required business KPI set is total sales/orders, total revenue when
+  available, Organic Search-attributed sales/orders, and Organic
+  Search-attributed revenue when available. If ecommerce data is unavailable,
+  the report must say that plainly and route a tracking/data gap instead of
+  presenting traffic metrics as sales.
 - If `detailedReportChannel=email` but recipients, `detailedReportFromEmail`, or
   `resendApiKeySecretRef` are missing, the plan marks email delivery as not
   ready and the host/agent should keep the detailed report as a Paperclip issue

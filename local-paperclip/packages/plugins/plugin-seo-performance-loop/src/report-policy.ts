@@ -35,6 +35,11 @@ export type WeeklyReportPlan = {
     hardCapChars: number;
     requiredShape: string[];
   };
+  businessKpis: {
+    requiredMetrics: string[];
+    preferredAcquisitionTools: string[];
+    fallbackPolicy: string[];
+  };
   detailed: {
     channel: "email" | "paperclip_issue_document";
     language: string;
@@ -164,7 +169,30 @@ export function buildWeeklyReportPlan(rawConfig: Record<string, unknown> = {}, a
         `one compact owner-facing digest in ${config.detailedReportLanguage}`,
         "blank line between paragraphs",
         "week-over-week deltas only for core KPIs",
+        "include total sales and organic-attributed sales/revenue, or a clear ecommerce-data gap",
+        "do not present sessions, users, or engagement as a substitute for sales",
         "no raw tables, issue ids, run ids, plugin names, SQL, or provider internals",
+      ],
+    },
+    businessKpis: {
+      requiredMetrics: [
+        "total purchases/orders for the reporting week and comparison week",
+        "total purchase revenue for the reporting week and comparison week when GA4 ecommerce revenue is available",
+        "purchases/orders attributed to Organic Search for both weeks",
+        "purchase revenue attributed to Organic Search for both weeks when GA4 ecommerce revenue is available",
+        "blog organic sessions and engagement only as traffic context, not as a sales proxy",
+      ],
+      preferredAcquisitionTools: [
+        "analytics_ecommerce",
+        "analytics_conversion_funnel",
+        "analytics_traffic_sources",
+        "analytics_organic_landing_pages",
+        "analytics_page_performance",
+      ],
+      fallbackPolicy: [
+        "If exact blog-to-sale attribution is unavailable, report whole-site total sales plus organic-attributed sales.",
+        "If ecommerce events or revenue are unavailable, say that sales data is unavailable and route a tracking/data gap instead of replacing sales with sessions.",
+        "If GA4 blog tracking is present but returns zero rows, report zero for that scoped metric and still include site-wide sales and organic sales.",
       ],
     },
     detailed: {
@@ -180,7 +208,9 @@ export function buildWeeklyReportPlan(rawConfig: Record<string, unknown> = {}, a
       requiredShape: [
         `full KPI table and page-level appendix in ${config.detailedReportLanguage}`,
         "GSC query/page movements",
-        "GA4 blog-to-product event and landing-page breakdown",
+        "GA4 ecommerce sales table: total sales/revenue and Organic Search-attributed sales/revenue",
+        "GA4 blog-to-product event and landing-page breakdown as supporting traffic context",
+        "clear separation between traffic/engagement metrics and sales/revenue metrics",
         "indexing and technical SEO findings grouped by action",
         "recommended experiments, owner decisions, cooldowns, and monitoring dates",
       ],

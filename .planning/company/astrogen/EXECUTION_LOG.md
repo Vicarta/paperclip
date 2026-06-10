@@ -1,5 +1,21 @@
 # Execution Log: Astrogen
 
+## 2026-06-10
+
+- Tightened the weekly SEO report contract after the owner noted that traffic
+  metrics alone do not show business outcome.
+  - Weekly reports must include total sales/orders, total revenue when
+    available, Organic Search-attributed sales/orders, and Organic
+    Search-attributed revenue when available.
+  - Blog GA4 engagement remains useful context now that GA4 is present on the
+    blog, but sessions/users/engagement must never be presented as a sales
+    substitute.
+  - If GA4 ecommerce sales data cannot be acquired through the MCP tools, the
+    report must say so plainly and route a tracking/data acquisition gap instead
+    of sending a normal-looking weekly report.
+  - Updated the SEO Performance Loop report plan, Astrogen Stage 69 weekly report
+    contract, CMO contract, and SEO Performance Analyst contract.
+
 ## 2026-06-09
 
 - Reframed Phase 19 and the deferred SEO Monitoring Loop into one regular SEO
