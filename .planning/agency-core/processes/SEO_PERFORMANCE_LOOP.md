@@ -282,6 +282,126 @@ Do not create an issue for every crawl row. Create or update issues only for
 deduped, actionable findings that pass settings, cooldown, and implementation
 path checks.
 
+## GSC And CrawlObserver Evidence Fusion
+
+GSC and CrawlObserver answer different questions and must be evaluated together
+before Paperclip creates SEO action issues.
+
+GSC answers:
+
+- which queries and pages receive impressions, clicks, CTR, and position;
+- which URLs are discovered, crawled, indexed, or affected by canonical/indexing
+  states;
+- whether a page is gaining, stable, declining, or attracting wrong-intent
+  queries;
+- which real user queries are missing from the semantic core or page target set.
+
+CrawlObserver answers:
+
+- whether the page is technically crawlable and indexable in the rendered site;
+- whether canonical, robots, status, redirects, sitemap membership, title, H1,
+  meta description, structured data, and resources are healthy;
+- how internal links, related-post relationships, orphan/weak-link state, and
+  internal PageRank distribute crawl equity;
+- which relevant support pages can strengthen a target page through internal
+  links or `relatedPosts`.
+
+Paperclip must not let either source dominate blindly:
+
+- a high-GSC-opportunity URL with a CrawlObserver technical problem routes to a
+  technical fix before content refresh;
+- a low-CTR/high-position URL with clean crawl state routes to title/meta or
+  snippet analysis;
+- a page with impressions but weak internal links routes to internal-linking or
+  related-post work;
+- a query with impressions on the wrong landing page routes to landing-fit or
+  new-page validation;
+- a page with no GSC signal but strong business value can stay on watch or enter
+  rank/temporary-watch policy instead of being discarded;
+- CrawlObserver PageRank is a prioritization and tie-break signal, not a
+  substitute for topical relevance or GSC demand.
+
+The acquisition layer should produce a compact joined candidate queue, not raw
+provider dumps. Each candidate should have stable IDs and only the fields needed
+for routing:
+
+```text
+candidate_id
+url_id / project_page_id
+url
+page_type
+action_class
+gsc_evidence_summary
+crawl_evidence_summary
+indexing_summary
+related_pages_summary
+score_components
+recommended_lane
+cooldown_state
+existing_issue_id
+```
+
+Recommended action classes:
+
+- `technical_fix`
+- `indexing_fix`
+- `internal_linking`
+- `related_posts`
+- `content_refresh`
+- `title_meta_ctr`
+- `new_page_opportunity`
+- `wrong_landing`
+- `cannibalization_review`
+- `offpage_candidate`
+- `watch`
+
+This joined queue is the main input to CMO, SEO Performance Analyst, SEO CMS
+Technical Fixer, and content planning agents. LLM agents should not inspect the
+entire CrawlObserver crawl or the full GSC query export directly.
+
+## Candidate Scoring And Routing
+
+Candidate scoring must be settings-driven. The default formula is conceptual and
+must be implemented as configurable weights:
+
+```text
+seo_action_score =
+  gsc_opportunity_score
+  + business_page_value
+  + crawl_actionability_score
+  + internal_linking_value
+  + freshness_or_change_boost
+  + product_or_content_wave_priority
+  - cooldown_penalty
+  - duplicate_open_issue_penalty
+  - low_evidence_penalty
+```
+
+Minimum default routing:
+
+| Evidence pattern | Default action | Default assignee |
+|---|---|---|
+| Published page has noindex, wrong canonical, bad status, missing sitemap, or redirect/canonical mismatch | `technical_fix` / `indexing_fix` | SEO CMS Technical Fixer |
+| Page has GSC impressions, clean indexability, but weak internal links or low CrawlObserver PageRank compared with related pages | `internal_linking` or `related_posts` | SEO CMS Technical Fixer |
+| Query has impressions but wrong or weak landing page | `wrong_landing` | SEO Performance Analyst, then CMO/content lane |
+| Page ranks 4-20 or has impressions with low CTR and clean crawl state | `title_meta_ctr` or `content_refresh` | SEO Performance Analyst |
+| Query is relevant, has no suitable current landing page, and passes business/topical filters | `new_page_opportunity` | SEO Blog Content Strategist / CMO |
+| Page is important but has too little data or was changed recently | `watch` | SEO Performance Analyst |
+| Page looks content-complete but authority-limited | `offpage_candidate` | CMO / off-page lane |
+
+Automatic issue creation is allowed only when:
+
+- the action class has an approved implementation path;
+- a stable fingerprint is available;
+- no equivalent open issue exists;
+- cooldown allows a new action;
+- the required provider evidence is fresh enough for the action class.
+
+If a required evidence source is unavailable, do not silently downgrade a regular
+cycle into a weaker report. Record the source as `acquisition_gap`, create or
+update the system/plugin blocker when it prevents routing, and continue only for
+action classes whose required evidence is still present.
+
 ## Page Enrichment
 
 Sitemap presence does not prove indexability or good SEO state.

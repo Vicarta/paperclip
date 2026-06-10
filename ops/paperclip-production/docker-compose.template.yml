@@ -17,6 +17,11 @@ services:
   app:
     image: ${PAPERCLIP_APP_IMAGE:-paperclip-app:v2026.529.0-vicarta.25-38904757}
     restart: unless-stopped
+    extra_hosts:
+      # Paperclip containers do not always inherit host MagicDNS resolution.
+      # Keep the CrawlObserver Tailnet hostname stable for plugin config while
+      # resolving it to the current Tailnet IP from production compose.
+      - "ubuntu-aibizmate-n8n.tailbd4e1c.ts.net:${CRAWLOBSERVER_TAILNET_IP:-100.102.131.83}"
     depends_on:
       db:
         condition: service_healthy

@@ -69,6 +69,7 @@ Human-facing Astrogen communication remains Ukrainian and should not expose inte
 - [x] **Phase 31: New Product SEO Continuation And GSC Unblock** - Hardened the planned contract so new-product parents cannot close after one article, starter packages continue into traffic expansion, and GSC aggregate audits exit through routed URL-level findings, cancellation/supersession, or named system gaps.
 - [x] **Phase 32: Image Runtime Executor And Company Settings** - Make blog cover-image generation a dedicated runtime lane with company-level provider/model settings and a properly secret-injected `SEO Blog Image Runtime Executor`.
 - [x] **Phase 33: SEO Blog Humanizer Workflow** - Add a dedicated post-validation `SEO Blog Humanizer` lane and route newly generated traffic articles through Humanizer before layout/CMS delivery.
+- [x] **Phase 34: GSC + CrawlObserver SEO Decision Queue** - Reworked the regular SEO cycle so GSC demand/indexing evidence and CrawlObserver technical/internal-link/PageRank evidence are joined into one settings-driven action queue before routing technical fixes, relatedPosts/internal-linking, refreshes, new-page opportunities, off-page candidates, and watch decisions.
 
 ## Deferred / Future Tracks
 
@@ -85,11 +86,14 @@ Human-facing Astrogen communication remains Ukrainian and should not expose inte
 
 Current SEO operating model: Astrogen blog and product SEO now follows the shared regular SEO Performance Loop. Payload CMS is the primary source for publishing/draft state, public sitemap and live HTML verify public visibility, GSC/GA4 provide search and engagement evidence, URL Inspection provides indexing evidence, and CrawlObserver provides technical/internal-link evidence.
 
+GSC and CrawlObserver must now be joined before SEO routing. GSC answers demand, query, CTR, position, indexing, and wrong-landing questions. CrawlObserver answers rendered technical state, sitemap/canonical/status, internal links, related-post gaps, orphan/weak-link state, and internal PageRank questions. Paperclip turns the joined evidence into candidate actions such as `technical_fix`, `indexing_fix`, `internal_linking`, `related_posts`, `content_refresh`, `title_meta_ctr`, `new_page_opportunity`, `wrong_landing`, `offpage_candidate`, or `watch`.
+
 ```text
 CMS/publication discovery
 -> page registry and keyword target mapping
--> GSC/GA4/indexing/CrawlObserver evidence
--> deduped page findings and weekly report
+-> GSC/GA4/indexing/CrawlObserver acquisition
+-> joined SEO candidate queue
+-> deduped findings and weekly report
 -> technical fixes, refreshes, internal-linking, backlinks, or new content waves
 -> monitoring-window review
 -> next decision
