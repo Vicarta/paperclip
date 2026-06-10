@@ -780,3 +780,9 @@
   - The tool deletes only `categories`/`tags`, requires explicit `confirmDeleteTaxonomyTerm=true`, supports expected slug/title verification, and refuses category deletion if any blog post still references the category.
   - This unblocks the CMS-side path for orphan duplicate categories such as the extra `Експерти` term that left [AST-1098](/AST/issues/AST-1098) blocked.
   - Verified plugin tests and build locally before production deploy.
+- Started the joined GSC + CrawlObserver SEO cycle.
+  - Created [AST-1150](/AST/issues/AST-1150) for CMO to run the joined decision queue using GSC demand/indexing evidence plus CrawlObserver crawl/internal-link/PageRank evidence.
+  - Initial CMO/CTO diagnosis incorrectly blocked the task as `runtime/plugin_installation_gap`.
+  - Rechecked live infrastructure: CrawlObserver API health is reachable from the Paperclip app container; `paperclip.crawlobserver-agent-tools` is installed with status `ready`; global plugin config has the CrawlObserver base URL and API key secret reference; `/api/plugins/tools` exposes the CrawlObserver tools including `health-check`, `list-projects`, `list-sessions`, `list-pages`, `get-page-detail`, `get-sitemap-urls`, `get-redirect-pages`, and `call-read-endpoint`.
+  - Corrected [AST-1150](/AST/issues/AST-1150) from `blocked` back to `todo` and queued CMO rerun `99b7ddea-d229-4670-b3e2-45b08b13317e`.
+  - Found a separate Paperclip server bug during manual correction: if local-cli/manual API calls pass a synthetic `X-Paperclip-Run-Id`, the server trusts it and later hits heartbeat-run foreign-key failures in `activity_log` or issue checkout. Fix in progress: authenticate only existing heartbeat run ids before attaching them to `req.actor.runId`.
