@@ -26,6 +26,14 @@ Current phase note: Phase 19 and Phase 31 are complete as planning/contract hard
 - Phase 20 writer routing has been superseded by the 2026-05-22 no-heartbeat pipeline smoke: `SEO Blog Article Writer (ChatGPT)` is now the primary Stage 59 author for first-pass drafts and normal corrections. `SEO Blog Article Writer (Claude)` / OpenRouter remains a reserve lane only for explicit CMO-approved recovery when the ChatGPT lane is unavailable or repeatedly blocked. Validator output must still include structured blocker classes. Phase 24 supersedes the earlier manager heartbeat allowance: routine LLM heartbeats should be disabled for CEO, CMO, and CTO unless a human explicitly approves a temporary exception with expiry.
 - Current page-registry focus: Astrogen blog page registry is now seeded in live Postgres `seo_ops` from `https://astrogen.com.ua/sitemap.xml`. Initial import registered 40 blog-related URLs: 35 blog articles, 4 category pages, and 1 blog index page. The 35 article rows were enriched with title, meta description, category/tag metadata, content text, content hash, and content block counts from the public site data source. Keyword mapping remains pending.
 - Current CrawlObserver status: the CrawlObserver API is reachable from the live Paperclip app container, `paperclip.crawlobserver-agent-tools` is installed with status `ready`, global plugin config contains the CrawlObserver base URL and API key secret reference, and `/api/plugins/tools` exposes the CrawlObserver tools (`health-check`, `list-projects`, `list-sessions`, `list-pages`, `get-page-detail`, `get-sitemap-urls`, `get-redirect-pages`, `call-read-endpoint`, etc.). If an agent reports `CrawlObserver unavailable`, recheck the live tool surface before accepting that blocker.
+- CrawlObserver image-resource evidence is available through the existing
+  `/api/sessions/{session_id}/resource-checks` endpoint with
+  `resource_type=image`. Agents should use the Paperclip CrawlObserver
+  `get-resource-checks` tool, or the generic allowlisted read endpoint when the
+  named tool is not deployed yet, for broken/missing image audits. Useful
+  filters include `status_code=404`, `status_code=>=400`, `url=fragment`,
+  `is_internal=true`, and `error=fragment`. Old sessions may need resource
+  reparse or a new crawl before image rows appear.
 - Current joined SEO cycle status: [AST-1150](/AST/issues/AST-1150) was initially blocked on an invalid `runtime/plugin_installation_gap` diagnosis. The issue was corrected back to `todo` and CMO was woken on demand after proving CrawlObserver tools are available.
 
 ## Known Active Workstreams

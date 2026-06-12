@@ -247,6 +247,13 @@ const manifest: PaperclipPluginManifestV1 = {
       parametersSchema: sessionSchema,
     },
     {
+      name: TOOL_NAMES.getResourceChecks,
+      displayName: "CrawlObserver Resource Checks",
+      description:
+        "Call `GET /api/sessions/{id}/resource-checks` with allowlisted filters such as resource_type=image, status_code, url, is_internal, and error.",
+      parametersSchema: looseObjectSchema,
+    },
+    {
       name: TOOL_NAMES.getRedirectPages,
       displayName: "CrawlObserver Redirect Pages",
       description: "Call `GET /api/sessions/{id}/redirect-pages`.",

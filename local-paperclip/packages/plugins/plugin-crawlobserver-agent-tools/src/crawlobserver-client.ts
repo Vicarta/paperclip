@@ -92,6 +92,18 @@ const LINK_FILTER_FIELDS = new Set([
   "tag",
 ]);
 
+const RESOURCE_FILTER_FIELDS = new Set([
+  "limit",
+  "offset",
+  "sort",
+  "order",
+  "resource_type",
+  "status_code",
+  "url",
+  "is_internal",
+  "error",
+]);
+
 const SESSION_FILTER_FIELDS = new Set([
   "limit",
   "offset",
@@ -346,6 +358,17 @@ export function prepareLinksQuery(input: {
   return cleanQuery(
     readRecord(input.params),
     LINK_FILTER_FIELDS,
+    normalizeConfig(input.config).maxPageLimit,
+  );
+}
+
+export function prepareResourceChecksQuery(input: {
+  params: unknown;
+  config: CrawlObserverPluginConfig;
+}) {
+  return cleanQuery(
+    readRecord(input.params),
+    RESOURCE_FILTER_FIELDS,
     normalizeConfig(input.config).maxPageLimit,
   );
 }

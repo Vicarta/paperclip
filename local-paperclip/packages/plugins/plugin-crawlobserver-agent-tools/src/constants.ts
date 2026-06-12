@@ -36,6 +36,7 @@ export const TOOL_NAMES = {
   getSitemaps: "get-sitemaps",
   getSitemapUrls: "get-sitemap-urls",
   getResourceSummary: "get-resource-summary",
+  getResourceChecks: "get-resource-checks",
   getRedirectPages: "get-redirect-pages",
   getNearDuplicates: "get-near-duplicates",
   getStructuredData: "get-structured-data",

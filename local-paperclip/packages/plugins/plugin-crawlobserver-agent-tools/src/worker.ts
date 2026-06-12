@@ -8,6 +8,7 @@ import {
   preparePageDetailQuery,
   preparePagesQuery,
   prepareReadEndpointRequest,
+  prepareResourceChecksQuery,
   prepareSessionsQuery,
   prepareStartCrawlBody,
   type CrawlObserverPluginConfig,
@@ -244,6 +245,27 @@ const plugin = definePlugin({
             query: preparePageDetailQuery(params),
           },
         }),
+    );
+
+    ctx.tools.register(
+      TOOL_NAMES.getResourceChecks,
+      {
+        displayName: "CrawlObserver Resource Checks",
+        description:
+          "Call `GET /api/sessions/{id}/resource-checks` with allowlisted pagination and resource filters. Use `resource_type=image` for page-image audits.",
+        parametersSchema: looseObjectSchema,
+      },
+      async (params): Promise<ToolResult> => {
+        const config = await getConfig(ctx);
+        return await callApi({
+          ctx,
+          request: sessionPagedGetRequest(
+            params,
+            "/resource-checks",
+            prepareResourceChecksQuery({ params, config }),
+          ),
+        });
+      },
     );
 
     for (const tool of [

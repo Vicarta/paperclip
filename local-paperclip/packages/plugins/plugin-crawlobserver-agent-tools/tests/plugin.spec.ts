@@ -131,6 +131,48 @@ describe("plugin-crawlobserver-agent-tools", () => {
     );
   });
 
+  it("registers resource-checks with image filters", async () => {
+    const harness = createTestHarness({
+      manifest,
+      config: {
+        crawlObserverApiKeySecretRef: "secret-co",
+        maxPageLimit: 100,
+      },
+    });
+    await plugin.definition.setup(harness.ctx);
+
+    callCrawlObserverApiMock.mockResolvedValueOnce({
+      content: "{\"items\":[]}",
+      data: { items: [] },
+    });
+
+    await harness.executeTool(TOOL_NAMES.getResourceChecks, {
+      sessionId: "session-1",
+      resource_type: "image",
+      status_code: ">=400",
+      is_internal: true,
+      limit: 250,
+      offset: 0,
+      ignored: "nope",
+    });
+
+    expect(callCrawlObserverApiMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        request: {
+          method: "GET",
+          path: "/api/sessions/session-1/resource-checks",
+          query: {
+            resource_type: "image",
+            status_code: ">=400",
+            is_internal: true,
+            limit: 100,
+            offset: 0,
+          },
+        },
+      }),
+    );
+  });
+
   it("allows only allowlisted read endpoints", () => {
     expect(
       prepareReadEndpointRequest({

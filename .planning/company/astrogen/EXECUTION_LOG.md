@@ -802,3 +802,14 @@
   - Rechecked live infrastructure: CrawlObserver API health is reachable from the Paperclip app container; `paperclip.crawlobserver-agent-tools` is installed with status `ready`; global plugin config has the CrawlObserver base URL and API key secret reference; `/api/plugins/tools` exposes the CrawlObserver tools including `health-check`, `list-projects`, `list-sessions`, `list-pages`, `get-page-detail`, `get-sitemap-urls`, `get-redirect-pages`, and `call-read-endpoint`.
   - Corrected [AST-1150](/AST/issues/AST-1150) from `blocked` back to `todo` and queued CMO rerun `99b7ddea-d229-4670-b3e2-45b08b13317e`.
   - Found a separate Paperclip server bug during manual correction: if local-cli/manual API calls pass a synthetic `X-Paperclip-Run-Id`, the server trusts it and later hits heartbeat-run foreign-key failures in `activity_log` or issue checkout. Fix in progress: authenticate only existing heartbeat run ids before attaching them to `req.actor.runId`.
+- Recorded CrawlObserver image-resource API change for Astrogen SEO/image audits.
+  - CrawlObserver now exposes page images through the existing
+    `/api/sessions/{session_id}/resource-checks` endpoint using
+    `resource_type=image`.
+  - Updated the shared CrawlObserver plugin/docs and agency-core SEO loop so
+    agents use image resource rows for deterministic broken/missing image
+    findings: image URL, HTTP status, redirect URL, content type, error text,
+    and internal/external classification.
+  - Old sessions may require resource reparse or a fresh crawl before image
+    rows exist; missing rows in an old session are an acquisition gap, not proof
+    that images are healthy.

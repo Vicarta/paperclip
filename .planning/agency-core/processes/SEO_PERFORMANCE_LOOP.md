@@ -274,9 +274,23 @@ Default CrawlObserver imports:
 - indexability, robots/noindex, status codes, redirects, titles, H1, meta
   descriptions, internal links, orphan/near-orphan evidence, sitemap coverage,
   and structured-data summary;
+- image resource checks from
+  `GET /api/sessions/{session_id}/resource-checks?resource_type=image`,
+  including image URL, status code, redirect URL, content type, error text, and
+  internal/external classification;
 - internal-link opportunities when the crawl evidence is stable enough;
 - exclude near-duplicate findings by default until a reliable duplicate policy
   is approved.
+
+For image audits, agents should use the CrawlObserver `get-resource-checks`
+tool, or the generic read endpoint for `/api/sessions/{id}/resource-checks`
+when the named tool is unavailable. Query with `resource_type=image` and page
+through results using `limit`/`offset`. Broken image rows such as `status_code`
+`404`, `status_code=>=400`, failed `error`, or unexpected redirects are
+deterministic technical findings and should route to the configured technical
+fix agent after dedupe and cooldown. Old crawl sessions may not include image
+resource rows; a missing image-resource table in an old session is an acquisition
+gap, not proof that the site has no image defects.
 
 Do not create an issue for every crawl row. Create or update issues only for
 deduped, actionable findings that pass settings, cooldown, and implementation

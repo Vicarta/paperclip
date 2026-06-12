@@ -52,6 +52,7 @@ Read tools:
 - `get-sitemaps`
 - `get-sitemap-urls`
 - `get-resource-summary`
+- `get-resource-checks`
 - `get-redirect-pages`
 - `get-near-duplicates`
 - `get-structured-data`
@@ -63,6 +64,33 @@ Mutating tools, disabled by default:
 - `stop-session`
 - `resume-session`
 - `retry-failed`
+
+## Page Image Audits
+
+For page image audits, use `get-resource-checks` with
+`resource_type=image`. This calls the existing CrawlObserver endpoint:
+
+```json
+{
+  "sessionId": "crawl-session-id",
+  "resource_type": "image",
+  "limit": 100,
+  "offset": 0
+}
+```
+
+Useful filters include:
+
+- `status_code=404`
+- `status_code=>=400`
+- `url=fragment`
+- `is_internal=true`
+- `error=fragment`
+
+The response can include image URLs found on crawled pages, HTTP status codes,
+redirect URLs, content types, error text, and whether the image is internal or
+external. Old crawl sessions may not contain image resource rows; use a new
+crawl or resource reparse before treating missing image data as a clean result.
 
 ## Operational Note
 
