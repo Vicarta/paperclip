@@ -13,8 +13,8 @@ See: `.planning/company/astrogen/README.md`
 
 Phase: Astrogen growth/content operating system hardening
 Status: Active
-Last activity: 2026-06-10 - Started the joined GSC + CrawlObserver SEO cycle as [AST-1150](/AST/issues/AST-1150), corrected a false CrawlObserver-tool blocker, and began fixing the local-cli/manual `X-Paperclip-Run-Id` FK failure.
-Current phase note: Phase 19 and Phase 31 are complete as planning/contract hardening. Astrogen SEO monitoring now uses the shared regular SEO Performance Loop: daily CMS/sitemap/CrawlObserver discovery, fresh URL indexability checks, every-3-days high-value URL checks, Wednesday weekly GSC/GA4/CrawlObserver reporting, monitoring-window experiment review, and a joined GSC + CrawlObserver decision queue.
+Last activity: 2026-06-12 - Hardened the weekly Astrogen SEO cycle so the Wednesday run is an active SEO action cycle, not a report-only routine.
+Current phase note: Phase 19 and Phase 31 are complete as planning/contract hardening. Astrogen SEO monitoring now uses the shared regular SEO Performance Loop: daily CMS/sitemap/CrawlObserver discovery, fresh URL indexability checks, every-3-days high-value URL checks, Wednesday weekly GSC/GA4/CrawlObserver reporting, monitoring-window experiment review, and a joined GSC + CrawlObserver decision queue. The weekly Wednesday cycle must also create/update active SEO work: internal-linking, relatedPosts, content refresh, title/meta CTR, new-page, wrong-landing, off-page, and watch issues when thresholds/cooldowns allow. A Telegram/email report alone is not a completion condition.
 
 ## Current Focus
 

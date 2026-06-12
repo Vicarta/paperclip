@@ -373,6 +373,52 @@ This joined queue is the main input to CMO, SEO Performance Analyst, SEO CMS
 Technical Fixer, and content planning agents. LLM agents should not inspect the
 entire CrawlObserver crawl or the full GSC query export directly.
 
+## Weekly Active SEO Work Rule
+
+The Wednesday weekly SEO cycle is not complete when it only sends a report. It
+must also create or update the active SEO work queue.
+
+Each weekly cycle must evaluate internal-linking and related-post opportunities
+using joined GSC + CrawlObserver evidence:
+
+- GSC identifies pages with demand, growth, decline, low CTR, wrong landing, or
+  new query opportunities.
+- CrawlObserver identifies internal links, related-post relationships,
+  orphan/weak-link state, and internal PageRank.
+- Payload CMS identifies current article ids, categories, products, and
+  `relatedPosts` state.
+
+For every candidate above configured thresholds, the cycle must either:
+
+- create/update a deduped implementation issue;
+- attach the candidate to an existing open issue;
+- mark it `watch` with a monitoring date and reason;
+- mark it ignored by an explicit policy/cooldown rule.
+
+Internal linking is an experiment class, not a passive recommendation. When a
+page has GSC demand or business value and CrawlObserver shows weak support,
+missing related posts, low internal PageRank, or a better source/target link
+opportunity, the weekly cycle should create an `internal_linking` or
+`related_posts` experiment issue. The issue must include:
+
+- target page/article;
+- source pages or related-post candidates;
+- evidence summary from GSC and CrawlObserver;
+- proposed change type: body link, product-route link, relatedPosts, or hub link;
+- baseline KPI and monitoring window;
+- expected effect and rollback/continue rule.
+
+For Astrogen blog work, `relatedPosts` should normally aim for the configured
+minimum count and should include both close-topic and adjacent-interest posts
+when relevant, not only posts from the same category. The selection still must
+respect relevance, indexability, no duplicate ids, and the CMS limit of 0-3
+related posts.
+
+The compact Telegram report should mention only the owner-relevant summary of
+created/updated SEO work. The detailed email/document must include the action
+queue, created issue identifiers, experiment baselines, cooldown/watch items,
+and monitoring dates.
+
 ## Candidate Scoring And Routing
 
 Candidate scoring must be settings-driven. The default formula is conceptual and

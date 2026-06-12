@@ -15,6 +15,11 @@ CMS / sitemap / GSC / URL Inspection / CrawlObserver
 -> monitoring-window review
 ```
 
+The weekly Wednesday SEO cycle must therefore be treated as an active SEO work
+cycle, not as a report-only routine. The owner-facing Telegram message is only
+the digest; the operational output is the joined decision queue plus created or
+updated follow-up issues.
+
 ## Scope
 
 - Update the reusable agency-core SEO Performance Loop so GSC and CrawlObserver have distinct required roles.
@@ -22,6 +27,9 @@ CMS / sitemap / GSC / URL Inspection / CrawlObserver
 - Update CMO and SEO Performance Analyst contracts so they use the joined queue instead of isolated reports.
 - Keep deterministic CMS/indexability/internal-linking/related-post fixes out of HIA.
 - Treat CrawlObserver or GSC unavailability as a named acquisition gap when the action class requires that evidence.
+- Require the weekly cycle to evaluate internal-linking and related-post
+  opportunities from joined GSC + CrawlObserver evidence and create measurable
+  experiments when configured thresholds pass.
 
 ## Action Classes
 
@@ -35,6 +43,29 @@ CMS / sitemap / GSC / URL Inspection / CrawlObserver
 - `wrong_landing`
 - `offpage_candidate`
 - `watch`
+
+## Weekly Internal-Linking Experiment Requirement
+
+Every weekly cycle must evaluate:
+
+- pages with GSC impressions/clicks, declining trend, low CTR, or high business
+  value;
+- current internal links and related-post state from CrawlObserver/Payload CMS;
+- internal PageRank and weak-link/orphan evidence from CrawlObserver;
+- relevant adjacent articles, not only same-category articles.
+
+When evidence supports action, CMO/SEO Performance Analyst must route a child
+issue with one of these action classes:
+
+- `internal_linking`: add or adjust contextual links in body/article content;
+- `related_posts`: set or refresh Payload CMS `blogPosts.relatedPosts`;
+- `content_refresh`: refresh the article when internal links are not enough;
+- `watch`: no change now, with a specific monitoring date and reason.
+
+Internal-linking and related-post changes are experiments. Each issue must
+record the target URL/article, proposed source pages or related post ids,
+baseline GSC/GA4/CrawlObserver evidence, monitoring window, and the expected
+decision after the window: continue, expand, adjust, or revert.
 
 ## Routing
 
@@ -56,4 +87,6 @@ CMS / sitemap / GSC / URL Inspection / CrawlObserver
 - The Astrogen cycle defines joined candidate queue fields.
 - Contracts say incomplete source acquisition is a named gap, not a normal complete report.
 - Deterministic CMS/internal-link fixes remain owner-free.
+- Weekly run completion requires a created/updated action queue, not only a
+  Telegram/email report.
 - Production config source of truth preserves the CrawlObserver hostname mapping needed by Paperclip containers.

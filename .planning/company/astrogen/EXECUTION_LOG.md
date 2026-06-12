@@ -813,3 +813,23 @@
   - Old sessions may require resource reparse or a fresh crawl before image
     rows exist; missing rows in an old session are an acquisition gap, not proof
     that images are healthy.
+- Hardened the weekly Astrogen SEO cycle from report-only to active SEO work.
+  - Updated the reusable agency-core `SEO_PERFORMANCE_LOOP.md` with a weekly
+    active SEO work rule: the Wednesday run must create/update the active SEO
+    action queue, not only send Telegram/email reports.
+  - Updated Phase 34 planning so internal-linking and related-post changes are
+    explicit experiment classes driven by joined GSC + CrawlObserver + Payload
+    CMS evidence.
+  - Live-synced Astrogen process contracts:
+    - `/home/paperclip/astrogen/docs/process/69-weekly-blog-telegram-report.md`
+    - `/home/paperclip/astrogen/docs/process/71-regular-seo-operating-cycle.md`
+    - `/home/paperclip/astrogen/agents/cmo/AGENTS.md`
+    - `/home/paperclip/astrogen/agents/seo-performance-analyst/AGENTS.md`
+  - Updated the live weekly routine `a3ed0133-5c27-4371-a76a-0508e32237ac` from
+    `Weekly Astrogen blog SEO Telegram report` to `Weekly Astrogen SEO action
+    cycle`.
+  - The next scheduled run is Wednesday 2026-06-17 09:00 Europe/Kiev. It must
+    evaluate internal links, relatedPosts, content refresh, title/meta CTR,
+    new-page, wrong-landing, off-page, and watch candidates; create/update
+    follow-up issues when thresholds/cooldowns allow; and include experiment
+    baselines plus monitoring dates in the detailed email/document.
