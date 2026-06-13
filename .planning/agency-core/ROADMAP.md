@@ -21,7 +21,8 @@ Agency Core contains reusable Paperclip operating-system assets that should work
 - [x] **Phase 13: Paperclip v2026.529.0 Upgrade And Future-Proof Update Structure** - Move the production Paperclip source baseline to upstream `v2026.529.0` without losing local functionality, reconcile production/Git drift, preserve Astrogen/DiskInternals plugins and operating contracts, and introduce a repeatable vendor-plus-overlay update structure for future releases.
 - [x] **Phase 14: SEO Report Channels And CrawlObserver Finding Policy** - Split weekly SEO reporting by channel so Telegram carries only short owner digests and email carries detailed reports; add deterministic CrawlObserver finding routing policy for automatic CMS SEO tasks, configured thresholds, cooldowns, and ignored-noise classes.
 - [x] **Phase 15: Paperclip Document Annotations And Secret Config Rollout** - Adopt the useful `v2026.529.0` collaboration/config features in Agency Core contracts: issue documents for reviewable decisions and reports, inline annotation expectations, document locking after acceptance, and secret-ref based plugin settings compatible with SecretBindingPicker-style configuration.
+- [x] **Phase 16: Google Drive Docs And Telegram Delivery Profiles** - Add a reusable Google Drive/Docs plugin for safe HTML document creation and extend Telegram with configured delivery profiles for non-standard bot/chat delivery paths.
 
 ## Current Next Step
 
-Next reusable step: roll the document-backed review/decision and secret-ref configuration rules into other company contract repos, starting with DiskInternals only after checking its current artifact and notification conventions.
+Next reusable step: activate Google Drive Docs delivery in a specific company only after its service account, Drive folder, and Telegram delivery profile are configured.

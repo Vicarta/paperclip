@@ -27,6 +27,15 @@ export const DEFAULT_CONFIG = {
   enableInbound: true,
   allowedTelegramUserIds: [] as string[],
   allowedTelegramChatIds: [] as string[],
+  deliveryProfiles: [] as Array<{
+    key: string;
+    botTokenRef?: string;
+    chatId?: string;
+    topicId?: string;
+    parseMode?: "HTML" | "MarkdownV2" | "";
+    disableWebPagePreview?: boolean;
+    disableNotification?: boolean;
+  }>,
   digestMode: "off" as "off" | "daily" | "bidaily" | "tridaily",
   dailyDigestTime: "09:00",
   bidailySecondTime: "17:00",

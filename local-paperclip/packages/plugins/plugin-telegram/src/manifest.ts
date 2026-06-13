@@ -92,6 +92,13 @@ const manifest: PaperclipPluginManifestV1 = {
       description: "Register a proactive watch that monitors entities and sends suggestions",
       parametersSchema: { type: "object" },
     },
+    {
+      name: "telegram_send_message",
+      displayName: "Send Telegram Message",
+      description:
+        "Send a human-facing Telegram message through a configured delivery profile or the default bot.",
+      parametersSchema: { type: "object" },
+    },
   ],
 };
 

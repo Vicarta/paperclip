@@ -25,6 +25,7 @@ The roadmap is phase-based, not day-based. Execution can run automatically throu
 - [x] **Phase 10: Semantic Core MCP Adapter** - Add the Paperclip adapter for semantic-core generation runs and Paperclip import validation.
 - [x] **Phase 11: Perfex CRM Human Implementation Handoff** - Add the Paperclip adapter that turns approved Paperclip growth actions into Perfex CRM tasks for human website changes.
 - [x] **Phase 12: Operator Guide And Telegram Summary Quality** - Create the DiskInternals human operating guide and make completion notifications explain completed work in useful human language.
+- [ ] **Phase 13: RSS News To Google Docs Articles** - Use a future normalized RSS/news acquisition server to create reviewable HTML-formatted Google Docs articles and notify the configured Telegram group through a dedicated bot profile.
 
 ## Phase Details
 

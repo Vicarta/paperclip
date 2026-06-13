@@ -1,5 +1,23 @@
 # Execution Log
 
+## 2026-06-13
+
+Planned the future DiskInternals RSS/news-to-Google-Docs workflow as a
+controlled Paperclip orchestration path.
+
+Agency Core changes:
+- Added Phase 16 for Google Drive Docs agent tools and Telegram delivery
+  profiles.
+- Added a reusable Google Docs document delivery contract that keeps RSS/news
+  scanning outside the Docs plugin.
+
+DiskInternals planning changes:
+- Added `deliverables/GOOGLE_DOCS_NEWS_ARTICLE_WORKFLOW.md`.
+- Updated state notes so future news article generation uses normalized
+  RSS/news items, safe HTML Google Docs creation, and Telegram profile delivery.
+- No DiskInternals live workflow was started and no Perfex/website write was
+  performed.
+
 ## 2026-06-09
 
 Applied document-backed decision/review governance to DiskInternals live

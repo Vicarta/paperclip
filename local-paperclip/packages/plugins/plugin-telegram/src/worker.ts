@@ -79,6 +79,15 @@ type TelegramConfig = {
   enableInbound: boolean;
   allowedTelegramUserIds: string[];
   allowedTelegramChatIds: string[];
+  deliveryProfiles: Array<{
+    key: string;
+    botTokenRef?: string;
+    chatId?: string;
+    topicId?: string;
+    parseMode?: "HTML" | "MarkdownV2" | "";
+    disableWebPagePreview?: boolean;
+    disableNotification?: boolean;
+  }>;
   digestMode: "off" | "daily" | "bidaily" | "tridaily";
   dailyDigestTime: string;
   bidailySecondTime: string;
@@ -303,6 +312,74 @@ function parseTopicId(value?: string): number | undefined {
   return Number(trimmed);
 }
 
+function parseTelegramParseMode(value: unknown): "HTML" | "MarkdownV2" | undefined {
+  if (value === "HTML" || value === "MarkdownV2") return value;
+  return undefined;
+}
+
+function findDeliveryProfile(config: TelegramConfig, key?: string | null) {
+  const normalizedKey = key?.trim();
+  if (!normalizedKey) return null;
+  return (config.deliveryProfiles ?? []).find((profile) => profile.key === normalizedKey) ?? null;
+}
+
+async function resolveDeliveryTarget(input: {
+  ctx: PluginContext;
+  config: TelegramConfig;
+  defaultToken: string;
+  params: Record<string, unknown>;
+  companyId: string;
+}): Promise<{
+  token: string;
+  chatId: string;
+  messageThreadId?: number;
+  parseMode?: "HTML" | "MarkdownV2";
+  disableWebPagePreview?: boolean;
+  disableNotification?: boolean;
+  profileKey?: string;
+}> {
+  const profileKey = asNonEmptyString(input.params.profileKey);
+  const profile = findDeliveryProfile(input.config, profileKey);
+  if (profileKey && !profile) {
+    throw new Error(`Telegram delivery profile "${profileKey}" is not configured`);
+  }
+
+  const token = profile?.botTokenRef
+    ? await input.ctx.secrets.resolve(profile.botTokenRef)
+    : input.defaultToken;
+  const requestedChatId = asNonEmptyString(input.params.chatId);
+  const profileChatId = profile?.chatId?.trim();
+  const fallbackChatId = input.config.defaultChatId;
+  const chatId = await resolveChat(
+    input.ctx,
+    input.companyId,
+    requestedChatId || profileChatId || fallbackChatId,
+  );
+  if (!chatId) throw new Error("No Telegram chatId is configured for this delivery");
+
+  const requestedTopicId = asNonEmptyString(input.params.topicId);
+  const messageThreadId = parseTopicId(requestedTopicId || profile?.topicId);
+  const parseMode =
+    parseTelegramParseMode(input.params.parseMode) ||
+    parseTelegramParseMode(profile?.parseMode);
+
+  return {
+    token,
+    chatId,
+    messageThreadId,
+    parseMode,
+    disableWebPagePreview:
+      typeof input.params.disableWebPagePreview === "boolean"
+        ? input.params.disableWebPagePreview
+        : profile?.disableWebPagePreview,
+    disableNotification:
+      typeof input.params.disableNotification === "boolean"
+        ? input.params.disableNotification
+        : profile?.disableNotification,
+    profileKey: profile?.key,
+  };
+}
+
 function validateConfiguredTopicIds(config: Record<string, unknown>): string[] {
   const errors: string[] = [];
   for (const key of ["approvalsTopicId", "errorsTopicId", "digestTopicId"]) {
@@ -311,6 +388,17 @@ function validateConfiguredTopicIds(config: Record<string, unknown>): string[] {
     if (typeof value !== "string" || !parseTopicId(value)) {
       errors.push(`${key} must be a numeric Telegram forum topic ID string.`);
     }
+  }
+  const profiles = config.deliveryProfiles;
+  if (Array.isArray(profiles)) {
+    profiles.forEach((profile, index) => {
+      if (!isRecord(profile)) return;
+      const value = profile.topicId;
+      if (value === undefined || value === null || value === "") return;
+      if (typeof value !== "string" || !parseTopicId(value)) {
+        errors.push(`deliveryProfiles[${index}].topicId must be a numeric Telegram forum topic ID string.`);
+      }
+    });
   }
   return errors;
 }
@@ -1048,6 +1136,103 @@ const plugin = definePlugin({
       return handleDiscussToolCall(ctx, token, params as Record<string, unknown>, runCtx.companyId, runCtx.agentId);
     });
 
+    ctx.tools.register("telegram_send_message", {
+      displayName: "Send Telegram Message",
+      description:
+        "Send a human-facing Telegram message through a configured delivery profile or the default bot.",
+      parametersSchema: {
+        type: "object",
+        properties: {
+          profileKey: {
+            type: "string",
+            description:
+              "Optional configured delivery profile key. Profiles select bot token, chat, topic, and formatting defaults.",
+          },
+          text: {
+            type: "string",
+            description:
+              "Full human-facing Telegram message. Do not include internal Paperclip implementation details unless needed.",
+          },
+          chatId: {
+            type: "string",
+            description:
+              "Optional explicit chat ID. Prefer a configured profile for company workflows.",
+          },
+          topicId: { type: "string", description: "Optional Telegram forum topic ID." },
+          parseMode: { type: "string", enum: ["HTML", "MarkdownV2"] },
+          disableWebPagePreview: { type: "boolean" },
+          disableNotification: { type: "boolean" },
+          issueId: {
+            type: "string",
+            description:
+              "Optional Paperclip issue ID for delivery proof writeback.",
+          },
+          contentRef: {
+            type: "object",
+            additionalProperties: true,
+            description:
+              "Optional sanitized reference to delivered content, e.g. Google Doc id/url.",
+          },
+        },
+        required: ["text"],
+      },
+    }, async (params: unknown, runCtx) => {
+      const p = isRecord(params) ? params : {};
+      const text = asNonEmptyString(p.text);
+      if (!text) return { content: JSON.stringify({ error: "text is required" }) };
+
+      const target = await resolveDeliveryTarget({
+        ctx,
+        config,
+        defaultToken: token,
+        params: p,
+        companyId: runCtx.companyId,
+      });
+      const messageId = await sendMessage(ctx, target.token, target.chatId, text, {
+        parseMode: target.parseMode,
+        messageThreadId: target.messageThreadId,
+        disableNotification: target.disableNotification,
+        disableWebPagePreview: target.disableWebPagePreview,
+      });
+
+      const issueId = asNonEmptyString(p.issueId);
+      if (issueId && messageId) {
+        await recordTelegramDeliveryProof({
+          ctx,
+          companyId: runCtx.companyId,
+          issueId,
+          chatId: target.chatId,
+          messageIds: [messageId],
+          deliveryKind: "message_only",
+          trigger: "telegram_send_message",
+          messageThreadId: target.messageThreadId ?? null,
+          contentRef: isRecord(p.contentRef)
+            ? {
+                ...p.contentRef,
+                profileKey: target.profileKey ?? null,
+              }
+            : target.profileKey
+              ? { profileKey: target.profileKey }
+              : null,
+        });
+      }
+
+      return {
+        content: JSON.stringify({
+          ok: Boolean(messageId),
+          chatId: target.chatId,
+          messageId,
+          profileKey: target.profileKey ?? null,
+        }),
+        data: {
+          ok: Boolean(messageId),
+          chatId: target.chatId,
+          messageId,
+          profileKey: target.profileKey ?? null,
+        },
+      };
+    });
+
     // --- Phase 5: Register register_watch tool ---
     ctx.tools.register("register_watch", {
       displayName: "Register Watch",
@@ -1416,4 +1601,5 @@ async function handleCallbackQuery(
   await answerCallbackQuery(ctx, token, query.id, "Unknown action");
 }
 
+export default plugin;
 runWorker(plugin, import.meta.url);

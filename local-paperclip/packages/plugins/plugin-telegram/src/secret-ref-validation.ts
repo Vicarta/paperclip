@@ -2,6 +2,7 @@ export type SecretRefConfig = {
   telegramBotTokenRef?: unknown;
   paperclipBoardApiTokenRef?: unknown;
   transcriptionApiKeyRef?: unknown;
+  deliveryProfiles?: unknown;
 };
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -53,6 +54,21 @@ export function validateSecretRefFields(config: SecretRefConfig): string[] {
     if (!isValidSecretRef(value)) {
       errors.push(fieldError(key, value));
     }
+  }
+  if (Array.isArray(config.deliveryProfiles)) {
+    config.deliveryProfiles.forEach((profile, index) => {
+      if (
+        profile &&
+        typeof profile === "object" &&
+        "botTokenRef" in profile &&
+        (profile as { botTokenRef?: unknown }).botTokenRef
+      ) {
+        const value = (profile as { botTokenRef?: unknown }).botTokenRef;
+        if (!isValidSecretRef(value)) {
+          errors.push(fieldError(`deliveryProfiles[${index}].botTokenRef`, value));
+        }
+      }
+    });
   }
   return errors;
 }
