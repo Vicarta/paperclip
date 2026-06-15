@@ -56,6 +56,22 @@ const iconListIcons = [
   "editorial-book",
 ] as const;
 
+const textSpanSchema = {
+  type: "object",
+  properties: {
+    text: { type: "string" },
+    linkUrl: { type: "string" },
+  },
+  required: ["text"],
+  additionalProperties: false,
+} as const;
+
+const textSpansSchema = {
+  type: "array",
+  minItems: 1,
+  items: textSpanSchema,
+} as const;
+
 const articleContentSchema = {
   type: "object",
   properties: {
@@ -70,6 +86,7 @@ const articleContentSchema = {
             properties: {
               type: { type: "string", enum: ["paragraph"] },
               text: { type: "string" },
+              spans: textSpansSchema,
             },
             required: ["type", "text"],
             additionalProperties: false,
@@ -101,6 +118,7 @@ const articleContentSchema = {
               variant: { type: "string", enum: ["soft", "brand", "situation"] },
               title: { type: "string" },
               body: { type: "string" },
+              bodySpans: textSpansSchema,
             },
             required: ["type", "variant", "title", "body"],
             additionalProperties: false,
@@ -137,8 +155,10 @@ const articleContentSchema = {
               mode: { type: "string", enum: ["text"] },
               leftTitle: { type: "string" },
               leftBody: { type: "string" },
+              leftBodySpans: textSpansSchema,
               rightTitle: { type: "string" },
               rightBody: { type: "string" },
+              rightBodySpans: textSpansSchema,
             },
             required: ["type", "mode", "leftTitle", "leftBody", "rightTitle", "rightBody"],
             additionalProperties: false,
@@ -162,6 +182,7 @@ const articleContentSchema = {
               type: { type: "string", enum: ["quietCta"] },
               title: { type: "string" },
               text: { type: "string" },
+              textSpans: textSpansSchema,
               linkLabel: { type: "string" },
               linkUrl: { type: "string" },
               note: { type: "string" },

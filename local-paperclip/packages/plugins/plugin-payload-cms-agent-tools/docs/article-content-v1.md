@@ -18,17 +18,58 @@ classes, SVG, emoji, or image URLs as content blocks.
 
 ## Links
 
-The current `articleContent.v1` contract supports clickable links only through
-explicit link fields such as `quietCta.linkUrl`.
+`articleContent.v1` supports contextual inline links only through structured
+`spans`. Do not send raw HTML anchors, Markdown links, raw Lexical JSON, CSS
+classes, inline styles, or `links[]`.
 
 Do not place raw URLs in visible article text. Paragraphs, headings, lists,
 callouts, icon-list labels/text, two-column text, and CTA copy must not contain
 `https://...`, `http://...`, or `www...` strings.
 
-If the article needs a clickable next step, use one supported `quietCta` block
-with a safe internal path or HTTPS URL. If more than one route is relevant,
-choose the primary next step for the CTA and keep secondary route discussion as
-editorial text without raw URLs until the CMS schema supports inline links.
+Canonical span format:
+
+```json
+{
+  "type": "paragraph",
+  "text": "Якщо потрібен персональний розбір, можна перейти до фінансової натальної карти або безкоштовного персонального тижневого гороскопа.",
+  "spans": [
+    { "text": "Якщо потрібен персональний розбір, можна перейти до " },
+    { "text": "фінансової натальної карти", "linkUrl": "/money" },
+    { "text": " або " },
+    { "text": "безкоштовного персонального тижневого гороскопа", "linkUrl": "/free-horoscope" },
+    { "text": "." }
+  ]
+}
+```
+
+Supported span fields:
+
+- `paragraph.spans` for `paragraph.text`.
+- `editorialCallout.bodySpans` for `editorialCallout.body`.
+- `quietCta.textSpans` for `quietCta.text`.
+- `twoColumnText.leftBodySpans` and `twoColumnText.rightBodySpans` only when
+  `mode` is `text` and the body fields are strings.
+
+Rules:
+
+- Concatenated `spans[].text` must match the parent text field after whitespace
+  normalization.
+- Linked spans use `linkUrl`; unlinked spans omit `linkUrl`.
+- `linkUrl` must be an internal path starting with `/` or an HTTPS URL.
+- Reject `javascript:`, `data:`, protocol-relative `//...`, raw HTML,
+  Markdown links, empty span text, and unsafe URLs.
+- Maximum linked spans per text block: 5.
+- Maximum inline links per article: 20.
+- Do not use `links[]`; it is intentionally unsupported.
+
+When an Astrogen product, service, or free tool is mentioned naturally in
+article body, the Layout Editor should add a contextual inline link through
+structured spans. Do not remove the mention to avoid a link. Do not move every
+mention into CTA blocks. Free products should preserve wording like
+`безкоштовно`, `без оплати`, or equivalent when relevant.
+
+`quietCta.linkUrl` remains the supported link field for the CTA button itself,
+but product/service mentions inside CTA body copy can also use `textSpans`.
 
 Do not leak internal route/task notes such as "contextual second route",
 "CTA route", or "SEO lock" into visible copy.
@@ -143,4 +184,16 @@ editorial-book
 
 ```json
 { "type": "paragraph", "text": "Contextual second route: /money" }
+```
+
+```json
+{ "type": "paragraph", "text": "Open [money](/money)." }
+```
+
+```json
+{ "type": "paragraph", "text": "Open <a href=\"/money\">money</a>." }
+```
+
+```json
+{ "type": "paragraph", "text": "Open money.", "links": [{ "text": "money", "url": "/money" }] }
 ```

@@ -58,6 +58,18 @@ related-post additions or edits do not require HIA/owner approval; published
 articles may be updated/rebuilt by the CMS technical fix lane when the only
 change is `relatedPosts`.
 
+Contextual product/service links inside article body are part of normal
+`articleContent.v1` delivery. The Layout Editor should use structured span
+fields only: `paragraph.spans`, `editorialCallout.bodySpans`,
+`quietCta.textSpans`, and `twoColumnText.leftBodySpans` /
+`rightBodySpans` when `mode` is `text`. Each linked span uses `linkUrl` with an
+internal `/...` path or HTTPS URL. Do not use raw HTML anchors, Markdown links,
+`links[]`, raw Lexical JSON, CSS classes, inline styles, or raw URLs in visible
+copy. When an Astrogen product, service, or free tool is mentioned naturally,
+add a contextual inline link through spans; do not remove the mention to avoid a
+link and do not move every mention into CTA blocks. Free products should
+preserve wording like `безкоштовно`, `без оплати`, or equivalent when relevant.
+
 Existing accepted article packages may still be imported as additional CMS operations, but that does not satisfy a request for a new article.
 
 ## Document Review Policy
@@ -103,7 +115,7 @@ The layout validator must reject:
 - raw Payload Lexical JSON;
 - raw HTML or CSS;
 - unsupported `articleContent.v1` blocks;
-- unsafe CTA links;
+- unsafe CTA links or unsafe structured span links;
 - layout that drops SEO locks, required links, or validated claims;
 - decorative blocks that do not clarify the article.
 

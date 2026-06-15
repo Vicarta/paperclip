@@ -47,19 +47,26 @@ export type ArticleIconListItem = {
   text?: string;
 };
 
+export type ArticleContentTextSpan = {
+  text: string;
+  linkUrl?: string;
+};
+
 export type ArticleContentBlock =
-  | { type: "paragraph"; text: string }
+  | { type: "paragraph"; text: string; spans?: ArticleContentTextSpan[] }
   | { type: "heading"; level: "h2" | "h3" | "h4"; text: string }
   | { type: "list"; ordered: boolean; items: string[] }
-  | { type: "editorialCallout"; variant: "soft" | "brand" | "situation"; title: string; body: string }
+  | { type: "editorialCallout"; variant: "soft" | "brand" | "situation"; title: string; body: string; bodySpans?: ArticleContentTextSpan[] }
   | { type: "iconList"; style: ArticleIconListStyle; title: string; items: ArticleIconListItem[] }
   | {
       type: "twoColumnText";
       mode: "text";
       leftTitle: string;
       leftBody: string;
+      leftBodySpans?: ArticleContentTextSpan[];
       rightTitle: string;
       rightBody: string;
+      rightBodySpans?: ArticleContentTextSpan[];
     }
   | {
       type: "twoColumnText";
@@ -73,6 +80,7 @@ export type ArticleContentBlock =
       type: "quietCta";
       title: string;
       text: string;
+      textSpans?: ArticleContentTextSpan[];
       linkLabel: string;
       linkUrl: string;
       note?: string;
@@ -119,9 +127,12 @@ const ICON_LIST_ICONS = new Set([
 ]);
 const TWO_COLUMN_MODES = new Set(["text", "list"]);
 const HTML_TAG_PATTERN = /<\/?[a-z][\s\S]*>/i;
+const MARKDOWN_LINK_PATTERN = /\[[^\]]+\]\([^)]+\)/;
 const RAW_URL_PATTERN = /\b(?:https?:\/\/|www\.)\S+/i;
 const INTERNAL_ROUTING_NOTE_PATTERN =
   /(?:контекстн[^\s]*\s+(?:перш[^\s]*|друг[^\s]*)?\s*маршрут|contextual\s+(?:first|second)?\s*route|cta\s+route|seo\s+lock|brief\s+route)/i;
+const MAX_LINKS_PER_TEXT_BLOCK = 5;
+const MAX_LINKS_PER_ARTICLE = 20;
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
@@ -134,6 +145,9 @@ function requireString(value: unknown, path: string, opts?: { allowEmpty?: boole
   if (HTML_TAG_PATTERN.test(trimmed)) {
     throw new Error(`${path} must be plain text, not HTML`);
   }
+  if (MARKDOWN_LINK_PATTERN.test(trimmed)) {
+    throw new Error(`${path} must be plain text, not a Markdown link`);
+  }
   return trimmed;
 }
 
@@ -145,6 +159,21 @@ function requireVisibleText(value: unknown, path: string, opts?: { allowEmpty?: 
   if (INTERNAL_ROUTING_NOTE_PATTERN.test(text)) {
     throw new Error(`${path} must not contain internal routing notes or task instructions`);
   }
+  return text;
+}
+
+function normalizeText(value: string) {
+  return value.trim().replace(/\s+/g, " ");
+}
+
+function requireVisibleSpanText(value: unknown, path: string) {
+  if (typeof value !== "string") throw new Error(`${path} must be a string`);
+  const text = value.replace(/\s+/g, " ");
+  if (text.trim().length === 0) throw new Error(`${path} must not be empty`);
+  if (HTML_TAG_PATTERN.test(text)) throw new Error(`${path} must be plain text, not HTML`);
+  if (MARKDOWN_LINK_PATTERN.test(text)) throw new Error(`${path} must be plain text, not a Markdown link`);
+  if (RAW_URL_PATTERN.test(text)) throw new Error(`${path} must not contain raw URLs; use linkUrl on the linked span`);
+  if (INTERNAL_ROUTING_NOTE_PATTERN.test(text)) throw new Error(`${path} must not contain internal routing notes or task instructions`);
   return text;
 }
 
@@ -167,6 +196,46 @@ function validateLinkUrl(value: unknown, path: string) {
   }
   if (url.startsWith("https://")) return url;
   throw new Error(`${path} must be an internal path or HTTPS URL`);
+}
+
+function validateTextSpans(value: unknown, path: string, expectedText: string): ArticleContentTextSpan[] | undefined {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value) || value.length === 0) throw new Error(`${path} must be a non-empty array when provided`);
+
+  let linkCount = 0;
+  const spans = value.map((item, index) => {
+    const itemPath = `${path}[${index}]`;
+    const record = asRecord(item);
+    if (!record) throw new Error(`${itemPath} must be an object`);
+    rejectExtraKeys(record, ["text", "linkUrl"], itemPath);
+    const span: ArticleContentTextSpan = {
+      text: requireVisibleSpanText(record.text, `${itemPath}.text`),
+    };
+    if (record.linkUrl !== undefined) {
+      span.linkUrl = validateLinkUrl(record.linkUrl, `${itemPath}.linkUrl`);
+      linkCount += 1;
+    }
+    return span;
+  });
+
+  if (linkCount === 0) throw new Error(`${path} must contain at least one linked span`);
+  if (linkCount > MAX_LINKS_PER_TEXT_BLOCK) throw new Error(`${path} must contain at most ${MAX_LINKS_PER_TEXT_BLOCK} linked spans`);
+  if (normalizeText(spans.map((span) => span.text).join("")) !== normalizeText(expectedText)) {
+    throw new Error(`${path} text must match the parent text field`);
+  }
+
+  return spans;
+}
+
+function countInlineLinks(block: ArticleContentBlock) {
+  const count = (spans?: ArticleContentTextSpan[]) => spans?.filter((span) => span.linkUrl).length ?? 0;
+  if (block.type === "paragraph") return count(block.spans);
+  if (block.type === "editorialCallout") return count(block.bodySpans);
+  if (block.type === "quietCta") return count(block.textSpans);
+  if (block.type === "twoColumnText" && block.mode === "text") {
+    return count(block.leftBodySpans) + count(block.rightBodySpans);
+  }
+  return 0;
 }
 
 function rejectExtraKeys(record: Record<string, unknown>, allowed: string[], path: string) {
@@ -202,8 +271,9 @@ function validateBlock(value: unknown, index: number): ArticleContentBlock {
   const type = requireString(block.type, `${path}.type`);
 
   if (type === "paragraph") {
-    rejectExtraKeys(block, ["type", "text"], path);
-    return { type, text: requireVisibleText(block.text, `${path}.text`) };
+    rejectExtraKeys(block, ["type", "text", "spans"], path);
+    const text = requireVisibleText(block.text, `${path}.text`);
+    return { type, text, ...(block.spans !== undefined ? { spans: validateTextSpans(block.spans, `${path}.spans`, text) } : {}) };
   }
 
   if (type === "heading") {
@@ -223,14 +293,16 @@ function validateBlock(value: unknown, index: number): ArticleContentBlock {
   }
 
   if (type === "editorialCallout") {
-    rejectExtraKeys(block, ["type", "variant", "title", "body"], path);
+    rejectExtraKeys(block, ["type", "variant", "title", "body", "bodySpans"], path);
     const variant = requireString(block.variant, `${path}.variant`);
     if (!CALLOUT_VARIANTS.has(variant)) throw new Error(`${path}.variant must be soft, brand, or situation`);
+    const body = requireVisibleText(block.body, `${path}.body`);
     return {
       type,
       variant: variant as "soft" | "brand" | "situation",
       title: requireVisibleText(block.title, `${path}.title`),
-      body: requireVisibleText(block.body, `${path}.body`),
+      body,
+      ...(block.bodySpans !== undefined ? { bodySpans: validateTextSpans(block.bodySpans, `${path}.bodySpans`, body) } : {}),
     };
   }
 
@@ -247,7 +319,7 @@ function validateBlock(value: unknown, index: number): ArticleContentBlock {
   }
 
   if (type === "twoColumnText") {
-    rejectExtraKeys(block, ["type", "mode", "leftTitle", "leftBody", "rightTitle", "rightBody"], path);
+    rejectExtraKeys(block, ["type", "mode", "leftTitle", "leftBody", "leftBodySpans", "rightTitle", "rightBody", "rightBodySpans"], path);
     const mode = requireString(block.mode, `${path}.mode`);
     if (!TWO_COLUMN_MODES.has(mode)) throw new Error(`${path}.mode must be text or list`);
     const base = {
@@ -256,12 +328,19 @@ function validateBlock(value: unknown, index: number): ArticleContentBlock {
       rightTitle: requireVisibleText(block.rightTitle, `${path}.rightTitle`),
     };
     if (mode === "text") {
+      const leftBody = requireVisibleText(block.leftBody, `${path}.leftBody`);
+      const rightBody = requireVisibleText(block.rightBody, `${path}.rightBody`);
       return {
         ...base,
         mode: "text",
-        leftBody: requireVisibleText(block.leftBody, `${path}.leftBody`),
-        rightBody: requireVisibleText(block.rightBody, `${path}.rightBody`),
+        leftBody,
+        ...(block.leftBodySpans !== undefined ? { leftBodySpans: validateTextSpans(block.leftBodySpans, `${path}.leftBodySpans`, leftBody) } : {}),
+        rightBody,
+        ...(block.rightBodySpans !== undefined ? { rightBodySpans: validateTextSpans(block.rightBodySpans, `${path}.rightBodySpans`, rightBody) } : {}),
       };
+    }
+    if (block.leftBodySpans !== undefined || block.rightBodySpans !== undefined) {
+      throw new Error(`${path} spans are supported only when mode is text`);
     }
     return {
       ...base,
@@ -272,11 +351,13 @@ function validateBlock(value: unknown, index: number): ArticleContentBlock {
   }
 
   if (type === "quietCta") {
-    rejectExtraKeys(block, ["type", "title", "text", "linkLabel", "linkUrl", "note"], path);
+    rejectExtraKeys(block, ["type", "title", "text", "textSpans", "linkLabel", "linkUrl", "note"], path);
+    const text = requireVisibleText(block.text, `${path}.text`);
     return {
       type,
       title: requireVisibleText(block.title, `${path}.title`),
-      text: requireVisibleText(block.text, `${path}.text`),
+      text,
+      ...(block.textSpans !== undefined ? { textSpans: validateTextSpans(block.textSpans, `${path}.textSpans`, text) } : {}),
       linkLabel: requireVisibleText(block.linkLabel, `${path}.linkLabel`),
       linkUrl: validateLinkUrl(block.linkUrl, `${path}.linkUrl`),
       ...(block.note !== undefined ? { note: requireVisibleText(block.note, `${path}.note`) } : {}),
@@ -295,8 +376,13 @@ export function validateArticleContentV1(value: unknown): ArticleContentV1 {
   }
   if (!Array.isArray(content.blocks)) throw new Error("articleContent.blocks must be an array");
   if (content.blocks.length === 0) throw new Error("articleContent.blocks must not be empty");
+  const blocks = content.blocks.map((block, index) => validateBlock(block, index));
+  const inlineLinkCount = blocks.reduce((total, block) => total + countInlineLinks(block), 0);
+  if (inlineLinkCount > MAX_LINKS_PER_ARTICLE) {
+    throw new Error(`articleContent must contain at most ${MAX_LINKS_PER_ARTICLE} inline links`);
+  }
   return {
     schemaVersion: "articleContent.v1",
-    blocks: content.blocks.map((block, index) => validateBlock(block, index)),
+    blocks,
   };
 }

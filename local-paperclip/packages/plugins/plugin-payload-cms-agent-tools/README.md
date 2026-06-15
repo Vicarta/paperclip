@@ -41,8 +41,9 @@ For `createBlogPostDraft` and `updateBlogPostDraft`, agents must pass article
 text as `articleContent` with `schemaVersion: "articleContent.v1"`.
 
 The plugin rejects raw Payload Lexical JSON, markdown, raw HTML, inline styles,
-CSS classes, unsupported block types, and unsafe CTA URLs. Payload CMS performs
-the final conversion from `articleContent.v1` into its visual Lexical content.
+CSS classes, unsupported block types, unsafe CTA URLs, and unsafe inline link
+URLs. Payload CMS performs the final conversion from `articleContent.v1` into
+its visual Lexical content.
 
 Allowed `articleContent.v1` block types:
 
@@ -53,6 +54,13 @@ Allowed `articleContent.v1` block types:
 - `iconList` (`grid`, `compact`, `twoColumn`)
 - `twoColumnText` (`text`, `list`)
 - `quietCta`
+
+Contextual inline links are supported only through structured span fields:
+`paragraph.spans`, `editorialCallout.bodySpans`, `quietCta.textSpans`, and
+`twoColumnText.leftBodySpans` / `rightBodySpans` when `mode` is `text`.
+Each linked span uses `linkUrl`; URLs must be internal `/...` paths or HTTPS
+URLs. Do not send raw HTML anchors, Markdown links, `links[]`, CSS classes, or
+raw URLs in visible copy.
 
 `iconList` uses registry keys only. Do not send emoji, SVG, image URLs, file names,
 or CSS classes as icons. See `docs/article-content-v1.md` for the registry and

@@ -497,6 +497,94 @@ describe("Payload CMS content helpers", () => {
     });
   });
 
+  it("accepts structured articleContent inline spans", () => {
+    const payload = buildBlogPostPayload({
+      title: "Article",
+      articleContent: {
+        schemaVersion: "articleContent.v1",
+        blocks: [
+          {
+            type: "paragraph",
+            text: "Можна перейти до фінансової натальної карти або безкоштовного персонального тижневого гороскопа.",
+            spans: [
+              { text: "Можна перейти до " },
+              { text: "фінансової натальної карти", linkUrl: "/money" },
+              { text: " або " },
+              { text: "безкоштовного персонального тижневого гороскопа", linkUrl: "/free-horoscope" },
+              { text: "." },
+            ],
+          },
+          {
+            type: "editorialCallout",
+            variant: "soft",
+            title: "Коротко",
+            body: "Читайте офіційну довідку сервісу.",
+            bodySpans: [
+              { text: "Читайте " },
+              { text: "офіційну довідку", linkUrl: "https://example.com/help" },
+              { text: " сервісу." },
+            ],
+          },
+          {
+            type: "twoColumnText",
+            mode: "text",
+            leftTitle: "Може бути корисно",
+            leftBody: "Для грошей відкрийте фінансову карту.",
+            leftBodySpans: [
+              { text: "Для грошей відкрийте " },
+              { text: "фінансову карту", linkUrl: "/money" },
+              { text: "." },
+            ],
+            rightTitle: "Варто уникати",
+            rightBody: "Для тижня відкрийте безкоштовний прогноз.",
+            rightBodySpans: [
+              { text: "Для тижня відкрийте " },
+              { text: "безкоштовний прогноз", linkUrl: "/free-horoscope" },
+              { text: "." },
+            ],
+          },
+          {
+            type: "quietCta",
+            title: "Далі",
+            text: "Перед консультацією можна переглянути каталог експертів.",
+            textSpans: [
+              { text: "Перед консультацією можна переглянути " },
+              { text: "каталог експертів", linkUrl: "/experts" },
+              { text: "." },
+            ],
+            linkLabel: "Підібрати експерта",
+            linkUrl: "/experts",
+          },
+        ],
+      },
+    });
+
+    expect(payload.articleContent?.schemaVersion).toBe("articleContent.v1");
+    expect(payload.articleContent?.blocks[0]).toMatchObject({
+      type: "paragraph",
+      spans: [
+        { text: "Можна перейти до " },
+        { text: "фінансової натальної карти", linkUrl: "/money" },
+        { text: " або " },
+        { text: "безкоштовного персонального тижневого гороскопа", linkUrl: "/free-horoscope" },
+        { text: "." },
+      ],
+    });
+    expect(payload.articleContent?.blocks[1]).toMatchObject({
+      type: "editorialCallout",
+      bodySpans: [{ text: "Читайте " }, { text: "офіційну довідку", linkUrl: "https://example.com/help" }, { text: " сервісу." }],
+    });
+    expect(payload.articleContent?.blocks[2]).toMatchObject({
+      type: "twoColumnText",
+      leftBodySpans: [{ text: "Для грошей відкрийте " }, { text: "фінансову карту", linkUrl: "/money" }, { text: "." }],
+      rightBodySpans: [{ text: "Для тижня відкрийте " }, { text: "безкоштовний прогноз", linkUrl: "/free-horoscope" }, { text: "." }],
+    });
+    expect(payload.articleContent?.blocks[3]).toMatchObject({
+      type: "quietCta",
+      textSpans: [{ text: "Перед консультацією можна переглянути " }, { text: "каталог експертів", linkUrl: "/experts" }, { text: "." }],
+    });
+  });
+
   it("rejects legacy markdown or raw Lexical content for blog text", () => {
     expect(() => buildBlogPostPayload({ title: "Article", markdown: "Intro" } as any)).toThrow(
       /articleContent\.v1/,
@@ -534,6 +622,35 @@ describe("Payload CMS content helpers", () => {
         },
       }),
     ).toThrow(/internal path or HTTPS URL/);
+
+    expect(() =>
+      buildBlogPostPayload({
+        title: "Article",
+        articleContent: {
+          schemaVersion: "articleContent.v1",
+          blocks: [
+            {
+              type: "paragraph",
+              text: "Bad link.",
+              spans: [
+                { text: "Bad ", linkUrl: "javascript:alert(1)" },
+                { text: "link." },
+              ],
+            },
+          ],
+        },
+      }),
+    ).toThrow(/internal path or HTTPS URL/);
+
+    expect(() =>
+      buildBlogPostPayload({
+        title: "Article",
+        articleContent: {
+          schemaVersion: "articleContent.v1",
+          blocks: [{ type: "paragraph", text: "Open [money](/money)." }],
+        },
+      }),
+    ).toThrow(/Markdown link/);
   });
 
   it("rejects raw URLs and internal routing notes in visible article text", () => {
