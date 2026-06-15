@@ -73,6 +73,22 @@ The parent issue remains the manager-owned coordination lane. Child completion i
 
 When a manager opens an execution child issue and the child is running or ready to run, the parent should normally stay `in_progress`, not `blocked`. Use `blocked` on the parent only for a real external blocker or owner decision. In Paperclip, `blocked` auto-adds `Human Decision Needed`, so using it as "waiting for my child" creates a false human gate.
 
+## Scope Expansion Notification Rule
+
+Managers may discover adjacent work while reviewing or validating an issue, but they must not silently turn a narrow request into a broad execution batch.
+
+Before creating or launching a materially larger set of child issues than the original brief implied, the manager must write a scope-expansion comment on the parent issue that states:
+
+- what additional work was discovered;
+- why it is related to the original outcome;
+- whether it is required to finish the original issue or is a separate improvement;
+- how many child issues or affected items are expected;
+- whether the owner needs to decide anything before execution continues.
+
+If the expansion is owner-visible, expensive, high-volume, or likely to surprise the business owner, the manager must also create an owner-facing notification or decision brief in the company's human-facing language. The notification must explain the business reason, not internal stage labels or agent routing details.
+
+If the additional work is not required to satisfy the original issue, create a separate follow-up issue instead of expanding the current parent. Do not use this rule to ask the owner for approval on routine technical corrections that are already authorized by contract; notify clearly, then continue through the normal specialist lane.
+
 ## Document And Annotation Rule
 
 Use comments for short state changes. Use issue documents for reviewable work products.

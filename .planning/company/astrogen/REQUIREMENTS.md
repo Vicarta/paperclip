@@ -6,6 +6,7 @@
 - `AST-GOV-02`: Shared reusable logic belongs in `.planning/agency-core/` or Paperclip source, not in a client-only planning file.
 - `AST-GOV-03`: Astrogen must use separate company/project/budget context from DiskInternals.
 - `AST-GOV-04`: Astrogen agent workflows must follow agency-core `AGENT_EXECUTION_GOVERNANCE`: explicit parent/child handoff, named blockers, current assignee ownership, plugin access through Paperclip capabilities, and separate SEO/MCP child lanes.
+- `AST-GOV-05`: If a manager discovers a material scope expansion during Astrogen work, such as converting a narrow article/layout task into a large cover-image, CMS, SEO, or publication batch, the manager must notify before or at the moment of expansion. The parent issue comment must explain in Ukrainian what extra work was found, why it belongs to the current outcome, expected item count, whether it is required or optional, and whether the owner needs to decide anything. Owner-visible expansions should also use a concise Ukrainian Telegram notification or decision brief; do not let large child batches appear without explanation.
 
 ## Content
 
@@ -82,3 +83,4 @@
 - `AST-HIA-07`: Normal article/file package delivery to Telegram must be performed by the Telegram plugin, not by ad hoc operator-side direct Bot API calls. Emergency direct Bot API recovery is allowed only with an issue audit comment and Paperclip Secrets.
 - `AST-HIA-08`: Keep the existing `attach_files` contract limit. Large Telegram file packages must use delivery groups, where each group selects up to the existing per-group attachment limit and the plugin sends groups sequentially with idempotency.
 - `AST-HIA-09`: Telegram package delivery must be source-controlled and deployable through the normal Paperclip plugin packaging path. Do not rely on live installed `dist` patches as the durable solution because future upstream updates may overwrite them.
+- `AST-HIA-10`: Scope-expansion notifications must be written for a business owner, not for Paperclip operators. They should avoid stage numbers, run ids, plugin names, and internal queue language unless those details are necessary in the issue record. The owner-facing version should answer: what changed, why it matters, what will happen next, and whether action is needed.
