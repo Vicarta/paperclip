@@ -6,6 +6,12 @@ Turn a validated Ukrainian SEO blog article into a Payload CMS `articleContent.v
 
 This stage is about editorial structure and reading rhythm. It is not a rewrite stage and it is not a publishing stage.
 
+For existing-article audits, backfills, repairs, or clean republish batches,
+Stage 68 is primarily a body/layout stage. Cover-image fixes may be discovered
+and routed from this stage, but a cover-only update is not an editorial backfill.
+Each affected article must have evidence of meaningful body/editorial structure
+changes or an explicit no-body-change rationale.
+
 ## Pipeline
 
 ```text
@@ -45,6 +51,11 @@ from one. The document should include:
 - `articleContent.v1` package or canonical file reference;
 - cover-image concept and QA result;
 - product/service link decisions;
+- for editorial backfill batches, a per-article body/editorial change summary
+  that names the CMS/article id, title, whether `articleContent` changed, which
+  blocks/spans/CTA/product-link/final-section changes were added or improved,
+  and why each change improves reading, scanning, conversion path, or editorial
+  rhythm;
 - any layout validator annotations or revision notes.
 
 After the layout validator accepts the package and CMO routes it to Payload CMS,
@@ -169,6 +180,29 @@ The editor should use blocks only when they clarify meaning. Strong default cand
 - practical example paragraph;
 - two-column "enough / better with expert" block;
 - calm inline CTA to `/experts` when relevant.
+
+## Editorial Backfill Acceptance
+
+When the task is to audit, repair, backfill, or republish existing articles for
+missing editorial inserts, the accepted output must prove that the article body
+was addressed. It is not enough to update the cover image, media metadata,
+category, sitemap/indexability, or related posts.
+
+For every article in the batch, the handoff and validation result must include
+one of:
+
+- `body_changed = true` with the exact `articleContent.v1` improvements, such
+  as added `editorialCallout`, `twoColumnText`, `iconList`, `quietCta`,
+  structured inline product links, a clearer summary/caveat block, or a revised
+  final editorial CTA;
+- `body_changed = false` with an explicit reason that the existing body already
+  has sufficient editorial rhythm and no insert is appropriate.
+
+Cover-image status is tracked separately. A required cover replacement can be a
+parallel child lane, but it does not satisfy the editorial backfill acceptance
+gate. Use blocker class `editorial_backfill_cover_only` when a package tries to
+close an editorial backfill with cover/media changes only, and
+`missing_editorial_change_evidence` when the body-change summary is absent.
 
 ## Final Section Policy
 
@@ -322,6 +356,8 @@ Expected blocker classes:
 - `inline_illustration_not_supported`
 - `article_content_schema_field_mismatch`
 - `claim_added_without_validation`
+- `editorial_backfill_cover_only`
+- `missing_editorial_change_evidence`
 
 ## Completion
 

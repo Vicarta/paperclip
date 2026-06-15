@@ -20,6 +20,7 @@
 - `AST-CONTENT-08`: Reader-facing copy must not promise a "next step" or similar action cue unless a concrete supported action/link appears in the same block or immediately after it. Dangling next-step promises block article delivery.
 - `AST-CONTENT-09`: If an Astrogen product or offer is free, every reader-facing mention/link label must make the free nature explicit with natural wording such as "безкоштовно", "без оплати", or "безкоштовний".
 - `AST-CONTENT-10`: Product-like references such as "персональний прогноз", "м'який старт", "фінансовий розбір", or "каталог спеціалістів" count as product/service mentions when they point to known Astrogen routes. They must be linked or returned for revision with a structured blocker.
+- `AST-CONTENT-11`: Editorial backfill, article-layout repair, or clean republish tasks must prove body/editorial changes separately from image/media changes. Cover-image replacement, media metadata, category, sitemap, relatedPosts, or other non-body updates are not enough to close an editorial backfill. Each affected article needs per-article evidence of actual `articleContent` improvements or an explicit no-body-change rationale.
 
 ## Images
 

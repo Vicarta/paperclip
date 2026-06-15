@@ -128,11 +128,29 @@ If the validated article draft is missing, do not guess. Return `blocked` with b
 - Preserve the article approved title, slug, H1, SEO title, SEO description, keyword intent, required links, product/service framing, and factual boundaries.
 - If the source article contains a factual claim that needs verification, carry it forward as text only when it was already accepted by validation. Do not add new unverified factual specifics.
 
+## Editorial Backfill Rule
+
+When the issue asks to audit, repair, backfill, or republish existing articles for missing editorial inserts, the work is not complete if only the cover image, metadata, category, or relatedPosts changed.
+
+For each article in an editorial backfill batch, you must either:
+- add or improve meaningful reader-facing article structure through `articleContent.v1`, such as `editorialCallout`, `twoColumnText`, `iconList`, `quietCta`, structured inline product links, a clearer summary/caveat block, or a corrected final editorial CTA; or
+- explicitly state that the existing article already contains sufficient editorial structure and no body change is required.
+
+The handoff must include a per-article editorial-change summary:
+- CMS/article identifier and title;
+- whether body content changed;
+- which block types/spans/CTA/link changes were added or improved;
+- why the change improves reader comprehension, scanning, conversion path, or editorial rhythm;
+- cover-image status separately from body/editorial changes.
+
+Do not present a cover-only update as an editorial backfill result. If a cover defect is discovered during editorial backfill, route it as a related image-quality lane, but keep the editorial body repair acceptance separate.
+
 ## Completion Rule
 
 A task is complete only when:
 - a valid `articleContent.v1` package is produced;
 - the handoff states which layout blocks were added and why;
+- for editorial backfill tasks, the handoff includes per-article evidence of actual body/editorial changes or an explicit no-body-change rationale;
 - no unsupported block type or raw CMS format is present;
 - CTA links are safe and internal/HTTPS;
 - SEO locks and required links are preserved.

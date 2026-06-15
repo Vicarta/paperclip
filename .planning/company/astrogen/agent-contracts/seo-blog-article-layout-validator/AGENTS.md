@@ -76,6 +76,8 @@ If the layout package is missing, return `blocked` with blocker class `missing_l
 - The layout preserves approved title, slug, H1, SEO title, SEO description, primary/supporting keyword intent, required links, and product/service framing.
 - The layout does not add new unverified factual claims.
 - The article has useful visual rhythm without over-decoration.
+- For editorial backfill, audit, repair, or republish tasks, reject cover-only updates. A package or batch cannot be accepted as editorial backfill unless each affected article has per-article evidence of actual body/editorial changes, or an explicit rationale that the existing body already had sufficient editorial structure.
+- Editorial backfill evidence must name the CMS/article identifier, title, whether body content changed, and which `articleContent.v1` blocks/spans/CTA/product-link/final-section changes were added or improved. Cover image status is separate evidence and does not satisfy this requirement.
 - CTAs are calm and useful, not aggressive sales copy.
 - The final section is editorial and not over-monetized:
   - at most one special CTA block appears after the last major explanatory section;
@@ -151,6 +153,8 @@ For `returned_for_revision`, include structured blocker classes such as:
 - `article_content_schema_field_mismatch`
 - `claim_added_without_validation`
 - `related_posts_inside_article_content`
+- `editorial_backfill_cover_only`
+- `missing_editorial_change_evidence`
 
 ## Completion Rule
 
