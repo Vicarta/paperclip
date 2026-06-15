@@ -35,20 +35,25 @@ If the validated article draft is missing, do not guess. Return `blocked` with b
 - Output only `articleContent.v1` JSON plus a short layout handoff note.
 - Use only supported blocks: `paragraph`, `heading`, `list`, `editorialCallout`, `iconList`, `twoColumnText`, `quietCta`.
 - Use the exact Payload plugin field names:
-  - `paragraph`: `type`, `text`;
+  - `paragraph`: `type`, `text`, optional `spans`;
   - `heading`: `type`, `level`, `text`;
   - `list`: `type`, `ordered`, `items`;
-  - `editorialCallout`: `type`, `variant`, `title`, `body`;
+  - `editorialCallout`: `type`, `variant`, `title`, `body`, optional `bodySpans`;
   - `iconList`: `type`, `style`, `title`, `items`; each item uses `icon`, `label`, optional `text`;
-  - `twoColumnText`: `type`, `mode`, `leftTitle`, `leftBody`, `rightTitle`, `rightBody`;
-  - `quietCta`: `type`, `title`, `text`, `linkLabel`, `linkUrl`, optional `note`.
+  - `twoColumnText`: `type`, `mode`, `leftTitle`, `leftBody`, `rightTitle`, `rightBody`, optional `leftBodySpans`/`rightBodySpans` only when `mode` is `text`;
+  - `quietCta`: `type`, `title`, `text`, `linkLabel`, `linkUrl`, optional `note`, optional `textSpans`.
+- Use structured inline links only through safe spans:
+  - concatenated span text must exactly match the parent `text`, `body`, `leftBody`, `rightBody`, or CTA `text`;
+  - `linkUrl` may appear only on span objects and must be an internal `/...` path or HTTPS URL;
+  - max 5 linked spans per text block and max 20 inline links per article;
+  - reject empty span text, raw visible URLs, raw HTML links, Markdown links, `links[]`, `javascript:`, `data:`, and protocol-relative `//example.com` links.
 - Use `iconList` only with the Payload icon registry. Do not send emoji, raw SVG, image URLs, file names, CSS classes, or invented icon keys. If a needed icon key is missing, return a blocker/request to extend the registry instead of guessing.
 - `iconList.style` must be `grid`, `compact`, or `twoColumn`; each item must have a registry `icon` and `label`; optional `text` must be short; max 40 items.
-- Do not invent compatibility fields. In particular, do not use `style` for lists, `text` for callout body, `leftText`/`rightText`, paragraph `links`, or a `quietCta` without `title`.
+- Do not invent compatibility fields. In particular, do not use `style` for lists, `text` for callout body, `leftText`/`rightText`, paragraph `links`, `links[]`, or a `quietCta` without `title`.
 - Do not output raw Payload Lexical JSON.
 - Do not output raw HTML, inline styles, CSS classes, or arbitrary embeds.
 - Do not use `javascript:` URLs or external CTA URLs unless the brief explicitly requires a trusted HTTPS destination.
-- Do not put raw URLs such as `https://...`, `http://...`, or `www...` into visible text fields. Current `articleContent.v1` supports clickable links only through explicit link fields such as `quietCta.linkUrl`; plain URLs in paragraphs remain plain text and are a layout defect.
+- Do not put raw URLs such as `https://...`, `http://...`, or `www...` into visible text fields. Use structured spans for contextual inline links and `quietCta.linkUrl` for the CTA button.
 - Do not leak internal routing/task notes into the article body. Phrases like `Контекстний другий маршрут`, `CTA route`, `SEO lock`, `brief route`, or similar planning language must never appear in visible copy.
 - Product/service mention link rule:
   - if visible article copy names or clearly refers to an Astrogen product, service, route, offer, or commercial next step, the reader must have a real supported link for that thing in the same article package;
@@ -60,11 +65,12 @@ If the validated article draft is missing, do not guess. Return `blocked` with b
   - do not leave product names as plain unlinked text merely because raw URLs are forbidden;
   - do not leave product-like paraphrases unlinked just because the exact product name is absent;
   - do not write raw URLs into text to compensate for missing inline-link support;
-  - with the current `articleContent.v1` schema, supported links are explicit link fields such as `quietCta.linkUrl`; if only one link can be represented, choose the primary route from the brief/SEO lock and remove or generalize secondary named-product mentions;
-  - if the brief requires multiple named or paraphrased product/service links and the current CMS schema cannot represent them, return `blocked` with blocker class `required_inline_product_link_not_supported` instead of producing an unlinked product mention.
+  - use structured spans for contextual product/service/free-tool links in paragraphs, editorial callouts, quiet CTA body text, and text-mode two-column bodies;
+  - do not remove a relevant product/service mention just to avoid linking it;
+  - if a required product/service link still cannot be represented within the span limits or allowed fields, return `blocked` with blocker class `required_inline_product_link_not_supported` instead of producing an unlinked product mention.
 - Next-step promise rule:
   - do not write a paragraph that promises a `наступний крок`, `перехід`, `м'який вхід`, `доречний крок`, or similar action cue unless the same block or the immediately following block gives the reader a concrete supported action;
-  - a concrete supported action means a `quietCta` with a safe `linkUrl`, or another explicitly supported CMS link field if the schema is extended later;
+  - a concrete supported action means a `quietCta` with a safe `linkUrl`, or a contextual inline link represented through structured spans when a button is not appropriate;
   - never let a next-step sentence be followed by an unrelated heading, a purely explanatory section, or a vague product hint without a link;
   - if no supported link/action can be represented, rewrite the sentence as neutral editorial synthesis without promising an action, or return `blocked` with blocker class `dangling_next_step_promise`.
 - Keep CTAs calm, useful, and reader-facing. Default Astrogen expert CTA route is `/experts`.
@@ -73,7 +79,7 @@ If the validated article draft is missing, do not guess. Return `blocked` with b
   - never stack multiple pink/brand CTA cards at the end of an article;
   - do not repeat the same offer under different labels, for example "next step", "catalog experts", "personal weekly forecast";
   - remember that the site already has a large global CTA below the article, so the in-article final CTA must be lighter and editorial;
-  - if two next steps are relevant but the CMS block supports only one button, choose the primary next step from the brief/SEO lock and avoid naming a secondary Astrogen product/service unless it can also be represented by a supported link.
+  - if two next steps are relevant but the CMS block supports only one button, choose the primary next step for the button and represent the secondary route through a natural inline span link when editorially useful.
 - Add visual rhythm only where it clarifies meaning:
   - short summary callout after the intro;
   - important warning callout;

@@ -34,14 +34,17 @@ If the layout package is missing, return `blocked` with blocker class `missing_l
 - `schemaVersion` is exactly `articleContent.v1`.
 - Only supported blocks are present: `paragraph`, `heading`, `list`, `editorialCallout`, `iconList`, `twoColumnText`, `quietCta`.
 - The exact Payload plugin field contract is used:
-  - `paragraph` has only `type`, `text`;
+  - `paragraph` has only `type`, `text`, optional `spans`;
   - `heading` has only `type`, `level`, `text`;
   - `list` has only `type`, `ordered`, `items`;
-  - `editorialCallout` has only `type`, `variant`, `title`, `body`;
+  - `editorialCallout` has only `type`, `variant`, `title`, `body`, optional `bodySpans`;
   - `iconList` has only `type`, `style`, `title`, `items`, and each item has only `icon`, `label`, optional `text`;
-  - `twoColumnText` has only `type`, `mode`, `leftTitle`, `leftBody`, `rightTitle`, `rightBody`;
-  - `quietCta` has `type`, `title`, `text`, `linkLabel`, `linkUrl`, and optional `note`.
-- Reject legacy/improvised field names such as list `style`, callout `text`, `leftText`, `rightText`, paragraph `links`, or `quietCta` without `title`.
+  - `twoColumnText` has only `type`, `mode`, `leftTitle`, `leftBody`, `rightTitle`, `rightBody`, optional `leftBodySpans`/`rightBodySpans` only when `mode` is `text`;
+  - `quietCta` has `type`, `title`, `text`, `linkLabel`, `linkUrl`, optional `note`, optional `textSpans`.
+- Structured inline links are valid only through `paragraph.spans`, `editorialCallout.bodySpans`, `quietCta.textSpans`, and text-mode `twoColumnText.leftBodySpans`/`rightBodySpans`.
+- For every span array, concatenated `spans[].text` must exactly equal the parent text/body field. Reject empty span text, mismatched text, more than 5 linked spans in one text block, or more than 20 inline links in the article.
+- Span `linkUrl` values must be internal `/...` paths or HTTPS URLs. Reject `javascript:`, `data:`, protocol-relative `//example.com`, raw HTML links, Markdown links, raw visible URLs, and `links[]`.
+- Reject legacy/improvised field names such as list `style`, callout `text`, `leftText`, `rightText`, paragraph `links`, `links[]`, or `quietCta` without `title`.
 - For `iconList`, reject emoji, raw SVG, image URLs, file names, CSS classes, invented icon keys, missing labels, unsupported styles, or more than 40 items. Icon keys must come from the Payload icon registry.
 - Heading levels are only `h2`, `h3`, `h4`.
 - Callout variants are only `soft`, `brand`, `situation`.
@@ -50,7 +53,7 @@ If the layout package is missing, return `blocked` with blocker class `missing_l
 - Reject any attempt to encode related articles as an `articleContent.v1` block
   or arbitrary body field. Related posts must be handled only as top-level
   Payload CMS `relatedPosts` with 0 to 3 existing numeric blog post IDs.
-- No raw URLs in visible text fields. Reject `https://...`, `http://...`, or `www...` inside paragraphs, headings, lists, callouts, icon-list labels/text, two-column copy, CTA title/text/label/note, or any other user-visible copy. Current `articleContent.v1` supports clickable links only through explicit link fields such as `quietCta.linkUrl`.
+- No raw URLs in visible text fields. Reject `https://...`, `http://...`, or `www...` inside paragraphs, headings, lists, callouts, icon-list labels/text, two-column copy, CTA title/text/label/note, or any other user-visible copy. Contextual links must be represented through structured spans; CTA button links must use `quietCta.linkUrl`.
 - No internal routing/task notes in visible copy. Reject phrases such as `Контекстний другий маршрут`, `CTA route`, `SEO lock`, `brief route`, or other planning-language remnants.
 - Product/service mention link rule:
   - if visible article copy names or clearly refers to an Astrogen product, service, route, offer, or commercial next step, the referenced thing must have a real supported link in the same article package;
@@ -61,12 +64,13 @@ If the layout package is missing, return `blocked` with blocker class `missing_l
   - do not accept named Astrogen products left as plain unlinked text merely because raw URLs are forbidden;
   - do not accept product-like paraphrases left unlinked merely because the exact product name is absent;
   - do not accept raw URLs in visible copy as a substitute for supported links;
-  - with the current `articleContent.v1` schema, supported links are explicit link fields such as `quietCta.linkUrl`; if the package can represent only one link, secondary named-product mentions must be removed, generalized, or routed through a supported link;
-  - if the brief requires multiple named or paraphrased product/service links and the current CMS schema cannot represent them, return `returned_for_revision` or `blocked` with blocker class `required_inline_product_link_not_supported` instead of accepting the package.
+  - accept contextual product/service/free-tool links only when represented through valid structured spans in supported fields, or through a valid `quietCta.linkUrl` when the mention is the CTA action;
+  - do not accept removed/generalized product mentions as a workaround when the original brief requires a relevant product/service mention and a valid span link can represent it;
+  - if a required product/service link still cannot be represented within the span limits or allowed fields, return `returned_for_revision` or `blocked` with blocker class `required_inline_product_link_not_supported` instead of accepting the package.
   - blocker classes: use `free_offer_not_labeled` for free products/offers that are not visibly labeled as free, and `product_like_reference_unlinked` for indirect product/service references without supported links.
 - Next-step promise rule:
   - reject any paragraph or CTA copy that promises a `наступний крок`, `перехід`, `м'який вхід`, `доречний крок`, or similar action cue without a concrete supported action in the same block or immediately following block;
-  - a concrete supported action means a `quietCta` with a safe `linkUrl`, or another explicitly supported CMS link field if the schema is extended later;
+  - a concrete supported action means a `quietCta` with a safe `linkUrl`, or a contextual inline link represented through structured spans when a button is not appropriate;
   - a next-step promise followed by an unrelated heading, a purely explanatory section, or a vague product hint without a link is a layout defect;
   - return `returned_for_revision` with blocker class `dangling_next_step_promise` unless the source contract is contradictory enough to require `blocked`.
 - The layout preserves approved title, slug, H1, SEO title, SEO description, primary/supporting keyword intent, required links, and product/service framing.

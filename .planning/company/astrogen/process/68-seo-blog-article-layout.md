@@ -75,14 +75,27 @@ Use the exact Payload plugin field contract:
 { "type": "quietCta", "title": "Short CTA title", "text": "CTA body.", "linkLabel": "Button label", "linkUrl": "/internal-path" }
 ```
 
-Do not use legacy or improvised field names such as `style`, `body` on paragraphs, `text` on `editorialCallout`, `leftText`, `rightText`, paragraph `links`, or a `quietCta` without `title`. The Payload plugin rejects extra keys.
+Structured inline links are supported only through safe spans:
+
+- `paragraph.spans` for `paragraph.text`;
+- `editorialCallout.bodySpans` for `editorialCallout.body`;
+- `quietCta.textSpans` for `quietCta.text`;
+- `twoColumnText.leftBodySpans` and `twoColumnText.rightBodySpans` only when `mode` is `text`.
+
+When spans are used, concatenated `spans[].text` must exactly equal the parent
+text field. `linkUrl` is allowed only on individual spans and must be either an
+internal path beginning with `/` or an HTTPS URL. Each text block may contain at
+most 5 linked spans, and the whole article may contain at most 20 inline links.
+
+Do not use legacy or improvised field names such as `style`, `body` on paragraphs, `text` on `editorialCallout`, `leftText`, `rightText`, paragraph `links`, `links[]`, raw HTML link markup, Markdown links, or a `quietCta` without `title`. The Payload plugin rejects extra keys.
 
 For `iconList`, use only the registry documented in `docs/article-content-v1.md`. Do not use emoji, raw SVG, image URLs, file names, CSS classes, or invented icon keys. Allowed styles are `grid`, `compact`, and `twoColumn`; each item requires `icon` and `label`, optional `text` should stay short, and one `iconList` may contain at most 40 items.
 
 ## Link Policy
 
-Current `articleContent.v1` supports clickable article links only through explicit
-link fields such as `quietCta.linkUrl`.
+`articleContent.v1` supports clickable article links through structured spans
+and explicit link fields such as `quietCta.linkUrl`. Use spans for contextual
+links inside body copy; use `quietCta.linkUrl` only for the CTA button.
 
 Do not put raw URLs in visible article text. Text fields must not contain
 `https://...`, `http://...`, or `www...` strings. A raw URL in a paragraph,
@@ -121,12 +134,14 @@ Product/service mention link rule:
   product name is absent.
 - Do not write raw URLs into visible text to compensate for missing inline-link
   support.
-- With the current schema, if only one link can be represented, choose the
-  primary route for `quietCta.linkUrl` and remove or generalize secondary
-  named-product mentions.
-- If the brief requires multiple named or paraphrased product/service links and
-  the current CMS schema cannot represent them, return a structured blocker
-  instead of producing unlinked product mentions.
+- Use structured spans for contextual product/service/free-tool links in
+  paragraphs, editorial callouts, quiet CTA body text, and text-mode two-column
+  bodies. Do not move every product mention into CTA blocks merely to create a
+  link.
+- Do not remove a relevant product/service mention just to avoid linking it.
+- If a required product/service link still cannot be represented within the
+  span limits or allowed block fields, return a structured blocker instead of
+  producing an unlinked product mention.
 - Use blocker class `free_offer_not_labeled` when a free product/offer is not
   visibly labeled as free, and `product_like_reference_unlinked` when an
   indirect product/service reference lacks a supported link.
@@ -136,8 +151,9 @@ Next-step promise rule:
 - Do not write visible copy that promises a `наступний крок`, `перехід`,
   `м'який вхід`, `доречний крок`, or similar action cue unless the same block or
   the immediately following block gives the reader a concrete supported action.
-- A concrete supported action means a `quietCta` with a safe `linkUrl`, or
-  another explicitly supported CMS link field if the schema is extended later.
+- A concrete supported action means a `quietCta` with a safe `linkUrl`, or a
+  contextual inline link represented through structured spans when a button is
+  not appropriate.
 - A next-step sentence followed by an unrelated heading, a purely explanatory
   section, or a vague product hint without a link is a layout defect.
 - If no supported action can be represented, rewrite the sentence as neutral
@@ -166,7 +182,10 @@ After the last major explanatory section:
 - keep the in-article CTA lighter than the large global site CTA that appears below the article;
 - prefer a final heading such as `Підсумок і чесний наступний крок`, one short synthesis paragraph, and one compact `quietCta`.
 
-If two next steps are relevant but `quietCta` supports only one button, choose the primary next step from the accepted brief/SEO lock. Do not create a second CTA card to compensate for the one-button schema, and do not name a secondary Astrogen product/service in visible text unless it can also be represented by a supported link.
+If two next steps are relevant but `quietCta` supports only one button, choose
+the primary next step for the button and represent the secondary route through a
+natural inline span link when editorially useful. Do not create a second CTA card
+to compensate for the one-button schema.
 
 ## Image Direction Policy
 
@@ -251,6 +270,8 @@ Do not output or send:
 - CSS classes;
 - unsupported block types;
 - unsafe CTA links such as `javascript:...`;
+- unsafe inline span links such as `javascript:...`, `data:...`, protocol-relative `//example.com`, or empty span text;
+- raw visible URLs used instead of structured spans;
 - publication state changes.
 
 CMS draft/update calls must keep:
