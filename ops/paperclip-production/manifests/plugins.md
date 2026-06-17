@@ -25,11 +25,11 @@ Expected status: Astrogen-required plugins `ready`.
 ## Last Smoke
 
 - 2026-06-17 Phase 17 cost guardrails and efficiency UI smoke:
-  - production image `paperclip-app:v2026.529.0-vicarta.36-cost-efficiency-ui` is active;
-  - compose metadata reports `PAPERCLIP_GIT_REVISION=3c491fb1`;
+  - production image `paperclip-app:v2026.529.0-vicarta.37-cost-efficiency-query-fix` is active;
+  - compose metadata reports `PAPERCLIP_GIT_REVISION=ee5db1a4`;
   - app health returned `HTTP 200`;
   - plugin loader reported `total=14`, `succeeded=14`, `failed=0`;
-  - `GET /api/companies/:companyId/costs/efficiency` is registered and protected by auth (`HTTP 401` without a session, not `404`);
+  - `GET /api/companies/:companyId/costs/efficiency` is registered, protected by auth (`HTTP 401` without a session, not `404`), and the grouped `topWasteRuns` query was verified against production data without the previous `context_snapshot` aggregation error;
   - the Costs UI includes the `Efficiency` tab for delivered-article, done-issue, idle/waste, rework, and top-waste run KPIs.
 - 2026-06-09 Phase 14 email language guard and CrawlObserver secret rotation smoke:
   - production image `paperclip-app:v2026.529.0-vicarta.27-ee7a8153` is expected after deploy;
