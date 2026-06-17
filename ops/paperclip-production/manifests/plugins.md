@@ -1,7 +1,7 @@
 # Production Plugin Manifest
 
-Last verified: 2026-06-09
-Source: Phase 17 live production smoke, plugin inventory, Telegram formatter smoke, Phase 22 source package verification, live Telegram delivery-groups proof on AST-827, Telegram plugin package cutover smoke, Telegram proof ledger smoke, Payload CMS live agent-tool smoke, secret schema reconciliation smoke, Phase 14 SEO report-channel policy deploy smoke, and Phase 15 document/annotation/secret-config rollout.
+Last verified: 2026-06-17
+Source: Phase 17 cost guardrails and cost-efficiency UI production smoke, plugin inventory, Telegram formatter smoke, Phase 22 source package verification, live Telegram delivery-groups proof on AST-827, Telegram plugin package cutover smoke, Telegram proof ledger smoke, Payload CMS live agent-tool smoke, secret schema reconciliation smoke, Phase 14 SEO report-channel policy deploy smoke, and Phase 15 document/annotation/secret-config rollout.
 Secret handling: config keys and secret refs only; no plaintext secret values. Generic `secretService` create/resolve/rotate is reconciled with the production metadata schema. Plugin config UIs should expose SecretBindingPicker-compatible fields for credential settings where Paperclip supports them.
 
 Expected status: Astrogen-required plugins `ready`.
@@ -24,6 +24,13 @@ Expected status: Astrogen-required plugins `ready`.
 
 ## Last Smoke
 
+- 2026-06-17 Phase 17 cost guardrails and efficiency UI smoke:
+  - production image `paperclip-app:v2026.529.0-vicarta.36-cost-efficiency-ui` is active;
+  - compose metadata reports `PAPERCLIP_GIT_REVISION=3c491fb1`;
+  - app health returned `HTTP 200`;
+  - plugin loader reported `total=14`, `succeeded=14`, `failed=0`;
+  - `GET /api/companies/:companyId/costs/efficiency` is registered and protected by auth (`HTTP 401` without a session, not `404`);
+  - the Costs UI includes the `Efficiency` tab for delivered-article, done-issue, idle/waste, rework, and top-waste run KPIs.
 - 2026-06-09 Phase 14 email language guard and CrawlObserver secret rotation smoke:
   - production image `paperclip-app:v2026.529.0-vicarta.27-ee7a8153` is expected after deploy;
   - `paperclip.seo-performance-loop` enforces `detailedReportLanguage=uk` for detailed report email delivery and rejects obvious English fallback reports before calling Resend;
