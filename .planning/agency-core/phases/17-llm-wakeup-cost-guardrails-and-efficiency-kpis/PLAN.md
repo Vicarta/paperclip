@@ -63,6 +63,11 @@ Reduce waste without damaging quality from long-context manager sessions.
    - `tokensLostToFailedRuns`;
    - `topWasteRuns`.
 
+5. Surface the KPI API in the Costs UI:
+   - add a dedicated `Efficiency` tab;
+   - show top-line operational waste KPI tiles;
+   - show the top 20 waste runs with links back to run detail where available.
+
 ## Acceptance Criteria
 
 - Timer scheduler cannot enqueue an LLM run for an agent with no actionable
@@ -74,6 +79,7 @@ Reduce waste without damaging quality from long-context manager sessions.
   native-context adapters.
 - `/api/companies/:companyId/costs/efficiency` returns operational waste KPIs for
   a date range.
+- The Costs UI exposes those KPIs in a dedicated `Efficiency` tab.
 
 ## Verification
 

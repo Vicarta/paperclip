@@ -120,6 +120,8 @@ export const queryKeys = {
     ["finance-by-kind", companyId, from, to] as const,
   financeEvents: (companyId: string, from?: string, to?: string, limit: number = 100) =>
     ["finance-events", companyId, from, to, limit] as const,
+  costEfficiency: (companyId: string, from?: string, to?: string) =>
+    ["cost-efficiency", companyId, from, to] as const,
   usageWindowSpend: (companyId: string) =>
     ["usage-window-spend", companyId] as const,
   usageQuotaWindows: (companyId: string) =>

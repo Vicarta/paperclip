@@ -15,6 +15,8 @@
   adapter-managed context without forced threshold rotation.
 - Added `/api/companies/:companyId/costs/efficiency` for operational token waste
   KPIs.
+- Added a Costs UI `Efficiency` tab that renders those KPIs and the top waste
+  runs.
 
 ## New KPI Surface
 
