@@ -92,6 +92,7 @@ describeEmbeddedPostgres("heartbeat orphaned process recovery", () => {
     includeIssue?: boolean;
     runErrorCode?: string | null;
     runError?: string | null;
+    runtimeConfig?: Record<string, unknown>;
   }) {
     const companyId = randomUUID();
     const agentId = randomUUID();
@@ -116,7 +117,7 @@ describeEmbeddedPostgres("heartbeat orphaned process recovery", () => {
       status: input?.agentStatus ?? "paused",
       adapterType: input?.adapterType ?? "codex_local",
       adapterConfig: {},
-      runtimeConfig: {},
+      runtimeConfig: input?.runtimeConfig ?? {},
       permissions: {},
     });
 
@@ -317,5 +318,47 @@ describeEmbeddedPostgres("heartbeat orphaned process recovery", () => {
     const coalescedWakeup = wakeups.find((row) => row.runId === runId && row.status === "coalesced");
     expect(coalescedWakeup?.reason).toBe("follow_existing_running_run");
     expect(coalescedWakeup?.finishedAt).not.toBeNull();
+  });
+
+  it("skips direct timer wakeups without actionable assigned work before creating a run", async () => {
+    const { agentId } = await seedRunFixture({
+      agentStatus: "idle",
+      includeIssue: false,
+      runtimeConfig: {
+        heartbeat: {
+          enabled: true,
+          intervalSec: 3600,
+          timerException: {
+            reason: "temporary follow-up",
+            humanApproved: true,
+            expiresAt: "2030-05-22T15:00:00.000Z",
+          },
+        },
+      },
+    });
+    const heartbeat = heartbeatService(db);
+
+    const observed = await heartbeat.wakeup(agentId, {
+      source: "timer",
+      triggerDetail: "system",
+      requestedByActorType: "system",
+      requestedByActorId: "heartbeat_scheduler",
+    });
+
+    expect(observed).toBeNull();
+
+    const runs = await db
+      .select()
+      .from(heartbeatRuns)
+      .where(eq(heartbeatRuns.agentId, agentId));
+    expect(runs).toHaveLength(1);
+
+    const wakeups = await db
+      .select()
+      .from(agentWakeupRequests)
+      .where(eq(agentWakeupRequests.agentId, agentId));
+    expect(wakeups).toHaveLength(2);
+    const skippedWakeup = wakeups.find((row) => row.status === "skipped");
+    expect(skippedWakeup?.reason).toBe("heartbeat.skipped_no_actionable_work");
   });
 });

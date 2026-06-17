@@ -615,6 +615,16 @@ function readRawUsageTotals(usageJson: unknown): UsageTotals | null {
   };
 }
 
+export function findPreviousRawUsageBaseline(
+  rows: Array<{ usageJson: unknown }>,
+): UsageTotals | null {
+  for (const row of rows) {
+    const rawUsage = readRawUsageTotals(row.usageJson);
+    if (rawUsage) return rawUsage;
+  }
+  return null;
+}
+
 function deriveNormalizedUsageDelta(current: UsageTotals | null, previous: UsageTotals | null): UsageTotals | null {
   if (!current) return null;
   if (!previous) return { ...current };
@@ -1237,7 +1247,7 @@ export function heartbeatService(db: Db) {
       .then((rows) => rows[0] ?? null);
   }
 
-  async function getLatestRunForSession(
+  async function getLatestRawUsageForSession(
     agentId: string,
     sessionId: string,
     opts?: { excludeRunId?: string | null },
@@ -1249,13 +1259,13 @@ export function heartbeatService(db: Db) {
     if (opts?.excludeRunId) {
       conditions.push(sql`${heartbeatRuns.id} <> ${opts.excludeRunId}`);
     }
-    return db
+    const rows = await db
       .select()
       .from(heartbeatRuns)
       .where(and(...conditions))
       .orderBy(desc(heartbeatRuns.createdAt))
-      .limit(1)
-      .then((rows) => rows[0] ?? null);
+      .limit(500);
+    return findPreviousRawUsageBaseline(rows);
   }
 
   async function getOldestRunForSession(agentId: string, sessionId: string) {
@@ -1286,8 +1296,7 @@ export function heartbeatService(db: Db) {
       };
     }
 
-    const previousRun = await getLatestRunForSession(agentId, sessionId, { excludeRunId: runId });
-    const previousRawUsage = readRawUsageTotals(previousRun?.usageJson);
+    const previousRawUsage = await getLatestRawUsageForSession(agentId, sessionId, { excludeRunId: runId });
     return {
       normalizedUsage: deriveNormalizedUsageDelta(rawUsage, previousRawUsage),
       previousRawUsage,
@@ -2027,12 +2036,13 @@ export function heartbeatService(db: Db) {
       intervalSec: Math.max(0, asNumber(heartbeat.intervalSec, 0)),
       wakeOnDemand: asBoolean(heartbeat.wakeOnDemand ?? heartbeat.wakeOnAssignment ?? heartbeat.wakeOnOnDemand ?? heartbeat.wakeOnAutomation, true),
       maxConcurrentRuns: normalizeMaxConcurrentRuns(heartbeat.maxConcurrentRuns),
-      skipIfNoActionableWork: asBoolean(heartbeat.skipIfNoActionableWork, false),
+      skipIfNoActionableWork: asBoolean(heartbeat.skipIfNoActionableWork, true),
     };
   }
 
   async function hasActionableTimerWork(agent: typeof agents.$inferSelect) {
     const lastHeartbeatAt = agent.lastHeartbeatAt ?? agent.createdAt;
+    const lastHeartbeatAtIso = lastHeartbeatAt.toISOString();
 
     const rows = await db
       .select({ id: issues.id })
@@ -2047,13 +2057,13 @@ export function heartbeatService(db: Db) {
             or (
               ${issues.status} in ('in_progress', 'in_review', 'blocked')
               and (
-                ${issues.updatedAt} > ${lastHeartbeatAt}
+                ${issues.updatedAt} > ${lastHeartbeatAtIso}::timestamptz
                 or exists (
                   select 1
                   from ${issueComments}
                   where ${issueComments.companyId} = ${issues.companyId}
                     and ${issueComments.issueId} = ${issues.id}
-                    and ${issueComments.createdAt} > ${lastHeartbeatAt}
+                    and ${issueComments.createdAt} > ${lastHeartbeatAtIso}::timestamptz
                 )
               )
             )
@@ -3635,6 +3645,10 @@ export function heartbeatService(db: Db) {
         await writeSkippedRequest(`heartbeat.timerException.${timerException.reason}`);
         return null;
       }
+      if (!(await hasActionableTimerWork(agent))) {
+        await writeSkippedRequest("heartbeat.skipped_no_actionable_work");
+        return null;
+      }
     }
     if (source !== "timer" && !policy.wakeOnDemand) {
       await writeSkippedRequest("heartbeat.wakeOnDemand.disabled");
@@ -4422,7 +4436,7 @@ export function heartbeatService(db: Db) {
         const baseline = new Date(agent.lastHeartbeatAt ?? agent.createdAt).getTime();
         const elapsedMs = now.getTime() - baseline;
         if (elapsedMs < policy.intervalSec * 1000) continue;
-        if (policy.skipIfNoActionableWork && !(await hasActionableTimerWork(agent))) {
+        if (!(await hasActionableTimerWork(agent))) {
           skipped += 1;
           continue;
         }

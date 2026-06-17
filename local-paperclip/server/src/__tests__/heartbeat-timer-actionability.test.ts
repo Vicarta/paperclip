@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isActionableForTimerHeartbeat } from "../services/heartbeat.js";
+import { findPreviousRawUsageBaseline, isActionableForTimerHeartbeat } from "../services/heartbeat.js";
 
 describe("isActionableForTimerHeartbeat", () => {
   const lastHeartbeatAt = new Date("2026-05-22T07:00:00.000Z");
@@ -55,5 +55,30 @@ describe("isActionableForTimerHeartbeat", () => {
         lastHeartbeatAt,
       }),
     ).toBe(false);
+  });
+});
+
+describe("findPreviousRawUsageBaseline", () => {
+  it("skips failed or zero-usage session runs when choosing a delta baseline", () => {
+    expect(
+      findPreviousRawUsageBaseline([
+        { usageJson: null },
+        { usageJson: { inputTokens: 0, cachedInputTokens: 0, outputTokens: 0 } },
+        {
+          usageJson: {
+            inputTokens: 120,
+            cachedInputTokens: 30,
+            outputTokens: 20,
+            rawInputTokens: 3_000,
+            rawCachedInputTokens: 500,
+            rawOutputTokens: 400,
+          },
+        },
+      ]),
+    ).toEqual({
+      inputTokens: 3_000,
+      cachedInputTokens: 500,
+      outputTokens: 400,
+    });
   });
 });

@@ -22,7 +22,8 @@ Agency Core contains reusable Paperclip operating-system assets that should work
 - [x] **Phase 14: SEO Report Channels And CrawlObserver Finding Policy** - Split weekly SEO reporting by channel so Telegram carries only short owner digests and email carries detailed reports; add deterministic CrawlObserver finding routing policy for automatic CMS SEO tasks, configured thresholds, cooldowns, and ignored-noise classes.
 - [x] **Phase 15: Paperclip Document Annotations And Secret Config Rollout** - Adopt the useful `v2026.529.0` collaboration/config features in Agency Core contracts: issue documents for reviewable decisions and reports, inline annotation expectations, document locking after acceptance, and secret-ref based plugin settings compatible with SecretBindingPicker-style configuration.
 - [x] **Phase 16: Google Drive Docs And Telegram Delivery Profiles** - Add a reusable Google Drive/Docs plugin for safe HTML document creation and extend Telegram with configured delivery profiles for non-standard bot/chat delivery paths.
+- [x] **Phase 17: LLM Wakeup Cost Guardrails And Efficiency KPIs** - Prevent timer wakeups from starting LLM runs without actionable work, fix session usage delta accounting after failed/zero-usage runs, preserve long-context quality, audit existing compaction policy, and expose operational cost-efficiency KPIs.
 
 ## Current Next Step
 
-Next reusable step: activate Google Drive Docs delivery in a specific company only after its service account, Drive folder, and Telegram delivery profile are configured.
+Next reusable step: deploy Phase 17 runtime changes, then monitor the new `/costs/efficiency` endpoint for idle/no-issue/timer and failed-run token waste.

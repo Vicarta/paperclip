@@ -1,6 +1,6 @@
 import { and, desc, eq, gte, isNotNull, lt, lte, sql } from "drizzle-orm";
 import type { Db } from "@paperclipai/db";
-import { activityLog, agents, companies, costEvents, issues, projects } from "@paperclipai/db";
+import { activityLog, agents, companies, costEvents, heartbeatRuns, issues, projects } from "@paperclipai/db";
 import { notFound, unprocessable } from "../errors.js";
 import { budgetService, type BudgetServiceHooks } from "./budgets.js";
 
@@ -359,6 +359,147 @@ export function costService(db: Db, budgetHooks: BudgetServiceHooks = {}) {
         .where(and(...conditions, sql`${effectiveProjectId} is not null`))
         .groupBy(effectiveProjectId, projects.name)
         .orderBy(desc(costCentsExpr));
+    },
+
+    efficiency: async (companyId: string, range?: CostDateRange) => {
+      const costConditions = [eq(costEvents.companyId, companyId)];
+      if (range?.from) costConditions.push(gte(costEvents.occurredAt, range.from));
+      if (range?.to) costConditions.push(lte(costEvents.occurredAt, range.to));
+
+      const issueConditions = [
+        eq(issues.companyId, companyId),
+        eq(issues.status, "done"),
+        isNotNull(issues.completedAt),
+      ];
+      if (range?.from) issueConditions.push(gte(issues.completedAt, range.from));
+      if (range?.to) issueConditions.push(lte(issues.completedAt, range.to));
+
+      const tokenExpr = sql<number>`(${costEvents.inputTokens} + ${costEvents.cachedInputTokens} + ${costEvents.outputTokens})`;
+      const noIssueContextExpr = sql`coalesce(${heartbeatRuns.contextSnapshot}->>'issueId', ${heartbeatRuns.contextSnapshot}->>'taskId') is null`;
+      const articleIssueExpr = sql`(
+        coalesce(${issues.billingCode}, '') ilike '%article%'
+        or coalesce(${issues.billingCode}, '') ilike '%blog%'
+        or ${issues.title} ilike '%article%'
+        or ${issues.title} ilike '%blog%'
+        or ${issues.title} ilike '%стат%'
+        or ${issues.title} ilike '%чернет%'
+      )`;
+      const highInputThreshold = 100_000;
+
+      const [tokenRow] = await db
+        .select({
+          totalTokens: sql<number>`coalesce(sum(${tokenExpr}), 0)::bigint`,
+          idleTokens: sql<number>`coalesce(sum(case when ${costEvents.issueId} is null and ${noIssueContextExpr} then ${tokenExpr} else 0 end), 0)::bigint`,
+          noIssueTimerTokens: sql<number>`coalesce(sum(case when ${heartbeatRuns.invocationSource} = 'timer' and ${costEvents.issueId} is null and ${noIssueContextExpr} then ${tokenExpr} else 0 end), 0)::bigint`,
+          tokensLostToFailedRuns: sql<number>`coalesce(sum(case when ${heartbeatRuns.status} in ('failed', 'timed_out', 'cancelled') then ${tokenExpr} else 0 end), 0)::bigint`,
+          managerCoordinationTokens: sql<number>`coalesce(sum(case when (
+            ${agents.role} ilike '%manager%'
+            or ${agents.role} ilike '%chief%'
+            or ${agents.name} ilike '%CEO%'
+            or ${agents.name} ilike '%CMO%'
+            or ${agents.name} ilike '%CTO%'
+            or ${agents.name} ilike '%Chief%'
+          ) then ${tokenExpr} else 0 end), 0)::bigint`,
+          reworkArticleTokens: sql<number>`coalesce(sum(case when ${articleIssueExpr} and ${heartbeatRuns.status} in ('failed', 'timed_out', 'cancelled') then ${tokenExpr} else 0 end), 0)::bigint`,
+          zeroOutputHighInputRuns: sql<number>`count(distinct case when ${costEvents.outputTokens} = 0 and (${costEvents.inputTokens} + ${costEvents.cachedInputTokens}) >= ${highInputThreshold} then ${costEvents.heartbeatRunId} end)::int`,
+          totalCostCents: sql<number>`coalesce(sum(${costEvents.costCents}), 0)::int`,
+        })
+        .from(costEvents)
+        .leftJoin(heartbeatRuns, eq(costEvents.heartbeatRunId, heartbeatRuns.id))
+        .leftJoin(issues, eq(costEvents.issueId, issues.id))
+        .leftJoin(agents, eq(costEvents.agentId, agents.id))
+        .where(and(...costConditions));
+
+      const [issueRow] = await db
+        .select({
+          doneIssueCount: sql<number>`count(distinct ${issues.id})::int`,
+          deliveredArticleIssueCount: sql<number>`count(distinct case when ${articleIssueExpr} then ${issues.id} end)::int`,
+        })
+        .from(issues)
+        .where(and(...issueConditions));
+
+      const topWasteRuns = await db
+        .select({
+          runId: costEvents.heartbeatRunId,
+          agentId: costEvents.agentId,
+          agentName: agents.name,
+          issueId: costEvents.issueId,
+          issueTitle: issues.title,
+          invocationSource: heartbeatRuns.invocationSource,
+          runStatus: heartbeatRuns.status,
+          errorCode: heartbeatRuns.errorCode,
+          tokens: sql<number>`coalesce(sum(${tokenExpr}), 0)::bigint`,
+          costCents: sql<number>`coalesce(sum(${costEvents.costCents}), 0)::int`,
+          reason: sql<string>`case
+            when ${heartbeatRuns.invocationSource} = 'timer' and ${costEvents.issueId} is null and ${noIssueContextExpr} then 'no_issue_timer_tokens'
+            when ${costEvents.issueId} is null and ${noIssueContextExpr} then 'idle_tokens'
+            when ${heartbeatRuns.status} in ('failed', 'timed_out', 'cancelled') then 'tokens_lost_to_failed_runs'
+            when max(${costEvents.outputTokens}) = 0 and sum(${costEvents.inputTokens} + ${costEvents.cachedInputTokens}) >= ${highInputThreshold} then 'zero_output_high_input_run'
+            else 'other'
+          end`,
+        })
+        .from(costEvents)
+        .leftJoin(heartbeatRuns, eq(costEvents.heartbeatRunId, heartbeatRuns.id))
+        .leftJoin(issues, eq(costEvents.issueId, issues.id))
+        .leftJoin(agents, eq(costEvents.agentId, agents.id))
+        .where(
+          and(
+            ...costConditions,
+            sql`(
+              (${heartbeatRuns.invocationSource} = 'timer' and ${costEvents.issueId} is null and ${noIssueContextExpr})
+              or (${costEvents.issueId} is null and ${noIssueContextExpr})
+              or ${heartbeatRuns.status} in ('failed', 'timed_out', 'cancelled')
+              or (${costEvents.outputTokens} = 0 and (${costEvents.inputTokens} + ${costEvents.cachedInputTokens}) >= ${highInputThreshold})
+            )`,
+          ),
+        )
+        .groupBy(
+          costEvents.heartbeatRunId,
+          costEvents.agentId,
+          agents.name,
+          costEvents.issueId,
+          issues.title,
+          heartbeatRuns.invocationSource,
+          heartbeatRuns.status,
+          heartbeatRuns.errorCode,
+        )
+        .orderBy(desc(sql`coalesce(sum(${tokenExpr}), 0)::bigint`))
+        .limit(20);
+
+      const totalTokens = Number(tokenRow?.totalTokens ?? 0);
+      const doneIssueCount = Number(issueRow?.doneIssueCount ?? 0);
+      const deliveredArticleIssueCount = Number(issueRow?.deliveredArticleIssueCount ?? 0);
+      const reworkArticleTokens = Number(tokenRow?.reworkArticleTokens ?? 0);
+
+      return {
+        companyId,
+        range: {
+          from: range?.from?.toISOString() ?? null,
+          to: range?.to?.toISOString() ?? null,
+        },
+        totals: {
+          tokens: totalTokens,
+          costCents: Number(tokenRow?.totalCostCents ?? 0),
+          doneIssueCount,
+          deliveredArticleIssueCount,
+        },
+        kpis: {
+          tokensPerDoneIssue: doneIssueCount > 0 ? Math.round(totalTokens / doneIssueCount) : null,
+          tokensPerDeliveredArticle: deliveredArticleIssueCount > 0 ? Math.round(totalTokens / deliveredArticleIssueCount) : null,
+          idleTokens: Number(tokenRow?.idleTokens ?? 0),
+          noIssueTimerTokens: Number(tokenRow?.noIssueTimerTokens ?? 0),
+          zeroOutputHighInputRuns: Number(tokenRow?.zeroOutputHighInputRuns ?? 0),
+          managerCoordinationTokens: Number(tokenRow?.managerCoordinationTokens ?? 0),
+          reworkTokensPerArticle: deliveredArticleIssueCount > 0 ? Math.round(reworkArticleTokens / deliveredArticleIssueCount) : null,
+          tokensLostToFailedRuns: Number(tokenRow?.tokensLostToFailedRuns ?? 0),
+          highInputZeroOutputThresholdTokens: highInputThreshold,
+        },
+        topWasteRuns,
+        notes: [
+          "tokensPerDeliveredArticle is best-effort and uses completed issue title/billing-code article/blog matching.",
+          "idle/no-issue/timer/failed-run KPIs are based on cost_events joined to heartbeat_runs.",
+        ],
+      };
     },
   };
 }

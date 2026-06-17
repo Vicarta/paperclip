@@ -52,6 +52,7 @@ const mockCostService = vi.hoisted(() => ({
   byBiller: vi.fn().mockResolvedValue([]),
   windowSpend: vi.fn().mockResolvedValue([]),
   byProject: vi.fn().mockResolvedValue([]),
+  efficiency: vi.fn().mockResolvedValue({ kpis: { idleTokens: 0 } }),
 }));
 const mockFinanceService = vi.hoisted(() => ({
   createEvent: vi.fn(),
@@ -163,6 +164,15 @@ describe("cost routes", () => {
       .query({ from: "2026-02-01T00:00:00.000Z", to: "2026-02-28T23:59:59.999Z" });
     expect(res.status).toBe(200);
     expect(mockFinanceService.summary).toHaveBeenCalled();
+  });
+
+  it("returns cost efficiency KPI rows for valid requests", async () => {
+    const app = createApp();
+    const res = await request(app)
+      .get("/api/companies/company-1/costs/efficiency")
+      .query({ from: "2026-02-01T00:00:00.000Z", to: "2026-02-28T23:59:59.999Z" });
+    expect(res.status).toBe(200);
+    expect(mockCostService.efficiency).toHaveBeenCalled();
   });
 
   it("returns 400 for invalid finance event list limits", async () => {
