@@ -431,8 +431,8 @@ export function costService(db: Db, budgetHooks: BudgetServiceHooks = {}) {
           tokens: sql<number>`coalesce(sum(${tokenExpr}), 0)::bigint`,
           costCents: sql<number>`coalesce(sum(${costEvents.costCents}), 0)::int`,
           reason: sql<string>`case
-            when ${heartbeatRuns.invocationSource} = 'timer' and ${costEvents.issueId} is null and ${noIssueContextExpr} then 'no_issue_timer_tokens'
-            when ${costEvents.issueId} is null and ${noIssueContextExpr} then 'idle_tokens'
+            when ${heartbeatRuns.invocationSource} = 'timer' and ${costEvents.issueId} is null and bool_or(${noIssueContextExpr}) then 'no_issue_timer_tokens'
+            when ${costEvents.issueId} is null and bool_or(${noIssueContextExpr}) then 'idle_tokens'
             when ${heartbeatRuns.status} in ('failed', 'timed_out', 'cancelled') then 'tokens_lost_to_failed_runs'
             when max(${costEvents.outputTokens}) = 0 and sum(${costEvents.inputTokens} + ${costEvents.cachedInputTokens}) >= ${highInputThreshold} then 'zero_output_high_input_run'
             else 'other'
