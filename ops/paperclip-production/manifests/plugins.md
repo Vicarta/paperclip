@@ -1,7 +1,7 @@
 # Production Plugin Manifest
 
-Last verified: 2026-06-17
-Source: Phase 17 cost guardrails and cost-efficiency UI production smoke, plugin inventory, Telegram formatter smoke, Phase 22 source package verification, live Telegram delivery-groups proof on AST-827, Telegram plugin package cutover smoke, Telegram proof ledger smoke, Payload CMS live agent-tool smoke, secret schema reconciliation smoke, Phase 14 SEO report-channel policy deploy smoke, and Phase 15 document/annotation/secret-config rollout.
+Last verified: 2026-06-18
+Source: Phase 19 OpenRouter image cost bridge smoke, Phase 17 cost guardrails and cost-efficiency UI production smoke, plugin inventory, Telegram formatter smoke, Phase 22 source package verification, live Telegram delivery-groups proof on AST-827, Telegram plugin package cutover smoke, Telegram proof ledger smoke, Payload CMS live agent-tool smoke, secret schema reconciliation smoke, Phase 14 SEO report-channel policy deploy smoke, and Phase 15 document/annotation/secret-config rollout.
 Secret handling: config keys and secret refs only; no plaintext secret values. Generic `secretService` create/resolve/rotate is reconciled with the production metadata schema. Plugin config UIs should expose SecretBindingPicker-compatible fields for credential settings where Paperclip supports them.
 
 Expected status: Astrogen-required plugins `ready`.
@@ -14,6 +14,7 @@ Expected status: Astrogen-required plugins `ready`.
 | `paperclip.dataforseo-agent-tools` | `@paperclipai/plugin-dataforseo-agent-tools` | DataForSEO tools and cost ledger events. |
 | `paperclip.diskinternals-bigquery-growth` | `@paperclipai/plugin-diskinternals-bigquery-growth` | DiskInternals-specific growth analytics. |
 | `paperclip.exa-agent-tools` | `@paperclipai/plugin-exa-agent-tools` | Exa research connector. |
+| `paperclip.openrouter-image-agent-tools` | `@paperclipai/plugin-openrouter-image-agent-tools` | OpenRouter image generation through Paperclip plugin host with image-provider cost ledger events. |
 | `paperclip.perfex-crm-agent-tools` | `@paperclipai/plugin-perfex-crm-agent-tools` | Perfex CRM bridge. |
 | `paperclip.payload-cms-agent-tools` | `@paperclipai/plugin-payload-cms-agent-tools` | Payload CMS bridge for Astrogen blog drafts, media upload, taxonomy lookup, build-state checks, and guarded publishing. |
 | `paperclip.search-console-mcp-agent-tools` | `@paperclipai/plugin-search-console-mcp-agent-tools` | Google Search Console MCP bridge. |
@@ -24,6 +25,13 @@ Expected status: Astrogen-required plugins `ready`.
 
 ## Last Smoke
 
+- 2026-06-18 Phase 19 OpenRouter image cost bridge smoke:
+  - production image `paperclip-app:v2026.529.0-vicarta.39-openrouter-image-cost` is active;
+  - app health returned `HTTP 200`;
+  - plugin loader reported `total=15`, `succeeded=15`, `failed=0`;
+  - `paperclip.openrouter-image-agent-tools` is installed and ready with tool `paperclip.openrouter-image-agent-tools:generate-image`;
+  - smoke call resolved the OpenRouter API key via secret ref, called `google/gemini-3.1-flash-image`, returned `imageCount=1`, and wrote a `metered_api` `cost_events` row under provider/biller `openrouter`;
+  - Astrogen image generation contracts use the plugin tool as the primary paid provider path; direct shell dispatch is fallback-only and must declare `image_provider_cost_ledger_gap` if used.
 - 2026-06-18 Phase 18 OpenRouter provider routing smoke:
   - production image `paperclip-app:v2026.529.0-vicarta.38-openrouter-provider-routing` is active;
   - app health returned `HTTP 200`;

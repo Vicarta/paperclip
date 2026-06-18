@@ -24,7 +24,8 @@ Agency Core contains reusable Paperclip operating-system assets that should work
 - [x] **Phase 16: Google Drive Docs And Telegram Delivery Profiles** - Add a reusable Google Drive/Docs plugin for safe HTML document creation and extend Telegram with configured delivery profiles for non-standard bot/chat delivery paths.
 - [x] **Phase 17: LLM Wakeup Cost Guardrails And Efficiency KPIs** - Prevent timer wakeups from starting LLM runs without actionable work, fix session usage delta accounting after failed/zero-usage runs, preserve long-context quality, audit existing compaction policy, and expose operational cost-efficiency KPIs.
 - [x] **Phase 18: OpenRouter Provider Routing Controls** - Allow Paperclip OpenRouter agents to set model-specific provider routing, including provider-only execution such as `z-ai/glm-5.2` through `cloudflare` with fallback disabled.
+- [x] **Phase 19: OpenRouter Image Generation Cost Bridge** - Move image generation into a reusable Paperclip plugin/adapter path that calls OpenRouter server-side, returns governed image artifacts, and writes image-provider spend to canonical `cost_events`.
 
 ## Current Next Step
 
-Next reusable step: configure OpenRouter agents that need GLM 5.2 with `model=z-ai/glm-5.2`, `provider.only=["cloudflare"]`, and `provider.allow_fallbacks=false`; monitor first runs for OpenRouter provider availability.
+Next reusable step: monitor the first Astrogen production article image runs and confirm they use `paperclip.openrouter-image-agent-tools:generate-image` rather than the direct helper fallback.

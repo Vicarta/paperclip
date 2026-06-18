@@ -16,6 +16,7 @@ RUN for plugin in \
     packages/plugins/plugin-crawlobserver-agent-tools \
     packages/plugins/plugin-exa-agent-tools \
     packages/plugins/plugin-gsc-bing-ga4-mcp-agent-tools \
+    packages/plugins/plugin-openrouter-image-agent-tools \
     packages/plugins/plugin-payload-cms-agent-tools \
     packages/plugins/plugin-perfex-crm-agent-tools \
     packages/plugins/plugin-search-console-mcp-agent-tools \
