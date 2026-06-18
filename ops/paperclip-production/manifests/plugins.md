@@ -24,6 +24,12 @@ Expected status: Astrogen-required plugins `ready`.
 
 ## Last Smoke
 
+- 2026-06-18 Phase 18 OpenRouter provider routing smoke:
+  - production image `paperclip-app:v2026.529.0-vicarta.38-openrouter-provider-routing` is active;
+  - app health returned `HTTP 200`;
+  - plugin loader reported `total=14`, `succeeded=14`, `failed=0`;
+  - OpenRouter adapter runtime now forwards sanitized `provider` routing fields;
+  - OpenRouter config UI includes `Provider only` and `Allow provider fallback`, so agents can use `model=z-ai/glm-5.2` with `provider.only=["cloudflare"]` and `provider.allow_fallbacks=false`.
 - 2026-06-17 Phase 17 cost guardrails and efficiency UI smoke:
   - production image `paperclip-app:v2026.529.0-vicarta.37-cost-efficiency-query-fix` is active;
   - compose metadata reports `PAPERCLIP_GIT_REVISION=ee5db1a4`;

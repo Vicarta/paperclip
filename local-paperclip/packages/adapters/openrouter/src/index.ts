@@ -23,6 +23,7 @@ Core fields:
 - bootstrapPromptTemplate (string, optional): prompt only for fresh/stateless runs
 - timeoutSec (number, optional): request timeout in seconds
 - requireArtifactOnDone (boolean, optional): for issue-bound runs, block status=done unless the model returns an artifact with relativePath and body
+- provider (object, optional): sanitized OpenRouter provider routing object. Supported fields: only, order, ignore, allow_fallbacks, require_parameters, data_collection, zdr, sort
 
 Optional provider fields:
 - baseUrl (string, optional): defaults to https://openrouter.ai/api/v1
@@ -38,6 +39,8 @@ Required environment:
 
 Notes:
 - This adapter is stateless and executes via direct HTTPS calls to OpenRouter.
+- To force a model through one OpenRouter provider, set for example:
+  { "model": "z-ai/glm-5.2", "provider": { "only": ["cloudflare"], "allow_fallbacks": false } }
 - It does not require local OpenCode, Claude, Codex, or Gemini CLIs on the Paperclip host.
 - It is intended for prompt-based agents rather than local tool-using coding agents.
 - Paperclip company skills are supported as prompt-injected markdown context. They are not local executable tools.

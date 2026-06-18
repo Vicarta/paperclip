@@ -3,6 +3,7 @@ import {
   AutoExpandTextarea,
   DraftInput,
   Field,
+  ToggleField,
 } from "../../components/agent-config-primitives";
 import { ChoosePathButton } from "../../components/PathInstructionsModal";
 
@@ -12,9 +13,41 @@ const instructionsFileHint =
   "Absolute path to a markdown file (for example AGENTS.md) that Paperclip reads and injects into the system prompt before calling OpenRouter.";
 const modelHint =
   "Direct OpenRouter model identifier in provider/model format, for example openai/gpt-5.2 or anthropic/claude-sonnet-4.5.";
+const providerOnlyHint =
+  "Optional comma-separated OpenRouter provider slugs. Example: cloudflare. Use the exact provider slug from the OpenRouter model provider list.";
+const providerFallbackHint =
+  "When disabled, OpenRouter must not fall back to another provider if the selected provider cannot serve the request.";
 
 function buildModelOptions(models: Array<{ id: string; label: string }>) {
   return [...models].sort((a, b) => a.id.localeCompare(b.id));
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function providerListToText(value: unknown): string {
+  if (Array.isArray(value)) {
+    return value.filter((part): part is string => typeof part === "string").join(", ");
+  }
+  return typeof value === "string" ? value : "";
+}
+
+function splitProviderList(value: string): string[] {
+  return value
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+function cleanProvider(provider: Record<string, unknown>): Record<string, unknown> {
+  const only = splitProviderList(providerListToText(provider.only));
+  const next: Record<string, unknown> = {};
+  if (only.length > 0) next.only = only;
+  if (provider.allow_fallbacks === false) next.allow_fallbacks = false;
+  return next;
 }
 
 export function OpenRouterConfigFields({
@@ -43,7 +76,21 @@ export function OpenRouterConfigFields({
         "bootstrapPromptTemplate",
         String(config.bootstrapPromptTemplate ?? ""),
       );
+  const currentProvider = isCreate
+    ? {}
+    : asRecord(eff("adapterConfig", "provider", config.provider ?? {}));
+  const currentProviderOnly = isCreate
+    ? values!.openRouterProviderOnly ?? ""
+    : providerListToText(currentProvider.only);
+  const currentAllowFallbacks = isCreate
+    ? values!.openRouterAllowFallbacks !== false
+    : currentProvider.allow_fallbacks !== false;
   const modelOptions = buildModelOptions(models);
+
+  const markProvider = (patch: Record<string, unknown>) => {
+    const next = cleanProvider({ ...currentProvider, ...patch });
+    mark("adapterConfig", "provider", Object.keys(next).length > 0 ? next : undefined);
+  };
 
   return (
     <div className="space-y-3">
@@ -103,6 +150,32 @@ export function OpenRouterConfigFields({
           />
         )}
       </Field>
+
+      <div className="grid gap-3 rounded-md border border-border/60 p-3">
+        <Field label="Provider only" hint={providerOnlyHint}>
+          <DraftInput
+            value={currentProviderOnly}
+            onCommit={(v) =>
+              isCreate
+                ? set!({ openRouterProviderOnly: v })
+                : markProvider({ only: splitProviderList(v) })
+            }
+            immediate
+            className={inputClass}
+            placeholder="cloudflare"
+          />
+        </Field>
+        <ToggleField
+          label="Allow provider fallback"
+          hint={providerFallbackHint}
+          checked={currentAllowFallbacks}
+          onChange={(v) =>
+            isCreate
+              ? set!({ openRouterAllowFallbacks: v })
+              : markProvider({ allow_fallbacks: v ? undefined : false })
+          }
+        />
+      </div>
 
       <Field label="Prompt Template">
         <AutoExpandTextarea

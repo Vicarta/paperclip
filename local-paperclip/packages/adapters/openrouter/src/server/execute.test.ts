@@ -108,4 +108,42 @@ describe("OpenRouter execute issue protocol", () => {
     expect(body.comment).toMatch(/not a human decision/i);
     expect(body.comment).toContain("Here is the draft without JSON.");
   });
+
+  it("passes sanitized provider routing to OpenRouter", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(openRouterResponse("Plain assistant response."));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await execute(makeContext({
+      authToken: undefined,
+      context: {},
+      config: {
+        model: "z-ai/glm-5.2",
+        env: { OPENROUTER_API_KEY: "or-key" },
+        provider: {
+          only: "cloudflare",
+          order: ["cloudflare", "openrouter"],
+          allow_fallbacks: false,
+          require_parameters: true,
+          data_collection: "deny",
+          zdr: true,
+          unknown_secretish_field: "do-not-forward",
+        },
+      },
+    }));
+
+    expect(result.exitCode).toBe(0);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
+    expect(body.model).toBe("z-ai/glm-5.2");
+    expect(body.provider).toEqual({
+      only: ["cloudflare"],
+      order: ["cloudflare", "openrouter"],
+      allow_fallbacks: false,
+      require_parameters: true,
+      data_collection: "deny",
+      zdr: true,
+    });
+  });
 });

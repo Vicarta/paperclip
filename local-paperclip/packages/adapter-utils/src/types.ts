@@ -344,6 +344,8 @@ export interface CreateConfigValues {
   envBindings: Record<string, unknown>;
   url: string;
   bootstrapPrompt: string;
+  openRouterProviderOnly?: string;
+  openRouterAllowFallbacks?: boolean;
   payloadTemplateJson?: string;
   workspaceStrategyType?: string;
   workspaceBaseRef?: string;

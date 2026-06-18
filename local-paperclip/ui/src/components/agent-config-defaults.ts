@@ -18,6 +18,8 @@ export const defaultCreateValues: CreateConfigValues = {
   envBindings: {},
   url: "",
   bootstrapPrompt: "",
+  openRouterProviderOnly: "",
+  openRouterAllowFallbacks: true,
   payloadTemplateJson: "",
   workspaceStrategyType: "project_primary",
   workspaceBaseRef: "",

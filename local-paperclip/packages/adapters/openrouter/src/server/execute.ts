@@ -143,6 +143,43 @@ function readUsage(value: OpenRouterResponse["usage"]) {
   };
 }
 
+function normalizeProviderList(value: unknown): string[] {
+  const parts = Array.isArray(value)
+    ? value
+    : typeof value === "string"
+      ? value.split(",")
+      : [];
+  return parts
+    .map((part) => (typeof part === "string" ? part.trim() : ""))
+    .filter(Boolean);
+}
+
+function normalizeOpenRouterProviderRouting(value: unknown): Record<string, unknown> | null {
+  const source = parseObject(value);
+  const provider: Record<string, unknown> = {};
+
+  for (const key of ["order", "only", "ignore"] as const) {
+    const list = normalizeProviderList(source[key]);
+    if (list.length > 0) provider[key] = list;
+  }
+
+  for (const key of ["allow_fallbacks", "require_parameters", "zdr"] as const) {
+    if (typeof source[key] === "boolean") provider[key] = source[key];
+  }
+
+  const dataCollection = asString(source.data_collection, "").trim();
+  if (dataCollection === "allow" || dataCollection === "deny") {
+    provider.data_collection = dataCollection;
+  }
+
+  const sort = asString(source.sort, "").trim();
+  if (sort === "price" || sort === "throughput" || sort === "latency") {
+    provider.sort = sort;
+  }
+
+  return Object.keys(provider).length > 0 ? provider : null;
+}
+
 export async function execute(
   ctx: AdapterExecutionContext,
 ): Promise<AdapterExecutionResult> {
@@ -241,6 +278,10 @@ export async function execute(
     messages,
     stream: false,
   };
+  const providerRouting = normalizeOpenRouterProviderRouting(configRecord.provider);
+  if (providerRouting) {
+    requestBody.provider = providerRouting;
+  }
   const maxCompletionTokens = asNumber(configRecord.maxCompletionTokens, 0);
   if (maxCompletionTokens > 0) {
     requestBody.max_completion_tokens = maxCompletionTokens;

@@ -8,12 +8,12 @@ It records deployable structure, plugin inventory, scheduled jobs, company-visib
 
 - Production host: `ubuntu-oc.tailbd4e1c.ts.net`
 - Compose directory: `/home/paperclip/apps/paperclip`
-- App image: `paperclip-app:v2026.529.0-vicarta.37-cost-efficiency-query-fix`
+- App image: `paperclip-app:v2026.529.0-vicarta.38-openrouter-provider-routing`
 - App health endpoint: `http://127.0.0.1:3200/api/health`
 - Runtime exposure: private/Tailscale for Paperclip admin; client portal is separate.
 - Database: `postgres:17-alpine`
 - Plugin status at last smoke: `14` loaded, `14` succeeded, `0` failed.
-- Current Git revision: `ee5db1a4`
+- Current Git revision: `local-openrouter-provider-routing`
 
 ## Files
 
