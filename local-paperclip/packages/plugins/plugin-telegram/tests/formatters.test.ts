@@ -113,6 +113,14 @@ describe("formatIssueDone", () => {
     expect(msg.text).not.toContain("\\.\\.\\.");
   });
 
+  it("does not truncate long owner-worthy completion comments", () => {
+    const longComment = `${Array(260).fill("детальний контекст").join(" ")} фінальний висновок`;
+    const msg = formatIssueDone(mockEvent({ comment: longComment }));
+    expect(msg.text).toContain("Що зроблено");
+    expect(msg.text).toContain("фінальний висновок");
+    expect(msg.text).not.toContain("\\.\\.\\.");
+  });
+
   it("omits comment section when no comment", () => {
     const msg = formatIssueDone(mockEvent());
     const lines = msg.text.split("\n").filter((l: string) => l.trim());
@@ -187,6 +195,35 @@ describe("formatIssueDone", () => {
     expect(msg.text).toContain("проблема більше не підтверджується");
     expect(msg.text).toContain("від вас зараз рішення не потрібне");
     expect(msg.text).toContain("https://astrogen\\.com\\.ua/blog/eksperty/koly\\-obyraty\\-eksperta\\-a\\-koly\\-dostatno\\-ai\\-analizu");
+    expect(msg.text).not.toContain("Що зроблено\\: Update");
+    expect(msg.options.disableWebPagePreview).toBe(true);
+  });
+
+  it("uses a detailed owner-facing GSC 404 URL fix explanation with validation steps", () => {
+    const msg = formatIssueDone(
+      mockEvent({
+        identifier: "AST-1472",
+        companyName: "Astrogen",
+        title: "Fix 404 for published Astrogen zodiac-sign article URL",
+        comment: [
+          "## Update",
+          "Для Google проблема була в тому, що потрібна сторінка відкривалася не за тим шляхом.",
+          "URL: https://astrogen.com.ua/blog/eksperty/znak-zodiaku-yak-vyznachyty-svii-znak/",
+          "Live verification: URL now returns 200 and the article is published.",
+        ].join("\n"),
+      }),
+      { baseUrl: "https://paperclip.example", issuePrefix: "AST" },
+    );
+
+    expect(msg.text).toContain("Виправлено доступність статті для Google");
+    expect(msg.text).toContain("https://astrogen\\.com\\.ua/blog/eksperty/znak\\-zodiaku\\-yak\\-vyznachyty\\-svii\\-znak/");
+    expect(msg.text).toContain("Перевірка URL\\-адреси");
+    expect(msg.text).toContain("Перевірити опубліковану URL");
+    expect(msg.text).toContain("Запросити індексацію");
+    expect(msg.text).toContain("Індексування");
+    expect(msg.text).toContain("Сторінки");
+    expect(msg.text).toContain("Не знайдено");
+    expect(msg.text).toContain("Перевірити виправлення");
     expect(msg.text).not.toContain("Що зроблено\\: Update");
     expect(msg.options.disableWebPagePreview).toBe(true);
   });

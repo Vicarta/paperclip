@@ -351,7 +351,6 @@ export function createPluginJobScheduler(
 
     let runId: string | undefined;
     const startedAt = Date.now();
-    let pausedBecauseMissingHandler = false;
 
     try {
       // 1. Create run record
@@ -417,39 +416,18 @@ export function createPluginJobScheduler(
           );
         }
       }
-
-      if (isMissingJobHandlerError(errorMessage)) {
-        pausedBecauseMissingHandler = true;
-        try {
-          await pauseJobBecauseHandlerMissing(job.id, startedAt);
-          jobLog.warn(
-            { runId, error: errorMessage },
-            "paused scheduled job because no handler is registered",
-          );
-        } catch (pauseErr) {
-          jobLog.error(
-            {
-              err: pauseErr instanceof Error ? pauseErr.message : String(pauseErr),
-            },
-            "failed to pause job after missing handler error",
-          );
-        }
-      }
     } finally {
       // Remove from active set
       activeJobs.delete(jobId);
 
-      // 5. Always advance the schedule pointer unless the job was auto-paused
-      // because the worker declared no handler for the declared job key.
-      if (!pausedBecauseMissingHandler) {
-        try {
-          await advanceSchedulePointer(job);
-        } catch (err) {
-          jobLog.error(
-            { err: err instanceof Error ? err.message : String(err) },
-            "failed to advance schedule pointer",
-          );
-        }
+      // 5. Always advance the schedule pointer (even on failure)
+      try {
+        await advanceSchedulePointer(job);
+      } catch (err) {
+        jobLog.error(
+          { err: err instanceof Error ? err.message : String(err) },
+          "failed to advance schedule pointer",
+        );
       }
     }
   }
@@ -574,23 +552,6 @@ export function createPluginJobScheduler(
           "failed to record manual job failure",
         );
       }
-
-      if (isMissingJobHandlerError(errorMessage)) {
-        try {
-          await pauseJobBecauseHandlerMissing(job.id, startedAt);
-          jobLog.warn(
-            { err: errorMessage },
-            "paused manual job because no handler is registered",
-          );
-        } catch (pauseErr) {
-          jobLog.error(
-            {
-              err: pauseErr instanceof Error ? pauseErr.message : String(pauseErr),
-            },
-            "failed to pause job after missing handler error",
-          );
-        }
-      }
     } finally {
       activeJobs.delete(jobId);
     }
@@ -623,26 +584,6 @@ export function createPluginJobScheduler(
     }
 
     await jobStore.updateRunTimestamps(job.id, now, nextRunAt);
-  }
-
-  function isMissingJobHandlerError(err: unknown): boolean {
-    const message = err instanceof Error ? err.message : String(err);
-    return message.startsWith('No handler registered for job "');
-  }
-
-  async function pauseJobBecauseHandlerMissing(
-    jobId: string,
-    lastRunAtMillis: number,
-  ): Promise<void> {
-    await db
-      .update(pluginJobs)
-      .set({
-        status: "paused",
-        lastRunAt: new Date(lastRunAtMillis),
-        nextRunAt: null,
-        updatedAt: new Date(),
-      })
-      .where(eq(pluginJobs.id, jobId));
   }
 
   /**

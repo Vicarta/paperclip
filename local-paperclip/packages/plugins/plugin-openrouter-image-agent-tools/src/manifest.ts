@@ -52,6 +52,40 @@ const manifest: PaperclipPluginManifestV1 = {
         description: "Default OpenRouter image model used when a tool call omits model.",
         default: DEFAULT_OPENROUTER_IMAGE_MODEL,
       },
+      allowModelOverride: {
+        type: "boolean",
+        title: "Allow Model Override",
+        description:
+          "When false, tool-call model parameters are ignored and the configured default model is always used.",
+        default: true,
+      },
+      maxImagesPerRequest: {
+        type: "number",
+        title: "Max Images Per Request",
+        description:
+          "Caps n/candidateCount so agents cannot accidentally create multiple paid image generations.",
+        default: 10,
+      },
+      defaultImageSize: {
+        type: "string",
+        title: "Default Image Size",
+        description:
+          "Default requested image size or CMS target dimensions when the tool call omits size/imageSize/resolution.",
+        default: "",
+      },
+      defaultAspectRatio: {
+        type: "string",
+        title: "Default Aspect Ratio",
+        description: "Default image aspect ratio when the tool call omits aspectRatio.",
+        default: "",
+      },
+      defaultOutputDir: {
+        type: "string",
+        title: "Default Output Directory",
+        description:
+          "Absolute directory where generated image files are written when the tool call has no execution workspace or outputDir.",
+        default: "",
+      },
       costAccountingMode: {
         type: "string",
         title: "Cost Accounting Mode",
@@ -93,6 +127,11 @@ const manifest: PaperclipPluginManifestV1 = {
           model: { type: "string" },
           aspectRatio: { type: "string" },
           imageSize: { type: "string" },
+          size: { type: "string" },
+          resolution: { type: "string" },
+          candidateCount: { type: "number" },
+          n: { type: "number" },
+          outputDir: { type: "string" },
           outputFormat: { type: "string", enum: ["png", "jpg", "jpeg", "webp"] },
           temperature: { type: "number" },
           topP: { type: "number" },

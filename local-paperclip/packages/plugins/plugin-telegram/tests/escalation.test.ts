@@ -114,6 +114,33 @@ describe("EscalationManager.create", () => {
     expect(sentMessages[0].options).toMatchObject({ parseMode: "MarkdownV2" });
   });
 
+  it("formats owner decision escalations in human-facing Ukrainian", async () => {
+    const manager = new EscalationManager();
+    const ctx = mockCtx();
+    await manager.create(ctx, "token", makeEvent({
+      reason: "explicit_request",
+      context: {
+        conversationHistory: [],
+        agentReasoning: "Потрібне рішення щодо AST-1436: що робити зі статтею, якщо поточний запит змішує знак зодіаку і калькулятор?",
+        suggestedActions: [
+          "Залишити поточну тему.",
+          "Уточнити тему без нового планування.",
+        ],
+        suggestedReply: "2",
+        confidenceScore: 1,
+      },
+    }), "esc-chat-1");
+
+    expect(sentMessages[0].text).toContain("Потрібна ваша увага");
+    expect(sentMessages[0].text).toContain("Ситуація");
+    expect(sentMessages[0].text).toContain("Варіанти");
+    expect(sentMessages[0].text).toContain("Рекомендована відповідь");
+    expect(sentMessages[0].text).not.toContain("Agent:");
+    expect(sentMessages[0].text).not.toContain("Suggested actions");
+    expect(sentMessages[0].options.inlineKeyboard?.[0]?.[0]?.text).toBe("Надіслати рекомендовану відповідь");
+    expect(sentMessages[0].options.inlineKeyboard?.[1]?.[0]?.text).toBe("Відповісти");
+  });
+
   it("includes confidence score percentage", async () => {
     const manager = new EscalationManager();
     const ctx = mockCtx();

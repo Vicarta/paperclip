@@ -196,10 +196,17 @@ const manifest: PaperclipPluginManifestV1 = {
       parametersSchema: sessionSchema,
     },
     {
+      name: TOOL_NAMES.getSessionQuality,
+      displayName: "CrawlObserver Session Quality",
+      description:
+        "Call `GET /api/sessions/{id}/quality`. Use this as the trust gate before using crawl data for SEO recommendations.",
+      parametersSchema: sessionSchema,
+    },
+    {
       name: TOOL_NAMES.listPages,
       displayName: "CrawlObserver List Pages",
       description:
-        "Call `GET /api/sessions/{id}/pages` with allowlisted pagination, sorting, and page filters.",
+        "Call `GET /api/sessions/{id}/pages` with allowlisted pagination, sorting, and page filters. Use `page_type=html` for SEO page inventory; rows include `internal_links_in` and `internal_links_out` when the CrawlObserver API provides them.",
       parametersSchema: looseObjectSchema,
     },
     {
@@ -251,6 +258,13 @@ const manifest: PaperclipPluginManifestV1 = {
       displayName: "CrawlObserver Resource Checks",
       description:
         "Call `GET /api/sessions/{id}/resource-checks` with allowlisted filters such as resource_type=image, status_code, url, is_internal, and error.",
+      parametersSchema: looseObjectSchema,
+    },
+    {
+      name: TOOL_NAMES.getPageIssues,
+      displayName: "CrawlObserver Page Issues",
+      description:
+        "Call `GET /api/sessions/{id}/page-issues` with allowlisted filters such as severity, issue_type, and url. Use for soft_404 and generic rendered/static metadata findings.",
       parametersSchema: looseObjectSchema,
     },
     {

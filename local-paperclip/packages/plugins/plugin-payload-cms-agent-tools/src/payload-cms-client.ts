@@ -63,6 +63,15 @@ export type PayloadCmsUploadMediaInput = PayloadCmsRequestInput & {
   sourceUrl?: string;
 };
 
+export type PayloadCmsUpdateMediaInput = PayloadCmsRequestInput & {
+  id: number | string;
+  alt?: string;
+  caption?: string | null;
+  credit?: string | null;
+  sourceUrl?: string | null;
+  fields?: Record<string, unknown>;
+};
+
 export type PayloadCmsEnsureTaxonomyTermInput = PayloadCmsRequestInput & {
   collection: string;
   title: string;
@@ -182,7 +191,7 @@ function taxonomyTitleField(collection: string) {
 function normalizeBlogPostRelationIds(value: unknown, fieldName: string) {
   if (value === undefined) return undefined;
   if (!Array.isArray(value)) throw new Error(`${fieldName} must be an array of numeric blog post ids`);
-  if (value.length > 3) throw new Error(`${fieldName} must contain at most 3 blog post ids`);
+  if (value.length !== 3) throw new Error(`${fieldName} must contain exactly 3 blog post ids when provided`);
 
   const ids = value.map((item, index) => {
     const raw = typeof item === "string" ? item.trim() : item;
@@ -382,8 +391,44 @@ function summarizeDoc(doc: unknown) {
     typeof record.title === "string" ? `title="${record.title}"` : null,
     typeof record.slug === "string" ? `slug=${record.slug}` : null,
     typeof record._status === "string" ? `status=${record._status}` : null,
+    typeof record.adminUrl === "string" ? `adminUrl=${record.adminUrl}` : null,
   ].filter(Boolean);
   return parts.length > 0 ? `Payload CMS document: ${parts.join(", ")}` : "Payload CMS returned a document.";
+}
+
+function payloadAdminBaseUrl(config: PayloadCmsPluginConfig) {
+  const url = new URL(normalizeBaseUrl(config));
+  let pathname = url.pathname.replace(/\/+$/, "");
+  if (pathname === "/api") pathname = "";
+  else if (pathname.endsWith("/api")) pathname = pathname.slice(0, -4);
+  return `${url.origin}${pathname}`;
+}
+
+function blogPostAdminUrl(config: PayloadCmsPluginConfig, id: unknown) {
+  if (id === undefined || id === null || String(id).trim().length === 0) return null;
+  return `${payloadAdminBaseUrl(config)}/admin/collections/${blogPostsCollection(config)}/${encodeURIComponent(String(id))}`;
+}
+
+function addBlogPostAdminUrl(config: PayloadCmsPluginConfig, value: unknown): unknown {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  const record = value as Record<string, unknown>;
+  const adminUrl = blogPostAdminUrl(config, record.id);
+  return adminUrl ? { ...record, adminUrl } : { ...record };
+}
+
+export function addBlogPostAdminUrls(config: PayloadCmsPluginConfig, value: unknown): unknown {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  const record = value as Record<string, unknown>;
+  return {
+    ...record,
+    ...(Array.isArray(record.docs) ? { docs: record.docs.map((doc) => addBlogPostAdminUrl(config, doc)) } : {}),
+    ...(record.doc !== undefined ? { doc: addBlogPostAdminUrl(config, record.doc) } : {}),
+    ...(
+      blogPostAdminUrl(config, record.id)
+        ? { adminUrl: blogPostAdminUrl(config, record.id) }
+        : {}
+    ),
+  };
 }
 
 function isPublishedOrApprovedBlogPost(doc: Record<string, unknown>) {
@@ -454,7 +499,8 @@ export async function findBlogPost(
       pathname: `/${collection}/${encodeURIComponent(String(input.id))}`,
       query: { depth: input.depth ?? 2, draft: input.draft ?? true },
     });
-    return { content: summarizeDoc(data), data };
+    const withAdminUrl = addBlogPostAdminUrls(input.config, data);
+    return { content: summarizeDoc(withAdminUrl), data: withAdminUrl };
   }
 
   const slug = readNonEmptyString(input.slug);
@@ -471,12 +517,13 @@ export async function findBlogPost(
   });
   const data = await readPayloadResponse(response) as { docs?: unknown[] };
   const first = Array.isArray(data.docs) ? data.docs[0] ?? null : null;
+  const withAdminUrl = addBlogPostAdminUrls(input.config, {
+    ...data,
+    doc: first,
+  }) as { doc?: unknown };
   return {
-    content: first ? summarizeDoc(first) : `No Payload blog post found for slug: ${slug}`,
-    data: {
-      ...data,
-      doc: first,
-    },
+    content: withAdminUrl.doc ? summarizeDoc(withAdminUrl.doc) : `No Payload blog post found for slug: ${slug}`,
+    data: withAdminUrl,
   };
 }
 
@@ -536,7 +583,7 @@ export async function listBlogPosts(
   return {
     content: `Payload CMS blog posts: ${totalDocs} matched, ${docs.length} returned.`,
     data: {
-      ...data,
+      ...addBlogPostAdminUrls(input.config, data) as Record<string, unknown>,
       filters: {
         status: input.status ?? "any",
         workflowStatus: workflowStatus ?? null,
@@ -957,6 +1004,36 @@ export async function uploadMedia(input: PayloadCmsUploadMediaInput) {
   };
 }
 
+export async function updateMedia(input: PayloadCmsUpdateMediaInput) {
+  const id = String(input.id ?? "").trim();
+  if (!id) throw new Error("Payload media id is required for update");
+
+  const fields: Record<string, unknown> = { ...(input.fields ?? {}) };
+  if (input.alt !== undefined) {
+    const alt = readNonEmptyString(input.alt);
+    if (!alt) throw new Error("Payload media alt text must be non-empty when provided");
+    fields.alt = alt;
+  }
+  if (input.caption !== undefined) fields.caption = readNonEmptyString(input.caption) ?? null;
+  if (input.credit !== undefined) fields.credit = readNonEmptyString(input.credit) ?? null;
+  if (input.sourceUrl !== undefined) fields.sourceUrl = readNonEmptyString(input.sourceUrl) ?? null;
+
+  if (Object.keys(fields).length === 0) {
+    throw new Error("Payload media update requires at least one field");
+  }
+
+  const data = await payloadRequest<unknown>({
+    ...input,
+    method: "PATCH",
+    pathname: `/${mediaCollection(input.config)}/${encodeURIComponent(id)}`,
+    body: fields,
+  });
+  return {
+    content: summarizeDoc(data),
+    data,
+  };
+}
+
 async function resolveBlogPostFields(input: PayloadCmsRequestInput & BlogPostFields) {
   const fields: BlogPostFields = { ...input };
   if (fields.category === undefined || fields.category === null || String(fields.category).trim().length === 0) {
@@ -1001,9 +1078,10 @@ export async function createBlogPostDraft(
     pathname: `/${blogPostsCollection(input.config)}`,
     body: buildBlogPostPayload(fields),
   });
+  const withAdminUrl = addBlogPostAdminUrls(input.config, data);
   return {
-    content: summarizeDoc(data),
-    data,
+    content: summarizeDoc(withAdminUrl),
+    data: withAdminUrl,
   };
 }
 
@@ -1035,9 +1113,10 @@ export async function updateBlogPostDraft(
       ...input.fields,
     })),
   });
+  const withAdminUrl = addBlogPostAdminUrls(input.config, data);
   return {
-    content: summarizeDoc(data),
-    data,
+    content: summarizeDoc(withAdminUrl),
+    data: withAdminUrl,
   };
 }
 

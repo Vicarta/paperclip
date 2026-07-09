@@ -52,7 +52,12 @@ import { shouldNotifyApproval } from "./approval-routing.js";
 import { buildPaperclipAuthHeaders, fetchPaperclipApi } from "./paperclip-api.js";
 import { deliverIssueAttachmentGroups } from "./attachment-delivery.js";
 import { recordTelegramDeliveryProof } from "./delivery-proof.js";
-import { shouldSuppressGenericIssueDoneNotification } from "./notification-policy.js";
+import {
+  shouldSuppressAgentErrorNotification,
+  shouldSuppressApprovalNotification,
+  shouldSuppressGenericIssueDoneNotification,
+  shouldSuppressHumanEscalationNotification,
+} from "./notification-policy.js";
 
 type TelegramConfig = {
   telegramBotTokenRef: string;
@@ -638,6 +643,26 @@ const plugin = definePlugin({
 
     if (config.notifyOnIssueDone) {
       const doneDedupe = makeUpdateDedupe();
+      const deliverDoneNotificationContract = async (event: PluginEvent) => {
+        if (!event.entityId) return false;
+        const chatId = await resolveChat(ctx, event.companyId, config.defaultChatId);
+        if (!chatId) return false;
+
+        const messageThreadId = await resolveNotificationThreadId(ctx, chatId, event, config.topicRouting);
+        const delivery = await deliverIssueAttachmentGroups({
+          ctx,
+          token,
+          event,
+          chatId,
+          messageThreadId,
+        });
+        return (
+          delivery.status === "sent" ||
+          delivery.status === "blocked" ||
+          (delivery.status === "skipped" && delivery.reason === "already_delivered")
+        );
+      };
+
       ctx.events.on("issue.updated", async (event: PluginEvent) => {
         const payload = event.payload as Record<string, unknown>;
         if (payload.status !== "done") return;
@@ -672,19 +697,7 @@ const plugin = definePlugin({
         const chatId = await resolveChat(ctx, event.companyId, config.defaultChatId);
         if (chatId) {
           try {
-            const messageThreadId = await resolveNotificationThreadId(ctx, chatId, event, config.topicRouting);
-            const delivery = await deliverIssueAttachmentGroups({
-              ctx,
-              token,
-              event,
-              chatId,
-              messageThreadId,
-            });
-            if (
-              delivery.status === "sent" ||
-              delivery.status === "blocked" ||
-              (delivery.status === "skipped" && delivery.reason === "already_delivered")
-            ) {
+            if (await deliverDoneNotificationContract(event)) {
               return;
             }
           } catch (err) {
@@ -697,6 +710,8 @@ const plugin = definePlugin({
         }
 
         if (shouldSuppressGenericIssueDoneNotification({
+          companyName: typeof payload.companyName === "string" ? payload.companyName : null,
+          issueIdentifier: typeof payload.identifier === "string" ? payload.identifier : null,
           title: typeof payload.title === "string" ? payload.title : null,
           comment: typeof payload.comment === "string" ? payload.comment : null,
         })) {
@@ -705,6 +720,36 @@ const plugin = definePlugin({
 
         await notify(event, formatIssueDone);
       });
+
+      const deliverDoneNotificationContractAfterDocumentChange = async (event: PluginEvent) => {
+        const payload = event.payload as Record<string, unknown>;
+        if (payload.key !== "notification-contract") return;
+        if (!event.entityId) return;
+
+        try {
+          const issue = await ctx.issues.get(event.entityId, event.companyId);
+          if (issue?.status !== "done") return;
+          await deliverDoneNotificationContract({
+            ...event,
+            eventType: "issue.updated",
+            payload: {
+              ...payload,
+              status: "done",
+              title: issue.title,
+              identifier: issue.identifier,
+            },
+          });
+        } catch (err) {
+          ctx.logger.error("Telegram notification contract delivery failed after document update", {
+            issueId: event.entityId,
+            companyId: event.companyId,
+            error: String(err),
+          });
+        }
+      };
+
+      ctx.events.on("issue.document.created", deliverDoneNotificationContractAfterDocumentChange);
+      ctx.events.on("issue.document.updated", deliverDoneNotificationContractAfterDocumentChange);
     }
 
     if (config.notifyOnIssueAssigned) {
@@ -783,6 +828,12 @@ const plugin = definePlugin({
             if (agent) payload.agentName = agent.name;
           } catch { /* best effort */ }
         }
+        if (!payload.companyName) {
+          try {
+            const company = await ctx.companies.get(event.companyId);
+            if (company?.name) payload.companyName = company.name;
+          } catch { /* best effort */ }
+        }
         // Build a meaningful title if still missing
         if (!payload.title || payload.title === "Approval Requested") {
           const approvalType = String(payload.type ?? "unknown").replace(/_/g, " ");
@@ -790,6 +841,28 @@ const plugin = definePlugin({
           payload.title = agentLabel
             ? `${approvalType} — ${agentLabel}`
             : approvalType;
+        }
+        const linkedIssueTexts = Array.isArray(payload.linkedIssues)
+          ? (payload.linkedIssues as Array<Record<string, unknown>>).map((issue) => [
+            issue.identifier,
+            issue.title,
+            issue.status,
+            issue.priority,
+          ].filter(Boolean).join(" "))
+          : [];
+        if (shouldSuppressApprovalNotification({
+          companyName: typeof payload.companyName === "string" ? payload.companyName : null,
+          title: typeof payload.title === "string" ? payload.title : null,
+          description: typeof payload.description === "string" ? payload.description : null,
+          approvalType: typeof payload.type === "string" ? payload.type : null,
+          linkedIssueTexts,
+        })) {
+          ctx.logger.info("Suppressed non-owner-facing Telegram approval notification", {
+            companyId: event.companyId,
+            approvalId: payload.approvalId ?? event.entityId,
+            title: payload.title,
+          });
+          return;
         }
         await notify(event, formatApprovalCreated, config.approvalsChatId, config.approvalsTopicId);
       });
@@ -822,6 +895,19 @@ const plugin = definePlugin({
           } catch { /* best effort */ }
         }
         const errorMessage = normalizeAgentErrorMessage(payload.error ?? payload.message);
+        if (shouldSuppressAgentErrorNotification({
+          companyName: typeof payload.companyName === "string" ? payload.companyName : null,
+          issueIdentifier: typeof payload.issueIdentifier === "string" ? payload.issueIdentifier : null,
+          issueTitle: typeof payload.issueTitle === "string" ? payload.issueTitle : null,
+          errorMessage,
+        })) {
+          ctx.logger.info("Suppressed non-actionable Telegram agent error notification", {
+            companyId: event.companyId,
+            agentId,
+            issueIdentifier: payload.issueIdentifier,
+          });
+          return;
+        }
         const dedupeKey = ["agent.run.failed", event.companyId, agentId, errorMessage].join(":");
         if (!agentErrorDedupe(dedupeKey)) return;
         await notify(event, formatAgentError, config.errorsChatId, config.errorsTopicId);
@@ -1055,6 +1141,33 @@ const plugin = definePlugin({
       if (!resolvedEscalationChatId) {
         ctx.logger.warn("Escalation received but no escalationChatId configured");
         return { error: "No escalation channel configured" };
+      }
+
+      let escalationCompanyName: string | null = null;
+      try {
+        const company = await ctx.companies.get(runCtx.companyId);
+        escalationCompanyName = company?.name ?? null;
+      } catch { /* best effort */ }
+
+      if (shouldSuppressHumanEscalationNotification({
+        companyName: escalationCompanyName,
+        reason: typeof p.reason === "string" ? p.reason : null,
+        conversationSummary: typeof p.conversationSummary === "string" ? p.conversationSummary : null,
+        suggestedActions: Array.isArray(p.suggestedActions)
+          ? p.suggestedActions.map((item) => String(item))
+          : [],
+        suggestedReply: typeof p.suggestedReply === "string" ? p.suggestedReply : null,
+      })) {
+        ctx.logger.info("Suppressed non-owner-facing Telegram human escalation", {
+          companyId: runCtx.companyId,
+          agentId: runCtx.agentId,
+          reason: p.reason,
+        });
+        return {
+          ok: true,
+          suppressed: true,
+          reason: "non_owner_facing_technical_escalation",
+        };
       }
 
       const escalationEvent: EscalationEvent = {

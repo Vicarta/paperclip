@@ -9,13 +9,14 @@ function splitProviderList(value: unknown): string[] {
 }
 
 export function buildOpenRouterConfig(values: CreateConfigValues): Record<string, unknown> {
+  const schemaValues = values.adapterSchemaValues ?? {};
   const config: Record<string, unknown> = {};
   if (values.instructionsFilePath) config.instructionsFilePath = values.instructionsFilePath;
   if (values.promptTemplate) config.promptTemplate = values.promptTemplate;
   if (values.bootstrapPrompt) config.bootstrapPromptTemplate = values.bootstrapPrompt;
   if (values.model) config.model = values.model;
-  const providerOnly = splitProviderList(values.openRouterProviderOnly);
-  const fallbackExplicitlyDisabled = values.openRouterAllowFallbacks === false;
+  const providerOnly = splitProviderList(schemaValues.openRouterProviderOnly);
+  const fallbackExplicitlyDisabled = schemaValues.openRouterAllowFallbacks === false;
   if (providerOnly.length > 0 || fallbackExplicitlyDisabled) {
     config.provider = {
       ...(providerOnly.length > 0 ? { only: providerOnly } : {}),

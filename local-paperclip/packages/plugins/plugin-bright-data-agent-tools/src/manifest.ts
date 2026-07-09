@@ -194,7 +194,6 @@ const manifest: PaperclipPluginManifestV1 = {
       name: TOOL_NAMES.runDatasetRequest,
       displayName: "Bright Data Run Dataset Request",
       description: "Trigger a Bright Data dataset job, poll until completion or timeout, and optionally download the snapshot.",
-      executionTimeoutMs: 180000,
       parametersSchema: {
         type: "object",
         properties: {
@@ -228,7 +227,6 @@ const manifest: PaperclipPluginManifestV1 = {
       name: TOOL_NAMES.resolveInstagramAccountPostSet,
       displayName: "Bright Data Resolve Instagram Account Post Set",
       description: "Resolve a full canonical Instagram account post set and detailed records through the validated Bright Data composite recipe.",
-      executionTimeoutMs: 180000,
       parametersSchema: {
         type: "object",
         properties: {

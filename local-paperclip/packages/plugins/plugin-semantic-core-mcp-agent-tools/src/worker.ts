@@ -212,7 +212,8 @@ async function maybeRecordImportCost(input: {
       ? cost.total_estimated
       : 0;
   const costCents = Math.max(0, Math.round(total * 100));
-  if (costCents === 0) return;
+  const amountMicros = Math.max(0, Math.round(total * 1_000_000));
+  if (amountMicros === 0) return;
 
   await input.ctx.costs.createEvent({
     companyId: input.runCtx.companyId,
@@ -230,6 +231,7 @@ async function maybeRecordImportCost(input: {
     cachedInputTokens: 0,
     outputTokens: 0,
     costCents,
+    amountMicros,
     occurredAt: nowIso(),
   });
   await input.ctx.state.set(

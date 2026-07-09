@@ -70,6 +70,7 @@ const PAGE_FILTER_FIELDS = new Set([
   "status_code",
   "title",
   "content_type",
+  "page_type",
   "depth",
   "word_count",
   "is_indexable",
@@ -102,6 +103,16 @@ const RESOURCE_FILTER_FIELDS = new Set([
   "url",
   "is_internal",
   "error",
+]);
+
+const PAGE_ISSUE_FILTER_FIELDS = new Set([
+  "limit",
+  "offset",
+  "sort",
+  "order",
+  "severity",
+  "issue_type",
+  "url",
 ]);
 
 const SESSION_FILTER_FIELDS = new Set([
@@ -369,6 +380,17 @@ export function prepareResourceChecksQuery(input: {
   return cleanQuery(
     readRecord(input.params),
     RESOURCE_FILTER_FIELDS,
+    normalizeConfig(input.config).maxPageLimit,
+  );
+}
+
+export function preparePageIssuesQuery(input: {
+  params: unknown;
+  config: CrawlObserverPluginConfig;
+}) {
+  return cleanQuery(
+    readRecord(input.params),
+    PAGE_ISSUE_FILTER_FIELDS,
     normalizeConfig(input.config).maxPageLimit,
   );
 }

@@ -70,12 +70,75 @@ const REASON_LABELS: Record<EscalationReason, string> = {
   unknown_intent: "Unknown Intent",
 };
 
+const OWNER_REASON_LABELS: Record<EscalationReason, string> = {
+  low_confidence: "потрібне уточнення",
+  explicit_request: "потрібне ваше рішення",
+  policy_violation: "потрібне рішення через обмеження політики",
+  unknown_intent: "потрібне уточнення наміру",
+};
+
 function esc(s: string): string {
   return escapeMarkdownV2(s);
 }
 
 function extractIssueIdentifier(text: string): string | undefined {
   return text.match(/\b[A-Z][A-Z0-9]{1,12}-\d+\b/)?.[0];
+}
+
+function normalizeOwnerText(value: string | undefined, maxLength: number): string {
+  return truncateAtWord((value ?? "").replace(/\s+/g, " ").trim(), maxLength);
+}
+
+function looksLikeOwnerDecision(event: EscalationEvent): boolean {
+  const haystack = [
+    event.context.agentReasoning,
+    event.context.suggestedReply,
+    ...event.context.suggestedActions,
+  ].join("\n");
+  return /потрібне рішення|потрібна відповідь|що робити|варіанти|owner decision|human decision|business decision/i
+    .test(haystack);
+}
+
+function buildOwnerFacingEscalationLines(event: EscalationEvent): string[] {
+  const issueIdentifier = extractIssueIdentifier(event.context.agentReasoning ?? "");
+  const reasonLabel = OWNER_REASON_LABELS[event.reason] ?? "потрібне рішення";
+  const summary = normalizeOwnerText(event.context.agentReasoning, 1400);
+  const suggestedReply = normalizeOwnerText(event.context.suggestedReply, 500);
+  const actions = event.context.suggestedActions
+    .map((action) => normalizeOwnerText(action, 500))
+    .filter(Boolean)
+    .slice(0, 6);
+
+  const lines: string[] = [
+    `${esc("\u26a0\ufe0f")} *Потрібна ваша увага*`,
+    "",
+    `*Причина:* ${esc(reasonLabel)}\\.`,
+  ];
+
+  if (issueIdentifier) lines.push(`*Задача:* ${esc(issueIdentifier)}`);
+  if (summary) {
+    lines.push("");
+    lines.push("*Ситуація:*");
+    lines.push(esc(summary));
+  }
+
+  if (actions.length > 0) {
+    lines.push("");
+    lines.push("*Варіанти:*");
+    actions.forEach((action, index) => {
+      lines.push(`${index + 1}\\. ${esc(action)}`);
+    });
+  }
+
+  if (suggestedReply) {
+    lines.push("");
+    lines.push(`*Рекомендована відповідь:* ${esc(suggestedReply)}`);
+  }
+
+  lines.push("");
+  lines.push(esc("Як відповісти: натисніть Reply і напишіть номер варіанта або своє рішення. Якщо контексту недостатньо, напишіть питання."));
+
+  return lines;
 }
 
 export class EscalationManager {
@@ -90,40 +153,48 @@ export class EscalationManager {
       ? ` \\(${esc(String(Math.round(event.context.confidenceScore * 100)))}%\\)`
       : "";
 
-    const lines: string[] = [
-      `${esc("\u26a0\ufe0f")} *Escalation* \\- ${esc(reasonLabel)}${confidence}`,
-      "",
-      `*Agent:* ${esc(event.agentId)}`,
-      `*Reason:* ${esc(event.context.agentReasoning ? truncateAtWord(event.context.agentReasoning, 500) : "No details provided")}`,
-    ];
+    const ownerDecisionMessage = looksLikeOwnerDecision(event);
+    const lines: string[] = ownerDecisionMessage
+      ? buildOwnerFacingEscalationLines(event)
+      : [
+        `${esc("\u26a0\ufe0f")} *Escalation* \\- ${esc(reasonLabel)}${confidence}`,
+        "",
+        `*Agent:* ${esc(event.agentId)}`,
+        `*Reason:* ${esc(event.context.agentReasoning ? truncateAtWord(event.context.agentReasoning, 500) : "No details provided")}`,
+      ];
 
-    if (event.context.suggestedActions.length > 0) {
-      lines.push("");
-      lines.push("*Suggested actions:*");
-      for (const action of event.context.suggestedActions.slice(0, 5)) {
-        lines.push(`  ${esc("-")} ${esc(action)}`);
+    if (!ownerDecisionMessage) {
+      if (event.context.suggestedActions.length > 0) {
+        lines.push("");
+        lines.push("*Suggested actions:*");
+        for (const action of event.context.suggestedActions.slice(0, 5)) {
+          lines.push(`  ${esc("-")} ${esc(action)}`);
+        }
       }
-    }
 
-    if (event.context.suggestedReply) {
+      if (event.context.suggestedReply) {
+        lines.push("");
+        lines.push("*Suggested reply:*");
+        lines.push(`${esc(">")} ${esc(truncateAtWord(event.context.suggestedReply, 300))}`);
+      }
+
       lines.push("");
-      lines.push("*Suggested reply:*");
-      lines.push(`${esc(">")} ${esc(truncateAtWord(event.context.suggestedReply, 300))}`);
+      lines.push(`ID: \`${esc(event.escalationId)}\``);
     }
-
-    lines.push("");
-    lines.push(`ID: \`${esc(event.escalationId)}\``);
 
     const buttons = [];
     if (event.context.suggestedReply) {
       buttons.push([
-        { text: "Send Suggested Reply", callback_data: `esc_suggested_${event.escalationId}` },
+        {
+          text: ownerDecisionMessage ? "Надіслати рекомендовану відповідь" : "Send Suggested Reply",
+          callback_data: `esc_suggested_${event.escalationId}`,
+        },
       ]);
     }
     buttons.push([
-      { text: "Reply", callback_data: `esc_reply_${event.escalationId}` },
-      { text: "Override", callback_data: `esc_override_${event.escalationId}` },
-      { text: "Dismiss", callback_data: `esc_dismiss_${event.escalationId}` },
+      { text: ownerDecisionMessage ? "Відповісти" : "Reply", callback_data: `esc_reply_${event.escalationId}` },
+      { text: ownerDecisionMessage ? "Своя відповідь" : "Override", callback_data: `esc_override_${event.escalationId}` },
+      { text: ownerDecisionMessage ? "Не зараз" : "Dismiss", callback_data: `esc_dismiss_${event.escalationId}` },
     ]);
 
     const messageId = await sendMessage(ctx, token, escalationChatId, lines.join("\n"), {

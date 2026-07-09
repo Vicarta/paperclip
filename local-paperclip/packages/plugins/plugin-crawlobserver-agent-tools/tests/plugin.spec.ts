@@ -5,6 +5,7 @@ import plugin from "../src/worker.js";
 import { TOOL_NAMES } from "../src/constants.js";
 import {
   callCrawlObserverApi,
+  preparePagesQuery,
   prepareReadEndpointRequest,
   prepareStartCrawlBody,
 } from "../src/crawlobserver-client.js";
@@ -173,6 +174,138 @@ describe("plugin-crawlobserver-agent-tools", () => {
     );
   });
 
+  it("registers page-issues with severity and issue type filters", async () => {
+    const harness = createTestHarness({
+      manifest,
+      config: {
+        crawlObserverApiKeySecretRef: "secret-co",
+        maxPageLimit: 100,
+      },
+    });
+    await plugin.definition.setup(harness.ctx);
+
+    callCrawlObserverApiMock.mockResolvedValueOnce({
+      content: "{\"items\":[]}",
+      data: { items: [] },
+    });
+
+    await harness.executeTool(TOOL_NAMES.getPageIssues, {
+      sessionId: "session-1",
+      severity: "error",
+      issue_type: "soft_404",
+      url: "/blog/",
+      limit: 250,
+      offset: 0,
+      ignored: "nope",
+    });
+
+    expect(callCrawlObserverApiMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        request: {
+          method: "GET",
+          path: "/api/sessions/session-1/page-issues",
+          query: {
+            severity: "error",
+            issue_type: "soft_404",
+            url: "/blog/",
+            limit: 100,
+            offset: 0,
+          },
+        },
+      }),
+    );
+  });
+
+  it("registers session-quality as the SEO trust gate endpoint", async () => {
+    const harness = createTestHarness({
+      manifest,
+      config: {
+        crawlObserverApiKeySecretRef: "secret-co",
+      },
+    });
+    await plugin.definition.setup(harness.ctx);
+
+    callCrawlObserverApiMock.mockResolvedValueOnce({
+      content: "{\"trusted\":true,\"status\":\"trusted\"}",
+      data: { trusted: true, status: "trusted" },
+    });
+
+    const result = await harness.executeTool(TOOL_NAMES.getSessionQuality, {
+      sessionId: "session-1",
+    });
+
+    expect(callCrawlObserverApiMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        request: {
+          method: "GET",
+          path: "/api/sessions/session-1/quality",
+        },
+      }),
+    );
+    expect(result.data).toEqual({ trusted: true, status: "trusted" });
+  });
+
+  it("passes CrawlObserver HTML page filters and page_type sorting", async () => {
+    expect(
+      preparePagesQuery({
+        params: {
+          page_type: "html",
+          sort: "page_type",
+          order: "asc",
+          internal_links_in: 10,
+          limit: 250,
+          offset: 0,
+        },
+        config: { maxPageLimit: 100 },
+      }),
+    ).toEqual({
+      page_type: "html",
+      sort: "page_type",
+      order: "asc",
+      limit: 100,
+      offset: 0,
+    });
+
+    const harness = createTestHarness({
+      manifest,
+      config: {
+        crawlObserverApiKeySecretRef: "secret-co",
+        maxPageLimit: 100,
+      },
+    });
+    await plugin.definition.setup(harness.ctx);
+
+    callCrawlObserverApiMock.mockResolvedValueOnce({
+      content: "{\"items\":[]}",
+      data: { items: [] },
+    });
+
+    await harness.executeTool(TOOL_NAMES.listPages, {
+      sessionId: "session-1",
+      page_type: "html",
+      sort: "page_type",
+      order: "asc",
+      limit: 250,
+      offset: 0,
+    });
+
+    expect(callCrawlObserverApiMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        request: {
+          method: "GET",
+          path: "/api/sessions/session-1/pages",
+          query: {
+            page_type: "html",
+            sort: "page_type",
+            order: "asc",
+            limit: 100,
+            offset: 0,
+          },
+        },
+      }),
+    );
+  });
+
   it("allows only allowlisted read endpoints", () => {
     expect(
       prepareReadEndpointRequest({
@@ -187,6 +320,45 @@ describe("plugin-crawlobserver-agent-tools", () => {
       method: "GET",
       path: "/api/sessions/session-1/pages",
       query: { limit: 100, status_code: ">=400" },
+    });
+
+    expect(
+      prepareReadEndpointRequest({
+        params: {
+          endpoint: "/api/sessions/{id}/quality",
+          sessionId: "session-1",
+        },
+        config: {},
+      }),
+    ).toEqual({
+      method: "GET",
+      path: "/api/sessions/session-1/quality",
+      query: {},
+    });
+
+    expect(
+      prepareReadEndpointRequest({
+        params: {
+          endpoint: "/api/sessions/{id}/page-issues",
+          sessionId: "session-1",
+          query: {
+            severity: "warning",
+            issue_type: "generic_static_metadata",
+            url: "/blog/",
+            limit: 250,
+          },
+        },
+        config: { maxPageLimit: 100 },
+      }),
+    ).toEqual({
+      method: "GET",
+      path: "/api/sessions/session-1/page-issues",
+      query: {
+        severity: "warning",
+        issue_type: "generic_static_metadata",
+        url: "/blog/",
+        limit: 100,
+      },
     });
 
     expect(() =>

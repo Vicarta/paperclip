@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import type { PaperclipConfig } from "../config/schema.js";
+import { defaultRuntimeRetentionConfig, type PaperclipConfig } from "../config/schema.js";
 import { addAllowedHostname } from "../commands/allowed-hostname.js";
 
 function createTempConfigPath() {
@@ -28,6 +28,7 @@ function writeBaseConfig(configPath: string) {
         dir: "/tmp/paperclip-backups",
       },
     },
+    runtimeRetention: defaultRuntimeRetentionConfig(),
     logging: {
       mode: "file",
       logDir: "/tmp/paperclip-logs",

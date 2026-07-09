@@ -46,6 +46,10 @@ type LoopConfig = {
   detailedReportFromEmail: string;
   resendApiKeySecretRef: string;
   detailedReportFallback: string;
+  articleCadenceEnabled: boolean;
+  articleCadenceTargetPerDay: number;
+  articleCadenceTimezone: string;
+  articleCadencePreferredTimes: string;
   automaticFindingTaskCreationEnabled: boolean;
   automaticFindingTaskAgent: string;
   automaticFindingTaskMaxPerRun: number;
@@ -1098,6 +1102,10 @@ const plugin = definePlugin({
           weeklyReportTimezone: config.weeklyReportTimezone || null,
           telegramReportMode: config.telegramReportMode || null,
           detailedReportChannel: config.detailedReportChannel || null,
+          articleCadenceEnabled: config.articleCadenceEnabled !== false,
+          articleCadenceTargetPerDay: Number(config.articleCadenceTargetPerDay) || DEFAULT_CONFIG.articleCadenceTargetPerDay,
+          articleCadenceTimezone: config.articleCadenceTimezone || null,
+          articleCadencePreferredTimes: config.articleCadencePreferredTimes || null,
         },
       };
     });

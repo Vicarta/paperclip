@@ -1,4 +1,5 @@
 import { readConfigFile } from "./config-file.js";
+import { execFileSync } from "node:child_process";
 import { existsSync, realpathSync } from "node:fs";
 import { resolve } from "node:path";
 import { config as loadDotenv } from "dotenv";
@@ -6,15 +7,20 @@ import { resolvePaperclipEnvPath } from "./paths.js";
 import { maybeRepairLegacyWorktreeConfigAndEnvFiles } from "./worktree-config.js";
 import {
   AUTH_BASE_URL_MODES,
+  BIND_MODES,
   DEPLOYMENT_EXPOSURES,
   DEPLOYMENT_MODES,
   SECRET_PROVIDERS,
   STORAGE_PROVIDERS,
+  type BindMode,
   type AuthBaseUrlMode,
   type DeploymentExposure,
   type DeploymentMode,
   type SecretProvider,
   type StorageProvider,
+  inferBindModeFromHost,
+  resolveRuntimeBind,
+  validateConfiguredBindMode,
 } from "@paperclipai/shared";
 import {
   resolveDefaultBackupDir,
@@ -39,11 +45,15 @@ if (!isSameFile && existsSync(CWD_ENV_PATH)) {
 
 maybeRepairLegacyWorktreeConfigAndEnvFiles();
 
+const TAILSCALE_DETECT_TIMEOUT_MS = 3000;
+
 type DatabaseMode = "embedded-postgres" | "postgres";
 
 export interface Config {
   deploymentMode: DeploymentMode;
   deploymentExposure: DeploymentExposure;
+  bind: BindMode;
+  customBindHost: string | undefined;
   host: string;
   port: number;
   allowedHostnames: string[];
@@ -52,12 +62,18 @@ export interface Config {
   authDisableSignUp: boolean;
   databaseMode: DatabaseMode;
   databaseUrl: string | undefined;
+  databaseMigrationUrl: string | undefined;
   embeddedPostgresDataDir: string;
   embeddedPostgresPort: number;
   databaseBackupEnabled: boolean;
   databaseBackupIntervalMinutes: number;
   databaseBackupRetentionDays: number;
   databaseBackupDir: string;
+  runtimeRetentionEnabled: boolean;
+  runtimeRetentionDays: number;
+  runLogRetentionDays: number;
+  runLogCompressAfterHours: number;
+  costRollupEnabled: boolean;
   serveUi: boolean;
   uiDevMiddleware: boolean;
   secretsProvider: SecretProvider;
@@ -74,9 +90,27 @@ export interface Config {
   feedbackExportBackendToken: string | undefined;
   heartbeatSchedulerEnabled: boolean;
   heartbeatSchedulerIntervalMs: number;
-  heartbeatOrphanedRunStaleThresholdMs: number;
   companyDeletionEnabled: boolean;
   telemetryEnabled: boolean;
+}
+
+function detectTailnetBindHost(): string | undefined {
+  const explicit = process.env.PAPERCLIP_TAILNET_BIND_HOST?.trim();
+  if (explicit) return explicit;
+
+  try {
+    const stdout = execFileSync("tailscale", ["ip", "-4"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+      timeout: TAILSCALE_DETECT_TIMEOUT_MS,
+    });
+    return stdout
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .find(Boolean);
+  } catch {
+    return undefined;
+  }
 }
 
 export function loadConfig(): Config {
@@ -89,13 +123,9 @@ export function loadConfig(): Config {
       ? fileConfig?.database.connectionString
       : undefined;
   const fileDatabaseBackup = fileConfig?.database.backup;
+  const fileRuntimeRetention = fileConfig?.runtimeRetention;
   const fileSecrets = fileConfig?.secrets;
   const fileStorage = fileConfig?.storage;
-  const strictModeFromEnv = process.env.PAPERCLIP_SECRETS_STRICT_MODE;
-  const secretsStrictMode =
-    strictModeFromEnv !== undefined
-      ? strictModeFromEnv === "true"
-      : (fileSecrets?.strictMode ?? false);
 
   const providerFromEnvRaw = process.env.PAPERCLIP_SECRETS_PROVIDER;
   const providerFromEnv =
@@ -139,6 +169,11 @@ export function loadConfig(): Config {
       ? (deploymentModeFromEnvRaw as DeploymentMode)
       : null;
   const deploymentMode: DeploymentMode = deploymentModeFromEnv ?? fileConfig?.server.deploymentMode ?? "local_trusted";
+  const strictModeFromEnv = process.env.PAPERCLIP_SECRETS_STRICT_MODE;
+  const secretsStrictMode =
+    strictModeFromEnv !== undefined
+      ? strictModeFromEnv === "true"
+      : (fileSecrets?.strictMode ?? deploymentMode === "authenticated");
   const deploymentExposureFromEnvRaw = process.env.PAPERCLIP_DEPLOYMENT_EXPOSURE;
   const deploymentExposureFromEnv =
     deploymentExposureFromEnvRaw &&
@@ -149,6 +184,18 @@ export function loadConfig(): Config {
     deploymentMode === "local_trusted"
       ? "private"
       : (deploymentExposureFromEnv ?? fileConfig?.server.exposure ?? "private");
+  const bindFromEnvRaw = process.env.PAPERCLIP_BIND;
+  const bindFromEnv =
+    bindFromEnvRaw && BIND_MODES.includes(bindFromEnvRaw as BindMode)
+      ? (bindFromEnvRaw as BindMode)
+      : null;
+  const configuredHost = process.env.HOST ?? fileConfig?.server.host ?? "127.0.0.1";
+  const tailnetBindHost = detectTailnetBindHost();
+  const bind =
+    bindFromEnv ??
+    fileConfig?.server.bind ??
+    inferBindModeFromHost(configuredHost, { tailnetBindHost });
+  const customBindHost = process.env.PAPERCLIP_BIND_HOST ?? fileConfig?.server.customBindHost;
   const authBaseUrlModeFromEnvRaw = process.env.PAPERCLIP_AUTH_BASE_URL_MODE;
   const authBaseUrlModeFromEnv =
     authBaseUrlModeFromEnvRaw &&
@@ -211,24 +258,71 @@ export function loadConfig(): Config {
     1,
     Number(process.env.PAPERCLIP_DB_BACKUP_INTERVAL_MINUTES) ||
       fileDatabaseBackup?.intervalMinutes ||
-      60,
+      720,
   );
   const databaseBackupRetentionDays = Math.max(
     1,
     Number(process.env.PAPERCLIP_DB_BACKUP_RETENTION_DAYS) ||
       fileDatabaseBackup?.retentionDays ||
-      30,
+      5,
   );
   const databaseBackupDir = resolveHomeAwarePath(
     process.env.PAPERCLIP_DB_BACKUP_DIR ??
       fileDatabaseBackup?.dir ??
       resolveDefaultBackupDir(),
   );
+  const bindValidationErrors = validateConfiguredBindMode({
+    deploymentMode,
+    deploymentExposure,
+    bind,
+    host: configuredHost,
+    customBindHost,
+  });
+  if (bindValidationErrors.length > 0) {
+    throw new Error(bindValidationErrors[0]);
+  }
+  const resolvedBind = resolveRuntimeBind({
+    bind,
+    host: configuredHost,
+    customBindHost,
+    tailnetBindHost,
+  });
+  if (resolvedBind.errors.length > 0) {
+    throw new Error(resolvedBind.errors[0]);
+  }
+  const runtimeRetentionEnabled =
+    process.env.PAPERCLIP_RUNTIME_RETENTION_ENABLED !== undefined
+      ? process.env.PAPERCLIP_RUNTIME_RETENTION_ENABLED === "true"
+      : (fileRuntimeRetention?.enabled ?? true);
+  const runtimeRetentionDays = Math.max(
+    1,
+    Number(process.env.PAPERCLIP_RUNTIME_RETENTION_DAYS) ||
+      fileRuntimeRetention?.retentionDays ||
+      5,
+  );
+  const runLogRetentionDays = Math.max(
+    1,
+    Number(process.env.PAPERCLIP_RUN_LOG_RETENTION_DAYS) ||
+      fileRuntimeRetention?.runLogRetentionDays ||
+      runtimeRetentionDays,
+  );
+  const runLogCompressAfterHours = Math.max(
+    1,
+    Number(process.env.PAPERCLIP_RUN_LOG_COMPRESS_AFTER_HOURS) ||
+      fileRuntimeRetention?.runLogCompressAfterHours ||
+      24,
+  );
+  const costRollupEnabled =
+    process.env.PAPERCLIP_COST_ROLLUP_ENABLED !== undefined
+      ? process.env.PAPERCLIP_COST_ROLLUP_ENABLED === "true"
+      : (fileRuntimeRetention?.costRollupEnabled ?? true);
 
   return {
     deploymentMode,
     deploymentExposure,
-    host: process.env.HOST ?? fileConfig?.server.host ?? "127.0.0.1",
+    bind: resolvedBind.bind,
+    customBindHost: resolvedBind.customBindHost,
+    host: resolvedBind.host,
     port: Number(process.env.PORT) || fileConfig?.server.port || 3100,
     allowedHostnames,
     authBaseUrlMode,
@@ -236,6 +330,7 @@ export function loadConfig(): Config {
     authDisableSignUp,
     databaseMode: fileDatabaseMode,
     databaseUrl: process.env.DATABASE_URL ?? fileDbUrl,
+    databaseMigrationUrl: process.env.DATABASE_MIGRATION_URL,
     embeddedPostgresDataDir: resolveHomeAwarePath(
       fileConfig?.database.embeddedPostgresDataDir ?? resolveDefaultEmbeddedPostgresDir(),
     ),
@@ -244,6 +339,11 @@ export function loadConfig(): Config {
     databaseBackupIntervalMinutes,
     databaseBackupRetentionDays,
     databaseBackupDir,
+    runtimeRetentionEnabled,
+    runtimeRetentionDays,
+    runLogRetentionDays,
+    runLogCompressAfterHours,
+    costRollupEnabled,
     serveUi:
       process.env.SERVE_UI !== undefined
         ? process.env.SERVE_UI === "true"
@@ -268,10 +368,6 @@ export function loadConfig(): Config {
     feedbackExportBackendToken,
     heartbeatSchedulerEnabled: process.env.HEARTBEAT_SCHEDULER_ENABLED !== "false",
     heartbeatSchedulerIntervalMs: Math.max(10000, Number(process.env.HEARTBEAT_SCHEDULER_INTERVAL_MS) || 30000),
-    heartbeatOrphanedRunStaleThresholdMs: Math.max(
-      10000,
-      Number(process.env.PAPERCLIP_HEARTBEAT_ORPHANED_RUN_STALE_THRESHOLD_MS) || 60000,
-    ),
     companyDeletionEnabled,
     telemetryEnabled: fileConfig?.telemetry?.enabled ?? true,
   };

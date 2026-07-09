@@ -91,6 +91,34 @@ describe("plugin-exa-agent-tools", () => {
     });
   });
 
+  it("emits amount micros for sub-cent estimated crawl costs", async () => {
+    const harness = createTestHarness({
+      manifest,
+      config: {
+        exaApiKeySecretRef: "secret-1",
+        costAccountingMode: "estimated_per_request",
+        estimatedCrawlUrlCostUsd: 0.001,
+      },
+    });
+    await plugin.definition.setup(harness.ctx);
+
+    callExaMcpToolMock.mockResolvedValueOnce({
+      isError: false,
+      content: "Fetched page",
+      data: { content: [{ type: "text", text: "Fetched page" }], structuredContent: null },
+    });
+
+    await harness.executeTool(TOOL_NAMES.crawlUrl, { url: "https://example.com" });
+
+    expect(harness.costs).toHaveLength(1);
+    expect(harness.costs[0]).toMatchObject({
+      provider: "exa.ai",
+      billingCode: "exa:crawl-url",
+      costCents: 0,
+      amountMicros: 1000,
+    });
+  });
+
   it("returns tool errors cleanly", async () => {
     const harness = createTestHarness({ manifest });
     await plugin.definition.setup(harness.ctx);

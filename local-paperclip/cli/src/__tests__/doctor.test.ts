@@ -4,7 +4,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { doctor } from "../commands/doctor.js";
 import { writeConfig } from "../config/store.js";
-import type { PaperclipConfig } from "../config/schema.js";
+import { defaultRuntimeRetentionConfig, type PaperclipConfig } from "../config/schema.js";
 
 const ORIGINAL_ENV = { ...process.env };
 
@@ -30,6 +30,7 @@ function createTempConfig(): string {
         dir: path.join(runtimeRoot, "backups"),
       },
     },
+    runtimeRetention: defaultRuntimeRetentionConfig(),
     logging: {
       mode: "file",
       logDir: path.join(runtimeRoot, "logs"),

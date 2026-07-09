@@ -4,6 +4,8 @@ import pino from "pino";
 import { pinoHttp } from "pino-http";
 import { readConfigFile } from "../config-file.js";
 import { resolveDefaultLogsDir, resolveHomeAwarePath } from "../home-paths.js";
+import { shouldSilenceHttpSuccessLog } from "./http-log-policy.js";
+import { redactSensitive } from "./redact-sensitive.js";
 
 function resolveServerLogDir(): string {
   const envOverride = process.env.PAPERCLIP_LOG_DIR?.trim();
@@ -21,24 +23,14 @@ fs.mkdirSync(logDir, { recursive: true });
 const logFile = path.join(logDir, "server.log");
 
 const sharedOpts = {
-  translateTime: "HH:MM:ss",
+  translateTime: "SYS:HH:MM:ss",
   ignore: "pid,hostname",
   singleLine: true,
 };
 
-function isNoisySuccessRoute(url: string) {
-  return (
-    /\/heartbeat-runs\/[^/]+\/log(?:\?|$)/.test(url) ||
-    /\/workspace-operations\/[^/]+\/log(?:\?|$)/.test(url) ||
-    /\/companies\/[^/]+\/live-runs(?:\?|$)/.test(url) ||
-    /\/companies\/[^/]+\/dashboard(?:\?|$)/.test(url) ||
-    /\/companies\/[^/]+\/sidebar-badges(?:\?|$)/.test(url) ||
-    /\/companies\/[^/]+\/agents(?:\?|$)/.test(url)
-  );
-}
-
 export const logger = pino({
   level: "debug",
+  redact: ["req.headers.authorization"],
 }, pino.transport({
   targets: [
     {
@@ -57,8 +49,9 @@ export const logger = pino({
 export const httpLogger = pinoHttp({
   logger,
   customLogLevel(_req, res, err) {
-    const url = _req.url ?? "";
-    if (!err && res.statusCode < 400 && isNoisySuccessRoute(url)) return "silent";
+    if (shouldSilenceHttpSuccessLog(_req.method, _req.url, res.statusCode)) {
+      return "silent";
+    }
     if (err || res.statusCode >= 500) return "error";
     if (res.statusCode >= 400) return "warn";
     return "info";
@@ -77,21 +70,21 @@ export const httpLogger = pinoHttp({
       if (ctx) {
         return {
           errorContext: ctx.error,
-          reqBody: ctx.reqBody,
-          reqParams: ctx.reqParams,
-          reqQuery: ctx.reqQuery,
+          reqBody: redactSensitive(ctx.reqBody),
+          reqParams: redactSensitive(ctx.reqParams),
+          reqQuery: redactSensitive(ctx.reqQuery),
         };
       }
       const props: Record<string, unknown> = {};
       const { body, params, query } = req as any;
       if (body && typeof body === "object" && Object.keys(body).length > 0) {
-        props.reqBody = body;
+        props.reqBody = redactSensitive(body);
       }
       if (params && typeof params === "object" && Object.keys(params).length > 0) {
-        props.reqParams = params;
+        props.reqParams = redactSensitive(params);
       }
       if (query && typeof query === "object" && Object.keys(query).length > 0) {
-        props.reqQuery = query;
+        props.reqQuery = redactSensitive(query);
       }
       if ((req as any).route?.path) {
         props.routePath = (req as any).route.path;

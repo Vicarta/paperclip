@@ -26,12 +26,6 @@ function readPositiveNumber(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : 0;
 }
 
-function readRecord(value: unknown): Record<string, unknown> {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : {};
-}
-
 function resolveEstimatedCostUsd(config: SerperPluginConfig, params: SerperSearchParams) {
   const type = params.type === "news" ? "news" : "search";
   if (config.costAccountingMode === "estimated_per_request") {
@@ -43,38 +37,14 @@ function resolveEstimatedCostUsd(config: SerperPluginConfig, params: SerperSearc
   return 0;
 }
 
-async function allocateEstimatedCostCents(input: {
-  ctx: Parameters<Parameters<typeof definePlugin>[0]["setup"]>[0];
-  stateKey: string;
-  amountUsd: number;
-}) {
-  const exactCents = input.amountUsd * 100;
-  if (!Number.isFinite(exactCents) || exactCents <= 0) return 0;
-
-  const stateKey = `fractional-cents:${input.stateKey}`;
-  const previous = readRecord(await input.ctx.state.get({
-    scopeKind: "instance",
-    namespace: "cost-accounting",
-    stateKey,
-  }));
-  const previousFractionalCents = readPositiveNumber(previous.fractionalCents);
-  const totalCents = previousFractionalCents + exactCents;
-  const wholeCents = Math.floor(totalCents + Number.EPSILON);
-  const fractionalCents = Math.max(0, totalCents - wholeCents);
-
-  await input.ctx.state.set(
-    {
-      scopeKind: "instance",
-      namespace: "cost-accounting",
-      stateKey,
-    },
-    {
-      fractionalCents,
-      updatedAt: new Date().toISOString(),
-    },
-  );
-
-  return wholeCents;
+function usdToCost(amountUsd: number) {
+  if (!Number.isFinite(amountUsd) || amountUsd <= 0) {
+    return { costCents: 0, amountMicros: 0 };
+  }
+  return {
+    costCents: Math.max(0, Math.round(amountUsd * 100)),
+    amountMicros: Math.max(0, Math.round(amountUsd * 1_000_000)),
+  };
 }
 
 async function emitSerperCost(input: {
@@ -85,12 +55,8 @@ async function emitSerperCost(input: {
 }) {
   const type = input.params.type === "news" ? "news" : "search";
   const amountUsd = resolveEstimatedCostUsd(input.config, input.params);
-  const costCents = await allocateEstimatedCostCents({
-    ctx: input.ctx,
-    stateKey: `${TOOL_NAMES.googleSearch}:${type}`,
-    amountUsd,
-  });
-  if (costCents <= 0) return;
+  const { costCents, amountMicros } = usdToCost(amountUsd);
+  if (amountMicros <= 0) return;
 
   await input.ctx.costs.createEvent({
     companyId: input.runCtx.companyId,
@@ -108,6 +74,7 @@ async function emitSerperCost(input: {
     cachedInputTokens: 0,
     outputTokens: 0,
     costCents,
+    amountMicros,
     occurredAt: new Date().toISOString(),
   });
 }

@@ -1,11 +1,12 @@
 import type {
+  FileTreeNode,
   PluginProjectSidebarItemProps,
   PluginDetailTabProps,
   PluginCommentAnnotationProps,
   PluginCommentContextMenuItemProps,
 } from "@paperclipai/plugin-sdk/ui";
-import { usePluginAction, usePluginData } from "@paperclipai/plugin-sdk/ui";
-import { useMemo, useState, useEffect, useRef, type MouseEvent, type RefObject } from "react";
+import { FileTree, usePluginAction, usePluginData } from "@paperclipai/plugin-sdk/ui";
+import { useCallback, useMemo, useState, useEffect, useRef, type MouseEvent, type RefObject } from "react";
 import { EditorView } from "@codemirror/view";
 import { basicSetup } from "codemirror";
 import { javascript } from "@codemirror/lang-javascript";
@@ -129,15 +130,31 @@ const editorLightHighlightStyle = HighlightStyle.define([
 
 type Workspace = { id: string; projectId: string; name: string; path: string; isPrimary: boolean };
 type FileEntry = { name: string; path: string; isDirectory: boolean };
-type FileTreeNodeProps = {
-  entry: FileEntry;
-  companyId: string | null;
-  projectId: string;
-  workspaceId: string;
-  selectedPath: string | null;
-  onSelect: (path: string) => void;
-  depth?: number;
-};
+
+function entryToFileTreeNode(entry: FileEntry): FileTreeNode {
+  return {
+    name: entry.name,
+    path: entry.path,
+    kind: entry.isDirectory ? "dir" : "file",
+    children: [],
+  };
+}
+
+function entriesToFileTreeNodes(entries: FileEntry[]): FileTreeNode[] {
+  return entries.map(entryToFileTreeNode);
+}
+
+function setChildrenAtPath(nodes: FileTreeNode[], path: string, children: FileTreeNode[]): FileTreeNode[] {
+  return nodes.map((node) => {
+    if (node.path === path) {
+      return { ...node, children };
+    }
+    if (node.kind === "dir" && node.children.length > 0 && (path === node.path || path.startsWith(`${node.path}/`))) {
+      return { ...node, children: setChildrenAtPath(node.children, path, children) };
+    }
+    return node;
+  });
+}
 
 const PathLikePattern = /[\\/]/;
 const WindowsDrivePathPattern = /^[A-Za-z]:[\\/]/;
@@ -146,39 +163,6 @@ const UuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}
 function isLikelyPath(pathValue: string): boolean {
   const trimmed = pathValue.trim();
   return PathLikePattern.test(trimmed) || WindowsDrivePathPattern.test(trimmed);
-}
-
-function normalizePathForCompare(pathValue: string): string {
-  const trimmed = pathValue.trim().replace(/\\/g, "/").replace(/\/+$/, "");
-  return trimmed || "/";
-}
-
-function workspaceAliasPrefix(workspacePath: string): string | null {
-  const normalizedWorkspace = normalizePathForCompare(workspacePath);
-  const parts = normalizedWorkspace.split("/").filter(Boolean);
-  const workspaceName = parts[parts.length - 1];
-  return workspaceName ? `/${workspaceName}/` : null;
-}
-
-function isPathInsideWorkspace(filePath: string, workspacePath: string): boolean {
-  const normalizedFile = normalizePathForCompare(filePath);
-  const normalizedWorkspace = normalizePathForCompare(workspacePath);
-  if (!normalizedFile || !normalizedWorkspace || normalizedWorkspace === "/") {
-    return false;
-  }
-  const aliasPrefix = workspaceAliasPrefix(workspacePath);
-  return normalizedFile === normalizedWorkspace
-    || normalizedFile.startsWith(`${normalizedWorkspace}/`)
-    || Boolean(aliasPrefix && normalizedFile.startsWith(aliasPrefix));
-}
-
-function normalizePathForWorkspace(filePath: string, workspacePath: string): string {
-  const normalizedFile = filePath.trim().replace(/\\/g, "/");
-  const aliasPrefix = workspaceAliasPrefix(workspacePath);
-  if (aliasPrefix && normalizedFile.startsWith(aliasPrefix)) {
-    return normalizedFile.slice(aliasPrefix.length);
-  }
-  return filePath;
 }
 
 function workspaceLabel(workspace: Workspace): string {
@@ -268,109 +252,6 @@ function useAvailableHeight(
   return height;
 }
 
-function FileTreeNode({
-  entry,
-  companyId,
-  projectId,
-  workspaceId,
-  selectedPath,
-  onSelect,
-  depth = 0,
-}: FileTreeNodeProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const isSelected = selectedPath === entry.path;
-
-  if (entry.isDirectory) {
-    return (
-      <li>
-        <button
-          type="button"
-          className="flex w-full items-center gap-2 rounded-none px-2 py-1.5 text-left text-sm text-foreground hover:bg-accent/60"
-          style={{ paddingLeft: `${depth * 14 + 8}px` }}
-          onClick={() => setIsExpanded((value) => !value)}
-          aria-expanded={isExpanded}
-        >
-          <span className="w-3 text-xs text-muted-foreground">{isExpanded ? "▾" : "▸"}</span>
-          <span className="truncate font-medium">{entry.name}</span>
-        </button>
-        {isExpanded ? (
-          <ExpandedDirectoryChildren
-            directoryPath={entry.path}
-            companyId={companyId}
-            projectId={projectId}
-            workspaceId={workspaceId}
-            selectedPath={selectedPath}
-            onSelect={onSelect}
-            depth={depth}
-          />
-        ) : null}
-      </li>
-    );
-  }
-
-  return (
-    <li>
-      <button
-        type="button"
-        className={`block w-full rounded-none px-2 py-1.5 text-left text-sm transition-colors ${
-          isSelected ? "bg-accent text-foreground" : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
-        }`}
-        style={{ paddingLeft: `${depth * 14 + 23}px` }}
-        onClick={() => onSelect(entry.path)}
-      >
-        <span className="truncate">{entry.name}</span>
-      </button>
-    </li>
-  );
-}
-
-function ExpandedDirectoryChildren({
-  directoryPath,
-  companyId,
-  projectId,
-  workspaceId,
-  selectedPath,
-  onSelect,
-  depth,
-}: {
-  directoryPath: string;
-  companyId: string | null;
-  projectId: string;
-  workspaceId: string;
-  selectedPath: string | null;
-  onSelect: (path: string) => void;
-  depth: number;
-}) {
-  const { data: childData } = usePluginData<{ entries: FileEntry[] }>("fileList", {
-    companyId,
-    projectId,
-    workspaceId,
-    directoryPath,
-  });
-  const children = childData?.entries ?? [];
-
-  if (children.length === 0) {
-    return null;
-  }
-
-  return (
-    <ul className="space-y-0.5">
-      {children.map((child) => (
-        <FileTreeNode
-          key={child.path}
-          entry={child}
-          companyId={companyId}
-          projectId={projectId}
-          workspaceId={workspaceId}
-          selectedPath={selectedPath}
-          onSelect={onSelect}
-          depth={depth + 1}
-        />
-      ))}
-    </ul>
-  );
-}
-
 /**
  * Project sidebar item: link "Files" that opens the project detail with the Files plugin tab.
  */
@@ -438,7 +319,7 @@ export function FilesLink({ context }: PluginProjectSidebarItemProps) {
  */
 export function FilesTab({ context }: PluginDetailTabProps) {
   const companyId = context.companyId;
-  const projectId = context.entityType === "project" ? context.entityId : context.projectId;
+  const projectId = context.entityId;
   const isMobile = useIsMobile();
   const isDarkMode = useIsDarkMode();
   const panesRef = useRef<HTMLDivElement | null>(null);
@@ -460,14 +341,63 @@ export function FilesTab({ context }: PluginDetailTabProps) {
   );
 
   const fileListParams = useMemo(
-    () => (selectedWorkspace && projectId ? { projectId, companyId, workspaceId: selectedWorkspace.id } : {}),
+    () => (selectedWorkspace ? { projectId, companyId, workspaceId: selectedWorkspace.id } : {}),
     [companyId, projectId, selectedWorkspace],
   );
-  const { data: fileListData, loading: fileListLoading } = usePluginData<{ entries: FileEntry[] }>(
+  const { data: fileListData, loading: fileListLoading, error: fileListError } = usePluginData<{ entries: FileEntry[] }>(
     "fileList",
     fileListParams,
   );
-  const entries = fileListData?.entries ?? [];
+
+  // Lazy-load directory children through an imperative action so the shared
+  // FileTree can reuse `expandedPaths` for state without spawning a hook per
+  // expanded directory.
+  const loadFileList = usePluginAction("loadFileList");
+  const [nodes, setNodes] = useState<FileTreeNode[]>([]);
+  const [expandedPaths, setExpandedPaths] = useState<Set<string>>(() => new Set());
+  const [loadedDirs, setLoadedDirs] = useState<Set<string>>(() => new Set());
+  const [loadingDirs, setLoadingDirs] = useState<Set<string>>(() => new Set());
+
+  useEffect(() => {
+    setNodes(fileListData?.entries ? entriesToFileTreeNodes(fileListData.entries) : []);
+    setExpandedPaths(new Set());
+    setLoadedDirs(new Set());
+    setLoadingDirs(new Set());
+  }, [fileListData, selectedWorkspace?.id]);
+
+  const handleToggleDir = useCallback(
+    (dirPath: string) => {
+      setExpandedPaths((current) => {
+        const next = new Set(current);
+        if (next.has(dirPath)) next.delete(dirPath);
+        else next.add(dirPath);
+        return next;
+      });
+      if (!selectedWorkspace) return;
+      if (loadedDirs.has(dirPath) || loadingDirs.has(dirPath)) return;
+      setLoadingDirs((current) => new Set(current).add(dirPath));
+      void loadFileList({
+        projectId,
+        companyId,
+        workspaceId: selectedWorkspace.id,
+        directoryPath: dirPath,
+      })
+        .then((response) => {
+          const entries = (response as { entries?: FileEntry[] })?.entries ?? [];
+          const children = entriesToFileTreeNodes(entries);
+          setNodes((current) => setChildrenAtPath(current, dirPath, children));
+          setLoadedDirs((current) => new Set(current).add(dirPath));
+        })
+        .finally(() => {
+          setLoadingDirs((current) => {
+            const next = new Set(current);
+            next.delete(dirPath);
+            return next;
+          });
+        });
+    },
+    [companyId, loadFileList, loadedDirs, loadingDirs, projectId, selectedWorkspace],
+  );
 
   // Track the `?file=` query parameter across navigations (popstate).
   const [urlFilePath, setUrlFilePath] = useState<string | null>(() => {
@@ -475,14 +405,6 @@ export function FilesTab({ context }: PluginDetailTabProps) {
     return new URLSearchParams(window.location.search).get("file") || null;
   });
   const lastConsumedFileRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (!urlFilePath) return;
-    const matchingWorkspace = workspaces.find((workspace) => isPathInsideWorkspace(urlFilePath, workspace.path));
-    if (matchingWorkspace && matchingWorkspace.id !== workspaceId) {
-      setWorkspaceId(matchingWorkspace.id);
-    }
-  }, [urlFilePath, workspaceId, workspaceSelectKey, workspaces]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -506,13 +428,13 @@ export function FilesTab({ context }: PluginDetailTabProps) {
     if (!urlFilePath || !selectedWorkspace) return;
     if (lastConsumedFileRef.current === urlFilePath) return;
     lastConsumedFileRef.current = urlFilePath;
-    setSelectedPath(normalizePathForWorkspace(urlFilePath, selectedWorkspace.path));
+    setSelectedPath(urlFilePath);
     setMobileView("editor");
   }, [urlFilePath, selectedWorkspace]);
 
   const fileContentParams = useMemo(
     () =>
-      selectedPath && selectedWorkspace && projectId
+      selectedPath && selectedWorkspace
         ? { projectId, companyId, workspaceId: selectedWorkspace.id, filePath: selectedPath }
         : null,
     [companyId, projectId, selectedWorkspace, selectedPath],
@@ -584,7 +506,7 @@ export function FilesTab({ context }: PluginDetailTabProps) {
   }, [selectedWorkspace, selectedPath, isDirty, isSaving]);
 
   async function handleSave() {
-    if (!projectId || !selectedWorkspace || !selectedPath || !viewRef.current) {
+    if (!selectedWorkspace || !selectedPath || !viewRef.current) {
       return;
     }
     const content = viewRef.current.state.doc.toString();
@@ -612,11 +534,6 @@ export function FilesTab({ context }: PluginDetailTabProps) {
 
   return (
     <div className="space-y-4">
-      {!projectId ? (
-        <div className="rounded-lg border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
-          This issue is not attached to a project, so project files cannot be opened here.
-        </div>
-      ) : null}
       <div className="rounded-lg border border-border bg-card p-4">
         <label className="text-sm font-medium text-muted-foreground">Workspace</label>
         <select
@@ -655,29 +572,24 @@ export function FilesTab({ context }: PluginDetailTabProps) {
             File Tree
           </div>
           <div className="min-h-0 flex-1 overflow-auto p-2">
-            {selectedWorkspace && projectId ? (
-              fileListLoading ? (
-                <p className="px-2 py-3 text-sm text-muted-foreground">Loading files...</p>
-              ) : entries.length > 0 ? (
-                <ul className="space-y-0.5">
-                  {entries.map((entry) => (
-                    <FileTreeNode
-                      key={entry.path}
-                      entry={entry}
-                      companyId={companyId}
-                      projectId={projectId}
-                      workspaceId={selectedWorkspace.id}
-                      selectedPath={selectedPath}
-                      onSelect={(path) => {
-                        setSelectedPath(path);
-                        setMobileView("editor");
-                      }}
-                    />
-                  ))}
-                </ul>
-              ) : (
-                <p className="px-2 py-3 text-sm text-muted-foreground">No files found in this workspace.</p>
-              )
+            {selectedWorkspace ? (
+              <FileTree
+                nodes={nodes}
+                selectedFile={selectedPath}
+                expandedPaths={expandedPaths}
+                onToggleDir={handleToggleDir}
+                onSelectFile={(path: string) => {
+                  setSelectedPath(path);
+                  setMobileView("editor");
+                }}
+                loading={fileListLoading}
+                error={fileListError ? { message: fileListError.message } : null}
+                empty={{
+                  title: "No files",
+                  description: "No files found in this workspace.",
+                }}
+                ariaLabel="Workspace files"
+              />
             ) : (
               <p className="px-2 py-3 text-sm text-muted-foreground">Select a workspace to browse files.</p>
             )}
@@ -704,7 +616,7 @@ export function FilesTab({ context }: PluginDetailTabProps) {
               <button
                 type="button"
                 className="rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
-                disabled={!projectId || !selectedWorkspace || !selectedPath || !isDirty || isSaving}
+                disabled={!selectedWorkspace || !selectedPath || !isDirty || isSaving}
                 onClick={() => void handleSave()}
               >
                 {isSaving ? "Saving..." : "Save"}
@@ -792,27 +704,16 @@ export function CommentFileLinks({ context }: PluginCommentAnnotationProps) {
       <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Files:</span>
       {data.links.map((link) => {
         const href = buildFileBrowserHref(prefix, projectId, link);
-        const canOpen = href !== "#";
         return (
-          canOpen ? (
-            <a
-              key={link}
-              href={href}
-              onClick={(e) => navigateToFileBrowser(href, e)}
-              className="inline-flex items-center rounded-md border border-border bg-accent/30 px-1.5 py-0.5 text-xs font-mono text-primary hover:bg-accent/60 hover:underline transition-colors"
-              title={`Open ${link} in file browser`}
-            >
-              {link}
-            </a>
-          ) : (
-            <span
-              key={link}
-              className="inline-flex cursor-not-allowed items-center rounded-md border border-border bg-muted/40 px-1.5 py-0.5 text-xs font-mono text-muted-foreground"
-              title="Attach this issue to a project with a workspace to open this file"
-            >
-              {link}
-            </span>
-          )
+          <a
+            key={link}
+            href={href}
+            onClick={(e) => navigateToFileBrowser(href, e)}
+            className="inline-flex items-center rounded-md border border-border bg-accent/30 px-1.5 py-0.5 text-xs font-mono text-primary hover:bg-accent/60 hover:underline transition-colors"
+            title={`Open ${link} in file browser`}
+          >
+            {link}
+          </a>
         );
       })}
     </div>
@@ -854,28 +755,17 @@ export function CommentOpenFiles({ context }: PluginCommentContextMenuItemProps)
       </div>
       {data.links.map((link) => {
         const href = buildFileBrowserHref(prefix, projectId, link);
-        const canOpen = href !== "#";
         const fileName = link.split("/").pop() ?? link;
         return (
-          canOpen ? (
-            <a
-              key={link}
-              href={href}
-              onClick={(e) => navigateToFileBrowser(href, e)}
-              className="flex w-full items-center gap-2 rounded px-2 py-1 text-xs text-foreground hover:bg-accent transition-colors"
-              title={`Open ${link} in file browser`}
-            >
-              <span className="truncate font-mono">{fileName}</span>
-            </a>
-          ) : (
-            <span
-              key={link}
-              className="flex w-full cursor-not-allowed items-center gap-2 rounded px-2 py-1 text-xs text-muted-foreground"
-              title="Attach this issue to a project with a workspace to open this file"
-            >
-              <span className="truncate font-mono">{fileName}</span>
-            </span>
-          )
+          <a
+            key={link}
+            href={href}
+            onClick={(e) => navigateToFileBrowser(href, e)}
+            className="flex w-full items-center gap-2 rounded px-2 py-1 text-xs text-foreground hover:bg-accent transition-colors"
+            title={`Open ${link} in file browser`}
+          >
+            <span className="truncate font-mono">{fileName}</span>
+          </a>
         );
       })}
     </div>

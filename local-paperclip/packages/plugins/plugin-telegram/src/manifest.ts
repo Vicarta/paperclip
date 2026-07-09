@@ -43,6 +43,43 @@ const manifest: PaperclipPluginManifestV1 = {
     worker: "./dist/worker.js",
     ui: "./dist/ui",
   },
+  instanceConfigSchema: {
+    type: "object",
+    properties: {
+      telegramBotTokenRef: {
+        type: "string",
+        format: "secret-ref",
+        description: "Paperclip company secret UUID for the Telegram bot token.",
+      },
+      paperclipBoardApiTokenRef: {
+        type: "string",
+        format: "secret-ref",
+        description: "Optional Paperclip company secret UUID for a board API token.",
+      },
+      transcriptionApiKeyRef: {
+        type: "string",
+        format: "secret-ref",
+        description: "Optional Paperclip company secret UUID for transcription provider access.",
+      },
+      defaultChatId: { type: "string" },
+      escalationChatId: { type: "string" },
+      paperclipBaseUrl: { type: "string" },
+      paperclipPublicUrl: { type: "string" },
+      enableInbound: { type: "boolean" },
+      enableCommands: { type: "boolean" },
+      notifyOnIssueCreated: { type: "boolean" },
+      notifyOnIssueDone: { type: "boolean" },
+      notifyOnAgentError: { type: "boolean" },
+      notifyOnApprovalCreated: { type: "boolean" },
+      escalationTimeoutMs: { type: "number" },
+      digestMode: {
+        type: "string",
+        enum: ["off", "daily", "weekly"],
+      },
+    },
+    required: ["telegramBotTokenRef"],
+    additionalProperties: true,
+  },
   ui: {
     slots: [
       {

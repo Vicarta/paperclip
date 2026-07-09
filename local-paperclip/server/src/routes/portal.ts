@@ -1,36 +1,34 @@
-import { createHash, timingSafeEqual } from "node:crypto";
+import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
 import { Router, type Request } from "express";
-import { desc, eq } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import { z } from "zod";
 import type { Db } from "@paperclipai/db";
-import {
-  companies,
-  seoOpsSemanticCoreKeywordActions,
-  seoOpsSemanticCoreReviewBatches,
-  seoOpsSemanticCoreReviewDecisions,
-  seoOpsSemanticCoreReviewGroupDecisions,
-  seoOpsSemanticCoreReviewItems,
-} from "@paperclipai/db";
-import { badRequest, forbidden, notFound, unauthorized } from "../errors.js";
-import {
-  applySemanticCoreReviewDecision,
-  updateDecisionSchema,
-} from "./seo-ops.js";
-import {
-  isSemanticCoreClientReviewableItem,
-  isStaleHistoricalYearKeyword,
-  semanticCoreClientReviewProgress,
-} from "../services/semantic-core-client-review.js";
+import { badRequest, notFound, unauthorized } from "../errors.js";
 
 type JsonRecord = Record<string, unknown>;
 
-function asRecord(value: unknown): JsonRecord {
-  return value && typeof value === "object" && !Array.isArray(value) ? value as JsonRecord : {};
-}
+const SEMANTIC_CORE_PLUGIN_KEY = "paperclip.semantic-core-mcp-agent-tools";
+const ENTITY_IMPORT_CANDIDATE = "semantic-core-import-candidate";
+const ENTITY_PORTAL_REVIEW_DECISION = "semantic-core-portal-review-decision";
+const ENTITY_PORTAL_GROUP_DECISION = "semantic-core-portal-review-group-decision";
+const ENTITY_PORTAL_KEYWORD_ACTION = "semantic-core-portal-keyword-action";
 
-const portalDecisionSchema = updateDecisionSchema.extend({
+const humanDecisionSchema = z.enum([
+  "accept",
+  "reject",
+  "defer",
+  "revise",
+  "product_discovery",
+  "keep_review",
+]);
+
+const itemDecisionSchema = z.object({
   companySlug: z.string().min(1),
   portalUserEmail: z.string().email().optional().nullable(),
+  humanDecision: humanDecisionSchema,
+  notes: z.string().max(2_000).optional().nullable(),
+  overrideReason: z.string().max(1_000).optional().nullable(),
+  rejectReason: z.string().max(1_000).optional().nullable(),
   humanConnectionAssessment: z.enum([
     "service_match",
     "brand_match",
@@ -38,120 +36,342 @@ const portalDecisionSchema = updateDecisionSchema.extend({
     "no_match",
     "unsure",
   ]).optional().nullable(),
-  humanConnectionNote: z.string().optional().nullable(),
+  humanConnectionNote: z.string().max(1_000).optional().nullable(),
 });
 
-const portalGroupDecisionSchema = updateDecisionSchema.pick({
-  notes: true,
-  rejectReason: true,
-  overrideReason: true,
-}).extend({
+const groupDecisionSchema = z.object({
   companySlug: z.string().min(1),
   portalUserEmail: z.string().email().optional().nullable(),
   humanDecision: z.enum(["accept", "reject", "defer"]),
-  selectedItemIds: z.array(z.string().uuid()).min(1),
-  canonicalItemId: z.string().uuid().optional().nullable(),
+  selectedItemIds: z.array(z.string().min(1)).min(1),
+  canonicalItemId: z.string().min(1).optional().nullable(),
+  notes: z.string().max(2_000).optional().nullable(),
+  rejectReason: z.string().max(1_000).optional().nullable(),
+  overrideReason: z.string().max(1_000).optional().nullable(),
 });
 
-const keywordLifecycleActionSchema = z.object({
+const keywordActionSchema = z.object({
   keyword: z.string().min(1).max(300),
   action: z.enum(["add", "accept", "reject", "defer", "remove", "restore"]).default("add"),
-  status: z.enum(["accepted", "candidate", "deferred", "rejected", "removed"]).optional(),
-  notes: z.string().max(1000).optional().nullable(),
+  notes: z.string().max(1_000).optional().nullable(),
   portalUserEmail: z.string().email().optional().nullable(),
 });
 
-type PortalCompanyRow = typeof companies.$inferSelect;
-type PortalReviewBatchRow = typeof seoOpsSemanticCoreReviewBatches.$inferSelect;
-type PortalReviewItemRow = typeof seoOpsSemanticCoreReviewItems.$inferSelect;
-type PortalReviewDecisionRow = typeof seoOpsSemanticCoreReviewDecisions.$inferSelect;
-type PortalReviewGroupDecisionRow = typeof seoOpsSemanticCoreReviewGroupDecisions.$inferSelect;
-type PortalKeywordActionRow = typeof seoOpsSemanticCoreKeywordActions.$inferSelect;
-type PortalSemanticCoreLifecycleMembership = "accepted" | "candidate" | "deferred" | "rejected" | "removed";
-type PortalSemanticCoreRecommendationSignal =
-  | "human_accepted"
-  | "human_rejected"
-  | "human_deferred"
-  | "manual_lifecycle_action"
-  | "machine_recommended_accept"
-  | "machine_needs_review"
-  | "machine_parked"
-  | "machine_rejected"
-  | "unknown";
+type CompanyRow = {
+  id: string;
+  name: string;
+  issue_prefix: string;
+  brand_color: string | null;
+};
 
-type PortalSemanticCoreInventoryItem = {
+type PluginEntityRow = {
+  id: string;
+  entity_type: string;
+  external_id: string | null;
+  title: string | null;
+  status: string | null;
+  data: unknown;
+  created_at: Date | string;
+  updated_at: Date | string;
+};
+
+type SemanticItem = {
+  itemId: string;
   keywordId: string;
   keyword: string;
-  status: PortalSemanticCoreLifecycleMembership;
-  lifecycleMembership: PortalSemanticCoreLifecycleMembership;
+  canReview: boolean;
+  lifecycleMembership: string | null;
   recommendation: {
-    sourceSignal: PortalSemanticCoreRecommendationSignal;
-    label: string;
+    label: string | null;
+    sourceSignal: string | null;
     machineMembership: string | null;
-    recommendedHumanDecision: string | null;
   };
+  recommendedPageUrl: string | null;
+  clusterName: string | null;
+  locale: string | null;
+  intentLabel: string | null;
+  productConnection: string | null;
   geoSearchVolume: number | null;
   globalSearchVolume: number | null;
-  sourceCount: number;
+  rationale: string | null;
+  status: string | null;
+  batchTitle: string | null;
+  lastDecisionNote: string | null;
+  latestStageLabel: string | null;
+  latestEvidenceSummary: string | null;
   firstSeenAt: string | null;
   lastSeenAt: string | null;
-  latestStageLabel: string;
-  latestEvidenceSummary: string | null;
-  sources: Array<{
-    batchId: string;
-    stageLabel: string;
-    state: string;
-    sourceSignal: PortalSemanticCoreRecommendationSignal;
-    humanDecision: string | null;
-    sourceType: string;
-    seenAt: string | null;
-  }>;
-  history: Array<{
-    action: string;
-    status: string;
-    notes: string | null;
-    createdAt: string | null;
-  }>;
+  sourceCount: number | null;
+  sources: Array<Record<string, unknown>>;
+  history: Array<Record<string, unknown>>;
+  warnings: string[];
 };
 
-type PortalSemanticCoreReviewGroupVariant = {
-  itemId: string;
+type PortalDecision = {
+  decisionId: string;
+  itemId: string | null;
   keyword: string;
-  isCanonical: boolean;
-  decisionState: "pending" | "accepted" | "rejected" | "deferred" | "needs_attention";
-  decisionLabel: string;
-  selectedByDefault: boolean;
-  geoSearchVolume: number | null;
-  globalSearchVolume: number | null;
-  confidence: number | null;
-  matchScore: number | null;
-  warnings: string[];
-  note: string | null;
-  updatedAt: string | null;
+  humanDecision: string;
+  notes: string | null;
+  portalUserEmail: string | null;
+  createdAt: string | null;
 };
 
-type PortalSemanticCoreReviewGroup = {
-  groupId: string;
-  batchId: string;
-  canonicalItemId: string;
-  canonicalKeyword: string;
-  groupConfidence: number | null;
-  status: "pending" | "decided" | "mixed" | "needs_attention";
-  statusLabel: string;
-  counts: {
-    total: number;
-    pending: number;
-    accepted: number;
-    rejected: number;
-    deferred: number;
-    needsAttention: number;
-  };
-  geoSearchVolume: number | null;
-  globalSearchVolume: number | null;
-  warnings: string[];
-  variants: PortalSemanticCoreReviewGroupVariant[];
-  updatedAt: string | null;
-};
+export function portalRoutes(db: Db) {
+  const router = Router();
+
+  router.use((req, _res, next) => {
+    if (!process.env.PAPERCLIP_PORTAL_SERVICE_TOKEN?.trim()) {
+      throw unauthorized("Portal service token is not configured");
+    }
+    if (!isAuthorizedPortalToken(extractPortalBearerToken(req), process.env.PAPERCLIP_PORTAL_SERVICE_TOKEN)) {
+      throw unauthorized("Portal service token required");
+    }
+    next();
+  });
+
+  router.get("/companies/:companySlug/semantic-core/review", async (req, res) => {
+    const company = await resolvePortalCompanyBySlug(db, req.params.companySlug as string);
+    if (!company) throw notFound("Portal company not found");
+
+    const snapshot = await loadSemanticSnapshot(db, company.id);
+    const decisions = await loadPortalDecisions(db, company.id);
+    const items = applyItemDecisions(snapshot.reviewItems, decisions).filter((item) =>
+      normalizeStatus(item.status) === "pending_review",
+    );
+
+    res.json({
+      ok: true,
+      company: mapPortalCompany(company),
+      batches: snapshot.batch ? [snapshot.batch] : [],
+      activeBatch: snapshot.batch,
+      reviewContext: buildReviewContext(snapshot.batch, items),
+      summary: reviewSummary(items),
+      items,
+      decisions: decisions.map(mapPortalDecision),
+    });
+  });
+
+  router.get("/companies/:companySlug/semantic-core", async (req, res) => {
+    const company = await resolvePortalCompanyBySlug(db, req.params.companySlug as string);
+    if (!company) throw notFound("Portal company not found");
+
+    const snapshot = await loadSemanticSnapshot(db, company.id);
+    const [decisions, keywordActions] = await Promise.all([
+      loadPortalDecisions(db, company.id),
+      loadPortalKeywordActions(db, company.id),
+    ]);
+    const statusFilter = typeof req.query.status === "string" ? normalizeStatus(req.query.status) : null;
+    const search = typeof req.query.search === "string" ? normalizeKeyword(req.query.search) : "";
+    let items = mergeInventory(snapshot.inventoryItems, decisions, keywordActions);
+    if (statusFilter) items = items.filter((item) => normalizeStatus(item.status) === statusFilter);
+    if (search) items = items.filter((item) => normalizeKeyword(item.keyword).includes(search));
+
+    res.json({
+      ok: true,
+      company: mapPortalCompany(company),
+      context: {
+        title: "Семантичне ядро",
+        description: "Повний живий список запитів, погоджених, відкладених, відхилених або доданих вручну.",
+        currentReviewQueueTitle: "Потребують рішення",
+      },
+      summary: inventorySummary(mergeInventory(snapshot.inventoryItems, decisions, keywordActions)),
+      items,
+      decisions: decisions.map(mapPortalDecision),
+    });
+  });
+
+  router.get("/companies/:companySlug/semantic-core/review-groups", async (req, res) => {
+    const company = await resolvePortalCompanyBySlug(db, req.params.companySlug as string);
+    if (!company) throw notFound("Portal company not found");
+
+    const snapshot = await loadSemanticSnapshot(db, company.id);
+    const decisions = await loadPortalDecisions(db, company.id);
+    const items = applyItemDecisions(snapshot.reviewItems, decisions).filter((item) =>
+      normalizeStatus(item.status) === "pending_review",
+    );
+    const groups = buildReviewGroups(snapshot.batch?.batchId ?? "semantic-core", items);
+
+    res.json({
+      ok: true,
+      company: mapPortalCompany(company),
+      batches: snapshot.batch ? [snapshot.batch] : [],
+      activeBatch: snapshot.batch,
+      reviewContext: buildReviewContext(snapshot.batch, items),
+      summary: {
+        groups: groups.length,
+        variants: items.length,
+        pendingGroups: groups.filter((group) => group.status === "pending").length,
+        pendingVariants: items.length,
+        decidedVariants: 0,
+      },
+      groups,
+    });
+  });
+
+  router.post("/semantic-core/review-items/:itemId/decision", async (req, res) => {
+    const input = itemDecisionSchema.safeParse(req.body);
+    if (!input.success) throw badRequest("Invalid portal semantic-core decision", input.error.flatten());
+
+    const company = await resolvePortalCompanyBySlug(db, input.data.companySlug);
+    if (!company) throw notFound("Portal company not found");
+
+    const snapshot = await loadSemanticSnapshot(db, company.id);
+    const item = [...snapshot.reviewItems, ...snapshot.inventoryItems]
+      .find((candidate) => candidate.itemId === req.params.itemId || candidate.keywordId === req.params.itemId);
+    if (!item) throw notFound("Portal review item not found");
+
+    const decision = await insertPortalEntity(db, {
+      companyId: company.id,
+      entityType: ENTITY_PORTAL_REVIEW_DECISION,
+      externalId: `decision:${item.itemId}:${Date.now()}:${randomUUID()}`,
+      title: `Portal semantic-core decision: ${item.keyword}`,
+      status: input.data.humanDecision,
+      data: {
+        itemId: item.itemId,
+        keywordId: item.keywordId,
+        keyword: item.keyword,
+        source: "portal",
+        ...input.data,
+        portalUserEmail: input.data.portalUserEmail?.toLowerCase() ?? null,
+      },
+    });
+
+    res.json({
+      ok: true,
+      item: applyDecisionToItem(item, entityToDecision(decision)),
+      decision: mapPortalDecision(entityToDecision(decision)),
+    });
+  });
+
+  router.post("/semantic-core/review-groups/:groupId/decision", async (req, res) => {
+    const input = groupDecisionSchema.safeParse(req.body);
+    if (!input.success) throw badRequest("Invalid portal semantic-core group decision", input.error.flatten());
+
+    const company = await resolvePortalCompanyBySlug(db, input.data.companySlug);
+    if (!company) throw notFound("Portal company not found");
+
+    const snapshot = await loadSemanticSnapshot(db, company.id);
+    const decisions = await loadPortalDecisions(db, company.id);
+    const items = applyItemDecisions(snapshot.reviewItems, decisions).filter((item) =>
+      normalizeStatus(item.status) === "pending_review",
+    );
+    const groups = buildReviewGroups(snapshot.batch?.batchId ?? "semantic-core", items);
+    const group = groups.find((candidate) => candidate.groupId === req.params.groupId);
+    if (!group) throw notFound("Portal semantic-core review group not found");
+
+    const groupItemIds = new Set(group.variants.map((variant) => variant.itemId));
+    const selectedItemIds = [...new Set(input.data.selectedItemIds)];
+    const invalidItemIds = selectedItemIds.filter((itemId) => !groupItemIds.has(itemId));
+    if (invalidItemIds.length > 0) {
+      throw badRequest("Selected review items do not belong to this group", { invalidItemIds });
+    }
+
+    const canonicalItemId = input.data.canonicalItemId ?? group.canonicalItemId;
+    if (canonicalItemId && !groupItemIds.has(canonicalItemId)) {
+      throw badRequest("Canonical review item does not belong to this group");
+    }
+
+    await insertPortalEntity(db, {
+      companyId: company.id,
+      entityType: ENTITY_PORTAL_GROUP_DECISION,
+      externalId: `group-decision:${group.groupId}:${Date.now()}:${randomUUID()}`,
+      title: `Portal semantic-core group decision: ${group.canonicalKeyword}`,
+      status: input.data.humanDecision,
+      data: {
+        ...input.data,
+        source: "portal",
+        groupId: group.groupId,
+        canonicalItemId,
+        selectedItemIds,
+        omittedItemIds: group.variants.map((variant) => variant.itemId).filter((itemId) => !selectedItemIds.includes(itemId)),
+        portalUserEmail: input.data.portalUserEmail?.toLowerCase() ?? null,
+      },
+    });
+
+    const affected = [];
+    for (const itemId of selectedItemIds) {
+      const item = items.find((candidate) => candidate.itemId === itemId);
+      if (!item) continue;
+      affected.push(await insertPortalEntity(db, {
+        companyId: company.id,
+        entityType: ENTITY_PORTAL_REVIEW_DECISION,
+        externalId: `decision:${item.itemId}:${Date.now()}:${randomUUID()}`,
+        title: `Portal semantic-core decision: ${item.keyword}`,
+        status: input.data.humanDecision,
+        data: {
+          source: "portal_group",
+          groupId: group.groupId,
+          itemId: item.itemId,
+          keywordId: item.keywordId,
+          keyword: item.keyword,
+          companySlug: input.data.companySlug,
+          portalUserEmail: input.data.portalUserEmail?.toLowerCase() ?? null,
+          humanDecision: input.data.humanDecision,
+          notes: input.data.notes ?? null,
+          rejectReason: input.data.rejectReason ?? null,
+          overrideReason: input.data.overrideReason ?? null,
+        },
+      }));
+    }
+
+    res.json({
+      ok: true,
+      group,
+      decisionSummary: {
+        groupId: group.groupId,
+        humanDecision: input.data.humanDecision,
+        canonicalItemId,
+        affectedItemIds: affected.map((entity) => asString(asRecord(entity.data).itemId)).filter(Boolean),
+      },
+    });
+  });
+
+  router.post("/companies/:companySlug/semantic-core/keywords", async (req, res) => {
+    const company = await resolvePortalCompanyBySlug(db, req.params.companySlug as string);
+    if (!company) throw notFound("Portal company not found");
+
+    const input = keywordActionSchema.safeParse(req.body);
+    if (!input.success) throw badRequest("Invalid semantic-core keyword action", input.error.flatten());
+
+    const keyword = input.data.keyword.trim();
+    const normalizedKeyword = normalizeKeyword(keyword);
+    const status = statusForKeywordAction(input.data.action);
+    const action = await insertPortalEntity(db, {
+      companyId: company.id,
+      entityType: ENTITY_PORTAL_KEYWORD_ACTION,
+      externalId: `keyword-action:${normalizedKeyword}:${Date.now()}:${randomUUID()}`,
+      title: `Portal semantic-core keyword action: ${keyword}`,
+      status,
+      data: {
+        source: "portal",
+        keyword,
+        keywordId: normalizedKeyword,
+        normalizedKeyword,
+        action: input.data.action,
+        status,
+        notes: input.data.notes ?? null,
+        portalUserEmail: input.data.portalUserEmail?.toLowerCase() ?? null,
+      },
+    });
+
+    res.status(201).json({
+      ok: true,
+      action: {
+        actionId: action.id,
+        keywordId: normalizedKeyword,
+        keyword,
+        action: input.data.action,
+        status,
+        notes: input.data.notes ?? null,
+        portalUserEmail: input.data.portalUserEmail?.toLowerCase() ?? null,
+        createdAt: toIso(action.created_at),
+      },
+    });
+  });
+
+  return router;
+}
 
 export function isAuthorizedPortalToken(providedToken: string | null | undefined, expectedToken: string | null | undefined) {
   if (!providedToken || !expectedToken) return false;
@@ -169,7 +389,7 @@ export function extractPortalBearerToken(req: Request) {
   return req.header("x-paperclip-portal-token")?.trim() || null;
 }
 
-export function slugifyCompany(value: string) {
+function slugifyCompany(value: string) {
   return value
     .toLowerCase()
     .normalize("NFKD")
@@ -177,799 +397,532 @@ export function slugifyCompany(value: string) {
     .replace(/^-+|-+$/g, "");
 }
 
-export function companyMatchesPortalSlug(company: Pick<PortalCompanyRow, "id" | "name" | "issuePrefix">, slug: string) {
-  const normalizedSlug = slugifyCompany(slug);
-  return (
-    company.id === slug ||
-    slugifyCompany(company.name) === normalizedSlug ||
-    company.issuePrefix.toLowerCase() === normalizedSlug
-  );
-}
-
-export function mapPortalReviewBatch(batch: PortalReviewBatchRow) {
-  return {
-    batchId: batch.id,
-    stageLabel: stageLabelForLayer(batch.layer),
-    statusLabel: portalReviewBatchStatusLabel(batch),
-    counts: {
-      accepted: batch.acceptedCount,
-      review: batch.reviewCount,
-      rejected: batch.rejectedCount,
-      unresolved: batch.unresolvedReviewCount,
-    },
-    updatedAt: toIso(batch.updatedAt),
-  };
-}
-
-function portalReviewBatchStatusLabel(batch: Pick<PortalReviewBatchRow, "clientReviewStatus">) {
-  switch (batch.clientReviewStatus) {
-    case "completed":
-      return "Розгляд завершено";
-    case "not_applicable":
-      return "Нових рішень немає";
-    case "needs_internal_attention":
-      return "Потребує внутрішньої перевірки";
-    default:
-      return "На розгляді";
-  }
-}
-
-export function mapPortalReviewBatchWithProgress(
-  batch: PortalReviewBatchRow,
-  progress: ReturnType<typeof portalProgressCounts>,
-) {
-  return {
-    ...mapPortalReviewBatch(batch),
-    counts: {
-      accepted: progress.accepted,
-      review: progress.total,
-      rejected: progress.rejected,
-      unresolved: progress.pending,
-    },
-  };
-}
-
-export function mapPortalReviewItem(item: PortalReviewItemRow) {
-  return {
-    itemId: item.id,
-    keyword: item.displayKeyword,
-    currentState: item.currentMachineMembership,
-    recommendedDecision: item.recommendedHumanDecision,
-    humanDecision: item.humanDecision,
-    decisionStatus: item.decisionStatus,
-    productConnection: item.productBindingStatus,
-    topicMatch: item.domainTopicMatch,
-    topicMatchScore: decimalOrNull(item.domainTopicMatchScore),
-    confidence: decimalOrNull(item.acceptanceConfidence),
-    reviewPriority: item.reviewPriority,
-    humanReviewRequired: item.humanReviewRequired,
-    humanReviewReason: item.humanReviewReason,
-    evidenceSummary: item.evidenceSummary,
-    warnings: clientSafeWarnings(item),
-    geoSearchVolume: item.geoSearchVolume,
-    globalSearchVolume: item.globalSearchVolume,
-    validationOutcome: item.validationOutcome,
-    validationReasons: item.validationReasons,
-    humanConnectionAssessment: item.humanConnectionAssessment,
-    humanConnectionNote: item.humanConnectionNote,
-    policyVersion: item.policyVersion,
-    updatedAt: toIso(item.updatedAt),
-  };
-}
-
-export function buildPortalReviewContext(
-  batch: PortalReviewBatchRow | null,
-  items: Pick<PortalReviewItemRow, "decisionStatus" | "humanDecision" | "validationOutcome">[],
-) {
-  const progress = portalProgressCounts(items);
-  const isComplete = progress.total > 0 && progress.pending === 0;
-  const hasNoClientItems = Boolean(batch) && progress.total === 0;
-
-  return {
-    title: "Розгляд запитів для семантичного ядра",
-    stageLabel: hasNoClientItems
-      ? `${stageLabelForLayer(batch?.layer ?? null)}: нових рішень немає`
-      : isComplete ? "Клієнтський розгляд завершено" : stageLabelForLayer(batch?.layer ?? null),
-    description: hasNoClientItems
-      ? "На цьому етапі немає нових запитів, які потребують вашого рішення. Раніше погоджені, відхилені або відкладені запити не повертаються на повторний розгляд без окремої причини."
-      : "Це запити, які відібрані для вашого розгляду перед включенням у семантичне ядро, на основі якого будуть формуватися статті для сайту, пости в соцмережах, рекламні тексти та інші матеріали.",
-    clientTask: hasNoClientItems
-      ? "Дій з вашого боку зараз не потрібно."
-      : "Ваше завдання: погодити релевантні запити, відхилити нерелевантні, відкласти сумнівні. Це обовʼязковий етап: поки всі запити не отримають рішення, подальша підготовка семантичного ядра та матеріалів не запускається.",
-    nextStep: hasNoClientItems
-      ? "Далі потрібна внутрішня перевірка якості цього етапу та підготовка наступного корисного набору запитів."
-      : isComplete
-      ? "Ваш розгляд завершено. Далі запити пройдуть внутрішню перевірку готовності до включення в семантичне ядро; після цього буде підготовлено наступний етап."
-      : "Будь ласка, пройдіть цю чергу якнайшвидше. Після того як ви приймете рішення щодо всіх запитів, буде виконано внутрішню перевірку готовності до наступного етапу.",
-    progress,
-  };
-}
-
-export function mapPortalReviewDecision(decision: PortalReviewDecisionRow) {
-  return {
-    decisionId: decision.id,
-    itemId: decision.reviewItemId,
-    decision: decision.newDecision,
-    notes: decision.notes,
-    validationOutcome: decision.validationOutcome,
-    validationReasons: decision.validationReasons,
-    createdAt: toIso(decision.createdAt),
-  };
-}
-
-export function portalSemanticCoreReviewGroupId(batchId: string, groupKey: string) {
-  const hash = createHash("sha256").update(`${batchId}\0${groupKey}`).digest("hex").slice(0, 32);
-  return `scrg_${hash}`;
-}
-
-export function buildPortalSemanticCoreReviewGroups(
-  items: PortalReviewItemRow[],
-  canonicalOverrides: Map<string, string> = new Map(),
-) {
-  const grouped = new Map<string, PortalReviewItemRow[]>();
-  for (const item of items) {
-    const groupKey = portalReviewGroupKey(item);
-    const key = `${item.reviewBatchId}\0${groupKey}`;
-    grouped.set(key, [...(grouped.get(key) ?? []), item]);
-  }
-
-  return [...grouped.entries()]
-    .map(([key, groupItems]) => {
-      const [batchId, groupKey] = key.split("\0");
-      const groupId = portalSemanticCoreReviewGroupId(batchId, groupKey);
-      return mapPortalReviewGroup(batchId, groupKey, groupItems, canonicalOverrides.get(groupId) ?? null);
-    })
-    .sort((left, right) =>
-      reviewGroupSort(left) - reviewGroupSort(right)
-      || (right.groupConfidence ?? -1) - (left.groupConfidence ?? -1)
-      || left.canonicalKeyword.localeCompare(right.canonicalKeyword, "uk"),
-    );
-}
-
-export function splitPortalReviewGroupDecisionItems(
-  group: PortalSemanticCoreReviewGroup,
-  selectedItemIds: string[],
-) {
-  const groupItemIds = new Set(group.variants.map((variant) => variant.itemId));
-  const uniqueSelectedItemIds = [...new Set(selectedItemIds)];
-  const invalidItemIds = uniqueSelectedItemIds.filter((itemId) => !groupItemIds.has(itemId));
-  const omittedItemIds = group.variants
-    .map((variant) => variant.itemId)
-    .filter((itemId) => !uniqueSelectedItemIds.includes(itemId));
-
-  return {
-    selectedItemIds: uniqueSelectedItemIds,
-    omittedItemIds,
-    invalidItemIds,
-  };
-}
-
-export function normalizePortalKeyword(value: string) {
-  return value.toLowerCase().replace(/\s+/g, " ").trim();
-}
-
-export function semanticCoreInventoryStatusCounts(items: PortalSemanticCoreInventoryItem[]) {
-  return {
-    total: items.length,
-    accepted: items.filter((item) => item.status === "accepted").length,
-    candidate: items.filter((item) => item.status === "candidate").length,
-    deferred: items.filter((item) => item.status === "deferred").length,
-    rejected: items.filter((item) => item.status === "rejected").length,
-    removed: items.filter((item) => item.status === "removed").length,
-  };
-}
-
-export function isPortalVisibleSemanticCoreBatch(batch: Pick<PortalReviewBatchRow, "status">) {
-  return !["superseded", "cancelled", "archived"].includes(batch.status);
-}
-
-export function acceptedInventoryKeywordSet(
-  items: PortalReviewItemRow[],
-  batches: PortalReviewBatchRow[],
-  beforeBatch: PortalReviewBatchRow | null = null,
-  actions: PortalKeywordActionRow[] = [],
-) {
-  return inventoryKeywordSetByStatuses(items, batches, beforeBatch, actions, new Set(["accepted"]));
-}
-
-export function resolvedInventoryKeywordSet(
-  items: PortalReviewItemRow[],
-  batches: PortalReviewBatchRow[],
-  beforeBatch: PortalReviewBatchRow | null = null,
-  actions: PortalKeywordActionRow[] = [],
-) {
-  return inventoryKeywordSetByStatuses(items, batches, beforeBatch, actions, new Set([
-    "accepted",
-    "rejected",
-    "deferred",
-    "removed",
-  ]));
-}
-
-function inventoryKeywordSetByStatuses(
-  items: PortalReviewItemRow[],
-  batches: PortalReviewBatchRow[],
-  beforeBatch: PortalReviewBatchRow | null,
-  actions: PortalKeywordActionRow[],
-  statuses: Set<PortalSemanticCoreLifecycleMembership>,
-) {
-  return new Set(
-    buildSemanticCoreInventory(items, batches, actions, { beforeBatch })
-      .filter((item) => statuses.has(item.status))
-      .map((item) => item.keywordId),
-  );
-}
-
-export function buildSemanticCoreInventory(
-  items: PortalReviewItemRow[],
-  batches: PortalReviewBatchRow[],
-  actions: PortalKeywordActionRow[] = [],
-  options: { beforeBatch?: PortalReviewBatchRow | null; excludeOpenReviewQueueItems?: boolean } = {},
-): PortalSemanticCoreInventoryItem[] {
-  const batchById = new Map(batches.map((batch) => [batch.id, batch]));
-  const beforeTime = options.beforeBatch ? timestampMs(options.beforeBatch.updatedAt) : null;
-  const openReviewKeywordIds = options.excludeOpenReviewQueueItems
-    ? openReviewQueueKeywordIds(items, batchById)
-    : new Set<string>();
-  const groups = new Map<string, {
-    keywordId: string;
-    keyword: string;
-    items: PortalReviewItemRow[];
-    actions: PortalKeywordActionRow[];
-  }>();
-
-  for (const item of items) {
-    const batch = batchById.get(item.reviewBatchId);
-    if (!batch) continue;
-    if (beforeTime !== null && batch && timestampMs(batch.updatedAt) >= beforeTime) continue;
-    const keywordId = normalizePortalKeyword(item.normalizedKeyword || item.displayKeyword);
-    if (!keywordId) continue;
-    if (shouldExcludeOpenReviewInventoryDuplicate(item, keywordId, openReviewKeywordIds)) continue;
-    if (isInternalDiagnosticInventoryItem(item)) continue;
-    const group = groups.get(keywordId) ?? { keywordId, keyword: item.displayKeyword, items: [], actions: [] };
-    group.items.push(item);
-    if (!group.keyword || item.displayKeyword.length < group.keyword.length) group.keyword = item.displayKeyword;
-    groups.set(keywordId, group);
-  }
-
-  for (const action of actions) {
-    if (beforeTime !== null && timestampMs(action.createdAt) >= beforeTime) continue;
-    const keywordId = normalizePortalKeyword(action.normalizedKeyword || action.displayKeyword);
-    if (!keywordId) continue;
-    const group = groups.get(keywordId) ?? { keywordId, keyword: action.displayKeyword, items: [], actions: [] };
-    group.actions.push(action);
-    if (!group.keyword) group.keyword = action.displayKeyword;
-    groups.set(keywordId, group);
-  }
-
-  return [...groups.values()]
-    .map((group) => mapInventoryGroup(group, batchById))
-    .sort((a, b) => statusSort(a.status) - statusSort(b.status) || a.keyword.localeCompare(b.keyword, "uk"));
-}
-
-export function isPortalClientReviewableItem(item: Pick<PortalReviewItemRow,
-  | "displayKeyword"
-  | "currentMachineMembership"
-  | "humanReviewRequired"
-  | "productBindingStatus"
-  | "domainTopicMatch"
-  | "policyWarnings"
-  | "localeWarningSeverity"
-  | "searchQueryEligibility"
-  | "sourcePrecisionClass"
->) {
-  return isSemanticCoreClientReviewableItem(item);
-}
-
-export function isHistoricallyAcceptedReviewDuplicate(
-  item: Pick<PortalReviewItemRow, "normalizedKeyword" | "displayKeyword" | "policyWarnings" | "humanReviewReason">,
-  historicallyAcceptedKeywords: Set<string>,
-) {
-  return isHistoricallyResolvedReviewDuplicate(item, historicallyAcceptedKeywords);
-}
-
-export function isHistoricallyResolvedReviewDuplicate(
-  item: Pick<PortalReviewItemRow, "normalizedKeyword" | "displayKeyword" | "policyWarnings" | "humanReviewReason">,
-  historicallyResolvedKeywords: Set<string>,
-) {
-  const keywordId = normalizePortalKeyword(item.normalizedKeyword || item.displayKeyword);
-  if (!keywordId || !historicallyResolvedKeywords.has(keywordId)) return false;
-  const warnings = item.policyWarnings.map((warning) => warning.toLowerCase());
-  const reason = item.humanReviewReason?.toLowerCase() ?? "";
-  return !warnings.some((warning) => warning.includes("re_review") || warning.includes("force_client_review"))
-    && !reason.includes("re-review")
-    && !reason.includes("повтор");
-}
-
-export function portalRoutes(db: Db) {
-  const router = Router();
-
-  router.use((req, _res, next) => {
-    if (!isAuthorizedPortalToken(extractPortalBearerToken(req), process.env.PAPERCLIP_PORTAL_SERVICE_TOKEN)) {
-      throw unauthorized("Portal service token required");
-    }
-    next();
-  });
-
-  router.get("/companies/:companySlug/semantic-core/review", async (req, res) => {
-    const company = await resolvePortalCompanyBySlug(db, req.params.companySlug as string);
-    if (!company) throw notFound("Portal company not found");
-
-    const requestedBatchId = typeof req.query.batchId === "string" ? req.query.batchId : null;
-    const batches = await db
-      .select()
-      .from(seoOpsSemanticCoreReviewBatches)
-      .where(eq(seoOpsSemanticCoreReviewBatches.companyId, company.id))
-      .orderBy(desc(seoOpsSemanticCoreReviewBatches.updatedAt))
-      .limit(20);
-
-    const visibleBatches = batches.filter(isPortalVisibleSemanticCoreBatch);
-    const activeBatch = requestedBatchId
-      ? visibleBatches.find((batch) => batch.id === requestedBatchId) ?? null
-      : visibleBatches[0] ?? null;
-
-    if (!activeBatch) {
-      const summary = { total: 0, pending: 0, decided: 0, blocked: 0 };
-      res.json({
-        ok: true,
-        company: mapPortalCompany(company),
-        batches: visibleBatches.map(mapPortalReviewBatch),
-        activeBatch: null,
-        reviewContext: buildPortalReviewContext(null, []),
-        summary,
-        items: [],
-        decisions: [],
-      });
-      return;
-    }
-
-    if (requestedBatchId && activeBatch.id !== requestedBatchId) {
-      throw notFound("Portal review batch not found");
-    }
-
-    const [items, allCompanyItems, decisions, keywordActions] = await Promise.all([
-      db
-        .select()
-        .from(seoOpsSemanticCoreReviewItems)
-        .where(eq(seoOpsSemanticCoreReviewItems.reviewBatchId, activeBatch.id))
-        .orderBy(seoOpsSemanticCoreReviewItems.reviewPriority, seoOpsSemanticCoreReviewItems.displayKeyword),
-      db
-        .select()
-        .from(seoOpsSemanticCoreReviewItems)
-        .where(eq(seoOpsSemanticCoreReviewItems.companyId, company.id)),
-      db
-        .select()
-        .from(seoOpsSemanticCoreReviewDecisions)
-        .where(eq(seoOpsSemanticCoreReviewDecisions.reviewBatchId, activeBatch.id))
-        .orderBy(desc(seoOpsSemanticCoreReviewDecisions.createdAt))
-        .limit(100),
-      db
-        .select()
-        .from(seoOpsSemanticCoreKeywordActions)
-        .where(eq(seoOpsSemanticCoreKeywordActions.companyId, company.id)),
-    ]);
-
-    const historicalResolvedKeywords = resolvedInventoryKeywordSet(
-      allCompanyItems,
-      visibleBatches,
-      activeBatch,
-      keywordActions,
-    );
-    const visibleItems = items.filter((item) =>
-      isPortalClientReviewableItem(item)
-      && !isHistoricallyResolvedReviewDuplicate(item, historicalResolvedKeywords),
-    );
-    const visibleItemIds = new Set(visibleItems.map((item) => item.id));
-    const visibleDecisions = decisions.filter((decision) => visibleItemIds.has(decision.reviewItemId));
-    const progress = semanticCoreClientReviewProgress(visibleItems);
-    const summary = {
-      total: progress.total,
-      pending: progress.pending,
-      decided: progress.decided,
-      blocked: progress.needsAttention,
-    };
-
-    res.json({
-      ok: true,
-      company: mapPortalCompany(company),
-      batches: visibleBatches.map(mapPortalReviewBatch),
-      activeBatch: mapPortalReviewBatchWithProgress(activeBatch, progress),
-      reviewContext: buildPortalReviewContext(activeBatch, visibleItems),
-      summary,
-      items: visibleItems.map(mapPortalReviewItem),
-      decisions: visibleDecisions.map(mapPortalReviewDecision),
-    });
-  });
-
-  router.get("/companies/:companySlug/semantic-core/review-groups", async (req, res) => {
-    const company = await resolvePortalCompanyBySlug(db, req.params.companySlug as string);
-    if (!company) throw notFound("Portal company not found");
-
-    const requestedBatchId = typeof req.query.batchId === "string" ? req.query.batchId : null;
-    const batches = await db
-      .select()
-      .from(seoOpsSemanticCoreReviewBatches)
-      .where(eq(seoOpsSemanticCoreReviewBatches.companyId, company.id))
-      .orderBy(desc(seoOpsSemanticCoreReviewBatches.updatedAt))
-      .limit(20);
-
-    const visibleBatches = batches.filter(isPortalVisibleSemanticCoreBatch);
-    const activeBatch = requestedBatchId
-      ? visibleBatches.find((batch) => batch.id === requestedBatchId) ?? null
-      : visibleBatches[0] ?? null;
-
-    if (!activeBatch) {
-      res.json({
-        ok: true,
-        company: mapPortalCompany(company),
-        batches: visibleBatches.map(mapPortalReviewBatch),
-        activeBatch: null,
-        reviewContext: buildPortalReviewContext(null, []),
-        summary: {
-          groups: 0,
-          variants: 0,
-          pendingGroups: 0,
-          pendingVariants: 0,
-          decidedVariants: 0,
-        },
-        groups: [],
-      });
-      return;
-    }
-
-    if (requestedBatchId && activeBatch.id !== requestedBatchId) {
-      throw notFound("Portal review batch not found");
-    }
-
-    const [items, allCompanyItems, keywordActions, groupDecisions] = await Promise.all([
-      db
-        .select()
-        .from(seoOpsSemanticCoreReviewItems)
-        .where(eq(seoOpsSemanticCoreReviewItems.reviewBatchId, activeBatch.id))
-        .orderBy(seoOpsSemanticCoreReviewItems.reviewPriority, seoOpsSemanticCoreReviewItems.displayKeyword),
-      db
-        .select()
-        .from(seoOpsSemanticCoreReviewItems)
-        .where(eq(seoOpsSemanticCoreReviewItems.companyId, company.id)),
-      db
-        .select()
-        .from(seoOpsSemanticCoreKeywordActions)
-        .where(eq(seoOpsSemanticCoreKeywordActions.companyId, company.id)),
-      db
-        .select()
-        .from(seoOpsSemanticCoreReviewGroupDecisions)
-        .where(eq(seoOpsSemanticCoreReviewGroupDecisions.reviewBatchId, activeBatch.id))
-        .orderBy(desc(seoOpsSemanticCoreReviewGroupDecisions.createdAt))
-        .limit(500),
-    ]);
-
-    const historicalResolvedKeywords = resolvedInventoryKeywordSet(
-      allCompanyItems,
-      visibleBatches,
-      activeBatch,
-      keywordActions,
-    );
-    const visibleItems = items.filter((item) =>
-      isPortalClientReviewableItem(item)
-      && !isHistoricallyResolvedReviewDuplicate(item, historicalResolvedKeywords),
-    );
-    const progress = semanticCoreClientReviewProgress(visibleItems);
-    const groups = buildPortalSemanticCoreReviewGroups(visibleItems, latestCanonicalOverrides(groupDecisions));
-    const pendingGroups = groups.filter((group) => group.status === "pending" || group.status === "needs_attention").length;
-
-    res.json({
-      ok: true,
-      company: mapPortalCompany(company),
-      batches: visibleBatches.map(mapPortalReviewBatch),
-      activeBatch: mapPortalReviewBatchWithProgress(activeBatch, progress),
-      reviewContext: buildPortalReviewContext(activeBatch, visibleItems),
-      summary: {
-        groups: groups.length,
-        variants: visibleItems.length,
-        pendingGroups,
-        pendingVariants: progress.pending,
-        decidedVariants: progress.decided,
-      },
-      groups,
-    });
-  });
-
-  router.get("/companies/:companySlug/semantic-core", async (req, res) => {
-    const company = await resolvePortalCompanyBySlug(db, req.params.companySlug as string);
-    if (!company) throw notFound("Portal company not found");
-
-    const statusFilter = typeof req.query.status === "string" ? req.query.status : null;
-    const search = typeof req.query.search === "string" ? normalizePortalKeyword(req.query.search) : "";
-
-    const [batches, items, keywordActions] = await Promise.all([
-      db
-        .select()
-        .from(seoOpsSemanticCoreReviewBatches)
-        .where(eq(seoOpsSemanticCoreReviewBatches.companyId, company.id))
-        .orderBy(desc(seoOpsSemanticCoreReviewBatches.updatedAt)),
-      db
-        .select()
-        .from(seoOpsSemanticCoreReviewItems)
-        .where(eq(seoOpsSemanticCoreReviewItems.companyId, company.id)),
-      db
-        .select()
-        .from(seoOpsSemanticCoreKeywordActions)
-        .where(eq(seoOpsSemanticCoreKeywordActions.companyId, company.id))
-        .orderBy(desc(seoOpsSemanticCoreKeywordActions.createdAt)),
-    ]);
-
-    const visibleBatches = batches.filter(isPortalVisibleSemanticCoreBatch);
-    let inventoryItems = buildSemanticCoreInventory(items, visibleBatches, keywordActions, {
-      excludeOpenReviewQueueItems: true,
-    });
-    if (statusFilter) inventoryItems = inventoryItems.filter((item) => item.status === normalizeInventoryStatus(statusFilter));
-    if (search) inventoryItems = inventoryItems.filter((item) => normalizePortalKeyword(item.keyword).includes(search));
-
-    res.json({
-      ok: true,
-      company: mapPortalCompany(company),
-      context: {
-        title: "Семантичне ядро",
-        description: "Це повний живий список запитів, які вже погоджені, відкладені, відхилені або додані вручну.",
-        currentReviewQueueTitle: "Потребують рішення",
-      },
-      summary: semanticCoreInventoryStatusCounts(buildSemanticCoreInventory(items, visibleBatches, keywordActions, {
-        excludeOpenReviewQueueItems: true,
-      })),
-      items: inventoryItems,
-    });
-  });
-
-  router.post("/companies/:companySlug/semantic-core/keywords", async (req, res) => {
-    const company = await resolvePortalCompanyBySlug(db, req.params.companySlug as string);
-    if (!company) throw notFound("Portal company not found");
-    const input = keywordLifecycleActionSchema.safeParse(req.body);
-    if (!input.success) throw badRequest("Invalid semantic-core keyword action", input.error.flatten());
-
-    const status = input.data.status ?? statusForLifecycleAction(input.data.action);
-    const normalizedKeyword = normalizePortalKeyword(input.data.keyword);
-    const projectId = await latestPortalSemanticCoreProjectId(db, company.id);
-    const [action] = await db
-      .insert(seoOpsSemanticCoreKeywordActions)
-      .values({
-        companyId: company.id,
-        projectId,
-        normalizedKeyword,
-        displayKeyword: input.data.keyword.trim(),
-        action: input.data.action,
-        status,
-        notes: input.data.notes ?? null,
-        actorUserId: input.data.portalUserEmail ? `portal:${input.data.portalUserEmail.toLowerCase()}` : "portal:unknown",
-        payload: {
-          source: "portal",
-          validation: "manual_keyword_requires_policy_processing",
-        },
-      })
-      .returning();
-
-    res.status(201).json({ ok: true, action: mapPortalKeywordAction(action) });
-  });
-
-  router.post("/semantic-core/review-items/:itemId/decision", async (req, res) => {
-    const itemId = req.params.itemId as string;
-    const input = portalDecisionSchema.safeParse(req.body);
-    if (!input.success) throw badRequest("Invalid portal semantic-core decision", input.error.flatten());
-
-    const company = await resolvePortalCompanyBySlug(db, input.data.companySlug);
-    if (!company) throw notFound("Portal company not found");
-
-    const item = await db
-      .select()
-      .from(seoOpsSemanticCoreReviewItems)
-      .where(eq(seoOpsSemanticCoreReviewItems.id, itemId))
-      .then((rows) => rows[0] ?? null);
-    if (!item || item.companyId !== company.id) {
-      throw notFound("Portal review item not found");
-    }
-
-    if (input.data.humanConnectionAssessment !== undefined || input.data.humanConnectionNote !== undefined) {
-      await db
-        .update(seoOpsSemanticCoreReviewItems)
-        .set({
-          humanConnectionAssessment: input.data.humanConnectionAssessment ?? item.humanConnectionAssessment,
-          humanConnectionNote: input.data.humanConnectionNote ?? item.humanConnectionNote,
-          updatedAt: new Date(),
-        })
-        .where(eq(seoOpsSemanticCoreReviewItems.id, item.id));
-    }
-
-    const actorId = input.data.portalUserEmail ? `portal:${input.data.portalUserEmail.toLowerCase()}` : "portal:unknown";
-    const updated = await applySemanticCoreReviewDecision(db, item.id, input.data, {
-      actorType: "portal",
-      actorId,
-      agentId: null,
-      runId: null,
-    });
-
-    if (updated.companyId !== company.id) {
-      throw forbidden("Portal decision company mismatch");
-    }
-
-    res.json({ ok: true, item: mapPortalReviewItem(updated) });
-  });
-
-  router.post("/semantic-core/review-groups/:groupId/decision", async (req, res) => {
-    const groupId = req.params.groupId as string;
-    const input = portalGroupDecisionSchema.safeParse(req.body);
-    if (!input.success) throw badRequest("Invalid portal semantic-core group decision", input.error.flatten());
-
-    const company = await resolvePortalCompanyBySlug(db, input.data.companySlug);
-    if (!company) throw notFound("Portal company not found");
-
-    const [batches, allCompanyItems, keywordActions] = await Promise.all([
-      db
-        .select()
-        .from(seoOpsSemanticCoreReviewBatches)
-        .where(eq(seoOpsSemanticCoreReviewBatches.companyId, company.id))
-        .orderBy(desc(seoOpsSemanticCoreReviewBatches.updatedAt))
-        .limit(50),
-      db
-        .select()
-        .from(seoOpsSemanticCoreReviewItems)
-        .where(eq(seoOpsSemanticCoreReviewItems.companyId, company.id)),
-      db
-        .select()
-        .from(seoOpsSemanticCoreKeywordActions)
-        .where(eq(seoOpsSemanticCoreKeywordActions.companyId, company.id)),
-    ]);
-
-    const visibleBatches = batches.filter(isPortalVisibleSemanticCoreBatch);
-    let targetBatch: PortalReviewBatchRow | null = null;
-    let targetGroup: PortalSemanticCoreReviewGroup | null = null;
-    let targetItems: PortalReviewItemRow[] = [];
-
-    for (const batch of visibleBatches) {
-      const batchItems = allCompanyItems.filter((item) => item.reviewBatchId === batch.id);
-      const historicalResolvedKeywords = resolvedInventoryKeywordSet(
-        allCompanyItems,
-        visibleBatches,
-        batch,
-        keywordActions,
-      );
-      const visibleItems = batchItems.filter((item) =>
-        isPortalClientReviewableItem(item)
-        && !isHistoricallyResolvedReviewDuplicate(item, historicalResolvedKeywords),
-      );
-      const groups = buildPortalSemanticCoreReviewGroups(visibleItems);
-      const group = groups.find((candidate) => candidate.groupId === groupId) ?? null;
-      if (!group) continue;
-      targetBatch = batch;
-      targetGroup = group;
-      targetItems = visibleItems.filter((item) => group.variants.some((variant) => variant.itemId === item.id));
-      break;
-    }
-
-    if (!targetBatch || !targetGroup) throw notFound("Portal semantic-core review group not found");
-
-    const selection = splitPortalReviewGroupDecisionItems(targetGroup, input.data.selectedItemIds);
-    if (selection.invalidItemIds.length > 0) {
-      throw badRequest("Selected review items do not belong to this group", {
-        invalidItemIds: selection.invalidItemIds,
-      });
-    }
-
-    const canonicalItemId = input.data.canonicalItemId ?? targetGroup.canonicalItemId;
-    if (!targetGroup.variants.some((variant) => variant.itemId === canonicalItemId)) {
-      throw badRequest("Canonical review item does not belong to this group");
-    }
-
-    const actorId = input.data.portalUserEmail ? `portal:${input.data.portalUserEmail.toLowerCase()}` : "portal:unknown";
-    const actor = {
-      actorType: "portal" as const,
-      actorId,
-      agentId: null,
-      runId: null,
-    };
-    const itemById = new Map(targetItems.map((item) => [item.id, item]));
-    const updated = [];
-
-    for (const itemId of selection.selectedItemIds) {
-      if (!itemById.has(itemId)) {
-        throw badRequest("Selected review item is not client-reviewable in this group", { itemId });
-      }
-      updated.push(await applySemanticCoreReviewDecision(db, itemId, {
-        humanDecision: input.data.humanDecision,
-        notes: input.data.notes,
-        rejectReason: input.data.rejectReason,
-        overrideReason: input.data.overrideReason,
-      }, actor));
-    }
-
-    await db.insert(seoOpsSemanticCoreReviewGroupDecisions).values({
-      companyId: company.id,
-      projectId: targetBatch.projectId,
-      reviewBatchId: targetBatch.id,
-      groupId,
-      canonicalReviewItemId: canonicalItemId,
-      actorAgentId: null,
-      actorUserId: actorId,
-      decision: input.data.humanDecision,
-      selectedItemIds: selection.selectedItemIds,
-      omittedItemIds: selection.omittedItemIds,
-      notes: input.data.notes ?? null,
-      rejectReason: input.data.rejectReason ?? null,
-      overrideReason: input.data.overrideReason ?? null,
-      payload: {
-        source: "portal",
-        portalUserEmail: input.data.portalUserEmail?.toLowerCase() ?? null,
-      },
-    });
-
-    const refreshedItems = await db
-      .select()
-      .from(seoOpsSemanticCoreReviewItems)
-      .where(eq(seoOpsSemanticCoreReviewItems.reviewBatchId, targetBatch.id));
-    const refreshedGroups = buildPortalSemanticCoreReviewGroups(
-      refreshedItems.filter((item) => targetGroup?.variants.some((variant) => variant.itemId === item.id)),
-      new Map([[groupId, canonicalItemId]]),
-    );
-
-    res.json({
-      ok: true,
-      group: refreshedGroups.find((group) => group.groupId === groupId) ?? targetGroup,
-      decisionSummary: {
-        groupId,
-        humanDecision: input.data.humanDecision,
-        canonicalItemId,
-        affectedItemIds: updated.map((item) => item.id),
-        omittedItemIds: selection.omittedItemIds,
-      },
-    });
-  });
-
-  return router;
-}
-
-async function latestPortalSemanticCoreProjectId(db: Db, companyId: string) {
-  const batch = await db
-    .select({ projectId: seoOpsSemanticCoreReviewBatches.projectId })
-    .from(seoOpsSemanticCoreReviewBatches)
-    .where(eq(seoOpsSemanticCoreReviewBatches.companyId, companyId))
-    .orderBy(desc(seoOpsSemanticCoreReviewBatches.updatedAt))
-    .limit(1)
-    .then((rows) => rows[0] ?? null);
-  return batch?.projectId ?? null;
-}
-
 async function resolvePortalCompanyBySlug(db: Db, companySlug: string) {
-  const companiesRows = await db
-    .select()
-    .from(companies)
-    .where(eq(companies.status, "active"));
-  return companiesRows.find((company) => companyMatchesPortalSlug(company, companySlug)) ?? null;
+  const rows = Array.from(await db.execute(sql<CompanyRow>`
+    select id, name, issue_prefix, brand_color
+    from companies
+    where status = 'active'
+    order by created_at asc
+  `)) as unknown as CompanyRow[];
+  const normalizedSlug = slugifyCompany(companySlug);
+  return rows.find((company) =>
+    company.id === companySlug
+    || slugifyCompany(company.name) === normalizedSlug
+    || company.issue_prefix.toLowerCase() === normalizedSlug,
+  ) ?? null;
 }
 
-function mapPortalCompany(company: PortalCompanyRow) {
+function mapPortalCompany(company: CompanyRow) {
   return {
     companyId: company.id,
     name: company.name,
     slug: slugifyCompany(company.name),
-    issuePrefix: company.issuePrefix,
-    brandColor: company.brandColor,
+    issuePrefix: company.issue_prefix,
+    brandColor: company.brand_color,
   };
 }
 
-function decimalOrNull(value: unknown) {
-  if (value === null || value === undefined) return null;
-  const parsed = typeof value === "number" ? value : Number(value);
-  return Number.isFinite(parsed) ? parsed : null;
+async function loadSemanticSnapshot(db: Db, companyId: string) {
+  const [candidate] = Array.from(await db.execute(sql<PluginEntityRow>`
+    select pe.id, pe.entity_type, pe.external_id, pe.title, pe.status, pe.data, pe.created_at, pe.updated_at
+    from plugin_entities pe
+    join plugins p on p.id = pe.plugin_id
+    where (
+        pe.company_id = ${companyId}
+        or pe.data->>'companyId' = ${companyId}
+      )
+      and p.plugin_key = ${SEMANTIC_CORE_PLUGIN_KEY}
+      and pe.entity_type = ${ENTITY_IMPORT_CANDIDATE}
+    order by pe.updated_at desc
+    limit 1
+  `)) as unknown as PluginEntityRow[];
+
+  if (!candidate) {
+    return {
+      batch: null,
+      reviewItems: [] as SemanticItem[],
+      inventoryItems: [] as SemanticItem[],
+    };
+  }
+
+  const data = asRecord(candidate.data);
+  const importPayload = asRecord(data.importPayload);
+  const artifacts = asRecord(importPayload.artifacts);
+  const runId = asString(data.runId) ?? asString(importPayload.run_id) ?? candidate.external_id ?? candidate.id;
+  const layer = asString(importPayload.layer) ?? asString(asRecord(importPayload.project).layer);
+  const batch = {
+    batchId: candidate.id,
+    sourceRunId: runId,
+    stageLabel: stageLabelForLayer(layer),
+    statusLabel: "На розгляді",
+    counts: {
+      accepted: arrayFrom(artifacts.accepted_keywords).length,
+      review: reviewRowsFromArtifacts(artifacts).length,
+      rejected: arrayFrom(artifacts.rejected_noise).length + arrayFrom(artifacts.rejected_keywords).length,
+      unresolved: reviewRowsFromArtifacts(artifacts).length,
+    },
+    updatedAt: toIso(candidate.updated_at),
+  };
+
+  return {
+    batch,
+    reviewItems: reviewRowsFromArtifacts(artifacts).map((row, index) =>
+      semanticItemFromRow(row, {
+        source: "review",
+        runId,
+        batchTitle: candidate.title,
+        index,
+        canReview: true,
+        defaultStatus: "pending_review",
+        layer,
+      }),
+    ),
+    inventoryItems: inventoryRowsFromArtifacts(artifacts).map((entry, index) =>
+      semanticItemFromRow(entry.row, {
+        source: entry.status,
+        runId,
+        batchTitle: candidate.title,
+        index,
+        canReview: false,
+        defaultStatus: entry.status,
+        layer,
+      }),
+    ),
+  };
 }
 
-function toIso(value: Date | string) {
-  return value instanceof Date ? value.toISOString() : value;
+function reviewRowsFromArtifacts(artifacts: JsonRecord) {
+  return [
+    ...arrayFrom(artifacts.review_candidates),
+    ...arrayFrom(artifacts.review_keywords),
+    ...arrayFrom(artifacts.review),
+  ].filter(isRecord);
 }
 
-function toIsoOrNull(value: Date | string | null) {
-  return value ? toIso(value) : null;
+function inventoryRowsFromArtifacts(artifacts: JsonRecord) {
+  return [
+    ...arrayFrom(artifacts.accepted_keywords).filter(isRecord).map((row) => ({ row, status: "accepted" })),
+    ...arrayFrom(artifacts.semantic_core_keywords).filter(isRecord).map((row) => ({ row, status: "accepted" })),
+    ...arrayFrom(artifacts.parked_outside_layer).filter(isRecord).map((row) => ({ row, status: "deferred" })),
+    ...arrayFrom(artifacts.parked_keywords).filter(isRecord).map((row) => ({ row, status: "deferred" })),
+    ...arrayFrom(artifacts.rejected_noise).filter(isRecord).map((row) => ({ row, status: "rejected" })),
+    ...arrayFrom(artifacts.rejected_keywords).filter(isRecord).map((row) => ({ row, status: "rejected" })),
+  ];
 }
 
-function timestampMs(value: Date | string) {
-  return value instanceof Date ? value.getTime() : Date.parse(value);
+function semanticItemFromRow(row: JsonRecord, opts: {
+  source: string;
+  runId: string;
+  batchTitle: string | null;
+  index: number;
+  canReview: boolean;
+  defaultStatus: string;
+  layer: string | null;
+}): SemanticItem {
+  const keyword = firstString(row, [
+    "display_keyword",
+    "keyword_text",
+    "normalized_keyword",
+    "keyword",
+    "query",
+  ]) ?? `keyword-${opts.index + 1}`;
+  const normalized = normalizeKeyword(firstString(row, ["normalized_keyword", "keyword_text", "keyword", "query"]) ?? keyword);
+  const itemId = firstString(row, ["item_id", "review_item_id", "id"])
+    ?? stableId("sci", `${opts.runId}:${opts.source}:${normalized}:${opts.index}`);
+  const evidenceSummary = firstString(row, [
+    "evidence_summary",
+    "rationale",
+    "reason",
+    "decision_trace_summary",
+  ]);
+  const machineMembership = firstString(row, [
+    "membership",
+    "current_machine_membership",
+    "machine_membership",
+    "state",
+  ]) ?? opts.source;
+
+  return {
+    itemId,
+    keywordId: normalized,
+    keyword,
+    canReview: opts.canReview,
+    lifecycleMembership: opts.defaultStatus,
+    recommendation: {
+      label: recommendationLabel(firstString(row, ["recommended_human_decision", "recommended_decision"]), machineMembership),
+      sourceSignal: opts.source,
+      machineMembership,
+    },
+    recommendedPageUrl: firstString(row, ["recommended_page_url", "target_url", "url"]),
+    clusterName: firstString(row, ["cluster_name", "cluster", "cluster_id"]),
+    locale: firstString(row, ["locale", "language_code", "language"]),
+    intentLabel: firstString(row, ["intent_label", "intent", "layer"]) ?? opts.layer,
+    productConnection: firstString(row, ["product_binding_status", "product_connection", "domain_topic_match"]),
+    geoSearchVolume: firstNumber(row, ["geo_search_volume", "search_volume"]),
+    globalSearchVolume: firstNumber(row, ["global_search_volume"]),
+    rationale: evidenceSummary,
+    status: opts.defaultStatus,
+    batchTitle: opts.batchTitle,
+    lastDecisionNote: null,
+    latestStageLabel: stageLabelForLayer(opts.layer),
+    latestEvidenceSummary: evidenceSummary,
+    firstSeenAt: firstString(row, ["created_at", "first_seen_at"]),
+    lastSeenAt: firstString(row, ["updated_at", "last_seen_at"]),
+    sourceCount: null,
+    sources: clientSafeSources(row),
+    history: [],
+    warnings: clientSafeWarnings(row),
+  };
+}
+
+async function loadPortalDecisions(db: Db, companyId: string) {
+  const rows = Array.from(await db.execute(sql<PluginEntityRow>`
+    select pe.id, pe.entity_type, pe.external_id, pe.title, pe.status, pe.data, pe.created_at, pe.updated_at
+    from plugin_entities pe
+    join plugins p on p.id = pe.plugin_id
+    where (
+        pe.company_id = ${companyId}
+        or pe.data->>'companyId' = ${companyId}
+      )
+      and p.plugin_key = ${SEMANTIC_CORE_PLUGIN_KEY}
+      and pe.entity_type = ${ENTITY_PORTAL_REVIEW_DECISION}
+    order by pe.created_at desc
+    limit 10000
+  `)) as unknown as PluginEntityRow[];
+  return rows.map(entityToDecision);
+}
+
+async function loadPortalKeywordActions(db: Db, companyId: string) {
+  return Array.from(await db.execute(sql<PluginEntityRow>`
+    select pe.id, pe.entity_type, pe.external_id, pe.title, pe.status, pe.data, pe.created_at, pe.updated_at
+    from plugin_entities pe
+    join plugins p on p.id = pe.plugin_id
+    where (
+        pe.company_id = ${companyId}
+        or pe.data->>'companyId' = ${companyId}
+      )
+      and p.plugin_key = ${SEMANTIC_CORE_PLUGIN_KEY}
+      and pe.entity_type = ${ENTITY_PORTAL_KEYWORD_ACTION}
+    order by pe.created_at desc
+    limit 10000
+  `)) as unknown as PluginEntityRow[];
+}
+
+function entityToDecision(entity: PluginEntityRow): PortalDecision {
+  const data = asRecord(entity.data);
+  return {
+    decisionId: entity.id,
+    itemId: asString(data.itemId),
+    keyword: asString(data.keyword) ?? "-",
+    humanDecision: asString(data.humanDecision) ?? entity.status ?? "pending_review",
+    notes: asString(data.notes),
+    portalUserEmail: asString(data.portalUserEmail),
+    createdAt: toIso(entity.created_at),
+  };
+}
+
+function applyItemDecisions(items: SemanticItem[], decisions: PortalDecision[]) {
+  const latestByItem = new Map<string, PortalDecision>();
+  for (const decision of decisions) {
+    if (!decision.itemId || latestByItem.has(decision.itemId)) continue;
+    latestByItem.set(decision.itemId, decision);
+  }
+  return items.map((item) => applyDecisionToItem(item, latestByItem.get(item.itemId) ?? latestByItem.get(item.keywordId) ?? null));
+}
+
+function applyDecisionToItem(item: SemanticItem, decision: PortalDecision | null): SemanticItem {
+  if (!decision) return item;
+  return {
+    ...item,
+    status: decisionStatusValue(decision.humanDecision),
+    lifecycleMembership: decisionStatusValue(decision.humanDecision),
+    lastDecisionNote: decision.notes,
+    history: [
+      {
+        label: "Рішення порталу",
+        state: decisionStatusValue(decision.humanDecision),
+        decision: decision.humanDecision,
+        note: decision.notes,
+        date: decision.createdAt,
+      },
+      ...item.history,
+    ],
+  };
+}
+
+function mergeInventory(items: SemanticItem[], decisions: PortalDecision[], keywordActions: PluginEntityRow[]) {
+  const byKeyword = new Map<string, SemanticItem>();
+  for (const item of applyItemDecisions(items, decisions)) {
+    byKeyword.set(item.keywordId, { ...item, canReview: false });
+  }
+
+  for (const action of [...keywordActions].reverse()) {
+    const data = asRecord(action.data);
+    const keyword = asString(data.keyword) ?? asString(data.displayKeyword);
+    if (!keyword) continue;
+    const keywordId = normalizeKeyword(asString(data.normalizedKeyword) ?? keyword);
+    const status = normalizeStatus(asString(data.status) ?? action.status ?? "candidate");
+    const current = byKeyword.get(keywordId);
+    byKeyword.set(keywordId, {
+      ...(current ?? emptySemanticItem(keywordId, keyword)),
+      keyword,
+      keywordId,
+      itemId: current?.itemId ?? stableId("manual", keywordId),
+      status,
+      lifecycleMembership: status,
+      lastDecisionNote: asString(data.notes),
+      history: [
+        ...(current?.history ?? []),
+        {
+          label: "Дія порталу",
+          state: status,
+          decision: asString(data.action),
+          note: asString(data.notes),
+          date: toIso(action.created_at),
+        },
+      ],
+      firstSeenAt: current?.firstSeenAt ?? toIso(action.created_at),
+      lastSeenAt: toIso(action.created_at),
+    });
+  }
+
+  return [...byKeyword.values()].sort((left, right) =>
+    statusSort(left.status) - statusSort(right.status) || left.keyword.localeCompare(right.keyword, "uk"),
+  );
+}
+
+async function insertPortalEntity(db: Db, input: {
+  companyId: string;
+  entityType: string;
+  externalId: string;
+  title: string;
+  status: string;
+  data: JsonRecord;
+}) {
+  const pluginId = await resolveSemanticCorePluginId(db);
+  const [row] = Array.from(await db.execute(sql<PluginEntityRow>`
+    insert into plugin_entities (
+      plugin_id,
+      company_id,
+      entity_type,
+      scope_kind,
+      scope_id,
+      external_id,
+      title,
+      status,
+      data,
+      created_at,
+      updated_at
+    )
+    values (
+      ${pluginId},
+      ${input.companyId},
+      ${input.entityType},
+      'company',
+      ${input.companyId},
+      ${input.externalId},
+      ${input.title},
+      ${input.status},
+      ${JSON.stringify(input.data)}::jsonb,
+      now(),
+      now()
+    )
+    returning id, entity_type, external_id, title, status, data, created_at, updated_at
+  `)) as unknown as PluginEntityRow[];
+  return row;
+}
+
+async function resolveSemanticCorePluginId(db: Db) {
+  const [row] = Array.from(await db.execute(sql<{ id: string }>`
+    select id from plugins where plugin_key = ${SEMANTIC_CORE_PLUGIN_KEY} limit 1
+  `)) as unknown as Array<{ id: string }>;
+  if (!row) {
+    throw notFound("Semantic Core plugin is not installed");
+  }
+  return row.id;
+}
+
+function buildReviewContext(batch: { stageLabel: string } | null, items: SemanticItem[]) {
+  const summary = reviewSummary(items);
+  return {
+    title: "Розгляд запитів для семантичного ядра",
+    stageLabel: batch?.stageLabel ?? "Розгляд запитів",
+    description: "Це запити, відібрані для клієнтського рішення перед включенням у семантичне ядро.",
+    clientTask: summary.total > 0
+      ? "Погодьте релевантні запити, відхиліть нерелевантні або відкладіть сумнівні."
+      : "Дій з вашого боку зараз не потрібно.",
+    nextStep: summary.pending > 0
+      ? "Після рішень щодо всіх запитів Paperclip продовжить внутрішню перевірку."
+      : "Клієнтський розгляд завершено або наразі немає активної черги.",
+    progress: summary,
+  };
+}
+
+function buildReviewGroups(batchId: string, items: SemanticItem[]) {
+  const grouped = new Map<string, SemanticItem[]>();
+  for (const item of items) {
+    const key = normalizeKeyword(item.clusterName ?? item.keyword);
+    grouped.set(key, [...(grouped.get(key) ?? []), item]);
+  }
+  return [...grouped.entries()].map(([groupKey, groupItems]) => {
+    const canonical = [...groupItems].sort((left, right) =>
+      (right.geoSearchVolume ?? 0) - (left.geoSearchVolume ?? 0)
+      || left.keyword.length - right.keyword.length,
+    )[0];
+    return {
+      groupId: stableId("scrg", `${batchId}:${groupKey}`),
+      batchId,
+      canonicalItemId: canonical.itemId,
+      canonicalKeyword: canonical.keyword,
+      variants: groupItems.map((item) => ({
+        itemId: item.itemId,
+        keyword: item.keyword,
+        isCanonical: item.itemId === canonical.itemId,
+        decisionState: "pending",
+        decisionLabel: "Потребує рішення",
+        selectedByDefault: true,
+        geoSearchVolume: item.geoSearchVolume,
+        globalSearchVolume: item.globalSearchVolume,
+        confidence: null,
+        matchScore: null,
+        warnings: item.warnings,
+        note: item.latestEvidenceSummary,
+        updatedAt: item.lastSeenAt,
+      })),
+      variantCount: groupItems.length,
+      geoSearchVolumeTotal: sumNullable(groupItems.map((item) => item.geoSearchVolume)),
+      globalSearchVolumeTotal: sumNullable(groupItems.map((item) => item.globalSearchVolume)),
+      confidence: "medium",
+      groupingReason: canonical.clusterName,
+      warning: null,
+      status: "pending",
+      statusLabel: "Потребує рішення",
+      counts: {
+        total: groupItems.length,
+        pending: groupItems.length,
+        accepted: 0,
+        rejected: 0,
+        deferred: 0,
+        needsAttention: 0,
+      },
+      source: "paperclip",
+    };
+  }).sort((left, right) => left.canonicalKeyword.localeCompare(right.canonicalKeyword, "uk"));
+}
+
+function reviewSummary(items: SemanticItem[]) {
+  const total = items.length;
+  const pending = items.filter((item) => normalizeStatus(item.status) === "pending_review").length;
+  return {
+    total,
+    pending,
+    decided: total - pending,
+    blocked: 0,
+  };
+}
+
+function inventorySummary(items: SemanticItem[]) {
+  return {
+    total: items.length,
+    accepted: items.filter((item) => normalizeStatus(item.status) === "accepted").length,
+    candidate: items.filter((item) => normalizeStatus(item.status) === "candidate").length,
+    deferred: items.filter((item) => normalizeStatus(item.status) === "deferred").length,
+    rejected: items.filter((item) => normalizeStatus(item.status) === "rejected").length,
+    removed: items.filter((item) => normalizeStatus(item.status) === "removed").length,
+  };
+}
+
+function mapPortalDecision(decision: PortalDecision) {
+  return decision;
+}
+
+function asRecord(value: unknown): JsonRecord {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as JsonRecord : {};
+}
+
+function isRecord(value: unknown): value is JsonRecord {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function arrayFrom(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : [];
+}
+
+function asString(value: unknown) {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function firstString(row: JsonRecord, keys: string[]) {
+  for (const key of keys) {
+    const value = asString(row[key]);
+    if (value) return value;
+  }
+  return null;
+}
+
+function firstNumber(row: JsonRecord, keys: string[]) {
+  for (const key of keys) {
+    const value = row[key];
+    const parsed = typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return null;
+}
+
+function normalizeKeyword(value: string) {
+  return value.toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+function normalizeStatus(value: unknown) {
+  const normalized = asString(value)?.toLowerCase().replace(/[\s-]+/g, "_") ?? "";
+  if (normalized === "accept" || normalized === "accepted" || normalized === "approved") return "accepted";
+  if (normalized === "reject" || normalized === "rejected") return "rejected";
+  if (normalized === "defer" || normalized === "deferred") return "deferred";
+  if (normalized === "remove" || normalized === "removed") return "removed";
+  if (normalized === "pending" || normalized === "review") return "pending_review";
+  return normalized || "candidate";
+}
+
+function decisionStatusValue(decision: string) {
+  if (decision === "accept") return "accepted";
+  if (decision === "reject") return "rejected";
+  if (decision === "defer") return "deferred";
+  return "pending_review";
+}
+
+function statusForKeywordAction(action: string) {
+  switch (action) {
+    case "accept":
+    case "add":
+    case "restore":
+      return "accepted";
+    case "reject":
+      return "rejected";
+    case "defer":
+      return "deferred";
+    case "remove":
+      return "removed";
+    default:
+      return "candidate";
+  }
+}
+
+function statusSort(status: string | null) {
+  return {
+    accepted: 0,
+    candidate: 1,
+    pending_review: 2,
+    deferred: 3,
+    rejected: 4,
+    removed: 5,
+  }[normalizeStatus(status)] ?? 10;
+}
+
+function recommendationLabel(decision: string | null, membership: string | null) {
+  if (decision === "accept" || membership === "accepted") return "Рекомендовано погодити";
+  if (decision === "reject" || membership === "rejected") return "Рекомендовано відхилити";
+  if (decision === "defer" || membership === "parked") return "Рекомендовано відкласти";
+  return null;
 }
 
 function stageLabelForLayer(layer: string | null) {
@@ -980,575 +933,81 @@ function stageLabelForLayer(layer: string | null) {
       return "Другий етап: суміжні запити";
     case "audience_need_intent":
       return "Третій етап: потреби аудиторії";
+    case "audience_interest_intent":
+      return "Четвертий етап: інтереси аудиторії";
     default:
       return "Розгляд запитів";
   }
 }
 
-const portalProgressCounts = semanticCoreClientReviewProgress;
-
-function clientSafeWarnings(item: Pick<PortalReviewItemRow, "policyWarnings" | "localeWarningSeverity">) {
+function clientSafeWarnings(row: JsonRecord) {
+  const warnings = [
+    ...arrayFrom(row.policy_warnings),
+    ...arrayFrom(row.policyWarnings),
+    row.locale_warning_severity,
+    row.warning,
+  ].map((value) => asString(value)?.toLowerCase()).filter((value): value is string => Boolean(value));
   const labels = new Set<string>();
-  const warnings = item.policyWarnings.map((warning) => warning.toLowerCase());
-
-  if (warnings.some(isLocalePolicyWarning) || item.localeWarningSeverity === "explainable_edge_case") {
+  if (warnings.some((warning) =>
+    warning.includes("locale")
+    || warning.includes("language")
+    || warning.includes("mixed_language")
+    || warning.includes("unsupported"),
+  )) {
     labels.add("Потрібне пояснення через мовну особливість запиту.");
   }
-
   return [...labels];
 }
 
-function isLocalePolicyWarning(warning: string) {
-  return warning.includes("locale")
-    || warning.includes("mixed_language")
-    || warning.includes("unsupported_language")
-    || warning.includes("unsupported_locale");
+function clientSafeSources(row: JsonRecord) {
+  const sources = arrayFrom(row.source_occurrences).filter(isRecord);
+  return sources.slice(0, 5).map((source, index) => ({
+    label: asString(source.label) ?? `Джерело ${index + 1}`,
+    state: asString(source.state) ?? asString(source.status),
+    sourceType: asString(source.source_type) ?? asString(source.sourceType) ?? asString(source.source),
+    date: asString(source.seen_at) ?? asString(source.created_at),
+  }));
 }
 
-function portalReviewGroupKey(item: Pick<PortalReviewItemRow,
-  "reviewBatchId" | "duplicateGroupKey" | "normalizedKeyword" | "displayKeyword" | "latestPayload"
->) {
-  const payload = asRecord(item.latestPayload);
-  const explicitGroupKey = firstString(payload, [
-    "review_group_id",
-    "reviewGroupId",
-    "semantic_group_id",
-    "semanticGroupId",
-    "keyword_group_id",
-    "keywordGroupId",
-    "canonical_group_key",
-    "canonicalGroupKey",
-    "canonical_keyword_normalized",
-    "canonicalKeywordNormalized",
-    "canonical_keyword",
-    "canonicalKeyword",
-  ]);
-  return normalizePortalKeyword(
-    explicitGroupKey
-      ?? item.duplicateGroupKey
-      ?? item.normalizedKeyword
-      ?? item.displayKeyword,
-  );
-}
-
-function mapPortalReviewGroup(
-  batchId: string,
-  groupKey: string,
-  items: PortalReviewItemRow[],
-  canonicalOverrideItemId: string | null = null,
-): PortalSemanticCoreReviewGroup {
-  const sortedItems = [...items].sort((left, right) =>
-    portalReviewItemCanonicalScore(right) - portalReviewItemCanonicalScore(left)
-    || left.displayKeyword.length - right.displayKeyword.length
-    || left.displayKeyword.localeCompare(right.displayKeyword, "uk"),
-  );
-  const canonicalItem = items.find((item) => item.id === canonicalOverrideItemId)
-    ?? explicitCanonicalItem(items)
-    ?? sortedItems[0];
-  const variants = items
-    .map((item) => mapPortalReviewGroupVariant(item, canonicalItem.id))
-    .sort((left, right) =>
-      Number(right.isCanonical) - Number(left.isCanonical)
-      || reviewVariantSort(left) - reviewVariantSort(right)
-      || left.keyword.localeCompare(right.keyword, "uk"),
-    );
-  const counts = {
-    total: variants.length,
-    pending: variants.filter((variant) => variant.decisionState === "pending").length,
-    accepted: variants.filter((variant) => variant.decisionState === "accepted").length,
-    rejected: variants.filter((variant) => variant.decisionState === "rejected").length,
-    deferred: variants.filter((variant) => variant.decisionState === "deferred").length,
-    needsAttention: variants.filter((variant) => variant.decisionState === "needs_attention").length,
-  };
-  const status = reviewGroupStatus(counts);
-  const warnings = [...new Set(items.flatMap(clientSafeWarnings))];
-
+function emptySemanticItem(keywordId: string, keyword: string): SemanticItem {
   return {
-    groupId: portalSemanticCoreReviewGroupId(batchId, groupKey),
-    batchId,
-    canonicalItemId: canonicalItem.id,
-    canonicalKeyword: canonicalKeywordText(canonicalItem),
-    groupConfidence: maxNumber(items.flatMap((item) => [
-      decimalOrNull(item.acceptanceConfidence),
-      decimalOrNull(item.domainTopicMatchScore),
-    ])),
-    status,
-    statusLabel: reviewGroupStatusLabel(status),
-    counts,
-    geoSearchVolume: sumNullableVolumes(items.map((item) => item.geoSearchVolume)),
-    globalSearchVolume: sumNullableVolumes(items.map((item) => item.globalSearchVolume)),
-    warnings,
-    variants,
-    updatedAt: toIsoOrNull(new Date(Math.max(...items.map((item) => timestampMs(item.updatedAt))))),
+    itemId: stableId("manual", keywordId),
+    keywordId,
+    keyword,
+    canReview: false,
+    lifecycleMembership: "candidate",
+    recommendation: { label: null, sourceSignal: "manual_lifecycle_action", machineMembership: null },
+    recommendedPageUrl: null,
+    clusterName: null,
+    locale: null,
+    intentLabel: null,
+    productConnection: null,
+    geoSearchVolume: null,
+    globalSearchVolume: null,
+    rationale: null,
+    status: "candidate",
+    batchTitle: null,
+    lastDecisionNote: null,
+    latestStageLabel: null,
+    latestEvidenceSummary: null,
+    firstSeenAt: null,
+    lastSeenAt: null,
+    sourceCount: null,
+    sources: [],
+    history: [],
+    warnings: [],
   };
 }
 
-function sumNullableVolumes(values: Array<number | null>) {
-  const numericValues = values.filter((value): value is number => typeof value === "number");
-  if (numericValues.length === 0) return null;
-  return numericValues.reduce((sum, value) => sum + value, 0);
+function stableId(prefix: string, input: string) {
+  return `${prefix}_${createHash("sha256").update(input).digest("hex").slice(0, 32)}`;
 }
 
-function mapPortalReviewGroupVariant(
-  item: PortalReviewItemRow,
-  canonicalItemId: string,
-): PortalSemanticCoreReviewGroupVariant {
-  const decisionState = portalReviewDecisionState(item);
-  return {
-    itemId: item.id,
-    keyword: item.displayKeyword,
-    isCanonical: item.id === canonicalItemId,
-    decisionState,
-    decisionLabel: portalReviewDecisionStateLabel(decisionState),
-    selectedByDefault: decisionState === "pending",
-    geoSearchVolume: item.geoSearchVolume,
-    globalSearchVolume: item.globalSearchVolume,
-    confidence: decimalOrNull(item.acceptanceConfidence),
-    matchScore: decimalOrNull(item.domainTopicMatchScore),
-    warnings: clientSafeWarnings(item),
-    note: clientSafeReviewPrompt(item),
-    updatedAt: toIsoOrNull(item.updatedAt),
-  };
+function sumNullable(values: Array<number | null>) {
+  const numeric = values.filter((value): value is number => typeof value === "number");
+  return numeric.length > 0 ? numeric.reduce((sum, value) => sum + value, 0) : null;
 }
 
-function explicitCanonicalItem(items: PortalReviewItemRow[]) {
-  const canonicalKeywords = new Set(
-    items
-      .map((item) => {
-        const payload = asRecord(item.latestPayload);
-        return firstString(payload, [
-          "canonical_keyword",
-          "canonicalKeyword",
-          "canonical_query",
-          "canonicalQuery",
-        ]);
-      })
-      .filter((keyword): keyword is string => Boolean(keyword))
-      .map(normalizePortalKeyword),
-  );
-  if (canonicalKeywords.size === 0) return null;
-  return items.find((item) =>
-    canonicalKeywords.has(normalizePortalKeyword(item.normalizedKeyword))
-    || canonicalKeywords.has(normalizePortalKeyword(item.displayKeyword)),
-  ) ?? null;
-}
-
-function canonicalKeywordText(item: PortalReviewItemRow) {
-  const payload = asRecord(item.latestPayload);
-  return firstString(payload, [
-    "canonical_keyword",
-    "canonicalKeyword",
-    "canonical_query",
-    "canonicalQuery",
-  ]) ?? item.displayKeyword;
-}
-
-function portalReviewItemCanonicalScore(item: PortalReviewItemRow) {
-  return (
-    (decimalOrNull(item.acceptanceConfidence) ?? 0)
-    + (decimalOrNull(item.domainTopicMatchScore) ?? 0)
-    + ((item.geoSearchVolume ?? 0) / 1_000_000)
-    + ((item.globalSearchVolume ?? 0) / 10_000_000)
-  );
-}
-
-function portalReviewDecisionState(
-  item: Pick<PortalReviewItemRow, "humanDecision" | "decisionStatus" | "validationOutcome">,
-): PortalSemanticCoreReviewGroupVariant["decisionState"] {
-  if (item.decisionStatus === "blocked" || item.validationOutcome === "blocked") return "needs_attention";
-  if (item.humanDecision === "accept") return "accepted";
-  if (item.humanDecision === "reject") return "rejected";
-  if (item.humanDecision === "defer") return "deferred";
-  return "pending";
-}
-
-function portalReviewDecisionStateLabel(state: PortalSemanticCoreReviewGroupVariant["decisionState"]) {
-  switch (state) {
-    case "accepted":
-      return "Погоджено";
-    case "rejected":
-      return "Відхилено";
-    case "deferred":
-      return "Відкладено";
-    case "needs_attention":
-      return "Потребує внутрішньої перевірки";
-    default:
-      return "Потребує рішення";
-  }
-}
-
-function clientSafeReviewPrompt(item: Pick<PortalReviewItemRow, "humanReviewReason">) {
-  const reason = item.humanReviewReason?.toLowerCase() ?? "";
-  if (reason.includes("locale")) return "Є мовна особливість запиту, але він може бути релевантним.";
-  if (reason.includes("product")) return "Потрібно підтвердити звʼязок із послугою або темою.";
-  return null;
-}
-
-function reviewGroupStatus(counts: PortalSemanticCoreReviewGroup["counts"]): PortalSemanticCoreReviewGroup["status"] {
-  if (counts.needsAttention > 0) return "needs_attention";
-  if (counts.pending > 0) return "pending";
-  const decidedKinds = [counts.accepted, counts.rejected, counts.deferred].filter((count) => count > 0).length;
-  return decidedKinds > 1 ? "mixed" : "decided";
-}
-
-function reviewGroupStatusLabel(status: PortalSemanticCoreReviewGroup["status"]) {
-  switch (status) {
-    case "decided":
-      return "Рішення прийнято";
-    case "mixed":
-      return "Є різні рішення";
-    case "needs_attention":
-      return "Потребує внутрішньої перевірки";
-    default:
-      return "Потребує рішення";
-  }
-}
-
-function reviewGroupSort(group: PortalSemanticCoreReviewGroup) {
-  return {
-    needs_attention: 0,
-    pending: 1,
-    mixed: 2,
-    decided: 3,
-  }[group.status] ?? 10;
-}
-
-function reviewVariantSort(variant: PortalSemanticCoreReviewGroupVariant) {
-  return {
-    needs_attention: 0,
-    pending: 1,
-    accepted: 2,
-    deferred: 3,
-    rejected: 4,
-  }[variant.decisionState] ?? 10;
-}
-
-function firstString(record: JsonRecord, keys: string[]) {
-  for (const key of keys) {
-    const value = record[key];
-    if (typeof value === "string" && value.trim()) return value.trim();
-  }
-  return null;
-}
-
-function maxNumber(values: Array<number | null>) {
-  const numbers = values.filter((value): value is number => typeof value === "number" && Number.isFinite(value));
-  return numbers.length > 0 ? Math.max(...numbers) : null;
-}
-
-function latestCanonicalOverrides(decisions: PortalReviewGroupDecisionRow[]) {
-  const overrides = new Map<string, string>();
-  for (const decision of decisions) {
-    if (!decision.canonicalReviewItemId || overrides.has(decision.groupId)) continue;
-    overrides.set(decision.groupId, decision.canonicalReviewItemId);
-  }
-  return overrides;
-}
-
-function mapInventoryGroup(
-  group: {
-    keywordId: string;
-    keyword: string;
-    items: PortalReviewItemRow[];
-    actions: PortalKeywordActionRow[];
-  },
-  batchById: Map<string, PortalReviewBatchRow>,
-): PortalSemanticCoreInventoryItem {
-  const sortedItems = [...group.items].sort((a, b) => timestampMs(a.updatedAt) - timestampMs(b.updatedAt));
-  const sortedActions = [...group.actions].sort((a, b) => timestampMs(a.createdAt) - timestampMs(b.createdAt));
-  const latestAction = sortedActions.at(-1) ?? null;
-  const latestItem = sortedItems.at(-1) ?? null;
-  const firstItem = sortedItems[0] ?? null;
-  const statusSourceItem = latestAction ? latestItem : inventoryStatusSourceItem(sortedItems, batchById);
-  const displayContextItem = statusSourceItem ?? latestItem;
-  const latestVolumeItem = [...sortedItems].reverse().find((item) =>
-    item.geoSearchVolume !== null || item.globalSearchVolume !== null,
-  ) ?? null;
-  const status = latestAction?.status as PortalSemanticCoreInventoryItem["status"] | undefined
-    ?? statusFromReviewItems(sortedItems, batchById);
-  const recommendation = inventoryRecommendation(displayContextItem, latestAction);
-
-  return {
-    keywordId: group.keywordId,
-    keyword: latestAction?.displayKeyword ?? latestItem?.displayKeyword ?? group.keyword,
-    status,
-    lifecycleMembership: status,
-    recommendation,
-    geoSearchVolume: latestVolumeItem?.geoSearchVolume ?? null,
-    globalSearchVolume: latestVolumeItem?.globalSearchVolume ?? null,
-    sourceCount: sortedItems.length + sortedActions.length,
-    firstSeenAt: toIsoOrNull(firstItem?.createdAt ?? sortedActions[0]?.createdAt ?? null),
-    lastSeenAt: toIsoOrNull(latestAction?.createdAt ?? latestItem?.updatedAt ?? null),
-    latestStageLabel: stageLabelForLayer(displayContextItem ? batchById.get(displayContextItem.reviewBatchId)?.layer ?? null : null),
-    latestEvidenceSummary: displayContextItem?.evidenceSummary ?? latestItem?.evidenceSummary ?? null,
-    sources: sortedItems.map((item) => {
-      const batch = batchById.get(item.reviewBatchId);
-      return {
-        batchId: item.reviewBatchId,
-        stageLabel: stageLabelForLayer(batch?.layer ?? null),
-        state: inventoryStateLabel(item),
-        sourceSignal: inventoryRecommendation(item, null).sourceSignal,
-        humanDecision: item.humanDecision,
-        sourceType: sourceTypeLabel(item.sourceArtifactType),
-        seenAt: toIsoOrNull(item.updatedAt),
-      };
-    }),
-    history: sortedActions.map(mapPortalKeywordAction),
-  };
-}
-
-function statusFromReviewItems(
-  items: PortalReviewItemRow[],
-  batchById: Map<string, PortalReviewBatchRow>,
-): PortalSemanticCoreInventoryItem["status"] {
-  const sourceItem = inventoryStatusSourceItem(items, batchById);
-  if (sourceItem?.humanDecision === "accept") return "accepted";
-  if (sourceItem?.humanDecision === "reject") return "rejected";
-  if (sourceItem?.humanDecision === "defer") return "deferred";
-  if (sourceItem?.currentMachineMembership === "accepted") {
-    const batch = batchById.get(sourceItem.reviewBatchId);
-    const batchCompleted = batch?.clientReviewStatus === "completed" || Boolean(batch?.clientReviewProcessedAt);
-    if (!batchCompleted || sourceItem.humanReviewRequired === true) return "candidate";
-    return "accepted";
-  }
-  return "candidate";
-}
-
-function isOpenReviewQueueInventoryDuplicate(item: PortalReviewItemRow, batch: PortalReviewBatchRow) {
-  const clientReviewClosed =
-    batch.clientReviewStatus === "completed"
-    || batch.clientReviewStatus === "not_applicable"
-    || Boolean(batch.clientReviewProcessedAt);
-  if (clientReviewClosed || item.humanDecision) return false;
-  return isSemanticCoreClientReviewableItem(item);
-}
-
-function openReviewQueueKeywordIds(
-  items: PortalReviewItemRow[],
-  batchById: Map<string, PortalReviewBatchRow>,
-) {
-  const keywordIds = new Set<string>();
-  for (const item of items) {
-    const batch = batchById.get(item.reviewBatchId);
-    if (!batch || !isOpenReviewQueueInventoryDuplicate(item, batch)) continue;
-    const keywordId = normalizePortalKeyword(item.normalizedKeyword || item.displayKeyword);
-    if (keywordId) keywordIds.add(keywordId);
-  }
-  return keywordIds;
-}
-
-function shouldExcludeOpenReviewInventoryDuplicate(
-  item: PortalReviewItemRow,
-  keywordId: string,
-  openReviewKeywordIds: Set<string>,
-) {
-  if (!openReviewKeywordIds.has(keywordId)) return false;
-  if (item.humanDecision) return false;
-  return item.currentMachineMembership !== "accepted";
-}
-
-function isInternalDiagnosticInventoryItem(item: Pick<PortalReviewItemRow,
-  | "currentMachineMembership"
-  | "displayKeyword"
-  | "searchQueryEligibility"
-  | "latestPayload"
-  | "humanDecision"
-  | "humanReviewReason"
-  | "policyWarnings"
->) {
-  const payload = asRecord(item.latestPayload);
-  const parkedReason = typeof payload.parked_reason === "string" ? payload.parked_reason.toLowerCase() : "";
-  const reviewReason = item.humanReviewReason?.toLowerCase() ?? "";
-  const policyWarnings = Array.isArray(item.policyWarnings)
-    ? item.policyWarnings.filter((warning): warning is string => typeof warning === "string")
-    : [];
-  const hasOffTopicEntityConflict = item.currentMachineMembership === "parked"
-    && (
-      parkedReason === "off_topic_entity_conflict"
-      || reviewReason === "off_topic_entity_conflict"
-      || policyWarnings.includes("off_topic_entity_conflict")
-    );
-  return !item.humanDecision
-    && (
-      item.currentMachineMembership === "rejected_noise"
-      || isStaleHistoricalYearKeyword(item.displayKeyword)
-      || item.searchQueryEligibility === "not_search_query"
-      || payload.rejected_reason === "not_search_query"
-      || payload.layer_membership === "rejected_noise"
-      || hasOffTopicEntityConflict
-    );
-}
-
-function inventoryStatusSourceItem(
-  items: PortalReviewItemRow[],
-  batchById: Map<string, PortalReviewBatchRow>,
-) {
-  const latestHumanDecision = [...items].reverse().find((item) =>
-    item.decisionStatus === "decided" && item.humanDecision,
-  );
-  if (latestHumanDecision) return latestHumanDecision;
-
-  return [...items].reverse().find((item) => {
-    const batch = batchById.get(item.reviewBatchId);
-    const batchCompleted = batch?.clientReviewStatus === "completed" || Boolean(batch?.clientReviewProcessedAt);
-    return item.currentMachineMembership === "accepted" && item.humanReviewRequired !== true && batchCompleted;
-  }) ?? items.at(-1) ?? null;
-}
-
-function statusSort(status: PortalSemanticCoreInventoryItem["status"]) {
-  return {
-    accepted: 0,
-    candidate: 1,
-    deferred: 2,
-    rejected: 3,
-    removed: 4,
-  }[status] ?? 10;
-}
-
-function normalizeInventoryStatus(status: string) {
-  switch (status) {
-    case "accept":
-    case "approved":
-      return "accepted";
-    case "reject":
-      return "rejected";
-    case "defer":
-      return "deferred";
-    default:
-      return status;
-  }
-}
-
-function statusForLifecycleAction(action: z.infer<typeof keywordLifecycleActionSchema>["action"]) {
-  switch (action) {
-    case "add":
-    case "accept":
-    case "restore":
-      return "accepted";
-    case "reject":
-      return "rejected";
-    case "defer":
-      return "deferred";
-    case "remove":
-      return "removed";
-  }
-}
-
-function mapPortalKeywordAction(action: PortalKeywordActionRow) {
-  return {
-    action: action.action,
-    status: action.status,
-    notes: action.notes,
-    createdAt: toIsoOrNull(action.createdAt),
-  };
-}
-
-function inventoryRecommendation(
-  item: PortalReviewItemRow | null,
-  latestAction: PortalKeywordActionRow | null,
-): PortalSemanticCoreInventoryItem["recommendation"] {
-  if (latestAction) {
-    return {
-      sourceSignal: "manual_lifecycle_action",
-      label: labelForManualLifecycleAction(latestAction.action),
-      machineMembership: item?.currentMachineMembership ?? null,
-      recommendedHumanDecision: item?.recommendedHumanDecision ?? null,
-    };
-  }
-  if (!item) {
-    return {
-      sourceSignal: "unknown",
-      label: "Джерело не визначено",
-      machineMembership: null,
-      recommendedHumanDecision: null,
-    };
-  }
-  const humanSignal = signalFromHumanDecision(item.humanDecision);
-  if (humanSignal) {
-    return {
-      sourceSignal: humanSignal,
-      label: inventoryStateLabel(item),
-      machineMembership: item.currentMachineMembership,
-      recommendedHumanDecision: item.recommendedHumanDecision,
-    };
-  }
-  return {
-    sourceSignal: signalFromMachineMembership(item.currentMachineMembership),
-    label: inventoryStateLabel(item),
-    machineMembership: item.currentMachineMembership,
-    recommendedHumanDecision: item.recommendedHumanDecision,
-  };
-}
-
-function signalFromHumanDecision(decision: string | null): PortalSemanticCoreRecommendationSignal | null {
-  switch (decision) {
-    case "accept":
-      return "human_accepted";
-    case "reject":
-      return "human_rejected";
-    case "defer":
-      return "human_deferred";
-    default:
-      return null;
-  }
-}
-
-function signalFromMachineMembership(membership: string): PortalSemanticCoreRecommendationSignal {
-  switch (membership) {
-    case "accepted":
-      return "machine_recommended_accept";
-    case "review":
-      return "machine_needs_review";
-    case "parked":
-      return "machine_parked";
-    case "rejected":
-      return "machine_rejected";
-    default:
-      return "unknown";
-  }
-}
-
-function labelForManualLifecycleAction(action: string) {
-  switch (action) {
-    case "add":
-    case "accept":
-    case "restore":
-      return "Додано вручну";
-    case "reject":
-      return "Відхилено вручну";
-    case "defer":
-      return "Відкладено вручну";
-    case "remove":
-      return "Прибрано з ядра";
-    default:
-      return "Ручна зміна";
-  }
-}
-
-function inventoryStateLabel(item: PortalReviewItemRow) {
-  if (item.humanDecision === "accept") return "Погоджено людиною";
-  if (item.humanDecision === "reject") return "Відхилено людиною";
-  if (item.humanDecision === "defer") return "Відкладено";
-  if (item.currentMachineMembership === "accepted") return "Рекомендовано до погодження";
-  if (item.currentMachineMembership === "review") return "Потребує рішення";
-  return "Кандидат";
-}
-
-function sourceTypeLabel(sourceType: string) {
-  switch (sourceType) {
-    case "accepted":
-      return "Попередньо відібрано";
-    case "review":
-      return "Розгляд";
-    case "parked":
-      return "Відкладений кандидат";
-    case "rejected":
-      return "Відхилений кандидат";
-    case "serp_evidence":
-      return "SERP evidence";
-    case "recall":
-      return "Додаткове джерело";
-    default:
-      return "Джерело";
-  }
+function toIso(value: Date | string) {
+  return value instanceof Date ? value.toISOString() : value;
 }

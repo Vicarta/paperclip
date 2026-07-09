@@ -33,32 +33,22 @@
  * @see services/secrets.ts — secretService used by agent env bindings
  */
 
-import { eq, and, desc } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 import type { Db } from "@paperclipai/db";
-import { companySecrets, companySecretVersions, pluginConfig } from "@paperclipai/db";
-import type { SecretProvider } from "@paperclipai/shared";
-import { getSecretProvider } from "../secrets/provider-registry.js";
-import { pluginRegistryService } from "./plugin-registry.js";
+import { companySecrets, pluginConfig, plugins } from "@paperclipai/db";
+import {
+  collectSecretRefPaths,
+  isUuidSecretRef,
+  readConfigValueAtPath,
+} from "./json-schema-secret-refs.js";
+import { secretService } from "./secrets.js";
+
+export const PLUGIN_SECRET_REFS_DISABLED_MESSAGE =
+  "Plugin secret references are disabled until company-scoped plugin config lands";
 
 // ---------------------------------------------------------------------------
 // Error helpers
 // ---------------------------------------------------------------------------
-
-/**
- * Create a sanitised error that never leaks secret material.
- * Only the ref identifier is included; never the resolved value.
- */
-function secretNotFound(secretRef: string): Error {
-  const err = new Error(`Secret not found: ${secretRef}`);
-  err.name = "SecretNotFoundError";
-  return err;
-}
-
-function secretVersionNotFound(secretRef: string): Error {
-  const err = new Error(`No version found for secret: ${secretRef}`);
-  err.name = "SecretVersionNotFoundError";
-  return err;
-}
 
 function invalidSecretRef(secretRef: string): Error {
   const err = new Error(`Invalid secret reference: ${secretRef}`);
@@ -69,48 +59,6 @@ function invalidSecretRef(secretRef: string): Error {
 // ---------------------------------------------------------------------------
 // Validation
 // ---------------------------------------------------------------------------
-
-/** UUID v4 regex for validating secretRef format. */
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-/**
- * Check whether a secretRef looks like a valid UUID.
- */
-function isUuid(value: string): boolean {
-  return UUID_RE.test(value);
-}
-
-/**
- * Collect the property paths (dot-separated keys) whose schema node declares
- * `format: "secret-ref"`. Only top-level and nested `properties` are walked —
- * this mirrors the flat/nested object shapes that `JsonSchemaForm` renders.
- */
-function collectSecretRefPaths(
-  schema: Record<string, unknown> | null | undefined,
-): Set<string> {
-  const paths = new Set<string>();
-  if (!schema || typeof schema !== "object") return paths;
-
-  function walk(node: Record<string, unknown>, prefix: string): void {
-    const props = node.properties as Record<string, Record<string, unknown>> | undefined;
-    if (!props || typeof props !== "object") return;
-    for (const [key, propSchema] of Object.entries(props)) {
-      if (!propSchema || typeof propSchema !== "object") continue;
-      const path = prefix ? `${prefix}.${key}` : key;
-      if (propSchema.format === "secret-ref") {
-        paths.add(path);
-      }
-      // Recurse into nested object schemas
-      if (propSchema.type === "object") {
-        walk(propSchema, path);
-      }
-    }
-  }
-
-  walk(schema, "");
-  return paths;
-}
 
 /**
  * Extract secret reference UUIDs from a plugin's configJson, scoped to only
@@ -123,22 +71,29 @@ export function extractSecretRefsFromConfig(
   configJson: unknown,
   schema?: Record<string, unknown> | null,
 ): Set<string> {
-  const refs = new Set<string>();
-  if (configJson == null || typeof configJson !== "object") return refs;
+  return new Set(extractSecretRefPathsFromConfig(configJson, schema).keys());
+}
+
+export function extractSecretRefPathsFromConfig(
+  configJson: unknown,
+  schema?: Record<string, unknown> | null,
+): Map<string, Set<string>> {
+  const refs = new Map<string, Set<string>>();
+  const addRef = (secretRef: string, path: string) => {
+    const existing = refs.get(secretRef) ?? new Set<string>();
+    existing.add(path);
+    refs.set(secretRef, existing);
+  };
+  if (configJson == null || typeof configJson !== "object") return new Map();
 
   const secretPaths = collectSecretRefPaths(schema);
 
   // If schema declares secret-ref paths, extract only those values.
   if (secretPaths.size > 0) {
     for (const dotPath of secretPaths) {
-      const keys = dotPath.split(".");
-      let current: unknown = configJson;
-      for (const k of keys) {
-        if (current == null || typeof current !== "object") { current = undefined; break; }
-        current = (current as Record<string, unknown>)[k];
-      }
-      if (typeof current === "string" && isUuid(current)) {
-        refs.add(current);
+      const current = readConfigValueAtPath(configJson as Record<string, unknown>, dotPath);
+      if (typeof current === "string" && isUuidSecretRef(current)) {
+        addRef(current, dotPath);
       }
     }
     return refs;
@@ -149,7 +104,7 @@ export function extractSecretRefsFromConfig(
   // instanceConfigSchema.
   function walkAll(value: unknown): void {
     if (typeof value === "string") {
-      if (isUuid(value)) refs.add(value);
+      if (isUuidSecretRef(value)) addRef(value, "$");
     } else if (Array.isArray(value)) {
       for (const item of value) walkAll(item);
     } else if (value !== null && typeof value === "object") {
@@ -248,14 +203,10 @@ export function createPluginSecretsHandler(
   options: PluginSecretsHandlerOptions,
 ): PluginSecretsService {
   const { db, pluginId } = options;
-  const registry = pluginRegistryService(db);
 
   // Rate limit: max 30 resolution attempts per plugin per minute
   const rateLimiter = createRateLimiter(30, 60_000);
-
-  let cachedAllowedRefs: Set<string> | null = null;
-  let cachedAllowedRefsExpiry = 0;
-  const CONFIG_CACHE_TTL_MS = 30_000; // 30 seconds, matches event bus TTL
+  const secrets = secretService(db);
 
   return {
     async resolve(params: PluginSecretsResolveParams): Promise<string> {
@@ -279,76 +230,86 @@ export function createPluginSecretsHandler(
 
       const trimmedRef = secretRef.trim();
 
-      if (!isUuid(trimmedRef)) {
+      if (!isUuidSecretRef(trimmedRef)) {
         throw invalidSecretRef(trimmedRef);
       }
 
-      // ---------------------------------------------------------------
-      // 1b. Scope check — only allow secrets referenced in this plugin's config
-      // ---------------------------------------------------------------
-      const now = Date.now();
-      if (!cachedAllowedRefs || now > cachedAllowedRefsExpiry) {
-        const [configRow, plugin] = await Promise.all([
-          db
-            .select()
-            .from(pluginConfig)
-            .where(eq(pluginConfig.pluginId, pluginId))
-            .then((rows) => rows[0] ?? null),
-          registry.getById(pluginId),
-        ]);
-
-        const schema = (plugin?.manifestJson as unknown as Record<string, unknown> | null)
-          ?.instanceConfigSchema as Record<string, unknown> | undefined;
-        cachedAllowedRefs = extractSecretRefsFromConfig(configRow?.configJson, schema);
-        cachedAllowedRefsExpiry = now + CONFIG_CACHE_TTL_MS;
+      const [pluginRow] = await db
+        .select({ manifestJson: plugins.manifestJson })
+        .from(plugins)
+        .where(eq(plugins.id, pluginId))
+        .limit(1);
+      if (!pluginRow) {
+        const err = new Error("Plugin not found for secret resolution");
+        err.name = "PluginSecretScopeError";
+        throw err;
       }
 
-      if (!cachedAllowedRefs.has(trimmedRef)) {
-        // Return "not found" to avoid leaking whether the secret exists
-        throw secretNotFound(trimmedRef);
+      const [configRow] = await db
+        .select({ configJson: pluginConfig.configJson })
+        .from(pluginConfig)
+        .where(eq(pluginConfig.pluginId, pluginId))
+        .limit(1);
+      const refsByPath = extractSecretRefPathsFromConfig(
+        configRow?.configJson ?? {},
+        pluginRow.manifestJson?.instanceConfigSchema as Record<string, unknown> | null | undefined,
+      );
+      const configPaths = refsByPath.get(trimmedRef);
+      if (!configPaths || configPaths.size === 0) {
+        const err = new Error("Secret reference is not declared in this plugin config");
+        err.name = "PluginSecretScopeError";
+        throw err;
       }
 
-      // ---------------------------------------------------------------
-      // 2. Look up the secret record by UUID
-      // ---------------------------------------------------------------
-      const secret = await db
-        .select()
+      const [secretRow] = await db
+        .select({
+          companyId: companySecrets.companyId,
+          status: companySecrets.status,
+        })
         .from(companySecrets)
-        .where(eq(companySecrets.id, trimmedRef))
-        .then((rows) => rows[0] ?? null);
-
-      if (!secret) {
-        throw secretNotFound(trimmedRef);
+        .where(and(
+          eq(companySecrets.id, trimmedRef),
+          ne(companySecrets.status, "deleted"),
+        ))
+        .limit(1);
+      if (!secretRow) {
+        const err = new Error("Secret not found");
+        err.name = "PluginSecretScopeError";
+        throw err;
+      }
+      if (secretRow.status !== "active") {
+        const err = new Error("Secret is not active");
+        err.name = "PluginSecretScopeError";
+        throw err;
       }
 
-      // ---------------------------------------------------------------
-      // 3. Fetch the latest version's material
-      // ---------------------------------------------------------------
-      const versionRow = await db
-        .select()
-        .from(companySecretVersions)
-        .where(
-          and(
-            eq(companySecretVersions.secretId, secret.id),
-            eq(companySecretVersions.version, secret.latestVersion),
-          ),
-        )
-        .then((rows) => rows[0] ?? null);
+      const configPath = [...configPaths].sort()[0] ?? "plugin.config";
+      try {
+        return await secrets.resolveSecretValue(secretRow.companyId, trimmedRef, "latest", {
+          consumerType: "plugin",
+          consumerId: pluginId,
+          configPath,
+          actorType: "plugin",
+          actorId: pluginId,
+          pluginId,
+        });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "";
+        const details = typeof err === "object" && err !== null && "details" in err
+          ? (err as { details?: { code?: unknown } }).details
+          : undefined;
+        const isMissingBinding =
+          details?.code === "binding_missing" ||
+          /binding/i.test(message) ||
+          /not bound/i.test(message);
+        if (!isMissingBinding) throw err;
 
-      if (!versionRow) {
-        throw secretVersionNotFound(trimmedRef);
+        // Backwards-compatibility for plugin configs saved before plugin
+        // secret bindings were introduced. The exact secret UUID still must be
+        // present in this plugin's persisted config, and secretService enforces
+        // that the secret belongs to the resolved company.
+        return secrets.resolveSecretValue(secretRow.companyId, trimmedRef, "latest");
       }
-
-      // ---------------------------------------------------------------
-      // 4. Resolve through the appropriate secret provider
-      // ---------------------------------------------------------------
-      const provider = getSecretProvider(secret.provider as SecretProvider);
-      const resolved = await provider.resolveVersion({
-        material: versionRow.material as Record<string, unknown>,
-        externalRef: secret.externalRef,
-      });
-
-      return resolved;
     },
   };
 }

@@ -789,6 +789,46 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
     });
   });
 
+  it("records amount micros for sub-cent semantic-core import costs", async () => {
+    const harness = createTestHarness({ manifest });
+    await plugin.definition.setup(harness.ctx);
+
+    callSemanticCoreMcpToolMock.mockResolvedValueOnce({
+      content: JSON.stringify({
+        schema_version: "paperclip_import.v1",
+        run_id: "run_cost_subcent",
+        artifacts: {
+          accepted_keywords: [{ keyword_text: "натальна карта онлайн" }],
+          clusters: [],
+          serp_segments: [],
+        },
+        cost: {
+          total_estimated: 0.001,
+          events: [],
+        },
+      }),
+      data: {
+        structuredContent: null,
+        content: [],
+      },
+      isError: false,
+    });
+
+    await harness.executeTool(
+      TOOL_NAMES.preparePaperclipImport,
+      { run_id: "run_cost_subcent" },
+      toolRunCtx,
+    );
+
+    expect(harness.costs).toHaveLength(1);
+    expect(harness.costs[0]).toMatchObject({
+      provider: "semantic-core-builder",
+      billingCode: "semantic-core-mcp",
+      costCents: 0,
+      amountMicros: 1000,
+    });
+  });
+
   it("surfaces unsafe import readiness without marking accepted import as allowed", async () => {
     const harness = createTestHarness({ manifest });
     await plugin.definition.setup(harness.ctx);

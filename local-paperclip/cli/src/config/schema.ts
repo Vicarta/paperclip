@@ -4,6 +4,7 @@ export {
   llmConfigSchema,
   databaseBackupConfigSchema,
   databaseConfigSchema,
+  runtimeRetentionConfigSchema,
   loggingConfigSchema,
   serverConfigSchema,
   authConfigSchema,
@@ -17,6 +18,7 @@ export {
   type LlmConfig,
   type DatabaseBackupConfig,
   type DatabaseConfig,
+  type RuntimeRetentionConfig,
   type LoggingConfig,
   type ServerConfig,
   type AuthConfig,
@@ -28,3 +30,15 @@ export {
   type SecretsLocalEncryptedConfig,
   type ConfigMeta,
 } from "../../../packages/shared/src/config-schema.js";
+
+import type { RuntimeRetentionConfig } from "../../../packages/shared/src/config-schema.js";
+
+export function defaultRuntimeRetentionConfig(): RuntimeRetentionConfig {
+  return {
+    enabled: true,
+    retentionDays: 5,
+    runLogRetentionDays: 5,
+    runLogCompressAfterHours: 24,
+    costRollupEnabled: true,
+  };
+}

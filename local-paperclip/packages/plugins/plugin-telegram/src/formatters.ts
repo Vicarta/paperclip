@@ -10,8 +10,6 @@ type FormattedMessage = {
   options: SendMessageOptions;
 };
 
-const GENERIC_DONE_COMMENT_LIMIT = 1200;
-
 function esc(s: string): string {
   return escapeMarkdownV2(s);
 }
@@ -61,6 +59,12 @@ function extractFirstUrl(text: string | null): string | null {
   return match?.[0]?.replace(/[.,;:]+$/, "") ?? null;
 }
 
+function extractUrls(text: string | null): string[] {
+  if (!text) return [];
+  const matches = text.match(/https:\/\/[^\s)<]+/g) ?? [];
+  return Array.from(new Set(matches.map((url) => url.replace(/[.,;:]+$/, ""))));
+}
+
 function extractOriginUrl(originId: unknown): string | null {
   if (typeof originId !== "string") return null;
   const [url] = originId.split("::");
@@ -98,6 +102,48 @@ function formatSeoCmsFixDone(
   lines.push(`${bold("Що було")}: ${esc("стаття була опублікована, але Google не міг нормально взяти її в індекс через технічні SEO-налаштування сторінки.")}`);
   lines.push(`${bold("Що зроблено")}: ${esc(fixed.length > 0 ? fixed.join(", ") + "." : "виправлено технічні SEO-налаштування сторінки.")}`);
   lines.push(`${bold("Що це означає")}: ${esc("сторінка тепер відкрита для індексації. Search Console може показати старий статус ще деякий час, доки Google повторно не перевірить URL.")}`);
+
+  const button = issueButton(identifier, opts);
+  return {
+    text: lines.join("\n"),
+    options: {
+      parseMode: "MarkdownV2",
+      disableWebPagePreview: true,
+      ...(button ? { inlineKeyboard: [[button]] } : {}),
+    },
+  };
+}
+
+function hasGscUrlAvailabilityFixEvidence(title: string, comment: string | null): boolean {
+  const haystack = `${title}\n${comment ?? ""}`;
+  return /404|not found|не знайден|сторінка не знайдена|wrong path|route|slug|URL/i.test(haystack)
+    && /Google|GSC|Search Console|індекс|index|опублікован|published/i.test(haystack)
+    && /https:\/\/astrogen\.com\.ua\/blog\//i.test(haystack);
+}
+
+function formatGscUrlAvailabilityFixDone(
+  identifier: string,
+  companyName: string | null,
+  title: string,
+  comment: string | null,
+  opts?: IssueLinksOpts,
+): FormattedMessage {
+  const urls = extractUrls(`${title}\n${comment ?? ""}`).filter((url) => url.includes("astrogen.com.ua/blog/"));
+  const primaryUrl = urls[0] ?? null;
+
+  const lines: string[] = [`${esc("✅")} ${bold("Виправлено доступність статті для Google")}`];
+  if (companyName) lines.push(`${bold("Компанія")}: ${esc(companyName)}`);
+  if (primaryUrl) lines.push(`${bold("Сторінка")}: ${esc(primaryUrl)}`);
+  if (urls.length > 1) {
+    lines.push(`${bold("Інші перевірені URL")}: ${esc(urls.slice(1, 4).join(", "))}`);
+  }
+  lines.push("");
+  lines.push(`${bold("Що було")}: ${esc("Google Search Console бачив проблему доступності сторінки: потрібна стаття відкривалася не за очікуваним публічним шляхом або давала 404.")}`);
+  lines.push(`${bold("Що зроблено")}: ${esc("Paperclip виправив публічний шлях/налаштування сторінки і перевірив, що стаття тепер має відкриватися за правильною URL.")}`);
+  lines.push(`${bold("Що це означає")}: ${esc("для користувачів і Google сторінка більше не має виглядати як відсутня. Але в Search Console старий статус може залишатися, доки Google повторно не перевірить URL.")}`);
+  lines.push("");
+  lines.push(`${bold("Що зробити в Google Search Console")}: ${esc("відкрийте Search Console → ресурс astrogen.com.ua → Перевірка URL-адреси → вставте URL статті → Перевірити опубліковану URL → якщо перевірка успішна, натисніть Запросити індексацію.")}`);
+  lines.push(`${bold("Якщо це групова помилка 404")}: ${esc("Search Console → Індексування → Сторінки → причина Не знайдено (404) / Soft 404 → Перевірити виправлення.")}`);
 
   const button = issueButton(identifier, opts);
   return {
@@ -251,6 +297,10 @@ export function formatIssueDone(event: PluginEvent, opts?: IssueLinksOpts): Form
     return formatSeoCmsFixDone(identifier, companyName, title, comment, opts);
   }
 
+  if (hasGscUrlAvailabilityFixEvidence(title, comment)) {
+    return formatGscUrlAvailabilityFixDone(identifier, companyName, title, comment, opts);
+  }
+
   if (hasGscCanonicalFindingEvidence(p, title, comment)) {
     return formatGscCanonicalFindingDone(identifier, companyName, p, title, comment, opts);
   }
@@ -279,8 +329,7 @@ export function formatIssueDone(event: PluginEvent, opts?: IssueLinksOpts): Form
 
   const safeComment = sanitizeIssueDoneComment(comment);
   if (safeComment) {
-    const truncated = truncateAtWord(safeComment, GENERIC_DONE_COMMENT_LIMIT);
-    lines.push(`${bold("Що зроблено")}: ${esc(truncated)}`);
+    lines.push(`${bold("Що зроблено")}: ${esc(safeComment)}`);
   }
 
   const button = issueButton(identifier, opts);

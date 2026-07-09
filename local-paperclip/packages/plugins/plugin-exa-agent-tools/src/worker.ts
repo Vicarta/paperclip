@@ -37,24 +37,29 @@ function normalizeCrawlArgs(params: Record<string, unknown>) {
   return next;
 }
 
-function usdToCents(amountUsd: unknown) {
+function usdToCost(amountUsd: unknown) {
   if (typeof amountUsd !== "number" || !Number.isFinite(amountUsd) || amountUsd <= 0) {
-    return 0;
+    return { costCents: 0, amountMicros: 0 };
   }
-  return Math.max(0, Math.round(amountUsd * 100));
+  return {
+    costCents: Math.max(0, Math.round(amountUsd * 100)),
+    amountMicros: Math.max(0, Math.round(amountUsd * 1_000_000)),
+  };
 }
 
-function resolveEstimatedCostCents(config: ExaPluginConfig, toolName: string) {
-  if (config.costAccountingMode !== "estimated_per_request") return 0;
+function resolveEstimatedCost(config: ExaPluginConfig, toolName: string) {
+  if (config.costAccountingMode !== "estimated_per_request") {
+    return { costCents: 0, amountMicros: 0 };
+  }
   switch (toolName) {
     case TOOL_NAMES.webSearch:
-      return usdToCents(config.estimatedWebSearchCostUsd);
+      return usdToCost(config.estimatedWebSearchCostUsd);
     case TOOL_NAMES.crawlUrl:
-      return usdToCents(config.estimatedCrawlUrlCostUsd);
+      return usdToCost(config.estimatedCrawlUrlCostUsd);
     case TOOL_NAMES.codeContext:
-      return usdToCents(config.estimatedCodeContextCostUsd);
+      return usdToCost(config.estimatedCodeContextCostUsd);
     default:
-      return 0;
+      return { costCents: 0, amountMicros: 0 };
   }
 }
 
@@ -64,8 +69,8 @@ async function emitExaCost(input: {
   config: ExaPluginConfig;
   toolName: string;
 }) {
-  const costCents = resolveEstimatedCostCents(input.config, input.toolName);
-  if (costCents <= 0) return;
+  const { costCents, amountMicros } = resolveEstimatedCost(input.config, input.toolName);
+  if (amountMicros <= 0) return;
 
   await input.ctx.costs.createEvent({
     companyId: input.runCtx.companyId,
@@ -83,6 +88,7 @@ async function emitExaCost(input: {
     cachedInputTokens: 0,
     outputTokens: 0,
     costCents,
+    amountMicros,
     occurredAt: new Date().toISOString(),
   });
 }

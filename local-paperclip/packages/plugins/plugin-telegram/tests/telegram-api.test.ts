@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { escapeMarkdownV2, truncateAtWord } from "../src/telegram-api.js";
+import { describe, it, expect, vi } from "vitest";
+import { escapeMarkdownV2, sendMessage, splitTelegramText, truncateAtWord } from "../src/telegram-api.js";
 
 describe("escapeMarkdownV2", () => {
   it("escapes underscores", () => {
@@ -104,5 +104,48 @@ describe("truncateAtWord", () => {
   it("handles text with trailing space at boundary", () => {
     const result = truncateAtWord("aa bb cc dd ee ff", 8);
     expect(result).toBe("aa bb cc...");
+  });
+});
+
+describe("splitTelegramText", () => {
+  it("keeps short messages as one chunk", () => {
+    expect(splitTelegramText("hello")).toEqual(["hello"]);
+  });
+
+  it("splits long messages without dropping the final content", () => {
+    const text = `${Array(900).fill("людський контекст").join(" ")} фінальний висновок`;
+    const chunks = splitTelegramText(text);
+    expect(chunks.length).toBeGreaterThan(1);
+    expect(chunks.every((chunk) => chunk.length <= 3900)).toBe(true);
+    expect(chunks.join(" ")).toContain("фінальний висновок");
+  });
+});
+
+describe("sendMessage", () => {
+  it("sends long messages as multiple Telegram messages instead of truncating them", async () => {
+    const fetch = vi.fn(async (_url: string, init: { body?: string }) => ({
+      json: async () => ({
+        ok: true,
+        result: { message_id: fetch.mock.calls.length },
+      }),
+      init,
+    }));
+    const ctx = {
+      http: { fetch },
+      logger: { warn: vi.fn(), error: vi.fn() },
+      metrics: { write: vi.fn() },
+    };
+    const text = `${Array(900).fill("детальний контекст").join(" ")} фінальний висновок`;
+
+    const messageId = await sendMessage(ctx as never, "token", "chat", text, {
+      inlineKeyboard: [[{ text: "Відкрити задачу", url: "https://paperclip.example/AST/issues/AST-1" }]],
+    });
+
+    expect(messageId).toBe(1);
+    expect(fetch.mock.calls.length).toBeGreaterThan(1);
+    const bodies = fetch.mock.calls.map((call) => JSON.parse(String(call[1]?.body)));
+    expect(bodies.at(-1).text).toContain("фінальний висновок");
+    expect(bodies[0].reply_markup).toBeUndefined();
+    expect(bodies.at(-1).reply_markup).toBeDefined();
   });
 });

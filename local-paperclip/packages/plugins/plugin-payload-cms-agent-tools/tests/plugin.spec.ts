@@ -4,6 +4,7 @@ import manifest from "../src/manifest.js";
 import plugin from "../src/worker.js";
 import { TOOL_NAMES } from "../src/constants.js";
 import {
+  addBlogPostAdminUrls,
   buildUniqueUploadFilename,
   buildBlogPostPayload,
   cleanupTechnicalBlogPostDraft,
@@ -14,9 +15,11 @@ import {
   healthCheck,
   listBlogPosts,
   publishBlogPost,
+  updateMedia,
   updateTaxonomyTerm,
 } from "../src/payload-cms-client.js";
 import { markdownToLexical } from "../src/markdown-to-lexical.js";
+import { blogPostFieldsSchema, updateBlogPostDraftParametersSchema } from "../src/schemas.js";
 
 vi.mock("../src/payload-cms-client.js", async () => {
   const actual =
@@ -34,6 +37,7 @@ vi.mock("../src/payload-cms-client.js", async () => {
     updateTaxonomyTerm: vi.fn(),
     listBlogPosts: vi.fn(),
     publishBlogPost: vi.fn(),
+    updateMedia: vi.fn(),
   };
 });
 
@@ -46,6 +50,7 @@ const ensureTaxonomyTermMock = vi.mocked(ensureTaxonomyTerm);
 const updateTaxonomyTermMock = vi.mocked(updateTaxonomyTerm);
 const listBlogPostsMock = vi.mocked(listBlogPosts);
 const publishBlogPostMock = vi.mocked(publishBlogPost);
+const updateMediaMock = vi.mocked(updateMedia);
 
 describe("plugin-payload-cms-agent-tools", () => {
   beforeEach(() => {
@@ -58,6 +63,7 @@ describe("plugin-payload-cms-agent-tools", () => {
     updateTaxonomyTermMock.mockReset();
     listBlogPostsMock.mockReset();
     publishBlogPostMock.mockReset();
+    updateMediaMock.mockReset();
   });
 
   it("generates unique upload filenames to avoid Payload responsive image collisions", () => {
@@ -96,6 +102,24 @@ describe("plugin-payload-cms-agent-tools", () => {
       }),
     );
     expect(result.content).toBe("Payload CMS is reachable");
+  });
+
+  it("exposes strict articleContent.v1 schemas for create/update draft tools", () => {
+    const createTool = manifest.tools.find((tool) => tool.name === TOOL_NAMES.createBlogPostDraft);
+    const updateTool = manifest.tools.find((tool) => tool.name === TOOL_NAMES.updateBlogPostDraft);
+
+    expect(createTool?.parametersSchema).toBe(blogPostFieldsSchema);
+    expect(updateTool?.parametersSchema).toBe(updateBlogPostDraftParametersSchema);
+    expect(blogPostFieldsSchema.additionalProperties).toBe(false);
+    expect(blogPostFieldsSchema.properties.articleContent).toMatchObject({
+      type: "object",
+      required: ["schemaVersion", "blocks"],
+      additionalProperties: false,
+    });
+    expect(updateBlogPostDraftParametersSchema).toMatchObject({
+      required: ["fields"],
+      additionalProperties: false,
+    });
   });
 
   it("creates blog post drafts without publishing", async () => {
@@ -301,6 +325,35 @@ describe("plugin-payload-cms-agent-tools", () => {
     );
   });
 
+  it("updates existing media without uploading duplicates", async () => {
+    const harness = createTestHarness({ manifest });
+    await plugin.definition.setup(harness.ctx);
+
+    updateMediaMock.mockResolvedValueOnce({
+      content: "Payload CMS document: id=167",
+      data: { id: 167, alt: "Я не знаю свій час народження — що робити?", caption: null },
+    });
+
+    const result = await harness.executeTool(TOOL_NAMES.updateMedia, {
+      id: 167,
+      alt: "Я не знаю свій час народження — що робити?",
+      caption: null,
+      credit: null,
+      sourceUrl: null,
+    });
+
+    expect(updateMediaMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 167,
+        alt: "Я не знаю свій час народження — що робити?",
+        caption: null,
+        credit: null,
+        sourceUrl: null,
+      }),
+    );
+    expect(result.content).toContain("id=167");
+  });
+
   it("passes deterministic SEO fields through the publish tool", async () => {
     const harness = createTestHarness({ manifest });
     await plugin.definition.setup(harness.ctx);
@@ -359,6 +412,29 @@ describe("plugin-payload-cms-agent-tools", () => {
 });
 
 describe("Payload CMS content helpers", () => {
+  it("adds CMS admin edit URLs for blog post DTOs", () => {
+    const single = addBlogPostAdminUrls(
+      { payloadApiBaseUrl: "https://cms.astrogen.com.ua/api" },
+      { id: 116, title: "Draft" },
+    );
+    expect(single).toMatchObject({
+      id: 116,
+      adminUrl: "https://cms.astrogen.com.ua/admin/collections/blogPosts/116",
+    });
+
+    const listed = addBlogPostAdminUrls(
+      { payloadApiBaseUrl: "https://cms.astrogen.com.ua/api/" },
+      { docs: [{ id: 118 }, { id: "119" }], doc: { id: 120 } },
+    );
+    expect(listed).toMatchObject({
+      docs: [
+        { id: 118, adminUrl: "https://cms.astrogen.com.ua/admin/collections/blogPosts/118" },
+        { id: "119", adminUrl: "https://cms.astrogen.com.ua/admin/collections/blogPosts/119" },
+      ],
+      doc: { id: 120, adminUrl: "https://cms.astrogen.com.ua/admin/collections/blogPosts/120" },
+    });
+  });
+
   it("converts simple markdown into Payload-compatible Lexical JSON", () => {
     const lexical = markdownToLexical("# Title\n\nIntro paragraph.\n\n- One\n- Two");
     expect(lexical.root.children[0]).toMatchObject({ type: "heading", tag: "h2" });
@@ -373,6 +449,12 @@ describe("Payload CMS content helpers", () => {
         schemaVersion: "articleContent.v1",
         blocks: [
           { type: "paragraph", text: "Intro" },
+          {
+            type: "editorialCallout",
+            variant: "soft",
+            title: "Коротко",
+            body: "Стислий підсумок для читача перед деталями.",
+          },
           {
             type: "quietCta",
             title: "Потрібен індивідуальний погляд?",
@@ -399,6 +481,7 @@ describe("Payload CMS content helpers", () => {
       schemaVersion: "articleContent.v1",
       blocks: [
         { type: "paragraph", text: "Intro" },
+        { type: "editorialCallout", title: "Коротко" },
         { type: "quietCta", linkUrl: "/experts" },
       ],
     });
@@ -426,7 +509,7 @@ describe("Payload CMS content helpers", () => {
     expect(payload.publishedAt).toEqual(expect.any(String));
   });
 
-  it("accepts up to three relatedPosts ids as top-level numeric relationships", () => {
+  it("accepts exactly three relatedPosts ids as top-level numeric relationships", () => {
     const payload = buildBlogPostPayload({
       title: "Article",
       relatedPosts: [12, "35", 41],
@@ -441,19 +524,26 @@ describe("Payload CMS content helpers", () => {
         title: "Article",
         relatedPosts: [12, 35, 41, 52],
       }),
-    ).toThrow(/at most 3/);
+    ).toThrow(/exactly 3/);
 
     expect(() =>
       buildBlogPostPayload({
         title: "Article",
-        relatedPosts: [12, 12],
+        relatedPosts: [12, 35],
+      }),
+    ).toThrow(/exactly 3/);
+
+    expect(() =>
+      buildBlogPostPayload({
+        title: "Article",
+        relatedPosts: [12, 12, 35],
       }),
     ).toThrow(/duplicate/);
 
     expect(() =>
       buildBlogPostPayload({
         title: "Article",
-        relatedPosts: ["/blog/example"] as any,
+        relatedPosts: ["/blog/example", 12, 35] as any,
       }),
     ).toThrow(/positive numeric/);
   });
@@ -464,6 +554,12 @@ describe("Payload CMS content helpers", () => {
       articleContent: {
         schemaVersion: "articleContent.v1",
         blocks: [
+          {
+            type: "editorialCallout",
+            variant: "soft",
+            title: "Коротко",
+            body: "Це коротке пояснення перед списком символів.",
+          },
           {
             type: "iconList",
             style: "grid",
@@ -483,6 +579,10 @@ describe("Payload CMS content helpers", () => {
       schemaVersion: "articleContent.v1",
       blocks: [
         {
+          type: "editorialCallout",
+          title: "Коротко",
+        },
+        {
           type: "iconList",
           style: "grid",
           title: "Знаки китайського гороскопу",
@@ -495,6 +595,48 @@ describe("Payload CMS content helpers", () => {
         },
       ],
     });
+  });
+
+  it("requires an early Коротко editorial summary block", () => {
+    expect(() =>
+      buildBlogPostPayload({
+        title: "Article",
+        articleContent: {
+          schemaVersion: "articleContent.v1",
+          blocks: [
+            { type: "paragraph", text: "Intro" },
+            {
+              type: "editorialCallout",
+              variant: "soft",
+              title: "Важлива межа",
+              body: "Це корисне застереження, але не стислий підсумок.",
+            },
+          ],
+        },
+      }),
+    ).toThrow(/editorialCallout titled "Коротко"/);
+
+    expect(() =>
+      buildBlogPostPayload({
+        title: "Article",
+        articleContent: {
+          schemaVersion: "articleContent.v1",
+          blocks: [
+            { type: "paragraph", text: "Intro" },
+            { type: "paragraph", text: "Detail 1" },
+            { type: "paragraph", text: "Detail 2" },
+            { type: "paragraph", text: "Detail 3" },
+            { type: "paragraph", text: "Detail 4" },
+            {
+              type: "editorialCallout",
+              variant: "soft",
+              title: "Коротко",
+              body: "Запізнілий підсумок не виконує роль першого редакторського блоку.",
+            },
+          ],
+        },
+      }),
+    ).toThrow(/must appear before block 5/);
   });
 
   it("accepts structured articleContent inline spans", () => {
@@ -546,12 +688,7 @@ describe("Payload CMS content helpers", () => {
           {
             type: "quietCta",
             title: "Далі",
-            text: "Перед консультацією можна переглянути каталог експертів.",
-            textSpans: [
-              { text: "Перед консультацією можна переглянути " },
-              { text: "каталог експертів", linkUrl: "/experts" },
-              { text: "." },
-            ],
+            text: "Перед консультацією можна переглянути фінансову карту.",
             linkLabel: "Підібрати експерта",
             linkUrl: "/experts",
           },
@@ -581,8 +718,58 @@ describe("Payload CMS content helpers", () => {
     });
     expect(payload.articleContent?.blocks[3]).toMatchObject({
       type: "quietCta",
-      textSpans: [{ text: "Перед консультацією можна переглянути " }, { text: "каталог експертів", linkUrl: "/experts" }, { text: "." }],
+      text: "Перед консультацією можна переглянути фінансову карту.",
+      linkLabel: "Підібрати експерта",
+      linkUrl: "/experts",
     });
+  });
+
+  it("rejects quietCta textSpans so CTA cards keep one visible action", () => {
+    expect(() =>
+      buildBlogPostPayload({
+        title: "Article",
+        articleContent: {
+          schemaVersion: "articleContent.v1",
+          blocks: [
+            {
+              type: "quietCta",
+              title: "Хочете розібрати свій запит із практиком?",
+              text: "Відкрийте профіль експертки.",
+              textSpans: [
+                { text: "Відкрийте " },
+                { text: "профіль експертки", linkUrl: "https://astrogen.com.ua/experts/kouchyng/olha-hefsmanska-1755688313641" },
+                { text: "." },
+              ],
+              linkLabel: "Перейти до профілю експертки",
+              linkUrl: "https://astrogen.com.ua/experts/kouchyng/olha-hefsmanska-1755688313641",
+            },
+          ],
+        },
+      }),
+    ).toThrow(/textSpans is not supported/);
+
+    expect(() =>
+      buildBlogPostPayload({
+        title: "Article",
+        articleContent: {
+          schemaVersion: "articleContent.v1",
+          blocks: [
+            {
+              type: "quietCta",
+              title: "Якщо хочеться не шаблону, а персональнішого читання",
+              text: "Якщо хочете перейти від загального образу Тельця до персональнішого читання карти, у Каталозі експертів Astrogen можна підібрати фахівця під свій запит і формат розмови.",
+              textSpans: [
+                { text: "Якщо хочете перейти від загального образу Тельця до персональнішого читання карти, у " },
+                { text: "Каталозі експертів Astrogen", linkUrl: "/experts" },
+                { text: " можна підібрати фахівця під свій запит і формат розмови." },
+              ],
+              linkLabel: "Перейти до Каталогу експертів",
+              linkUrl: "/experts",
+            },
+          ],
+        },
+      }),
+    ).toThrow(/single CTA action/);
   });
 
   it("rejects legacy markdown or raw Lexical content for blog text", () => {

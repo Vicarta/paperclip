@@ -135,6 +135,33 @@ const manifest: PaperclipPluginManifestV1 = {
         title: "Detailed Report Fallback",
         default: DEFAULT_CONFIG.detailedReportFallback,
       },
+      articleCadenceEnabled: {
+        type: "boolean",
+        title: "Enable Article Cadence",
+        description:
+          "Whether the SEO Performance Loop should treat recurring article generation as an active cadence to monitor and report.",
+        default: DEFAULT_CONFIG.articleCadenceEnabled,
+      },
+      articleCadenceTargetPerDay: {
+        type: "number",
+        title: "Article Cadence Target Per Day",
+        description:
+          "Target number of new SEO article draft pipelines to launch per day for this company.",
+        default: DEFAULT_CONFIG.articleCadenceTargetPerDay,
+        minimum: 0,
+      },
+      articleCadenceTimezone: {
+        type: "string",
+        title: "Article Cadence Timezone",
+        default: DEFAULT_CONFIG.articleCadenceTimezone,
+      },
+      articleCadencePreferredTimes: {
+        type: "string",
+        title: "Article Cadence Preferred Times",
+        description:
+          "Comma-separated local wall-clock times for article cadence triggers, for example 10:00,15:00.",
+        default: DEFAULT_CONFIG.articleCadencePreferredTimes,
+      },
       automaticFindingTaskCreationEnabled: {
         type: "boolean",
         title: "Enable Automatic Finding Task Creation",

@@ -5,6 +5,7 @@ import { sendDocument, sendMessage } from "./telegram-api.js";
 import { recordTelegramDeliveryProof } from "./delivery-proof.js";
 
 const JSON_FENCE_REGEX = /```json(?:\s+notification-contract)?\s*([\s\S]*?)```/i;
+const LEGACY_MESSAGE_TEXT_REGEX = /delivery\.text\s*=\s*<<([A-Z_][A-Z0-9_]*)\s*\n([\s\S]*?)\n\1/m;
 const DELIVERY_STATE_PREFIX = "telegram.attachment-delivery.v1";
 const ISSUE_NOTIFICATION_CONTRACT_KEY = "notification-contract";
 
@@ -103,7 +104,7 @@ function parseGroup(value: unknown): DeliveryGroup | null {
 
 function parseContract(body: string): DeliveryContract | null {
   const json = extractJson(body);
-  if (!json) return null;
+  if (!json) return parseLegacyMarkdownContract(body);
   let parsed: unknown;
   try {
     parsed = JSON.parse(json);
@@ -153,6 +154,40 @@ function parseContract(body: string): DeliveryContract | null {
       mode: "delivery_groups",
       ...(summary ? { summary } : {}),
       groups: groups as DeliveryGroup[],
+    },
+  };
+}
+
+function legacyFieldEquals(body: string, field: string, expected: string): boolean {
+  const pattern = new RegExp(`^\\s*${field.replace(".", "\\.")}\\s*=\\s*(?:"${expected}"|'${expected}'|${expected})\\s*$`, "mi");
+  return pattern.test(body);
+}
+
+function parseLegacyBoolean(body: string, field: string): boolean | null {
+  const pattern = new RegExp(`^\\s*${field.replace(".", "\\.")}\\s*=\\s*(true|false)\\s*$`, "mi");
+  const match = body.match(pattern);
+  if (!match) return true;
+  return match[1] === "true";
+}
+
+function parseLegacyMarkdownContract(body: string): DeliveryContract | null {
+  if (!legacyFieldEquals(body, "channel", "telegram")) return null;
+  if (!legacyFieldEquals(body, "trigger", "issue_done")) return null;
+  if (!legacyFieldEquals(body, "delivery.mode", "message_only")) return null;
+
+  const enabled = parseLegacyBoolean(body, "enabled");
+  if (enabled === null) return null;
+
+  const text = body.match(LEGACY_MESSAGE_TEXT_REGEX)?.[2]?.trim();
+  if (!text) return null;
+
+  return {
+    enabled,
+    channel: "telegram",
+    trigger: "issue_done",
+    delivery: {
+      mode: "message_only",
+      text,
     },
   };
 }
@@ -232,6 +267,13 @@ function formatAuditComment(input: {
   ].join("\n");
 }
 
+export function normalizeTelegramHumanText(text: string): string {
+  return text
+    .replace(/\\r\\n/g, "\n")
+    .replace(/\\n/g, "\n")
+    .replace(/\\t/g, "  ");
+}
+
 export async function deliverIssueAttachmentGroups(input: {
   ctx: PluginContext;
   token: string;
@@ -254,16 +296,17 @@ export async function deliverIssueAttachmentGroups(input: {
   if (!contract.enabled) return { status: "skipped", reason: "disabled" };
 
   if (contract.delivery.mode === "message_only") {
+    const text = normalizeTelegramHumanText(contract.delivery.text);
     const fingerprint = createFingerprint({
       issueId,
       revisionId: document.latestRevisionId ?? null,
-      messageOnlyText: contract.delivery.text,
+      messageOnlyText: text,
     });
     const stateKey = deliveryStateKey(issueId, fingerprint);
     const previous = await input.ctx.state.get({ scopeKind: "instance", stateKey });
     if (previous) return { status: "skipped", reason: "already_delivered" };
 
-    const messageId = await sendMessage(input.ctx, input.token, input.chatId, contract.delivery.text, {
+    const messageId = await sendMessage(input.ctx, input.token, input.chatId, text, {
       messageThreadId: input.messageThreadId,
     });
     const messageIds = messageId ? [messageId] : [];

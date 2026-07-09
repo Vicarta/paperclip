@@ -20,6 +20,10 @@ type LoopOverview = {
     weeklyReportTimezone: string | null;
     telegramReportMode: string | null;
     detailedReportChannel: string | null;
+    articleCadenceEnabled: boolean;
+    articleCadenceTargetPerDay: number;
+    articleCadenceTimezone: string | null;
+    articleCadencePreferredTimes: string | null;
   };
   reportPolicy: {
     telegramMode: string;
@@ -50,6 +54,16 @@ function OverviewCard({ title, compact }: { title: string; compact?: boolean }) 
         {data?.configSnapshot.rankLanguage || "n/a"}
       </div>
       <div>Last Collection Run: {data?.lastCollectionRun?.completedAt || "never"}</div>
+      <div>
+        Article Cadence: {data?.configSnapshot.articleCadenceEnabled === false ? "off" : "on"}
+        {` / ${data?.configSnapshot.articleCadenceTargetPerDay ?? 0} per day`}
+        {data?.configSnapshot.articleCadencePreferredTimes
+          ? ` at ${data.configSnapshot.articleCadencePreferredTimes}`
+          : ""}
+        {data?.configSnapshot.articleCadenceTimezone
+          ? ` (${data.configSnapshot.articleCadenceTimezone})`
+          : ""}
+      </div>
       <div>
         Weekly Report: Telegram {data?.reportPolicy.telegramMode || "n/a"} /{" "}
         Detailed {data?.reportPolicy.detailedChannel || "n/a"}

@@ -1,11 +1,13 @@
 import { z } from "zod";
 import {
   AUTH_BASE_URL_MODES,
+  BIND_MODES,
   DEPLOYMENT_EXPOSURES,
   DEPLOYMENT_MODES,
   SECRET_PROVIDERS,
   STORAGE_PROVIDERS,
 } from "./constants.js";
+import { validateConfiguredBindMode } from "./network-bind.js";
 
 export const configMetaSchema = z.object({
   version: z.literal(1),
@@ -20,8 +22,8 @@ export const llmConfigSchema = z.object({
 
 export const databaseBackupConfigSchema = z.object({
   enabled: z.boolean().default(true),
-  intervalMinutes: z.number().int().min(1).max(7 * 24 * 60).default(60),
-  retentionDays: z.number().int().min(1).max(3650).default(30),
+  intervalMinutes: z.number().int().min(1).max(7 * 24 * 60).default(720),
+  retentionDays: z.number().int().min(1).max(3650).default(5),
   dir: z.string().default("~/.paperclip/instances/default/data/backups"),
 });
 
@@ -32,10 +34,18 @@ export const databaseConfigSchema = z.object({
   embeddedPostgresPort: z.number().int().min(1).max(65535).default(54329),
   backup: databaseBackupConfigSchema.default({
     enabled: true,
-    intervalMinutes: 60,
-    retentionDays: 30,
+    intervalMinutes: 720,
+    retentionDays: 5,
     dir: "~/.paperclip/instances/default/data/backups",
   }),
+});
+
+export const runtimeRetentionConfigSchema = z.object({
+  enabled: z.boolean().default(true),
+  retentionDays: z.number().int().min(1).max(3650).default(5),
+  runLogRetentionDays: z.number().int().min(1).max(3650).default(5),
+  runLogCompressAfterHours: z.number().int().min(1).max(3650 * 24).default(24),
+  costRollupEnabled: z.boolean().default(true),
 });
 
 export const loggingConfigSchema = z.object({
@@ -46,6 +56,8 @@ export const loggingConfigSchema = z.object({
 export const serverConfigSchema = z.object({
   deploymentMode: z.enum(DEPLOYMENT_MODES).default("local_trusted"),
   exposure: z.enum(DEPLOYMENT_EXPOSURES).default("private"),
+  bind: z.enum(BIND_MODES).optional(),
+  customBindHost: z.string().optional(),
   host: z.string().default("127.0.0.1"),
   port: z.number().int().min(1).max(65535).default(3100),
   allowedHostnames: z.array(z.string().min(1)).default([]),
@@ -104,6 +116,13 @@ export const paperclipConfigSchema = z
     $meta: configMetaSchema,
     llm: llmConfigSchema.optional(),
     database: databaseConfigSchema,
+    runtimeRetention: runtimeRetentionConfigSchema.default({
+      enabled: true,
+      retentionDays: 5,
+      runLogRetentionDays: 5,
+      runLogCompressAfterHours: 24,
+      costRollupEnabled: true,
+    }),
     logging: loggingConfigSchema,
     server: serverConfigSchema,
     telemetry: telemetryConfigSchema,
@@ -132,15 +151,26 @@ export const paperclipConfigSchema = z
     }),
   })
   .superRefine((value, ctx) => {
-    if (value.server.deploymentMode === "local_trusted") {
-      if (value.server.exposure !== "private") {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "server.exposure must be private when deploymentMode is local_trusted",
-          path: ["server", "exposure"],
-        });
-      }
-      return;
+    if (value.server.deploymentMode === "local_trusted" && value.server.exposure !== "private") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "server.exposure must be private when deploymentMode is local_trusted",
+        path: ["server", "exposure"],
+      });
+    }
+
+    for (const message of validateConfiguredBindMode({
+      deploymentMode: value.server.deploymentMode,
+      deploymentExposure: value.server.exposure,
+      bind: value.server.bind,
+      host: value.server.host,
+      customBindHost: value.server.customBindHost,
+    })) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message,
+        path: message.includes("customBindHost") ? ["server", "customBindHost"] : ["server", "bind"],
+      });
     }
 
     if (value.auth.baseUrlMode === "explicit" && !value.auth.publicBaseUrl) {
@@ -171,6 +201,7 @@ export const paperclipConfigSchema = z
 export type PaperclipConfig = z.infer<typeof paperclipConfigSchema>;
 export type LlmConfig = z.infer<typeof llmConfigSchema>;
 export type DatabaseConfig = z.infer<typeof databaseConfigSchema>;
+export type RuntimeRetentionConfig = z.infer<typeof runtimeRetentionConfigSchema>;
 export type LoggingConfig = z.infer<typeof loggingConfigSchema>;
 export type ServerConfig = z.infer<typeof serverConfigSchema>;
 export type StorageConfig = z.infer<typeof storageConfigSchema>;

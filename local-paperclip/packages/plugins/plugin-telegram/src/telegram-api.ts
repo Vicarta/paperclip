@@ -3,6 +3,8 @@ import type { IssueAttachment } from "@paperclipai/shared";
 import { METRIC_NAMES } from "./constants.js";
 
 const TELEGRAM_API = "https://api.telegram.org";
+const TELEGRAM_MESSAGE_LIMIT = 4096;
+const TELEGRAM_SAFE_CHUNK_LIMIT = 3900;
 
 type InlineButton = {
   text: string;
@@ -28,6 +30,26 @@ export async function sendMessage(
   text: string,
   options: SendMessageOptions = {},
 ): Promise<number | null> {
+  const chunks = splitTelegramText(text);
+  if (chunks.length > 1) {
+    let firstMessageId: number | null = null;
+    let previousMessageId: number | null = options.replyToMessageId ?? null;
+
+    for (let index = 0; index < chunks.length; index += 1) {
+      const isLast = index === chunks.length - 1;
+      const chunkOptions: SendMessageOptions = {
+        ...options,
+        inlineKeyboard: isLast ? options.inlineKeyboard : undefined,
+        replyToMessageId: index === 0 ? options.replyToMessageId : previousMessageId ?? undefined,
+      };
+      const messageId = await sendMessage(ctx, token, chatId, chunks[index] ?? "", chunkOptions);
+      if (!firstMessageId && messageId) firstMessageId = messageId;
+      if (messageId) previousMessageId = messageId;
+    }
+
+    return firstMessageId;
+  }
+
   const body: Record<string, unknown> = {
     chat_id: chatId,
     text,
@@ -301,6 +323,31 @@ export function truncateAtWord(text: string, maxLen: number): string {
   const truncated = text.slice(0, maxLen);
   const lastSpace = truncated.lastIndexOf(" ");
   return (lastSpace > maxLen * 0.7 ? truncated.slice(0, lastSpace) : truncated) + "...";
+}
+
+export function splitTelegramText(text: string, maxLen = TELEGRAM_SAFE_CHUNK_LIMIT): string[] {
+  if (text.length <= TELEGRAM_MESSAGE_LIMIT) return [text];
+  if (maxLen <= 0 || maxLen > TELEGRAM_MESSAGE_LIMIT) {
+    throw new Error("maxLen must be between 1 and Telegram's message limit");
+  }
+
+  const chunks: string[] = [];
+  let rest = text;
+  while (rest.length > TELEGRAM_MESSAGE_LIMIT) {
+    let cut = Math.max(
+      rest.lastIndexOf("\n\n", maxLen),
+      rest.lastIndexOf("\n", maxLen),
+      rest.lastIndexOf(" ", maxLen),
+    );
+    if (cut < Math.floor(maxLen * 0.6)) cut = maxLen;
+    while (cut > 0 && rest[cut - 1] === "\\") cut -= 1;
+    if (cut <= 0) cut = maxLen;
+
+    chunks.push(rest.slice(0, cut).trimEnd());
+    rest = rest.slice(cut).trimStart();
+  }
+  if (rest) chunks.push(rest);
+  return chunks;
 }
 
 function stripMarkdown(text: string): string {

@@ -169,4 +169,33 @@ describe("plugin-dataforseo-agent-tools", () => {
     expect(result.content).toBe("No provider cost");
     expect(harness.costs).toHaveLength(0);
   });
+
+  it("emits amount micros for sub-cent provider-reported costs", async () => {
+    const harness = createTestHarness({
+      manifest,
+      config: {
+        dataforseoApiLoginSecretRef: "secret-login",
+        dataforseoApiPasswordSecretRef: "secret-password",
+      },
+    });
+    await plugin.definition.setup(harness.ctx);
+
+    fetchGoogleAdsSearchVolumeMock.mockResolvedValueOnce({
+      content: "Sub-cent provider cost",
+      data: { tasks: [] },
+      actualCostUsd: 0.001,
+    });
+
+    await harness.executeTool(TOOL_NAMES.googleAdsSearchVolume, {
+      keywords: ["натальна карта фінанси"],
+    });
+
+    expect(harness.costs).toHaveLength(1);
+    expect(harness.costs[0]).toMatchObject({
+      provider: "dataforseo.com",
+      billingCode: TOOL_NAMES.googleAdsSearchVolume,
+      costCents: 0,
+      amountMicros: 1000,
+    });
+  });
 });

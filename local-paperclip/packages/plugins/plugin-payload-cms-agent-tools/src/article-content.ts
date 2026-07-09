@@ -133,6 +133,8 @@ const INTERNAL_ROUTING_NOTE_PATTERN =
   /(?:контекстн[^\s]*\s+(?:перш[^\s]*|друг[^\s]*)?\s*маршрут|contextual\s+(?:first|second)?\s*route|cta\s+route|seo\s+lock|brief\s+route)/i;
 const MAX_LINKS_PER_TEXT_BLOCK = 5;
 const MAX_LINKS_PER_ARTICLE = 20;
+const REQUIRED_SUMMARY_CALLOUT_TITLE = "Коротко";
+const MAX_REQUIRED_SUMMARY_CALLOUT_INDEX = 4;
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
@@ -236,6 +238,21 @@ function countInlineLinks(block: ArticleContentBlock) {
     return count(block.leftBodySpans) + count(block.rightBodySpans);
   }
   return 0;
+}
+
+function assertRequiredSummaryCallout(blocks: ArticleContentBlock[]) {
+  const summaryIndex = blocks.findIndex(
+    (block) => block.type === "editorialCallout" && block.title.trim() === REQUIRED_SUMMARY_CALLOUT_TITLE,
+  );
+
+  if (summaryIndex === -1) {
+    throw new Error(`articleContent must include an early editorialCallout titled "${REQUIRED_SUMMARY_CALLOUT_TITLE}"`);
+  }
+  if (summaryIndex > MAX_REQUIRED_SUMMARY_CALLOUT_INDEX) {
+    throw new Error(
+      `articleContent editorialCallout titled "${REQUIRED_SUMMARY_CALLOUT_TITLE}" must appear before block ${MAX_REQUIRED_SUMMARY_CALLOUT_INDEX + 1}`,
+    );
+  }
 }
 
 function rejectExtraKeys(record: Record<string, unknown>, allowed: string[], path: string) {
@@ -353,13 +370,16 @@ function validateBlock(value: unknown, index: number): ArticleContentBlock {
   if (type === "quietCta") {
     rejectExtraKeys(block, ["type", "title", "text", "textSpans", "linkLabel", "linkUrl", "note"], path);
     const text = requireVisibleText(block.text, `${path}.text`);
+    if (block.textSpans !== undefined) {
+      throw new Error(`${path}.textSpans is not supported; use ${path}.text for plain copy and ${path}.linkUrl for the single CTA action`);
+    }
+    const linkUrl = validateLinkUrl(block.linkUrl, `${path}.linkUrl`);
     return {
       type,
       title: requireVisibleText(block.title, `${path}.title`),
       text,
-      ...(block.textSpans !== undefined ? { textSpans: validateTextSpans(block.textSpans, `${path}.textSpans`, text) } : {}),
       linkLabel: requireVisibleText(block.linkLabel, `${path}.linkLabel`),
-      linkUrl: validateLinkUrl(block.linkUrl, `${path}.linkUrl`),
+      linkUrl,
       ...(block.note !== undefined ? { note: requireVisibleText(block.note, `${path}.note`) } : {}),
     };
   }
@@ -381,6 +401,7 @@ export function validateArticleContentV1(value: unknown): ArticleContentV1 {
   if (inlineLinkCount > MAX_LINKS_PER_ARTICLE) {
     throw new Error(`articleContent must contain at most ${MAX_LINKS_PER_ARTICLE} inline links`);
   }
+  assertRequiredSummaryCallout(blocks);
   return {
     schemaVersion: "articleContent.v1",
     blocks,

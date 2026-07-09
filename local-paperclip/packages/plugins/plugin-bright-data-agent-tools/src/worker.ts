@@ -26,30 +26,35 @@ async function getConfig(ctx: Parameters<NonNullable<Parameters<typeof definePlu
   return await ctx.config.get() as BrightDataPluginConfig;
 }
 
-function usdToCents(amountUsd: unknown) {
+function usdToCost(amountUsd: unknown) {
   if (typeof amountUsd !== "number" || !Number.isFinite(amountUsd) || amountUsd <= 0) {
-    return 0;
+    return { costCents: 0, amountMicros: 0 };
   }
-  return Math.max(0, Math.round(amountUsd * 100));
+  return {
+    costCents: Math.max(0, Math.round(amountUsd * 100)),
+    amountMicros: Math.max(0, Math.round(amountUsd * 1_000_000)),
+  };
 }
 
-function resolveEstimatedCostCents(config: BrightDataPluginConfig, toolName: string) {
-  if (config.costAccountingMode !== "estimated_per_request") return 0;
+function resolveEstimatedCost(config: BrightDataPluginConfig, toolName: string) {
+  if (config.costAccountingMode !== "estimated_per_request") {
+    return { costCents: 0, amountMicros: 0 };
+  }
   switch (toolName) {
     case TOOL_NAMES.callTool:
-      return usdToCents(config.estimatedMcpToolCostUsd);
+      return usdToCost(config.estimatedMcpToolCostUsd);
     case TOOL_NAMES.triggerDatasetRequest:
-      return usdToCents(config.estimatedDatasetTriggerCostUsd);
+      return usdToCost(config.estimatedDatasetTriggerCostUsd);
     case TOOL_NAMES.getSnapshotProgress:
-      return usdToCents(config.estimatedSnapshotProgressCostUsd);
+      return usdToCost(config.estimatedSnapshotProgressCostUsd);
     case TOOL_NAMES.downloadSnapshot:
-      return usdToCents(config.estimatedSnapshotDownloadCostUsd);
+      return usdToCost(config.estimatedSnapshotDownloadCostUsd);
     case TOOL_NAMES.runDatasetRequest:
-      return usdToCents(config.estimatedRunDatasetCostUsd);
+      return usdToCost(config.estimatedRunDatasetCostUsd);
     case TOOL_NAMES.resolveInstagramAccountPostSet:
-      return usdToCents(config.estimatedInstagramPostSetCostUsd);
+      return usdToCost(config.estimatedInstagramPostSetCostUsd);
     default:
-      return 0;
+      return { costCents: 0, amountMicros: 0 };
   }
 }
 
@@ -59,8 +64,8 @@ async function emitBrightDataCost(input: {
   config: BrightDataPluginConfig;
   toolName: string;
 }) {
-  const costCents = resolveEstimatedCostCents(input.config, input.toolName);
-  if (costCents <= 0) return;
+  const { costCents, amountMicros } = resolveEstimatedCost(input.config, input.toolName);
+  if (amountMicros <= 0) return;
 
   await input.ctx.costs.createEvent({
     companyId: input.runCtx.companyId,
@@ -78,6 +83,7 @@ async function emitBrightDataCost(input: {
     cachedInputTokens: 0,
     outputTokens: 0,
     costCents,
+    amountMicros,
     occurredAt: new Date().toISOString(),
   });
 }

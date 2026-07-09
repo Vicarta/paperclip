@@ -6,6 +6,7 @@ import {
   prepareLinksQuery,
   prepareMutatingSessionRequest,
   preparePageDetailQuery,
+  preparePageIssuesQuery,
   preparePagesQuery,
   prepareReadEndpointRequest,
   prepareResourceChecksQuery,
@@ -169,6 +170,7 @@ const plugin = definePlugin({
       [TOOL_NAMES.getSessionProgress, "CrawlObserver Session Progress", "/progress"],
       [TOOL_NAMES.getSessionStats, "CrawlObserver Session Stats", "/stats"],
       [TOOL_NAMES.getSessionAudit, "CrawlObserver Session Audit", "/audit"],
+      [TOOL_NAMES.getSessionQuality, "CrawlObserver Session Quality", "/quality"],
       [TOOL_NAMES.getSitemaps, "CrawlObserver Sitemaps", "/sitemaps"],
       [TOOL_NAMES.getResourceSummary, "CrawlObserver Resource Summary", "/resource-checks/summary"],
     ] as const) {
@@ -263,6 +265,27 @@ const plugin = definePlugin({
             params,
             "/resource-checks",
             prepareResourceChecksQuery({ params, config }),
+          ),
+        });
+      },
+    );
+
+    ctx.tools.register(
+      TOOL_NAMES.getPageIssues,
+      {
+        displayName: "CrawlObserver Page Issues",
+        description:
+          "Call `GET /api/sessions/{id}/page-issues` with filters such as severity, issue_type, and url.",
+        parametersSchema: looseObjectSchema,
+      },
+      async (params): Promise<ToolResult> => {
+        const config = await getConfig(ctx);
+        return await callApi({
+          ctx,
+          request: sessionPagedGetRequest(
+            params,
+            "/page-issues",
+            preparePageIssuesQuery({ params, config }),
           ),
         });
       },

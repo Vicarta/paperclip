@@ -25,6 +25,11 @@ function usdToCents(amountUsd: number) {
   return Math.max(0, Math.round(amountUsd * 100));
 }
 
+function usdToMicros(amountUsd: number) {
+  if (!Number.isFinite(amountUsd) || amountUsd <= 0) return 0;
+  return Math.max(0, Math.round(amountUsd * 1_000_000));
+}
+
 async function emitDataForSeoCost(input: {
   ctx: Parameters<Parameters<typeof definePlugin>[0]["setup"]>[0];
   runCtx: Parameters<Parameters<Parameters<typeof definePlugin>[0]["setup"]>[0]["tools"]["register"]>[2] extends (
@@ -38,7 +43,8 @@ async function emitDataForSeoCost(input: {
   model: string;
 }) {
   const costCents = usdToCents(input.costUsd);
-  if (costCents <= 0) return;
+  const amountMicros = usdToMicros(input.costUsd);
+  if (amountMicros <= 0) return;
 
   await input.ctx.costs.createEvent({
     companyId: input.runCtx.companyId,
@@ -56,6 +62,7 @@ async function emitDataForSeoCost(input: {
     cachedInputTokens: 0,
     outputTokens: 0,
     costCents,
+    amountMicros,
     occurredAt: new Date().toISOString(),
   });
 }

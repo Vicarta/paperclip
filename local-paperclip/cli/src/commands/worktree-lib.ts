@@ -1,6 +1,6 @@
 import { randomInt } from "node:crypto";
 import path from "node:path";
-import type { PaperclipConfig } from "../config/schema.js";
+import { defaultRuntimeRetentionConfig, type PaperclipConfig } from "../config/schema.js";
 import { expandHomePrefix } from "../config/home.js";
 
 export const DEFAULT_WORKTREE_HOME = "~/.paperclip-worktrees";
@@ -73,11 +73,6 @@ export function resolveWorktreeSeedPlan(mode: WorktreeSeedMode): WorktreeSeedPla
 
 function nonEmpty(value: string | null | undefined): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
-}
-
-function isLoopbackHost(hostname: string): boolean {
-  const value = hostname.trim().toLowerCase();
-  return value === "127.0.0.1" || value === "localhost" || value === "::1";
 }
 
 export function sanitizeWorktreeInstanceId(rawValue: string): string {
@@ -168,7 +163,8 @@ export function rewriteLocalUrlPort(rawUrl: string | undefined, port: number): s
   if (!rawUrl) return undefined;
   try {
     const parsed = new URL(rawUrl);
-    if (!isLoopbackHost(parsed.hostname)) return rawUrl;
+    // The URL API normalizes default ports like :80/:443 to "", so treat them as stable URLs.
+    if (!parsed.port) return rawUrl;
     parsed.port = String(port);
     return parsed.toString();
   } catch {
@@ -207,6 +203,7 @@ export function buildWorktreeConfig(input: {
         dir: paths.backupDir,
       },
     },
+    runtimeRetention: source?.runtimeRetention ?? defaultRuntimeRetentionConfig(),
     logging: {
       mode: source?.logging.mode ?? "file",
       logDir: paths.logDir,
@@ -214,6 +211,8 @@ export function buildWorktreeConfig(input: {
     server: {
       deploymentMode: source?.server.deploymentMode ?? "local_trusted",
       exposure: source?.server.exposure ?? "private",
+      ...(source?.server.bind ? { bind: source.server.bind } : {}),
+      ...(source?.server.customBindHost ? { customBindHost: source.server.customBindHost } : {}),
       host: source?.server.host ?? "127.0.0.1",
       port: serverPort,
       allowedHostnames: source?.server.allowedHostnames ?? [],

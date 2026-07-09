@@ -93,10 +93,11 @@ describe("plugin-serper-agent-tools", () => {
       model: "google_search",
       billingCode: "serper:google-search:search",
       costCents: 1,
+      amountMicros: 10000,
     });
   });
 
-  it("accumulates legacy sub-cent flat Serper search costs before writing a cent", async () => {
+  it("writes legacy sub-cent flat Serper search costs with amount micros", async () => {
     const harness = createTestHarness({
       manifest,
       config: {
@@ -124,12 +125,15 @@ describe("plugin-serper-agent-tools", () => {
       );
     }
 
-    expect(harness.costs).toHaveLength(1);
-    expect(harness.costs[0]).toMatchObject({
-      provider: "serper.dev",
-      billingCode: "serper:google-search:search",
-      costCents: 1,
-    });
+    expect(harness.costs).toHaveLength(10);
+    for (const cost of harness.costs) {
+      expect(cost).toMatchObject({
+        provider: "serper.dev",
+        billingCode: "serper:google-search:search",
+        costCents: 0,
+        amountMicros: 1000,
+      });
+    }
   });
 
   it("does not emit cost when Serper call fails", async () => {

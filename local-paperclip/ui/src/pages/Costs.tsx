@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState, type ComponentType } from "react";
-import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   BudgetPolicySummary,
@@ -10,9 +9,9 @@ import type {
   FinanceEvent,
   QuotaWindow,
 } from "@paperclipai/shared";
-import { Activity, AlertTriangle, ArrowDownLeft, ArrowUpRight, ChevronDown, ChevronRight, Coins, DollarSign, ReceiptText } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, ChevronDown, ChevronRight, Coins, DollarSign, ReceiptText } from "lucide-react";
 import { budgetsApi } from "../api/budgets";
-import { costsApi, type CostEfficiencySummary } from "../api/costs";
+import { costsApi } from "../api/costs";
 import { BillerSpendCard } from "../components/BillerSpendCard";
 import { BudgetIncidentCard } from "../components/BudgetIncidentCard";
 import { BudgetPolicyCard } from "../components/BudgetPolicyCard";
@@ -147,164 +146,12 @@ function FinanceSummaryCard({
   );
 }
 
-function formatOptionalTokens(value: number | null): string {
-  return value === null ? "n/a" : formatTokens(value);
-}
-
-function wasteReasonDisplayName(reason: string): string {
-  const map: Record<string, string> = {
-    no_issue_timer_tokens: "No issue timer wakeup",
-    idle_tokens: "Idle run",
-    tokens_lost_to_failed_runs: "Failed run",
-    zero_output_high_input_run: "High input, zero output",
-    other: "Other waste signal",
-  };
-  return map[reason] ?? reason.replaceAll("_", " ");
-}
-
-function CostEfficiencyPanel({
-  data,
-  isLoading,
-  error,
-}: {
-  data: CostEfficiencySummary | undefined;
-  isLoading: boolean;
-  error: unknown;
-}) {
-  if (isLoading) return <PageSkeleton variant="costs" />;
-  if (error) return <p className="text-sm text-destructive">{(error as Error).message}</p>;
-
-  return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader className="px-5 pt-5 pb-2">
-          <CardTitle className="text-base">Operational efficiency</CardTitle>
-          <CardDescription>
-            Waste guardrails for LLM work. These numbers separate useful delivery from idle wakeups, failed runs, and coordination overhead.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-3 px-5 pb-5 pt-2 sm:grid-cols-2 xl:grid-cols-4">
-          <MetricTile
-            label="Per article"
-            value={formatOptionalTokens(data?.kpis.tokensPerDeliveredArticle ?? null)}
-            subtitle={`${data?.totals.deliveredArticleIssueCount ?? 0} delivered article issue${data?.totals.deliveredArticleIssueCount === 1 ? "" : "s"}`}
-            icon={ReceiptText}
-          />
-          <MetricTile
-            label="Per done issue"
-            value={formatOptionalTokens(data?.kpis.tokensPerDoneIssue ?? null)}
-            subtitle={`${data?.totals.doneIssueCount ?? 0} done issue${data?.totals.doneIssueCount === 1 ? "" : "s"} in range`}
-            icon={Activity}
-          />
-          <MetricTile
-            label="Idle tokens"
-            value={formatTokens(data?.kpis.idleTokens ?? 0)}
-            subtitle={`${formatTokens(data?.kpis.noIssueTimerTokens ?? 0)} from timer wakeups without issue context`}
-            icon={AlertTriangle}
-          />
-          <MetricTile
-            label="Failed-run tokens"
-            value={formatTokens(data?.kpis.tokensLostToFailedRuns ?? 0)}
-            subtitle={`${data?.kpis.zeroOutputHighInputRuns ?? 0} high-input runs with zero output`}
-            icon={ArrowDownLeft}
-          />
-          <MetricTile
-            label="Manager coordination"
-            value={formatTokens(data?.kpis.managerCoordinationTokens ?? 0)}
-            subtitle="Tokens spent by manager/chief coordination roles"
-            icon={Coins}
-          />
-          <MetricTile
-            label="Rework per article"
-            value={formatOptionalTokens(data?.kpis.reworkTokensPerArticle ?? null)}
-            subtitle="Failed or cancelled article-work tokens divided by delivered articles"
-            icon={ArrowUpRight}
-          />
-          <MetricTile
-            label="Total tokens"
-            value={formatTokens(data?.totals.tokens ?? 0)}
-            subtitle={`${formatCents(data?.totals.costCents ?? 0)} request-scoped spend in range`}
-            icon={DollarSign}
-          />
-          <MetricTile
-            label="Zero-output threshold"
-            value={formatTokens(data?.kpis.highInputZeroOutputThresholdTokens ?? 0)}
-            subtitle="Input threshold used to flag suspicious no-output runs"
-            icon={ChevronRight}
-          />
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="px-5 pt-5 pb-2">
-          <CardTitle className="text-base">Top waste runs</CardTitle>
-          <CardDescription>
-            The largest runs that look idle, failed, timer-triggered without issue context, or high-input with no output.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="px-5 pb-5 pt-2">
-          {(data?.topWasteRuns.length ?? 0) === 0 ? (
-            <p className="text-sm text-muted-foreground">No waste runs detected for this period.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[760px] text-sm">
-                <thead>
-                  <tr className="border-b border-border text-left text-xs uppercase tracking-[0.12em] text-muted-foreground">
-                    <th className="py-2 pr-3 font-medium">Run</th>
-                    <th className="px-3 py-2 font-medium">Reason</th>
-                    <th className="px-3 py-2 font-medium">Issue</th>
-                    <th className="px-3 py-2 font-medium">Status</th>
-                    <th className="px-3 py-2 text-right font-medium">Tokens</th>
-                    <th className="py-2 pl-3 text-right font-medium">Cost</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data?.topWasteRuns.map((row, index) => {
-                    const runLabel = row.runId ? row.runId.slice(0, 8) : "no run";
-                    return (
-                      <tr key={`${row.runId ?? "none"}-${index}`} className="border-b border-border/70 last:border-0">
-                        <td className="py-2 pr-3">
-                          <div className="min-w-0">
-                            {row.runId && row.agentId ? (
-                              <Link
-                                to={`/agents/${row.agentId}/runs/${row.runId}`}
-                                className="font-mono text-xs underline underline-offset-2"
-                              >
-                                {runLabel}
-                              </Link>
-                            ) : (
-                              <span className="font-mono text-xs text-muted-foreground">{runLabel}</span>
-                            )}
-                            <div className="truncate text-xs text-muted-foreground">{row.agentName ?? row.agentId ?? "Unknown agent"}</div>
-                          </div>
-                        </td>
-                        <td className="px-3 py-2">{wasteReasonDisplayName(row.reason)}</td>
-                        <td className="max-w-[260px] truncate px-3 py-2 text-muted-foreground">{row.issueTitle ?? row.issueId ?? "No issue"}</td>
-                        <td className="px-3 py-2 text-muted-foreground">
-                          {row.runStatus ?? "n/a"}
-                          {row.errorCode ? <span className="ml-1 font-mono text-xs">({row.errorCode})</span> : null}
-                        </td>
-                        <td className="px-3 py-2 text-right font-mono">{formatTokens(row.tokens)}</td>
-                        <td className="py-2 pl-3 text-right tabular-nums">{formatCents(row.costCents)}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
 export function Costs() {
   const { selectedCompanyId } = useCompany();
   const { setBreadcrumbs } = useBreadcrumbs();
   const queryClient = useQueryClient();
 
-  const [mainTab, setMainTab] = useState<"overview" | "budgets" | "providers" | "billers" | "finance" | "efficiency">("overview");
+  const [mainTab, setMainTab] = useState<"overview" | "budgets" | "providers" | "billers" | "finance">("overview");
   const [activeProvider, setActiveProvider] = useState("all");
   const [activeBiller, setActiveBiller] = useState("all");
 
@@ -413,14 +260,6 @@ export function Costs() {
       return { summary, byBiller, byKind, events };
     },
     enabled: !!selectedCompanyId && customReady,
-  });
-
-  const { data: efficiencyData, isLoading: efficiencyLoading, error: efficiencyError } = useQuery({
-    queryKey: queryKeys.costEfficiency(companyId, from || undefined, to || undefined),
-    queryFn: () => costsApi.efficiency(companyId, from || undefined, to || undefined),
-    enabled: !!selectedCompanyId && customReady && mainTab === "efficiency",
-    refetchInterval: 30_000,
-    staleTime: 10_000,
   });
 
   const [expandedAgents, setExpandedAgents] = useState<Set<string>>(new Set());
@@ -785,7 +624,6 @@ export function Costs() {
           <TabsTrigger value="providers">Providers</TabsTrigger>
           <TabsTrigger value="billers">Billers</TabsTrigger>
           <TabsTrigger value="finance">Finance</TabsTrigger>
-          <TabsTrigger value="efficiency">Efficiency</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="mt-4 space-y-4">
@@ -967,7 +805,7 @@ export function Costs() {
                   <Card>
                     <CardHeader className="px-5 pt-5 pb-2">
                       <CardTitle className="text-base">By project</CardTitle>
-                      <CardDescription>Run costs attributed through project-linked issues.</CardDescription>
+                      <CardDescription>Run costs attributed through project-linked tasks.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-2 px-5 pb-5 pt-2">
                       {(spendData?.byProject.length ?? 0) === 0 ? (
@@ -1256,14 +1094,6 @@ export function Costs() {
                 <FinanceKindCard rows={financeData?.byKind ?? []} />
               </div>
             </>
-          )}
-        </TabsContent>
-
-        <TabsContent value="efficiency" className="mt-4 space-y-4">
-          {showCustomPrompt ? (
-            <p className="text-sm text-muted-foreground">Select a start and end date to load data.</p>
-          ) : (
-            <CostEfficiencyPanel data={efficiencyData} isLoading={efficiencyLoading} error={efficiencyError} />
           )}
         </TabsContent>
       </Tabs>

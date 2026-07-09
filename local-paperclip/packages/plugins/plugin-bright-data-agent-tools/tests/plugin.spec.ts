@@ -166,6 +166,37 @@ describe("plugin-bright-data-agent-tools", () => {
     });
   });
 
+  it("emits amount micros for sub-cent estimated Bright Data calls", async () => {
+    const harness = createTestHarness({
+      manifest,
+      config: {
+        brightDataTokenSecretRef: "secret-1",
+        costAccountingMode: "estimated_per_request",
+        estimatedMcpToolCostUsd: 0.001,
+      },
+    });
+    await plugin.definition.setup(harness.ctx);
+
+    callBrightDataToolMock.mockResolvedValueOnce({
+      isError: false,
+      content: "Fetched profile",
+      data: { content: [{ type: "text", text: "Fetched profile" }], structuredContent: null },
+    });
+
+    await harness.executeTool(TOOL_NAMES.callTool, {
+      remoteToolName: "social_lookup",
+      arguments: { handle: "astrogen.com.ua" },
+    });
+
+    expect(harness.costs).toHaveLength(1);
+    expect(harness.costs[0]).toMatchObject({
+      provider: "brightdata.com",
+      billingCode: "bright-data:call-tool",
+      costCents: 0,
+      amountMicros: 1000,
+    });
+  });
+
   it("triggers an async dataset request", async () => {
     const harness = createTestHarness({
       manifest,

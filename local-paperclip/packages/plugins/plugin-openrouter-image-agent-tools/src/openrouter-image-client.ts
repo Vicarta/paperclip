@@ -7,6 +7,11 @@ export type OpenRouterImagePluginConfig = {
   openrouterApiKeySecretRef?: string;
   openrouterBaseUrl?: string;
   defaultModel?: string;
+  allowModelOverride?: boolean;
+  maxImagesPerRequest?: number;
+  defaultImageSize?: string;
+  defaultAspectRatio?: string;
+  defaultOutputDir?: string;
   costAccountingMode?: "provider_reported" | "estimated_per_image" | "disabled";
   estimatedImageCostUsd?: number;
   appName?: string;
@@ -18,6 +23,10 @@ export type OpenRouterGenerateImageParams = {
   model?: string;
   aspectRatio?: string;
   imageSize?: string;
+  size?: string;
+  resolution?: string;
+  candidateCount?: number;
+  n?: number;
   outputFormat?: "png" | "jpg" | "jpeg" | "webp";
   temperature?: number;
   topP?: number;
@@ -50,9 +59,9 @@ function normalizeBaseUrl(value: unknown) {
 }
 
 function resolveModel(config: OpenRouterImagePluginConfig, params: OpenRouterGenerateImageParams) {
-  return readNonEmptyString(params.model)
-    ?? readNonEmptyString(config.defaultModel)
-    ?? DEFAULT_OPENROUTER_IMAGE_MODEL;
+  const configuredModel = readNonEmptyString(config.defaultModel) ?? DEFAULT_OPENROUTER_IMAGE_MODEL;
+  if (config.allowModelOverride === false) return configuredModel;
+  return readNonEmptyString(params.model) ?? configuredModel;
 }
 
 async function resolveApiKey(input: {
@@ -72,7 +81,7 @@ async function resolveApiKey(input: {
 }
 
 function buildEndpoint(baseUrl: string) {
-  return `${normalizeBaseUrl(baseUrl)}/chat/completions`;
+  return `${normalizeBaseUrl(baseUrl)}/images`;
 }
 
 function extensionForMimeType(mimeType: string, outputFormat?: string) {
@@ -93,9 +102,116 @@ function bytesFromDataUrl(dataUrl: string) {
   };
 }
 
-function collectImageDataUrls(payload: OpenRouterResponse) {
+function normalizeOutputFormat(value: unknown) {
+  const format = readNonEmptyString(value)?.toLowerCase();
+  if (format === "jpg") return "jpeg";
+  if (format === "jpeg" || format === "png" || format === "webp") return format;
+  return null;
+}
+
+function readPositiveInteger(value: unknown) {
+  return typeof value === "number" && Number.isInteger(value) && value > 0 ? value : null;
+}
+
+function resolveRequestedImageCount(
+  params: OpenRouterGenerateImageParams,
+  config: OpenRouterImagePluginConfig,
+) {
+  const configuredMax = readPositiveInteger(config.maxImagesPerRequest);
+  const maxImages = Math.min(configuredMax ?? 10, 10);
+  return Math.min(
+    readPositiveInteger(params.n) ?? readPositiveInteger(params.candidateCount) ?? 1,
+    maxImages,
+  );
+}
+
+function normalizeImageShape(
+  params: OpenRouterGenerateImageParams,
+  config: OpenRouterImagePluginConfig,
+) {
+  const explicitAspectRatio = readNonEmptyString(params.aspectRatio)
+    ?? readNonEmptyString(config.defaultAspectRatio);
+  const requestedSize = readNonEmptyString(params.imageSize)
+    ?? readNonEmptyString(params.size)
+    ?? readNonEmptyString(params.resolution)
+    ?? readNonEmptyString(config.defaultImageSize);
+  if (!requestedSize) {
+    return {
+      aspectRatio: explicitAspectRatio,
+      size: null,
+    };
+  }
+
+  if (/^(0\.5K|1K|2K|4K)$/i.test(requestedSize)) {
+    return {
+      aspectRatio: explicitAspectRatio,
+      size: requestedSize.toUpperCase().replace("0.5K", "0.5K"),
+    };
+  }
+
+  const dimensions = requestedSize.match(/^(\d{3,5})\s*x\s*(\d{3,5})$/i);
+  if (!dimensions) {
+    return {
+      aspectRatio: explicitAspectRatio,
+      size: requestedSize,
+    };
+  }
+
+  const width = Number(dimensions[1]);
+  const height = Number(dimensions[2]);
+  const ratio = width / height;
+  const commonRatios = [
+    ["1:1", 1],
+    ["4:3", 4 / 3],
+    ["3:2", 3 / 2],
+    ["16:9", 16 / 9],
+    ["21:9", 21 / 9],
+    ["3:4", 3 / 4],
+    ["2:3", 2 / 3],
+    ["9:16", 9 / 16],
+  ] as const;
+  const nearest = commonRatios.reduce((best, current) => {
+    return Math.abs(current[1] - ratio) < Math.abs(best[1] - ratio) ? current : best;
+  }, commonRatios[0]);
+  const aspectRatio = explicitAspectRatio ?? nearest[0];
+  const longestSide = Math.max(width, height);
+  const size = longestSide <= 512
+    ? "0.5K"
+    : longestSide <= 1024
+      ? "1K"
+      : longestSide <= 2048
+        ? "2K"
+        : "4K";
+  return { aspectRatio, size };
+}
+
+function dataUrlFromB64(input: { b64Json: string; mediaType?: string | null; outputFormat?: string }) {
+  const mimeType = readNonEmptyString(input.mediaType)
+    ?? (input.outputFormat === "jpeg" ? "image/jpeg" : input.outputFormat === "webp" ? "image/webp" : "image/png");
+  return `data:${mimeType};base64,${input.b64Json}`;
+}
+
+function collectImageDataUrls(payload: OpenRouterResponse, outputFormat?: string) {
+  const data = Array.isArray(payload.data) ? payload.data : [];
+  const dataUrls: string[] = [];
+  for (const item of data) {
+    if (!item || typeof item !== "object") continue;
+    const record = item as Record<string, unknown>;
+    const b64Json = readNonEmptyString(record.b64_json);
+    if (b64Json) {
+      dataUrls.push(dataUrlFromB64({
+        b64Json,
+        mediaType: readNonEmptyString(record.media_type),
+        outputFormat,
+      }));
+      continue;
+    }
+    const url = readNonEmptyString(record.url);
+    if (url?.startsWith("data:image/")) dataUrls.push(url);
+  }
+  if (dataUrls.length > 0) return dataUrls;
+
   const choices = Array.isArray(payload.choices) ? payload.choices : [];
-  const urls: string[] = [];
   for (const choice of choices) {
     if (!choice || typeof choice !== "object") continue;
     const message = (choice as Record<string, unknown>).message;
@@ -107,10 +223,10 @@ function collectImageDataUrls(payload: OpenRouterResponse) {
       const imageUrl = (image as Record<string, unknown>).image_url;
       if (!imageUrl || typeof imageUrl !== "object") continue;
       const url = (imageUrl as Record<string, unknown>).url;
-      if (typeof url === "string" && url.startsWith("data:image/")) urls.push(url);
+      if (typeof url === "string" && url.startsWith("data:image/")) dataUrls.push(url);
     }
   }
-  return urls;
+  return dataUrls;
 }
 
 export function extractOpenRouterCostUsd(payload: unknown): number | null {
@@ -140,6 +256,9 @@ export function sanitizeProviderResponse(payload: unknown): unknown {
       const prefix = commaIndex >= 0 ? value.slice(0, commaIndex + 1) : "data:image/*;base64,";
       return `${prefix}<base64 omitted>`;
     }
+    if (key === "b64_json" && typeof value === "string") {
+      return `<base64 omitted: ${value.length} chars>`;
+    }
     if (
       typeof value === "string"
       && value.length > 4096
@@ -158,33 +277,22 @@ function buildPayload(input: {
   const prompt = readNonEmptyString(input.params.prompt);
   if (!prompt) throw new Error("prompt is required");
   const model = resolveModel(input.config, input.params);
-  const metadata = input.params.metadata && typeof input.params.metadata === "object"
-    ? input.params.metadata
-    : {};
+  const outputFormat = normalizeOutputFormat(input.params.outputFormat);
+  const imageShape = normalizeImageShape(input.params, input.config);
+  const shapeSize = model.startsWith("google/gemini-2.5-flash-image")
+    ? null
+    : imageShape.size;
   return {
     model,
-    messages: [
-      {
-        role: "user",
-        content: prompt,
-      },
-    ],
-    modalities: ["image", "text"],
-    image_config: {
-      ...(readNonEmptyString(input.params.aspectRatio)
-        ? { aspect_ratio: input.params.aspectRatio?.trim() }
-        : {}),
-      ...(readNonEmptyString(input.params.imageSize)
-        ? { image_size: input.params.imageSize?.trim() }
-        : {}),
-    },
-    stream: false,
-    metadata: {
-      ...metadata,
-      paperclip_provider: "openrouter",
-      paperclip_model: model,
-      paperclip_request_type: "image_generation",
-    },
+    prompt,
+    ...(imageShape.aspectRatio
+      ? { aspect_ratio: imageShape.aspectRatio }
+      : {}),
+    ...(shapeSize
+      ? { size: shapeSize }
+      : {}),
+    ...(outputFormat ? { output_format: outputFormat } : {}),
+    n: 1,
     ...(readPositiveNumber(input.params.temperature) !== null
       ? { temperature: input.params.temperature }
       : {}),
@@ -200,7 +308,8 @@ export async function generateOpenRouterImage(input: {
   fetchFn?: (url: string, init?: RequestInit) => Promise<Response>;
 }) {
   const apiKey = await resolveApiKey(input);
-  const payload = buildPayload(input);
+  const requestedImageCount = resolveRequestedImageCount(input.params, input.config);
+  const basePayload = buildPayload(input);
   const endpoint = buildEndpoint(input.config.openrouterBaseUrl ?? DEFAULT_OPENROUTER_BASE_URL);
   const headers: Record<string, string> = {
     Authorization: `Bearer ${apiKey}`,
@@ -210,52 +319,87 @@ export async function generateOpenRouterImage(input: {
   const siteUrl = readNonEmptyString(input.config.siteUrl);
   if (siteUrl) headers["HTTP-Referer"] = siteUrl;
 
-  const response = await (input.fetchFn ?? fetch)(endpoint, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(payload),
-  });
-  const rawText = await response.text();
-  let responseBody: OpenRouterResponse | null = null;
-  try {
-    const parsed = JSON.parse(rawText);
-    responseBody = parsed && typeof parsed === "object" ? parsed as OpenRouterResponse : null;
-  } catch {
-    responseBody = null;
-  }
-
-  if (!response.ok) {
-    throw new Error(`OpenRouter image request failed (${response.status}): ${responseBody ? JSON.stringify(sanitizeProviderResponse(responseBody)) : rawText}`);
-  }
-  if (!responseBody) throw new Error("OpenRouter returned a non-JSON response");
-
   const returnImageData = input.params.returnImageData !== false;
-  const images = collectImageDataUrls(responseBody).map((dataUrl, index) => {
-    const { mimeType, bytes } = bytesFromDataUrl(dataUrl);
-    return {
-      index,
-      mimeType,
-      extension: extensionForMimeType(mimeType, input.params.outputFormat),
-      ...(returnImageData ? { dataUrl } : {}),
-      bytes,
-      source: `openrouter.choices.message.images[${index}].image_url.url`,
-    } satisfies OpenRouterGeneratedImage;
-  });
+  const outputFormat = normalizeOutputFormat(input.params.outputFormat) ?? undefined;
+  const images: OpenRouterGeneratedImage[] = [];
+  const responseBodies: OpenRouterResponse[] = [];
+  let providerCostUsd: number | null = null;
+
+  for (let requestIndex = 0; requestIndex < requestedImageCount; requestIndex += 1) {
+    const payload = {
+      ...basePayload,
+      ...(readPositiveNumber(input.params.seed) !== null
+        ? { seed: Number(input.params.seed) + requestIndex }
+        : {}),
+    };
+    const response = await (input.fetchFn ?? fetch)(endpoint, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload),
+    });
+    const rawText = await response.text();
+    let responseBody: OpenRouterResponse | null = null;
+    try {
+      const parsed = JSON.parse(rawText);
+      responseBody = parsed && typeof parsed === "object" ? parsed as OpenRouterResponse : null;
+    } catch {
+      responseBody = null;
+    }
+
+    if (!response.ok) {
+      throw new Error(`OpenRouter image request failed (${response.status}): ${responseBody ? JSON.stringify(sanitizeProviderResponse(responseBody)) : rawText}`);
+    }
+    if (!responseBody) throw new Error("OpenRouter returned a non-JSON response");
+
+    const imageDataUrls = collectImageDataUrls(responseBody, outputFormat);
+    if (imageDataUrls.length === 0) {
+      throw new Error(`OpenRouter image request returned no image data: ${JSON.stringify(sanitizeProviderResponse(responseBody))}`);
+    }
+
+    responseBodies.push(responseBody);
+    const responseCost = extractOpenRouterCostUsd(responseBody);
+    if (responseCost !== null) {
+      providerCostUsd = (providerCostUsd ?? 0) + responseCost;
+    }
+
+    for (const [responseImageIndex, dataUrl] of imageDataUrls.entries()) {
+      const globalIndex = images.length;
+      const { mimeType, bytes } = bytesFromDataUrl(dataUrl);
+      images.push({
+        index: globalIndex,
+        mimeType,
+        extension: extensionForMimeType(mimeType, input.params.outputFormat),
+        ...(returnImageData ? { dataUrl } : {}),
+        bytes,
+        source: dataUrl.includes(";base64,")
+          ? `openrouter.requests[${requestIndex}].data[${responseImageIndex}].b64_json`
+          : `openrouter.requests[${requestIndex}].data[${responseImageIndex}].url`,
+      });
+    }
+  }
+
+  if (images.length === 0) {
+    throw new Error("OpenRouter image request returned no image data");
+  }
 
   return {
     content: [
       "OpenRouter image generation completed",
-      `Model: ${payload.model}`,
+      `Model: ${basePayload.model}`,
       `Images: ${images.length}`,
-      `Provider cost: ${extractOpenRouterCostUsd(responseBody) ?? "not reported"}`,
+      `Provider cost: ${providerCostUsd ?? "not reported"}`,
     ].join("\n"),
     data: {
-      model: payload.model,
+      model: basePayload.model,
       endpoint,
       imageCount: images.length,
       images,
-      providerCostUsd: extractOpenRouterCostUsd(responseBody),
-      response: sanitizeProviderResponse(responseBody),
+      providerCostUsd,
+      response: sanitizeProviderResponse(
+        responseBodies.length === 1
+          ? responseBodies[0]
+          : { requests: responseBodies },
+      ),
     },
   };
 }

@@ -14,6 +14,7 @@ import type {
   BudgetIncidentResolutionInput,
   BudgetMetric,
   BudgetOverview,
+  PauseReason,
   BudgetPolicy,
   BudgetPolicySummary,
   BudgetPolicyUpsertInput,
@@ -23,12 +24,13 @@ import type {
 } from "@paperclipai/shared";
 import { notFound, unprocessable } from "../errors.js";
 import { logActivity } from "./activity-log.js";
+import { ceilSumBillableCostCentsSql } from "./cost-amounts.js";
 
 type ScopeRecord = {
   companyId: string;
   name: string;
   paused: boolean;
-  pauseReason: "manual" | "budget" | "system" | null;
+  pauseReason: PauseReason | null;
 };
 
 type PolicyRow = typeof budgetPolicies.$inferSelect;
@@ -156,7 +158,7 @@ async function computeObservedAmount(
 
   const [row] = await db
     .select({
-      total: sql<number>`coalesce(sum(${costEvents.costCents}), 0)::int`,
+      total: ceilSumBillableCostCentsSql(),
     })
     .from(costEvents)
     .where(and(...conditions));

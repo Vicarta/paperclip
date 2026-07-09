@@ -45,6 +45,7 @@ Read tools:
 - `get-session-progress`
 - `get-session-stats`
 - `get-session-audit`
+- `get-session-quality`
 - `list-pages`
 - `list-links`
 - `list-internal-links`
@@ -53,6 +54,7 @@ Read tools:
 - `get-sitemap-urls`
 - `get-resource-summary`
 - `get-resource-checks`
+- `get-page-issues`
 - `get-redirect-pages`
 - `get-near-duplicates`
 - `get-structured-data`
@@ -64,6 +66,72 @@ Mutating tools, disabled by default:
 - `stop-session`
 - `resume-session`
 - `retry-failed`
+
+## SEO Trust Gate
+
+Before agents use any CrawlObserver session as evidence for SEO decisions, they
+must fetch session quality:
+
+```text
+GET /api/sessions/{session_id}/quality
+```
+
+Use the named `get-session-quality` tool when available:
+
+```json
+{
+  "sessionId": "crawl-session-id"
+}
+```
+
+SEO recommendations may use CrawlObserver data only when:
+
+- `quality.trusted === true`;
+- `quality.status === "trusted"`;
+- no returned finding has `blocking === true`;
+- the session is the latest trusted full crawl for the project.
+
+If `quality.status === "warning"`, agents may summarize the data with explicit
+caveats, but must not treat it as a clean baseline for SEO recommendations.
+
+If `quality.status === "untrusted"` or any quality finding is blocking, agents
+must not generate SEO recommendations from that session. They must report:
+`Crawl Observer data stale/untrusted.`
+
+Daily Delta, partial, stopped, or otherwise incomplete sessions are not full
+crawl baselines. Canary failures, coverage drops, graph drops, and PageRank
+instability are data-quality incidents first; route them as acquisition/quality
+incidents instead of SEO optimization tasks.
+
+## Page Inventory And Internal Links
+
+For SEO page inventory and internal-linking analysis, prefer the named
+`list-pages` tool with `page_type=html`:
+
+```json
+{
+  "sessionId": "crawl-session-id",
+  "page_type": "html",
+  "sort": "page_type",
+  "order": "asc",
+  "limit": 100,
+  "offset": 0
+}
+```
+
+`GET /api/sessions/{session_id}/pages` may also return non-HTML resources.
+The current CrawlObserver API exposes `page_type` with values such as `html`,
+`css`, `js`, `image`, `video`, `file`, `redirect`, and `other`. Use
+`page_type=html` before treating rows as crawlable/indexable page candidates.
+
+Page rows can include both:
+
+- `internal_links_in`: number of internal pages linking to this URL;
+- `internal_links_out`: number of outbound internal links found on this page.
+
+Use `internal_links_in` directly when available instead of recomputing basic
+inlink counts from raw link exports. Use link tables for source/anchor evidence
+and placement details.
 
 ## Page Image Audits
 
@@ -92,6 +160,44 @@ redirect URLs, content types, error text, and whether the image is internal or
 external. Old crawl sessions may not contain image resource rows; use a new
 crawl or resource reparse before treating missing image data as a clean result.
 
+## Page Issue Audits
+
+For generic page-quality findings, use `get-page-issues`. This calls:
+
+```text
+GET /api/sessions/{session_id}/page-issues
+```
+
+Useful filters include:
+
+- `severity=error|warning`
+- `issue_type=soft_404|generic_rendered_title|generic_static_metadata`
+- `url=fragment`
+
+Current CrawlObserver issue meanings:
+
+- `soft_404` is a technical error and should be routed as a deterministic SEO
+  technical fix after dedupe/cooldown.
+- `generic_rendered_title` is a content warning about a generic rendered title.
+- `generic_static_metadata` is a content warning about generic static metadata.
+
+Generic title/metadata warnings are evidence for review or content-refresh
+shortlisting; they are not, by themselves, permission to rewrite a page without
+the normal Paperclip issue lifecycle.
+
 ## Operational Note
 
 CrawlObserver session files and API responses are provider acquisition state. A later SEO Ops ingestion flow should persist normalized crawl snapshots and page findings into Paperclip PostgreSQL before agents route fix issues.
+
+Production retention affects debugging and evidence availability:
+
+- application logs from `GET /api/logs` and `GET /api/logs/export` are retained
+  for 5 days only;
+- production currently keeps only the 2 latest inactive crawl sessions per
+  project. Running, queued, and stopping sessions are not deleted by that
+  cleanup;
+- production keeps the 4 latest backups.
+
+Agents must record session id, crawl timestamps, and the compact evidence they
+use in Paperclip comments/documents. Do not assume old session IDs, old logs, or
+older backups will remain available for later review.

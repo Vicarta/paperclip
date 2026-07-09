@@ -19,35 +19,12 @@ function sanitizeWorkspacePath(pathValue: string): string {
 
 function resolveWorkspace(workspacePath: string, requestedPath?: string): string | null {
   const root = path.resolve(workspacePath);
-  const normalizedRequestedPath = requestedPath
-    ? normalizeWorkspaceAliasPath(root, requestedPath)
-    : undefined;
-  const resolved = normalizedRequestedPath
-    ? path.isAbsolute(normalizedRequestedPath)
-      ? path.resolve(normalizedRequestedPath)
-      : path.resolve(root, normalizedRequestedPath)
-    : root;
+  const resolved = requestedPath ? path.resolve(root, requestedPath) : root;
   const relative = path.relative(root, resolved);
   if (relative.startsWith("..") || path.isAbsolute(relative)) {
     return null;
   }
   return resolved;
-}
-
-function normalizeWorkspaceAliasPath(root: string, requestedPath: string): string {
-  const trimmed = requestedPath.trim();
-  if (!path.isAbsolute(trimmed)) return trimmed;
-
-  const normalizedRoot = root.replace(/\\/g, "/").replace(/\/+$/, "");
-  const normalizedRequested = trimmed.replace(/\\/g, "/");
-  const workspaceName = path.basename(normalizedRoot);
-  const workspaceAliasPrefix = `/${workspaceName}/`;
-
-  if (workspaceName && normalizedRequested.startsWith(workspaceAliasPrefix)) {
-    return normalizedRequested.slice(workspaceAliasPrefix.length);
-  }
-
-  return trimmed;
 }
 
 /**
@@ -61,7 +38,6 @@ const FILE_PATH_REGEX = /(?:^|[\s(`"'])([^\s,;)}`"'>\]]*\/[^\s,;)}`"'>\]]+|[.\/~
 
 /** Common file extensions to recognise path-like tokens as actual file references. */
 const FILE_EXTENSION_REGEX = /\.[a-zA-Z0-9]{1,10}$/;
-const WEB_URL_PATTERN = /^https?:\/\//i;
 
 /**
  * Tokens that look like paths but are almost certainly URL route segments
@@ -76,9 +52,6 @@ function extractFilePaths(body: string): string[] {
     // Strip trailing punctuation that isn't part of a path
     const cleaned = raw.replace(/[.:,;!?)]+$/, "");
     if (cleaned.length <= 1) continue;
-    // URLs are already independently clickable in comments; do not route them
-    // into the local file browser as pseudo file paths.
-    if (WEB_URL_PATTERN.test(cleaned)) continue;
     // Must have a file extension (e.g. .ts, .json, .md)
     if (!FILE_EXTENSION_REGEX.test(cleaned)) continue;
     // Skip things that look like URL routes
@@ -133,43 +106,46 @@ const plugin = definePlugin({
       }));
     });
 
-    ctx.data.register(
-      "fileList",
-      async (params: Record<string, unknown>) => {
-        const projectId = params.projectId as string;
-        const companyId = typeof params.companyId === "string" ? params.companyId : "";
-        const workspaceId = params.workspaceId as string;
-        const directoryPath = typeof params.directoryPath === "string" ? params.directoryPath : "";
-        if (!projectId || !companyId || !workspaceId) return { entries: [] };
-        const workspaces = await ctx.projects.listWorkspaces(projectId, companyId);
-        const workspace = workspaces.find((w) => w.id === workspaceId);
-        if (!workspace) return { entries: [] };
-        const workspacePath = sanitizeWorkspacePath(workspace.path);
-        if (!workspacePath) return { entries: [] };
-        const dirPath = resolveWorkspace(workspacePath, directoryPath);
-        if (!dirPath) {
-          return { entries: [] };
-        }
-        if (!fs.existsSync(dirPath) || !fs.statSync(dirPath).isDirectory()) {
-          return { entries: [] };
-        }
-        const names = fs.readdirSync(dirPath).sort((a, b) => a.localeCompare(b));
-        const entries = names.map((name) => {
-          const full = path.join(dirPath, name);
-          const stat = fs.lstatSync(full);
-          const relativePath = path.relative(workspacePath, full);
-          return {
-            name,
-            path: relativePath,
-            isDirectory: stat.isDirectory(),
-          };
-        }).sort((a, b) => {
-          if (a.isDirectory !== b.isDirectory) return a.isDirectory ? -1 : 1;
-          return a.name.localeCompare(b.name);
-        });
-        return { entries };
-      },
-    );
+    async function readFileList(params: Record<string, unknown>) {
+      const projectId = params.projectId as string;
+      const companyId = typeof params.companyId === "string" ? params.companyId : "";
+      const workspaceId = params.workspaceId as string;
+      const directoryPath = typeof params.directoryPath === "string" ? params.directoryPath : "";
+      if (!projectId || !companyId || !workspaceId) return { entries: [] };
+      const workspaces = await ctx.projects.listWorkspaces(projectId, companyId);
+      const workspace = workspaces.find((w) => w.id === workspaceId);
+      if (!workspace) return { entries: [] };
+      const workspacePath = sanitizeWorkspacePath(workspace.path);
+      if (!workspacePath) return { entries: [] };
+      const dirPath = resolveWorkspace(workspacePath, directoryPath);
+      if (!dirPath) {
+        return { entries: [] };
+      }
+      if (!fs.existsSync(dirPath) || !fs.statSync(dirPath).isDirectory()) {
+        return { entries: [] };
+      }
+      const names = fs.readdirSync(dirPath).sort((a, b) => a.localeCompare(b));
+      const entries = names.map((name) => {
+        const full = path.join(dirPath, name);
+        const stat = fs.lstatSync(full);
+        const relativePath = path.relative(workspacePath, full);
+        return {
+          name,
+          path: relativePath,
+          isDirectory: stat.isDirectory(),
+        };
+      }).sort((a, b) => {
+        if (a.isDirectory !== b.isDirectory) return a.isDirectory ? -1 : 1;
+        return a.name.localeCompare(b.name);
+      });
+      return { entries };
+    }
+
+    ctx.data.register("fileList", readFileList);
+
+    // Mirror `fileList` as an action so the UI can lazily fetch directory
+    // children on tree expand without spawning a usePluginData hook per dir.
+    ctx.actions.register("loadFileList", readFileList);
 
     ctx.data.register(
       "fileContent",

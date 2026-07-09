@@ -229,9 +229,19 @@ export async function execute(
     bootstrapPromptTemplate.trim().length > 0
       ? renderTemplate(bootstrapPromptTemplate, templateData).trim()
       : "";
-  const currentIssueContext = renderTextSection(context.paperclipCurrentIssueMarkdown);
-  const currentIssueId = asString(context.paperclipIssueId, "").trim() || null;
-  const currentIssueIdentifier = asString(context.paperclipIssueIdentifier, "").trim() || null;
+  const contextIssue = parseObject(context.paperclipIssue);
+  const currentIssueContext =
+    renderTextSection(context.paperclipCurrentIssueMarkdown) ||
+    renderTextSection(context.paperclipTaskMarkdown);
+  const currentIssueId =
+    asString(context.paperclipIssueId, "").trim() ||
+    asString(contextIssue.id, "").trim() ||
+    asString(context.issueId, "").trim() ||
+    null;
+  const currentIssueIdentifier =
+    asString(context.paperclipIssueIdentifier, "").trim() ||
+    asString(contextIssue.identifier, "").trim() ||
+    null;
   const humanFacingLanguageInstruction = renderTextSection(
     context.paperclipHumanFacingLanguageInstruction,
   );

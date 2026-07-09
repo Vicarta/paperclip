@@ -1,5 +1,7 @@
 import { definePlugin, runWorker, type ToolResult } from "@paperclipai/plugin-sdk";
+import path from "node:path";
 import { PLUGIN_ID, TOOL_NAMES } from "./constants.js";
+import { blogPostFieldsSchema, updateBlogPostDraftParametersSchema } from "./schemas.js";
 import {
   createBlogPostDraft,
   cleanupTechnicalBlogPostDraft,
@@ -14,6 +16,7 @@ import {
   listTaxonomy,
   publishBlogPost,
   type PayloadCmsPluginConfig,
+  updateMedia,
   updateTaxonomyTerm,
   updateBlogPostDraft,
   uploadMedia,
@@ -27,6 +30,27 @@ function readObjectParams(params: unknown) {
   return params && typeof params === "object" && !Array.isArray(params)
     ? params as Record<string, unknown>
     : {};
+}
+
+function readNonEmptyString(value: unknown): string | null {
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
+}
+
+function resolveWorkspaceFilePath(filePath: string, runCtx: unknown) {
+  const trimmed = filePath.trim();
+  if (path.isAbsolute(trimmed)) return trimmed;
+
+  const context = readObjectParams(runCtx);
+  const workspaceCwd = readNonEmptyString(context.executionWorkspaceCwd) ??
+    readNonEmptyString(context.workspaceCwd);
+  if (!workspaceCwd) return trimmed;
+
+  const base = path.resolve(workspaceCwd);
+  const resolved = path.resolve(base, trimmed);
+  if (resolved !== base && !resolved.startsWith(`${base}${path.sep}`)) {
+    throw new Error("Payload media filePath must stay within the execution workspace");
+  }
+  return resolved;
 }
 
 async function getConfig(ctx: PluginSetupContext) {
@@ -403,7 +427,7 @@ const plugin = definePlugin({
           additionalProperties: false,
         },
       },
-      async (params): Promise<ToolResult> => {
+      async (params, runCtx): Promise<ToolResult> => {
         const typed = readObjectParams(params);
         if (typeof typed.filePath !== "string" || typed.filePath.trim().length === 0) {
           throw new Error("Payload media filePath is required");
@@ -411,7 +435,7 @@ const plugin = definePlugin({
         if (typeof typed.alt !== "string" || typed.alt.trim().length === 0) {
           throw new Error("Payload media alt text is required");
         }
-        const filePath = typed.filePath;
+        const filePath = resolveWorkspaceFilePath(typed.filePath, runCtx);
         const alt = typed.alt;
         return toolResult(await withClientConfig(ctx, (base) =>
           uploadMedia({
@@ -427,11 +451,51 @@ const plugin = definePlugin({
     );
 
     ctx.tools.register(
+      TOOL_NAMES.updateMedia,
+      {
+        displayName: "Payload CMS Update Media",
+        description:
+          "Patch an existing Payload media record by id. Use to repair cover/OG alt text or clear caption/credit/sourceUrl without uploading a duplicate image.",
+        parametersSchema: {
+          type: "object",
+          properties: {
+            id: { type: ["number", "string"] },
+            alt: { type: "string" },
+            caption: { type: ["string", "null"] },
+            credit: { type: ["string", "null"] },
+            sourceUrl: { type: ["string", "null"] },
+            fields: { type: "object", additionalProperties: true },
+          },
+          required: ["id"],
+          additionalProperties: false,
+        },
+      },
+      async (params): Promise<ToolResult> => {
+        const typed = readObjectParams(params);
+        if (typed.id === undefined || typed.id === null || String(typed.id).trim().length === 0) {
+          throw new Error("Payload media id is required");
+        }
+        return toolResult(await withClientConfig(ctx, (base) =>
+          updateMedia({
+            ...base,
+            id: typed.id as string | number,
+            alt: typed.alt as string | undefined,
+            caption: typed.caption as string | null | undefined,
+            credit: typed.credit as string | null | undefined,
+            sourceUrl: typed.sourceUrl as string | null | undefined,
+            fields: readObjectParams(typed.fields),
+          }),
+        ));
+      },
+    );
+
+    ctx.tools.register(
       TOOL_NAMES.createBlogPostDraft,
       {
         displayName: "Payload CMS Create Blog Post Draft",
-        description: "Create a Payload blog post draft.",
-        parametersSchema: { type: "object", additionalProperties: true },
+        description:
+          "Create a Payload blog post draft. Use canonical articleContent.v1 blocks; do not publish or send legacy articleContent aliases.",
+        parametersSchema: blogPostFieldsSchema,
       },
       async (params): Promise<ToolResult> =>
         toolResult(await withClientConfig(ctx, (base) =>
@@ -443,8 +507,9 @@ const plugin = definePlugin({
       TOOL_NAMES.updateBlogPostDraft,
       {
         displayName: "Payload CMS Update Blog Post Draft",
-        description: "Update an existing Payload blog post as a draft/revision by id or slug.",
-        parametersSchema: { type: "object", additionalProperties: true },
+        description:
+          "Update an existing Payload blog post as a draft/revision by id or slug. fields.articleContent must be canonical articleContent.v1 blocks.",
+        parametersSchema: updateBlogPostDraftParametersSchema,
       },
       async (params): Promise<ToolResult> => {
         const typed = readObjectParams(params);

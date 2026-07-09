@@ -46,7 +46,6 @@ Supported span fields:
 
 - `paragraph.spans` for `paragraph.text`.
 - `editorialCallout.bodySpans` for `editorialCallout.body`.
-- `quietCta.textSpans` for `quietCta.text`.
 - `twoColumnText.leftBodySpans` and `twoColumnText.rightBodySpans` only when
   `mode` is `text` and the body fields are strings.
 
@@ -68,8 +67,18 @@ structured spans. Do not remove the mention to avoid a link. Do not move every
 mention into CTA blocks. Free products should preserve wording like
 `безкоштовно`, `без оплати`, or equivalent when relevant.
 
-`quietCta.linkUrl` remains the supported link field for the CTA button itself,
-but product/service mentions inside CTA body copy can also use `textSpans`.
+`quietCta` is a single-action card. Its `text` and `note` fields must be plain
+explanatory copy, and `quietCta.linkUrl` is the only supported link field for
+that card. Do not send `quietCta.textSpans`. Contextual inline links are still
+supported in article body blocks (`paragraph`, `editorialCallout`, and
+`twoColumnText`) before the final CTA. This prevents CTA cards from rendering an
+inline prose link as a second button inside the copy.
+
+For expert-authored Astrogen articles with a known expert profile URL, the final
+expert CTA should use that exact profile URL in `quietCta.linkUrl` and keep
+`quietCta.text` as plain explanatory copy. Do not use a generic expert catalog
+URL as the primary expert CTA target unless the workflow explicitly asks readers
+to browse or compare multiple experts.
 
 Do not leak internal route/task notes such as "contextual second route",
 "CTA route", or "SEO lock" into visible copy.

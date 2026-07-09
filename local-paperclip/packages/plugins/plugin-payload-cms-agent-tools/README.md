@@ -56,11 +56,13 @@ Allowed `articleContent.v1` block types:
 - `quietCta`
 
 Contextual inline links are supported only through structured span fields:
-`paragraph.spans`, `editorialCallout.bodySpans`, `quietCta.textSpans`, and
-`twoColumnText.leftBodySpans` / `rightBodySpans` when `mode` is `text`.
-Each linked span uses `linkUrl`; URLs must be internal `/...` paths or HTTPS
-URLs. Do not send raw HTML anchors, Markdown links, `links[]`, CSS classes, or
-raw URLs in visible copy.
+`paragraph.spans`, `editorialCallout.bodySpans`, and
+`twoColumnText.leftBodySpans` / `rightBodySpans` when `mode` is `text`. Each
+linked span uses `linkUrl`; URLs must be internal `/...` paths or HTTPS URLs. Do
+not send raw HTML anchors, Markdown links, `links[]`, CSS classes, or raw URLs
+in visible copy. `quietCta` cards are single-action blocks: keep
+`quietCta.text` as plain copy and use only `quietCta.linkUrl` for the CTA
+button.
 
 `iconList` uses registry keys only. Do not send emoji, SVG, image URLs, file names,
 or CSS classes as icons. See `docs/article-content-v1.md` for the registry and

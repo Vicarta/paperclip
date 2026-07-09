@@ -13,225 +13,11 @@ import {
   SLOT_IDS,
   TOOL_NAMES,
 } from "./constants.js";
-
-const looseObjectSchema = {
-  type: "object",
-  additionalProperties: true,
-} as const;
-
-const iconListIcons = [
-  "chinese-rat",
-  "chinese-ox",
-  "chinese-tiger",
-  "chinese-rabbit",
-  "chinese-dragon",
-  "chinese-snake",
-  "chinese-horse",
-  "chinese-goat",
-  "chinese-monkey",
-  "chinese-rooster",
-  "chinese-dog",
-  "chinese-pig",
-  "zodiac-aries",
-  "zodiac-taurus",
-  "zodiac-gemini",
-  "zodiac-cancer",
-  "zodiac-leo",
-  "zodiac-virgo",
-  "zodiac-libra",
-  "zodiac-scorpio",
-  "zodiac-sagittarius",
-  "zodiac-capricorn",
-  "zodiac-aquarius",
-  "zodiac-pisces",
-  "editorial-check",
-  "editorial-info",
-  "editorial-calendar",
-  "editorial-money",
-  "editorial-heart",
-  "editorial-star",
-  "editorial-people",
-  "editorial-chat",
-  "editorial-target",
-  "editorial-book",
-] as const;
-
-const textSpanSchema = {
-  type: "object",
-  properties: {
-    text: { type: "string" },
-    linkUrl: { type: "string" },
-  },
-  required: ["text"],
-  additionalProperties: false,
-} as const;
-
-const textSpansSchema = {
-  type: "array",
-  minItems: 1,
-  items: textSpanSchema,
-} as const;
-
-const articleContentSchema = {
-  type: "object",
-  properties: {
-    schemaVersion: { type: "string", enum: ["articleContent.v1"] },
-    blocks: {
-      type: "array",
-      minItems: 1,
-      items: {
-        oneOf: [
-          {
-            type: "object",
-            properties: {
-              type: { type: "string", enum: ["paragraph"] },
-              text: { type: "string" },
-              spans: textSpansSchema,
-            },
-            required: ["type", "text"],
-            additionalProperties: false,
-          },
-          {
-            type: "object",
-            properties: {
-              type: { type: "string", enum: ["heading"] },
-              level: { type: "string", enum: ["h2", "h3", "h4"] },
-              text: { type: "string" },
-            },
-            required: ["type", "level", "text"],
-            additionalProperties: false,
-          },
-          {
-            type: "object",
-            properties: {
-              type: { type: "string", enum: ["list"] },
-              ordered: { type: "boolean" },
-              items: { type: "array", minItems: 1, items: { type: "string" } },
-            },
-            required: ["type", "ordered", "items"],
-            additionalProperties: false,
-          },
-          {
-            type: "object",
-            properties: {
-              type: { type: "string", enum: ["editorialCallout"] },
-              variant: { type: "string", enum: ["soft", "brand", "situation"] },
-              title: { type: "string" },
-              body: { type: "string" },
-              bodySpans: textSpansSchema,
-            },
-            required: ["type", "variant", "title", "body"],
-            additionalProperties: false,
-          },
-          {
-            type: "object",
-            properties: {
-              type: { type: "string", enum: ["iconList"] },
-              style: { type: "string", enum: ["grid", "compact", "twoColumn"] },
-              title: { type: "string" },
-              items: {
-                type: "array",
-                minItems: 1,
-                maxItems: 40,
-                items: {
-                  type: "object",
-                  properties: {
-                    icon: { type: "string", enum: iconListIcons },
-                    label: { type: "string" },
-                    text: { type: "string" },
-                  },
-                  required: ["icon", "label"],
-                  additionalProperties: false,
-                },
-              },
-            },
-            required: ["type", "style", "title", "items"],
-            additionalProperties: false,
-          },
-          {
-            type: "object",
-            properties: {
-              type: { type: "string", enum: ["twoColumnText"] },
-              mode: { type: "string", enum: ["text"] },
-              leftTitle: { type: "string" },
-              leftBody: { type: "string" },
-              leftBodySpans: textSpansSchema,
-              rightTitle: { type: "string" },
-              rightBody: { type: "string" },
-              rightBodySpans: textSpansSchema,
-            },
-            required: ["type", "mode", "leftTitle", "leftBody", "rightTitle", "rightBody"],
-            additionalProperties: false,
-          },
-          {
-            type: "object",
-            properties: {
-              type: { type: "string", enum: ["twoColumnText"] },
-              mode: { type: "string", enum: ["list"] },
-              leftTitle: { type: "string" },
-              leftBody: { type: "array", minItems: 1, items: { type: "string" } },
-              rightTitle: { type: "string" },
-              rightBody: { type: "array", minItems: 1, items: { type: "string" } },
-            },
-            required: ["type", "mode", "leftTitle", "leftBody", "rightTitle", "rightBody"],
-            additionalProperties: false,
-          },
-          {
-            type: "object",
-            properties: {
-              type: { type: "string", enum: ["quietCta"] },
-              title: { type: "string" },
-              text: { type: "string" },
-              textSpans: textSpansSchema,
-              linkLabel: { type: "string" },
-              linkUrl: { type: "string" },
-              note: { type: "string" },
-            },
-            required: ["type", "title", "text", "linkLabel", "linkUrl"],
-            additionalProperties: false,
-          },
-        ],
-      },
-    },
-  },
-  required: ["schemaVersion", "blocks"],
-  additionalProperties: false,
-} as const;
-
-const blogPostFieldsSchema = {
-  type: "object",
-  properties: {
-    title: { type: "string" },
-    slug: { type: "string" },
-    excerpt: { type: "string" },
-    articleContent: articleContentSchema,
-    coverImage: { type: ["number", "string"] },
-    ogImage: { type: ["number", "string"] },
-    author: { type: ["number", "string"] },
-    category: { type: ["number", "string"] },
-    categorySlug: { type: "string" },
-    categoryTitle: { type: "string" },
-    ensureCategory: { type: "boolean" },
-    tags: {
-      type: "array",
-      items: { type: ["number", "string"] },
-    },
-    relatedPosts: {
-      type: "array",
-      maxItems: 3,
-      items: { type: ["number", "string"] },
-    },
-    workflowStatus: { type: "string" },
-    publishedAt: { type: "string" },
-    scheduledPublishAt: { type: "string" },
-    seoTitle: { type: "string" },
-    seoDescription: { type: "string" },
-    canonicalUrl: { type: "string" },
-    noindex: { type: "boolean" },
-    extraFields: looseObjectSchema,
-  },
-  additionalProperties: false,
-} as const;
+import {
+  blogPostFieldsSchema,
+  looseObjectSchema,
+  updateBlogPostDraftParametersSchema,
+} from "./schemas.js";
 
 const manifest: PaperclipPluginManifestV1 = {
   id: PLUGIN_ID,
@@ -505,6 +291,25 @@ const manifest: PaperclipPluginManifestV1 = {
       },
     },
     {
+      name: TOOL_NAMES.updateMedia,
+      displayName: "Payload CMS Update Media",
+      description:
+        "Patch an existing Payload media record by id. Use for cover/OG alt repair or clearing caption/credit/sourceUrl without creating duplicate uploads.",
+      parametersSchema: {
+        type: "object",
+        properties: {
+          id: { type: ["number", "string"] },
+          alt: { type: "string" },
+          caption: { type: ["string", "null"] },
+          credit: { type: ["string", "null"] },
+          sourceUrl: { type: ["string", "null"] },
+          fields: looseObjectSchema,
+        },
+        required: ["id"],
+        additionalProperties: false,
+      },
+    },
+    {
       name: TOOL_NAMES.createBlogPostDraft,
       displayName: "Payload CMS Create Blog Post Draft",
       description:
@@ -516,16 +321,7 @@ const manifest: PaperclipPluginManifestV1 = {
       displayName: "Payload CMS Update Blog Post Draft",
       description:
         "Update an existing Payload blog post as a draft/revision by id or slug using articleContent.v1. Does not publish unless the publish tool is called separately.",
-      parametersSchema: {
-        type: "object",
-        properties: {
-          id: { type: ["number", "string"] },
-          slug: { type: "string" },
-          fields: blogPostFieldsSchema,
-        },
-        required: ["fields"],
-        additionalProperties: false,
-      },
+      parametersSchema: updateBlogPostDraftParametersSchema,
     },
     {
       name: TOOL_NAMES.cleanupTechnicalBlogPostDraft,

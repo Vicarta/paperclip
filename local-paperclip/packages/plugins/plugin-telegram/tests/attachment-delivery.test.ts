@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { IssueAttachment } from "@paperclipai/shared";
-import { deliverIssueAttachmentGroups } from "../src/attachment-delivery.js";
+import { deliverIssueAttachmentGroups, normalizeTelegramHumanText } from "../src/attachment-delivery.js";
 
 function attachment(input: Partial<IssueAttachment> & { id: string; originalFilename: string; contentType: string }): IssueAttachment {
   return {
@@ -219,6 +219,96 @@ describe("telegram attachment delivery groups", () => {
       method: "POST",
     });
     expect(JSON.stringify(ctx.http.fetch.mock.calls[0]?.[1])).toContain("Astrogen");
+    expect(comments.at(-1)).toContain("Files: 0");
+    expect(activity.at(-1)).toMatchObject({
+      message: "operational.telegram_delivery_proof",
+      metadata: {
+        deliveryKind: "message_only",
+        fileCount: 0,
+        groupCount: 0,
+        messageIds: [100],
+      },
+    });
+  });
+
+  it("normalizes escaped newlines in message-only notification contracts", async () => {
+    expect(normalizeTelegramHumanText("Чернетка готова.\\n\\nAdmin URL: https://cms.astrogen.com.ua/admin/collections/blogPosts/84\\nСтатус: draft."))
+      .toBe("Чернетка готова.\n\nAdmin URL: https://cms.astrogen.com.ua/admin/collections/blogPosts/84\nСтатус: draft.");
+
+    const { ctx } = createContext({
+      documentBody: `
+\`\`\`json notification-contract
+{
+  "enabled": true,
+  "channel": "telegram",
+  "trigger": "issue_done",
+  "delivery": {
+    "mode": "message_only",
+    "text": "Чернетка статті готова в CMS: «Знак зодіаку Терези».\\\\n\\\\nAdmin URL: https://cms.astrogen.com.ua/admin/collections/blogPosts/84\\\\nСтатус: draft."
+  }
+}
+\`\`\`
+`,
+    });
+
+    await deliverIssueAttachmentGroups({
+      ctx,
+      token: "token",
+      event: {
+        eventId: "event-1",
+        eventType: "issue.updated",
+        companyId: "company-1",
+        entityType: "issue",
+        entityId: "issue-1",
+        payload: { status: "done" },
+        occurredAt: new Date().toISOString(),
+      } as any,
+      chatId: "-100",
+    });
+
+    const request = ctx.http.fetch.mock.calls[0]?.[1] as { body?: string } | undefined;
+    const body = JSON.parse(request?.body ?? "{}") as { text?: string };
+    expect(body.text).toContain("\n\nAdmin URL:");
+    expect(body.text).not.toContain("\\n\\nAdmin URL:");
+    expect(body.text).toContain("\nСтатус:");
+    expect(body.text).not.toContain("\\nСтатус:");
+  });
+
+  it("sends legacy markdown message-only notification contracts", async () => {
+    const { ctx, comments, activity } = createContext({
+      documentBody: `
+# Notification Contract
+
+enabled = true
+channel = "telegram"
+trigger = "issue_done"
+delivery.mode = "message_only"
+delivery.text = <<TEXT
+Підготували нову чернетку статті «Скорпіон знак зодіаку» і зберегли її в CMS.
+
+Чернетка доступна тут: https://cms.astrogen.com.ua/admin/collections/blogPosts/72
+TEXT
+`,
+    });
+
+    const result = await deliverIssueAttachmentGroups({
+      ctx,
+      token: "token",
+      event: {
+        eventId: "event-1",
+        eventType: "issue.updated",
+        companyId: "company-1",
+        entityType: "issue",
+        entityId: "issue-1",
+        payload: { status: "done" },
+        occurredAt: new Date().toISOString(),
+      } as any,
+      chatId: "-100",
+    });
+
+    expect(result).toMatchObject({ status: "sent", fileCount: 0, groupCount: 0 });
+    expect(ctx.http.fetch).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(ctx.http.fetch.mock.calls[0]?.[1])).toContain("blogPosts/72");
     expect(comments.at(-1)).toContain("Files: 0");
     expect(activity.at(-1)).toMatchObject({
       message: "operational.telegram_delivery_proof",
