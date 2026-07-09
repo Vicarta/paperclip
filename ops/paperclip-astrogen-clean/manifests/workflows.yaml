@@ -1,0 +1,401 @@
+cycleSafetyInvariants:
+  - deterministic collectors run before LLM review
+  - LLM agents receive compact evidence packets, not whole history replay
+  - unassigned backlog must be routed by a scheduled leadership triage routine
+  - no expensive LLM routine uses always_enqueue
+  - no expensive LLM routine uses enqueue_missed_with_cap
+  - missed routine schedules use skip_missed
+  - Telegram is owner-facing only
+
+workflows:
+  leadership_backlog_triage:
+    states:
+      - scheduled
+      - collect_unassigned_backlog
+      - classify_owner_lane
+      - route_to_ceo_cmo_cto_or_specialist
+      - park_with_owner_and_reason_if_not_actionable
+      - verify_no_unassigned_ready_work
+      - report_routed_blocked_skipped_counts
+    cadence:
+      cron: "40 6 * * *"
+      timezone: Europe/Kiev
+      assignee: CEO
+      concurrencyPolicy: coalesce_if_active
+      catchUpPolicy: skip_missed
+    bounds:
+      maxIssuesPerRun: 10
+      priorityOrder:
+        - critical
+        - high
+        - medium
+        - low
+      oldestFirstWithinPriority: true
+    routingRules:
+      - SEO/GEO/content/traffic/revenue issues go to CMO when prioritization is needed, or directly to the correct SEO specialist when next action is obvious
+      - company/platform/process/runtime issues go to CEO or CTO with a concrete completion gate
+      - human-decision and Telegram writeback gaps go to HIA, CEO, or CTO without enabling Telegram proactive watches
+      - parked items may remain backlog only with an assignee, written parked reason, and review condition/date
+    executionBoundary:
+      - CEO is the routing owner, not the domain executor
+      - CEO may prioritize, assign, create bounded child issues, set blockers, and record routing decisions
+      - CEO must not personally perform SEO analysis, CMS edits/publishing, Telegram operations, plugin/provider calls, or other specialist execution
+      - when specialist execution is needed, CEO routes it to CMO, CTO, HIA, or the correct specialist agent
+      - Roger/Hermes Agent config and proactive Telegram watches remain outside this routine
+    completionGate: no open unassigned backlog/todo item older than 24h without written reason
+
+  paperclip_operating_self_improvement:
+    states:
+      - scheduled
+      - collect_weekly_run_evidence
+      - identify_agent_contract_process_runtime_gaps
+      - classify_improvement
+      - decide_observe_delegate_or_change
+      - backup_before_mutation
+      - apply_bounded_improvement_if_allowed
+      - verify_changed_behavior_or_contract
+      - email_change_report
+      - route_followups
+    cadence:
+      cron: "30 12 * * 3"
+      timezone: Europe/Kiev
+      assignee: Chief Technical Officer
+      concurrencyPolicy: coalesce_if_active
+      catchUpPolicy: skip_missed
+    inputs:
+      - failed, cancelled, stranded, retried, blocked, and long-running heartbeat/routine runs from the previous Wednesday-Tuesday operating week
+      - issues reopened by recovery or manual operator repair
+      - agent AGENTS.md/contracts, workflow manifests, routine descriptions, plugin settings, cost/accounting signals, and owner feedback
+      - completed improvements from the previous self-improvement cycle
+    decisionPolicy:
+      - prefer process/contract fixes over adding more routines
+      - distinguish agent behavior problems from plugin/runtime/config problems
+      - do not optimize for token cost alone; prioritize loop reliability, bounded context, clear artifacts, and recovery paths
+      - route business-priority decisions to CEO/CMO instead of making them inside CTO review
+    mutationGate:
+      - read-only analysis may run without backup
+      - any change to live agent instructions, workflow/routine contracts, plugin settings, production manifests, scheduler config, or runtime config requires a successful fresh DB backup first
+      - backup path must be recorded in the issue comment/email
+      - if backup fails, do not mutate and create a CTO blocker
+      - if configured email delivery is unavailable, do not apply optional changes; create a CTO blocker to repair email/reporting first
+    allowedImprovements:
+      - update agent/routine/process contracts for clarity and safer delegation
+      - tighten validation gates, output caps, recovery classifications, and routing rules
+      - create bounded child issues for code/plugin/runtime changes that need implementation
+      - apply low-risk config/contract fixes when backup and verification pass
+    forbidden:
+      - do not silently change production behavior without backup and email report
+      - do not publish CMS content, send Telegram proactive watches, or call paid providers from this review
+      - do not edit Roger/Hermes config unless a separate owner-approved issue explicitly scopes it
+      - do not make broad refactors or open-ended research loops
+    ownerEmail:
+      recipient: o.savitsky@gmail.com
+      transport: paperclip.email-notifications email-change-report-send / Resend
+      defaultRecipientEmails: o.savitsky@gmail.com
+      allowlistedRecipientEmails: o.savitsky@gmail.com
+      requiredWhenChangesApplied: true
+      mustInclude:
+        - what changed
+        - why it changed
+        - backup path
+        - verification result
+        - follow-up issues or no-follow-up rationale
+        - rollback note
+
+  semantic_core_lifecycle:
+    states:
+      - project_registered
+      - layer_requested
+      - mcp_run_started
+      - import_prepared
+      - review_ready
+      - review_decided
+      - imported
+      - opportunities_created
+      - monitoring_enrolled
+    activation: parked until Semantic Core plugin packaging smoke passes
+
+  topic_inventory_refill:
+    owner: Chief Marketing Officer
+    executionOwner: SEO Blog Content Strategist
+    validationOwner: SEO Blog Content Plan Validator
+    triggerConditions:
+      - article allocator sees fewer than 3 ready_for_brief_creation topics
+      - article allocator receives no-safe-topic from bounded expansion
+      - weekly SEO/GEO cycle identifies a content gap with enough evidence
+      - CMO or Hermes-routed owner direction asks for a new SEO topic area
+    topicStatuses:
+      - candidate
+      - evidence_ready
+      - ready_for_brief_creation
+      - reserved
+      - consumed
+      - needs_owner_direction
+      - parked_insufficient_evidence
+      - reject_duplicate
+      - reject_cannibalization
+      - reject_business
+      - blocked_runtime
+    requiredReadyFields:
+      - topicKey
+      - ukrainianWorkingTitle
+      - primaryQuery
+      - supportingQueries
+      - searchIntent
+      - funnelRole
+      - targetAudienceSegment
+      - targetServiceOrRouteRelationship
+      - evidenceReferences
+      - cmsDuplicateCheck
+      - activeIssueDuplicateCheck
+      - cannibalizationAssessment
+      - proposedCtaTarget
+      - proposedInternalLinkTargets
+      - forbiddenClaimsAndToneConstraints
+      - whySafeNow
+      - freshnessCooldownNotes
+    inputEvidence:
+      - Payload CMS article inventory and draft lookup
+      - GSC/GA4 completed-week query/page evidence
+      - semantic-core inventory/review private API or enabled plugin tools
+      - CrawlObserver rendered page and internal-link evidence
+      - active Paperclip article/backlog issues
+      - consumed topic ledger
+    outputContract:
+      - 3-10 candidate records total
+      - 1-3 ready_for_brief_creation records when evidence supports them
+      - rejected and parked records must carry explicit reasons
+      - no broad maybe topics without evidence
+      - compact parent-visible handoff for the allocator
+    failureContract:
+      - unavailable evidence tools create or reuse one CTO-owned technical blocker
+      - allocator remains blocked by refill/blocker and does not close as done
+      - owner communication is required only for business/product decisions, not tool failures
+
+  serp_value_gap_content_refresh:
+    owner: Chief Marketing Officer
+    analysisOwner: MKT Competitive Intelligence Analyst
+    strategyOwner: SEO Blog Content Strategist
+    validationOwner: SEO Blog Content Plan Validator
+    triggerConditions:
+      - topic_inventory_refill returns zero ready topics but finds an existing article that can absorb a missing user intent safely
+      - weekly SEO/GEO cycle identifies a page/query opportunity where refreshing an existing article is safer than creating a new one
+      - a candidate topic is rejected for duplication or cannibalization, but SERP evidence points to a distinct improvement for one existing article
+    refreshMeaning:
+      - content_refresh means SERP/value-gap body improvement for relevant keyphrases
+      - content_refresh is not generic editorial block insertion
+      - content_refresh is not metadata-only, relatedPosts-only, CTA-only, or internal-link-only cleanup
+    requiredInputs:
+      - current CMS article id, title, slug, and publication/draft state
+      - target keyphrase cluster with primary and supporting phrases
+      - current GSC/GA4 evidence when available
+      - current CMS/public article snapshot or refetch evidence
+      - top SERP competitors for the relevant keyphrases
+      - duplicate and cannibalization check across Astrogen articles and service pages
+      - reason why refreshing the existing article is better than creating a new article
+    requiredValueGapArtifact:
+      - queries checked, geo/language, date, and provider/tool
+      - top competing URLs/titles/snippets or safe summaries
+      - competitor coverage patterns
+      - missing user questions or decision criteria
+      - claims/framing/promises to avoid
+      - Astrogen information-gain angle
+      - exact article sections or paragraphs that need substantive improvement
+      - whether FAQ, comparison, CTA, relatedPosts, or structured blocks are justified by the value gap
+    outputContract:
+      - before/after change plan tied to the SERP value-gap artifact
+      - updated article body/content package or precise CMS update handoff
+      - evidence that the change adds search/user value beyond competitors
+      - validator decision that the result is not generic editorial padding
+    failureContract:
+      - unavailable SERP/evidence tooling creates or reuses one CTO-owned technical blocker
+      - ambiguous business positioning becomes a Hermes/CMO owner-direction brief
+      - no refresh task is launched when only mechanical editorial/CMS cleanup is available
+
+  seo_performance_loop:
+    states:
+      - scheduled
+      - collect_cms_sitemap_gsc_ga4_crawl
+      - normalize_and_dedupe
+      - join_evidence
+      - classify_actions
+      - route_child_issues
+      - detailed_report_document
+      - compact_telegram_summary
+      - monitoring_window
+    completionGate: action queue, watch/cooldown decisions, or explicit no-action evidence
+
+  article_cadence:
+    states:
+      - slot_due
+      - quota_budget_checked
+      - opportunity_selected
+      - brief_created
+      - brief_validated
+      - article_written
+      - article_validated
+      - humanized
+      - layout_created
+      - layout_validated
+      - image_created
+      - cms_draft_created
+      - owner_notified
+      - monitoring_enrolled
+    cyclePolicy:
+      concurrencyPolicy: skip_if_active
+      catchUpPolicy: skip_missed
+      automaticBackfill: false
+    parentIdempotency:
+      key: articleParentKey
+      deriveFrom: exact article title, lowercased and whitespace-normalized
+      rule: one open top-level article parent per articleParentKey
+      retryBehavior: writer, validator, image, layout, CMS, and recovery failures create bounded child issues under the canonical parent
+      duplicateParentBehavior: cancel duplicate branch when already created; otherwise reuse the canonical parent named by the DB guard
+    writerRecovery:
+      primary: SEO Blog Article Writer (Claude)
+      fallback: SEO Blog Article Writer (ChatGPT)
+      fallbackAllowedWhen:
+        - Claude/OpenRouter runtime or provider failure before canonical artifact
+        - missing canonical draft artifact after a writer run
+        - repeated same-class Claude protocol or validation failure
+        - explicit CMO recovery decision
+      retryPolicy:
+        sameWriterCorrectionPasses: 1
+        repeatedSameClassFailure: route_to_fallback_or_cmo_diagnosis
+        fallbackSameClassFailure: stop_writer_retries_and_diagnose_contract_or_brief
+      requiredEvidence:
+        - approved brief
+        - canonical draft artifact or explicit no-draft blocker
+        - blocker class when fallback is used
+    coverImagePolicy:
+      requiredUnlessOwnerWaived: true
+      subjectModes:
+        human_scene:
+          useFor:
+            - human experience
+            - decisions
+            - relationships
+            - family or children
+            - career or money
+            - emotions
+            - consultation
+            - personal life context
+          rules:
+            - real-looking people in a specific lived moment
+            - concrete action/context and natural micro-emotion
+            - normal generation is one image, not a three-candidate set
+            - viewer/camera gaze is optional and should be used only when it fits the article
+        abstract_graphic:
+          useFor:
+            - abstract concepts
+            - definitions
+            - zodiac-sign profiles
+            - generic horoscope topics
+            - frameworks
+            - lists
+            - comparisons
+            - metrics
+            - non-personal explanations
+          rules:
+            - no people, faces, hands, bodies, silhouettes, or model-like figures
+            - refined symbolic/editorial/diagram-like composition
+      imageRecovery:
+        runtimeFailure: route precise plugin/provider/secret/model blocker to SEO Blog Image Runtime Executor or CTO
+        qualityFailure: regenerate with corrected art direction before CMS delivery
+        cmsDeliveryGate: no CMS draft or owner notification without accepted cover image or explicit waiver
+
+  article_delivery_pipeline:
+    invariant:
+      mode: typed_handoff_pipeline
+      rules:
+        - each stage consumes durable evidence from previous stages instead of redoing their work
+        - layout/CMS prep consumes accepted cover work product or explicit image waiver; it does not generate images
+        - one corrected attempt per unclear integration contract, then precise blocker instead of schema guessing loops
+        - dependency resolution clears the blocker and resumes the current child task, not duplicate parent or child tasks
+    requiredArtifacts:
+      - accepted brief
+      - canonical draft artifact
+      - validation notes
+      - articleContent layout JSON
+      - accepted cover image work product or explicit waiver
+      - image/CMS media evidence
+      - CMS draft URL
+      - owner-facing notification summary
+    parentCompletionGate:
+      terminalEvidence:
+        - accepted cover image work product or explicit image waiver
+        - authenticated Payload CMS draft/admin URL and numeric blogPosts id
+        - CMS refetch proof for draft status, cover/ogImage, CTA, editorial inserts, and exactly 3 relatedPosts where suitable posts exist
+        - CMO Telegram article-link notification proof
+      nonTerminalEvidence:
+        - ready_for_image_handoff
+        - layout-ready package
+        - all currently visible children are done
+        - generic issue-done notification
+      recoveryRule: if terminal evidence is missing, keep or return the canonical article parent to in_progress and create or reuse the next bounded child for the missing stage
+    cmsRefetchGate:
+      required: true
+      evidence:
+        - _status=draft
+        - workflowStatus=draft
+        - publishedAt=null
+        - cover and ogImage set to accepted media
+        - cover alt equals exact article title
+        - no cover caption/credit/sourceUrl
+        - quietCtaCount >= 1 when a CTA route exists
+        - editorialInsertCount >= 1 unless explicit no-insert rationale exists
+        - exactly 3 top-level relatedPosts with existing published/approved posts
+    failureGates:
+      - writer fallback cannot proceed without blocker class and full approved brief
+      - image runtime failure blocks CMS delivery until recovered or waived
+      - generic, text-bearing, artifacted, wrong-mode, or near-duplicate covers are not accepted
+      - device screens, reflections, paper, cards, or notebooks with UI/text/numbers/pseudo-writing are not accepted
+      - supported articleContent.v1 blocks must not be normalized away into plain paragraphs/lists
+      - Telegram article-link notification is blocked until CMS refetch gate passes
+      - Telegram article-link notification is separate from generic issue-done notification
+
+  technical_seo_finding:
+    states:
+      - detected
+      - evidence_attached
+      - deduped
+      - route_selected
+      - fix_assigned
+      - fixed
+      - verified
+      - monitored
+
+  human_decision_telegram_writeback:
+    states:
+      - decision_needed
+      - decision_brief_documented
+      - interaction_or_telegram_sent
+      - waiting_for_answer
+      - answer_written_back
+      - source_issue_resumed
+
+  product_launch_seo_package:
+    states:
+      - product_detected
+      - product_discovery
+      - strategic_opportunity_brief
+      - human_approval_if_needed
+      - semantic_seed
+      - beginner_content_package
+      - seo_traffic_package
+      - internal_linking_plan
+      - monitoring_enrolled
+
+  geo_entity_content_optimization:
+    states:
+      - entity_gap_detected
+      - evidence_packet_created
+      - content_or_schema_action_routed
+      - implementation_verified
+      - impact_monitored
+
+  paid_ads_readiness_disabled:
+    activation: explicit human approval only
+
+  social_readiness_disabled:
+    activation: explicit human approval only

@@ -1,0 +1,22 @@
+company:
+  desiredState: active
+  cleanCompanyId: cb7b5231-2da0-4e91-b4af-538d8f1ca263
+  oldLiveCompanyId: c33f6b81-5ced-4270-9288-b46a32f6337a
+  name: Astrogen
+  issuePrefix: AST
+  publicUrl: http://ubuntu-oc.tailbd4e1c.ts.net:3210
+  workspaceMount: /companies/astrogen
+  hostWorkspace: /home/paperclip/companies/astrogen-clean
+  language: uk
+  owner: Chief Executive Officer
+  verification:
+    - clean health endpoint returns ok
+    - old live health endpoint remains ok
+    - only one Astrogen company exists in clean instance
+    - no plaintext provider secrets are present in this directory
+
+project:
+  name: Astrogen Growth OS
+  goal: Traffic Growth / SEO-GEO Operating Loop
+  status: active
+  leadAgent: Chief Marketing Officer

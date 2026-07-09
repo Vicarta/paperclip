@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+MIN_FREE_GB="${MIN_FREE_GB:-30}"
+
+free_gb="$(df -BG / | awk 'NR==2 { gsub(/G/, "", $4); print $4 }')"
+
+echo "== Disk =="
+df -hT / /var/lib/docker /home 2>/dev/null | awk '!seen[$7]++'
+
+echo
+echo "== Docker system df =="
+docker system df
+
+echo
+echo "== Docker BuildKit cache =="
+docker buildx du || true
+
+echo
+echo "== Compose projects =="
+docker compose ls || true
+
+echo
+echo "== Largest Docker volumes =="
+docker volume ls --format '{{.Name}}' | while read -r volume_name; do
+  [ -n "$volume_name" ] || continue
+  mountpoint="$(docker volume inspect -f '{{.Mountpoint}}' "$volume_name" 2>/dev/null || true)"
+  [ -n "$mountpoint" ] || continue
+  size="$(du -sh "$mountpoint" 2>/dev/null | awk '{print $1}')"
+  printf '%s\t%s\t%s\n' "$size" "$volume_name" "$mountpoint"
+done | sort -h | tail -n 20
+
+echo
+echo "== Running containers =="
+docker ps --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}'
+
+if [ "${free_gb}" -lt "${MIN_FREE_GB}" ]; then
+  echo
+  echo "ERROR: root filesystem has ${free_gb}G free, below required ${MIN_FREE_GB}G." >&2
+  exit 1
+fi
+
+echo
+echo "OK: root filesystem has ${free_gb}G free, meeting ${MIN_FREE_GB}G minimum."

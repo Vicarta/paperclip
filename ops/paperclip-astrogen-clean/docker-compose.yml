@@ -1,0 +1,64 @@
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-paperclip}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-paperclip}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-paperclip} -d ${POSTGRES_DB:-paperclip}"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  app:
+    image: ${PAPERCLIP_APP_IMAGE:?PAPERCLIP_APP_IMAGE must be set in .env}
+    restart: unless-stopped
+    env_file:
+      - .env
+    extra_hosts:
+      - "ubuntu-aibizmate-n8n.tailbd4e1c.ts.net:${CRAWLOBSERVER_TAILNET_IP:-100.102.131.83}"
+      - "ubuntu-oc.tailbd4e1c.ts.net:${PAPERCLIP_TAILNET_IP:-100.98.5.50}"
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-paperclip}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}@db:5432/${POSTGRES_DB:-paperclip}
+      HOST: "0.0.0.0"
+      PORT: "3100"
+      NODE_OPTIONS: "--max-old-space-size=4096"
+      SERVE_UI: "true"
+      PAPERCLIP_HOME: "/paperclip"
+      PAPERCLIP_INSTANCE_ID: "astrogen-clean"
+      PAPERCLIP_CONFIG: "/paperclip/instances/astrogen-clean/config.json"
+      PAPERCLIP_SECRETS_PROVIDER: "local_encrypted"
+      PAPERCLIP_SECRETS_STRICT_MODE: "false"
+      PAPERCLIP_SECRETS_MASTER_KEY_FILE: "/paperclip/instances/astrogen-clean/secrets/master.key"
+      PAPERCLIP_DEPLOYMENT_MODE: "authenticated"
+      PAPERCLIP_DEPLOYMENT_EXPOSURE: "private"
+      PAPERCLIP_PUBLIC_URL: ${PAPERCLIP_PUBLIC_URL:?PAPERCLIP_PUBLIC_URL must be set in .env}
+      BETTER_AUTH_TRUSTED_ORIGINS: ${BETTER_AUTH_TRUSTED_ORIGINS:-${PAPERCLIP_PUBLIC_URL}}
+      PAPERCLIP_API_URL: "http://127.0.0.1:3100"
+      PAPERCLIP_AGENT_API_URL: "http://127.0.0.1:3100"
+      PAPERCLIP_RUNTIME_API_URL: "http://127.0.0.1:3100"
+      PAPERCLIP_RELEASE_TAG: ${PAPERCLIP_RELEASE_TAG:-v2026.626.0-vicarta.15-runtime-guards-telegram}
+      PAPERCLIP_GIT_REVISION: ${PAPERCLIP_GIT_REVISION:-v2026.626.0-vicarta.15-runtime-guards-telegram-20260701T095624Z}
+      PAPERCLIP_BUILD_TIME: ${PAPERCLIP_BUILD_TIME:-2026-07-01T10:02:16Z}
+      PAPERCLIP_SOURCE_URL: "https://github.com/paperclipai/paperclip/releases/tag/v2026.626.0"
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET must be set in .env}
+      PAPERCLIP_AGENT_JWT_SECRET: ${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET must be set in .env}
+    ports:
+      - "127.0.0.1:${PAPERCLIP_HOST_PORT:-3210}:3100"
+      - "${PAPERCLIP_TAILNET_IP:-100.98.5.50}:${PAPERCLIP_HOST_PORT:-3210}:3100"
+    volumes:
+      - paperclip-data:/paperclip
+      - /home/paperclip/companies/astrogen-clean:/companies/astrogen
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+    name: paperclip_astrogen_clean_pgdata
+  paperclip-data:
+    name: paperclip_astrogen_clean_data

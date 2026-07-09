@@ -1,0 +1,50 @@
+agents:
+  active:
+    governance:
+      - CEO
+      - Chief Marketing Officer
+      - Chief Technical Officer
+      - OPS Human Interaction Agent
+      - OPS Observability Agent
+    seoGeo:
+      - SEO Performance Analyst
+      - SEO GSC Indexing Auditor
+      - SEO Semantic Core Strategist
+      - SEO Semantic Core Validator
+    articleCms:
+      - SEO Blog Content Strategist
+      - SEO Blog Content Plan Validator
+      - MKT Blog Brief Strategist
+      - SEO Blog Article Writer (Claude)
+      - SEO Blog Article Writer (ChatGPT)
+      - SEO Blog Article Validator
+      - SEO Blog Humanizer
+      - SEO Blog Article Layout Editor
+      - SEO Blog Article Layout Validator
+      - SEO Blog Image Runtime Executor
+      - SEO CMS Technical Fixer
+    growthStrategy:
+      - MKT Product Discovery Analyst
+      - MKT Growth Strategy Architect
+      - MKT Competitive Intelligence Analyst
+
+  manifestOnlyParked:
+    - ADS Paid Ads Copy Strategist
+    - SOC Instagram Account Auditor
+    - SOC Instagram Content Strategist
+    - SOC Instagram Content Plan Validator
+    - SOC Social Content Strategist
+
+policy:
+  heartbeat:
+    enabled: false
+    wakeOnDemand: true
+    skipIfNoActionableWork: true
+    maxConcurrentRuns: 1
+  managers:
+    - route work through child issues
+    - do not poll specialists
+    - do not run daily generic check-ins
+  paidSocial:
+    createdInDb: false
+    reason: future capacity only; not active in Phase 40

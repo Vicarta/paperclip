@@ -1,0 +1,9 @@
+[Unit]
+Description=Prune Docker BuildKit cache with bounded storage
+Documentation=file:/usr/local/sbin/docker-rebuild-preflight
+Wants=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/docker buildx prune --force --keep-storage 10GB --filter until=168h

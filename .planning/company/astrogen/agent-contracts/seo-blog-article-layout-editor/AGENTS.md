@@ -47,6 +47,12 @@ If the validated article draft is missing, do not guess. Return `blocked` with b
   - `linkUrl` may appear only on span objects and must be an internal `/...` path or HTTPS URL;
   - max 5 linked spans per text block and max 20 inline links per article;
   - reject empty span text, raw visible URLs, raw HTML links, Markdown links, `links[]`, `javascript:`, `data:`, and protocol-relative `//example.com` links.
+- Avoid obvious internal-link overuse. Do not put two adjacent anchors to the
+  same target URL in one sentence under different labels, and do not add several
+  body links plus a CTA to the same route unless each link has a distinct
+  reader-facing job. For a single target route in one article, prefer one
+  contextual body link plus one final CTA; add a second body link only when it
+  answers a genuinely different reader intent in a separate section.
 - Use `iconList` only with the Payload icon registry. Do not send emoji, raw SVG, image URLs, file names, CSS classes, or invented icon keys. If a needed icon key is missing, return a blocker/request to extend the registry instead of guessing.
 - `iconList.style` must be `grid`, `compact`, or `twoColumn`; each item must have a registry `icon` and `label`; optional `text` must be short; max 40 items.
 - Do not invent compatibility fields. In particular, do not use `style` for lists, `text` for callout body, `leftText`/`rightText`, paragraph `links`, `links[]`, or a `quietCta` without `title`.
@@ -78,10 +84,28 @@ If the validated article draft is missing, do not guess. Return `blocked` with b
   - after the last major explanatory section, use at most one special CTA block;
   - never stack multiple pink/brand CTA cards at the end of an article;
   - do not repeat the same offer under different labels, for example "next step", "catalog experts", "personal weekly forecast";
+  - do not create duplicate links to the same target in one sentence or one
+    short paragraph by using near-synonyms such as `Каталог експертів` and
+    `Маркет експертів` for the same URL;
   - remember that the site already has a large global CTA below the article, so the in-article final CTA must be lighter and editorial;
-  - if two next steps are relevant but the CMS block supports only one button, choose the primary next step for the button and represent the secondary route through a natural inline span link when editorially useful.
+  - if two next steps are relevant but the CMS block supports only one button, choose the primary next step for the button and represent the secondary route through a natural inline span link when editorially useful;
+  - `quietCta.note` is optional and should usually be empty. Do not use CTA
+    `text`, `note`, or link labels for internal/editorial justification phrases
+    such as "спокійний наступний крок", "без обіцянки миттєвої точності",
+    "без завищених очікувань", "доречний прямий перехід",
+    "окремо доступний", or similar workflow/positioning residue. If a
+    caveat is genuinely useful to the reader, write it as natural article
+    prose before the CTA; otherwise omit the note.
 - Add visual rhythm only where it clarifies meaning:
-  - short summary callout after the intro;
+  - for normal new articles, add the first editorial block after the intro as
+    an `editorialCallout` titled exactly `Коротко`;
+  - the `Коротко` block must give the reader a practical 2-4 sentence summary
+    of what the article will help them decide/understand, without keyword
+    stuffing, teaser phrasing, or workflow notes;
+  - do not count a caveat/warning block such as `Важлива межа` as `Коротко`;
+  - omit `Коротко` only when the issue is a very short technical update or an
+    existing first-screen component already provides the same summary, and
+    record an explicit `noSummaryCalloutRationale` in the handoff;
   - important warning callout;
   - comparison two-column block;
   - iconList for controlled zodiac/editorial item lists where registry icons clarify meaning;
@@ -90,10 +114,12 @@ If the validated article draft is missing, do not guess. Return `blocked` with b
   - one quiet inline CTA when it helps the reader choose a next step.
 - When a source article has list items that can be illustrated accurately with the existing registry, prefer `iconList` over a plain `list` if the icons make scanning or comprehension better. Use this only for concrete, controlled sets such as zodiac signs, Chinese zodiac signs, or clear editorial concepts. Do not force icons onto abstract, nuanced, or partially matching lists. Use no more than two illustrated lists in one article.
 - Do not add related articles as an `articleContent.v1` block. If related posts
-  should be set in CMS, record a separate handoff recommendation with 1 to 3
-  existing blog post IDs when known, or with the topical selection criteria when
-  IDs must be resolved by the CMS delivery/fix lane. Related posts belong in the
-  top-level Payload CMS `relatedPosts` field.
+  should be set in CMS, record a separate handoff recommendation with exactly 3
+  existing blog post IDs when known, or with enough topical selection criteria
+  for the CMS delivery/fix lane to resolve exactly 3 IDs. Related posts belong
+  in the top-level Payload CMS `relatedPosts` field. Do not treat 1 or 2 related
+  posts as complete for Astrogen article create/update, editorial backfill, or
+  internal-linking work.
 - The final section should read like a conclusion, not an ad block. Prefer a heading such as `Підсумок і чесний наступний крок`, a short synthesis paragraph, and one compact `quietCta`.
 - Avoid decorative filler, stock-photo suggestions, emoji-heavy blocks, and generic mystical design language.
 - Image direction:
@@ -103,9 +129,11 @@ If the validated article draft is missing, do not guess. Return `blocked` with b
   - the cover must look like a premium Astrogen editorial visual, comparable to a strong photo or campaign hero: polished lighting, clean composition, natural depth, refined detail, and no obvious AI artifacts;
   - when available, use `/astrogen/docs/reference/ARTICLE_IMAGE_DESIGN_SYSTEM.md` as the richer art-direction source for prompt construction;
   - use Astrogen visual anchors: calm modern expertise, soft neutral base, deep burgundy/wine accents, warm gold detail, deep green or subtle mint/teal glow only when useful, and a light esoteric signal without mystical clutter;
-  - for articles about human experience, decisions, relationships, family, children, career, money, emotions, consultation, or personal life context, prefer a photorealistic premium editorial scene with real-looking people in a specific lived moment;
+  - choose a subject mode before the cover prompt is accepted: `human_scene` for concrete human situations, and `abstract_graphic` for abstract concepts, definitions, zodiac-sign profiles, generic horoscope topics, frameworks, lists, comparisons, metrics, and other non-personal explanations;
+  - for `human_scene`, prefer a photorealistic premium editorial scene with real-looking people in a specific lived moment;
+  - for `abstract_graphic`, use refined graphic/editorial illustration, symbolic still life, or diagram-like composition, with no people, faces, hands, bodies, silhouettes, or model-like figures;
   - human-scene covers must feel observed, not posed: show people thinking, choosing, discussing, preparing, reading notes, working, holding a phone, sitting with a child, or otherwise doing something that makes the topic clear without text;
-  - human imagery needs concrete context and natural micro-emotion: home, work desk, consultation setting, family moment, conversation, uncertainty, trust, relief, or decision point; avoid direct-to-camera posing, generic smiling models, glossy stock-photo perfection, and lifeless "person with laptop/coffee" scenes;
+  - human imagery needs concrete context and natural micro-emotion: home, work desk, consultation setting, family moment, conversation, uncertainty, trust, relief, or decision point. Normal cover generation uses one image, not a three-candidate set. For `human_scene`, choose either a natural viewer-facing moment or an off-camera/action moment based on what best explains the article; this is not a stock headshot and must still feel alive and editorial. Avoid generic smiling models, glossy stock-photo perfection, and lifeless "person with laptop/coffee" scenes;
   - avoid neon-purple astrology, cheap stock-photo consultation, generic laptop/coffee, stereotyped cultural props, random zodiac wheels, tarot/crystal decoration unless truly relevant, and childish/emoji-like symbols;
   - the image concept must answer what the article is about within two seconds without relying on the article title;
   - image handoff must include title/search intent, visual concept, two or three semantic anchors, Astrogen style anchors, hard negatives, aspect ratio/crop safety, and a short fit rationale;
@@ -150,6 +178,9 @@ Do not present a cover-only update as an editorial backfill result. If a cover d
 A task is complete only when:
 - a valid `articleContent.v1` package is produced;
 - the handoff states which layout blocks were added and why;
+- for normal new articles, the package includes an early `editorialCallout`
+  titled `Коротко`, or the handoff records a defensible
+  `noSummaryCalloutRationale`;
 - for editorial backfill tasks, the handoff includes per-article evidence of actual body/editorial changes or an explicit no-body-change rationale;
 - no unsupported block type or raw CMS format is present;
 - CTA links are safe and internal/HTTPS;

@@ -1,0 +1,20 @@
+[Unit]
+Description=Paperclip Astrogen Clean Search Console MCP Docker bridge proxy
+After=network-online.target docker.service tailscaled.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=paperclip
+Environment=LISTEN_HOST=172.18.0.1
+Environment=LISTEN_PORT=3002
+Environment=TARGET_HOST=100.98.5.50
+Environment=TARGET_PORT=3002
+ExecStart=/usr/bin/python3 /home/paperclip/bin/paperclip_tcp_proxy.py
+Restart=always
+RestartSec=2
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

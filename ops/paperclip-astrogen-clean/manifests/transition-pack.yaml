@@ -1,0 +1,40 @@
+source:
+  oldLiveCompanyId: c33f6b81-5ced-4270-9288-b46a32f6337a
+  collectedAt: 2026-07-02
+  statusesReviewed:
+    - in_progress
+    - in_review
+    - todo
+
+strategy:
+  importMode: selective
+  reason: old live has useful current work mixed with obsolete runtime-fix tasks
+  createCleanParentIssue: true
+  createOnlyStillValidChildren: true
+  doNotBulkImportBlocked: true
+
+candidateLiveIssues:
+  carryForward:
+    - oldId: AST-1956
+      cleanAction: reconcile missed article demand through slot allocator, not scheduler catch-up
+    - oldId: AST-2758
+      cleanAction: review Solar SEO planning approval in clean workflow context
+    - oldId: AST-1911
+      cleanAction: keep collaborator access parked until backlink workflow is enabled
+    - oldId: AST-1561
+      cleanAction: track human-decision object/writeback architecture as a clean workflow gap
+  notMigratedByDefault:
+    - oldId: AST-2823
+      reason: old live OpenRouter reload workflow, not clean traffic execution
+    - oldId: AST-2820
+      reason: old live reload writeback, not clean traffic execution
+    - oldId: AST-2252
+      reason: old live controlled restart, superseded by clean instance
+    - oldId: AST-2595
+      reason: control-plane bug remediation belongs to Paperclip engineering, not Astrogen growth bootstrap
+    - oldId: AST-2457
+      reason: Paperclip regression coverage task, not Astrogen growth bootstrap
+    - oldId: AST-2329
+      reason: unclear boundary test, requires manual triage
+    - oldId: AST-890
+      reason: old upgrade rehearsal toward older release line, superseded by clean v2026.626.0 deployment

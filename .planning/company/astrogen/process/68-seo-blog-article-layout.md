@@ -20,7 +20,7 @@ Writer
 -> SEO Blog Article Layout Editor
 -> SEO Blog Article Layout Validator
 -> Payload CMS draft/update
--> Telegram draft URL
+-> Telegram CMS admin edit URL for drafts
 ```
 
 ## Input
@@ -118,6 +118,17 @@ Do not leak internal routing or task language into visible copy. Phrases such as
 notes, or handoff instructions belong in Paperclip artifacts, not in the CMS
 article.
 
+Do not leak SEO planning language into visible copy. Keywords and query clusters
+are internal evidence for planning, not something the article should explain to
+the reader. The primary query may be used naturally, but visible copy must not
+say that a phrase is important because people search it, that a typo variant or
+adjacent query is a separate SEO target, or that this article exists to cover a
+keyword family. Phrases such as `це формулювання важливе`, `так люди шукають`,
+`це нормальний запит`, `суміжний запит`, `опечатковий варіант`, `контентний
+формат`, `інтент`, `keyword`, `query`, or `кластер` are validation failures
+unless they are clearly part of a non-SEO user-facing meaning. Use blocker class
+`reader_facing_seo_residue`.
+
 Product/service mention link rule:
 
 - If visible article copy names or clearly refers to an Astrogen product,
@@ -128,6 +139,19 @@ Product/service mention link rule:
   `фінансовий розбір`, `такий формат`, `м'який старт`,
   `персоналізований старт`, `каталог спеціалістів`, `розбір для фінансових тем`,
   or other wording that points to a concrete Astrogen offer.
+
+Internal-link overuse rule:
+
+- Do not place two adjacent links to the same target URL in one sentence under
+  different labels.
+- Do not repeat near-synonym anchors to the same URL in one short paragraph
+  merely to increase internal-link count.
+- A healthy default is one contextual body link plus one final CTA to the same
+  target. Add another body link only when it serves a distinct reader intent in
+  a separate section.
+- The layout validator should return the package for revision with blocker
+  class `internal_link_overuse` when the links look like SEO overlinking rather
+  than useful reader navigation.
 - Do not rely on exact-name matching only. If the phrase points to a known
   Astrogen route/product/service by meaning, treat it as a product mention.
 - Examples include the experts catalog, free/personal horoscope routes,
@@ -171,9 +195,21 @@ Next-step promise rule:
   editorial synthesis without promising an action, or return a structured
   blocker with class `dangling_next_step_promise`.
 
-The editor should use blocks only when they clarify meaning. Strong default candidates:
+The editor should use blocks only when they clarify meaning. Mandatory first
+summary block for normal new articles:
 
-- short summary callout after the intro;
+- after the intro and before the first major explanatory section, add an
+  `editorialCallout` with `title: "Коротко"`;
+- the `Коротко` block must summarize the practical reader takeaway in 2-4
+  concise sentences, not repeat SEO keywords or teaser copy;
+- place it before other warning/caveat/comparison blocks. A caveat such as
+  `Важлива межа` does not satisfy this requirement;
+- omit it only with an explicit `noSummaryCalloutRationale` in the handoff,
+  and only when the article is a very short technical update or another
+  first-screen component already provides the same reader-facing summary.
+
+Strong additional candidates:
+
 - important caveat/warning callout;
 - comparison block;
 - icon list for controlled zodiac/editorial item lists where registry icons clarify meaning;
@@ -213,6 +249,9 @@ After the last major explanatory section:
 - use at most one special CTA block;
 - do not stack repeated pink/brand CTA cards;
 - do not repeat the same offer under labels such as "next step", "catalog experts", "personal weekly forecast";
+- do not repeat the same target URL through adjacent CTA/body-link labels such
+  as `Каталог експертів` and `Маркет експертів` unless there is a clear
+  reader-facing reason for both;
 - keep the in-article CTA lighter than the large global site CTA that appears below the article;
 - prefer a final heading such as `Підсумок і чесний наступний крок`, one short synthesis paragraph, and one compact `quietCta`.
 
@@ -245,12 +284,28 @@ Astrogen visual direction:
 - calm, modern, expert, emotionally warm, and lightly esoteric;
 - white or soft neutral base, deep burgundy/wine accents, warm gold detail, deep green or subtle mint/teal glow only where useful;
 - refined editorial styling, not mystical clutter, neon-purple astrology, cheap stock-photo consultation, generic laptop/coffee, tarot/crystal decoration unless the article truly needs it, or stereotyped cultural props;
-- for articles about human experience, decisions, relationships, family, children, career, money, emotions, consultation, or a personal life context, prefer a photorealistic premium editorial scene with real-looking people in a specific lived moment;
+- choose a required subject mode before writing or accepting the cover prompt:
+  - `human_scene` for concrete human situations: relationship tension, family/child choice, career or money decision, personal confirmation, expert consultation, emotional state, or a reader deciding what to do next;
+  - `abstract_graphic` for abstract concepts, definitions, zodiac-sign profiles, generic horoscope topics, frameworks, lists, comparisons, metrics, and other non-personal explanations;
+- for `human_scene`, prefer a photorealistic premium editorial scene with real-looking people in a specific lived moment;
 - human scenes must feel observed, not posed: the person or people should be thinking, choosing, discussing, preparing, reading notes, working, holding a phone, sitting with a child, or otherwise doing something that makes the article topic legible without text;
-- human cover photography should show natural micro-emotions and concrete context such as a home, work desk, consultation setting, family moment, conversation, uncertainty, trust, relief, surprise, recognition, or decision point; it may feel like a cinematic still from a short video, with a believable unexpected facial reaction, but not theatrical acting, panic, tears, melodrama, or direct-to-camera posing;
+- human cover photography should show natural micro-emotions and concrete context such as a home, work desk, consultation setting, family moment, conversation, uncertainty, trust, relief, surprise, recognition, or decision point; it may feel like a cinematic still from a short video, with a believable unexpected facial reaction, but not theatrical acting, panic, tears, or melodrama;
+- direct gaze is allowed only as a natural editorial moment, not as a stiff stock portrait. Normal cover generation uses one image, not a three-candidate set. For `human_scene`, choose either a natural viewer-facing moment or an off-camera/action moment based on what best explains the article. If the generated image is viewer-facing, QA must confirm the person looks present and alive, not posed for an advertisement;
+- for `abstract_graphic`, do not use people, faces, hands, bodies, silhouettes, or model-like figures. Use a refined graphic/editorial illustration, symbolic still life, or diagram-like composition that communicates the concept without readable text, fake glyphs, or pseudo-symbols;
+- for Astrogen `abstract_graphic` blog covers, follow the established studio
+  still-life style shown by these CMS references:
+  `https://cms.astrogen.com.ua/api/media/file/hero-image-mr12ez8a-20d1660f-1472x822.webp`
+  and
+  `https://cms.astrogen.com.ua/api/media/file/hero-image-mr13ynnw-f6efd203-1472x822.webp`.
+  The style is premium minimalist 3D/paper-cut or polished acrylic still life:
+  white gallery wall or pale marble surface, soft natural shadows, deep
+  burgundy/wine shapes, warm brushed-gold accents, thin gold orbital linework,
+  occasional translucent divider/panel, and generous negative space. Do not
+  substitute busy abstract waves, watercolor poster styling, flat vector
+  illustration, decorative florals, or generic mystical gradients.
 - when the topic implies reading, comparing, ordering, checking results, choosing an expert, or reviewing a forecast, prefer a smartphone, tablet, or laptop over paper/card props; device screens must be unreadable and non-specific, with no text, UI, icons, numbers, charts, percentages, notifications, or pseudo-text;
 - avoid paper/cards/notes unless genuinely needed; if used, they must be blank, out of focus, or positioned so no generated marks are visible. Reject unclear symbols, drawings, pseudo-writing, or artifacts on either side of a paper/card;
-- avoid generic smiling models, direct-to-camera posing, glossy stock-photo perfection, and lifeless "person with laptop/coffee" scenes;
+- avoid generic smiling models, stock headshots, glossy stock-photo perfection, and lifeless "person with laptop/coffee" scenes;
 - use realistic human imagery when the human situation is central to the article meaning; otherwise prefer a high-end symbolic still life, refined diagram-like composition, or premium editorial illustration;
 - the image should answer "what is this article about?" within two seconds without relying on the article title.
 - cover images must also pass a series-variation check. Before accepting a
@@ -273,6 +328,8 @@ The image generation handoff must include:
 - two or three concrete semantic anchors from the article topic;
 - Astrogen style anchors from the visual direction above;
 - hard negatives: no text, no letters, no numbers, no readable UI, no fake glyphs, no distorted hands/faces, no random symbols, no pseudo-writing on paper/screens, no generic stock scene;
+- subject policy: `human_scene`, `abstract_graphic`, or a clearly justified exception;
+- gaze plan: for `human_scene`, whether the single planned generation should be viewer-facing or off-camera/interaction, and why that choice fits the article;
 - series negatives: do not reuse the same window, same table, same seated pose,
   same solitary woman writing/looking down, same cup/notebook/device arrangement,
   same clothing color, or same camera angle as nearby Astrogen article covers;
@@ -370,8 +427,11 @@ inside article body content.
 
 When the layout handoff has enough topical context to recommend related
 articles, record the recommendation separately for the CMS delivery/fix lane.
-The Payload CMS field is top-level `blogPosts.relatedPosts` and accepts 0 to 3
-existing numeric blog post IDs.
+The Payload CMS field is top-level `blogPosts.relatedPosts`. For Astrogen
+article create/update, related posts must be exactly 3 existing numeric blog
+post IDs whenever the field is set. Do not close article layout, editorial
+backfill, internal-linking, or CMS delivery work with only 1 or 2 visible
+related articles.
 
 Selection rules:
 
@@ -382,6 +442,51 @@ Selection rules:
 - no current article ID;
 - no duplicate IDs;
 - no slugs, URLs, titles, search terms, or generated recommendation copy.
+- if fewer than 3 close same-topic candidates exist, fill the remaining slots
+  with adjacent-topic or conversion-supporting published/indexable articles
+  that are still plausibly useful to the reader.
 
 Adding or changing only related-post relationships is a deterministic
 internal-linking/CMS SEO fix and does not require owner approval.
+
+## CMS Refetch Gate
+
+Normal article delivery is complete only after authenticated CMS refetch proves:
+
+- `_status = draft`, `workflowStatus = draft`, and `publishedAt = null`;
+- draft notification/link evidence uses only the CMS admin edit URL
+  `https://cms.astrogen.com.ua/admin/collections/blogPosts/<id>`, not a public
+  `https://astrogen.com.ua/blog/...` URL;
+- cover and OG image are set;
+- cover `alt` equals the exact article title, with empty/omitted `caption`,
+  `credit`, and `sourceUrl`;
+- `articleContent.v1` still contains supported structured editorial blocks,
+  not only `paragraph`, `heading`, and `list`;
+- for normal new articles, the first non-body editorial block after the intro
+  is an `editorialCallout` titled `Коротко`, unless the layout handoff records
+  an explicit `noSummaryCalloutRationale`;
+- `quietCtaCount >= 1` for briefs with a CTA route;
+- `editorialInsertCount >= 1`, unless a specific no-insert rationale is
+  recorded;
+- exactly 3 top-level `relatedPosts` numeric IDs with title/status evidence.
+
+Do not accept a CMS delivery that silently normalizes supported
+`editorialCallout`, `twoColumnText`, `iconList`, or `quietCta` blocks into
+plain paragraphs/lists. If Payload rejects a supported block, route a
+plugin/schema blocker instead of degrading the article.
+
+Owner-facing Telegram copy for draft delivery must be gender-neutral and
+status-first in Ukrainian. Use impersonal wording such as `Готово:`,
+`Оновлено`, `Перевірено`, or `Додано`; do not use gendered first-person verbs
+such as `оновила`, `оновив`, `перевірила`, or `перевірив`. Public article URLs
+are allowed only after an explicit publish step and verified live HTTP result.
+
+## Screen And Paper QA
+
+Cover images must be rejected when a laptop, phone, tablet, monitor, paper,
+notebook, card, or calendar contains generated UI, reflected screen content,
+blurred interface-like shapes, text, numbers, icons, fake glyphs, pseudo-writing,
+diagrams, or unclear marks. If a device is only an online-context prop, prefer a
+closed/plain matte laptop, a device seen from the back with no reflection, or a
+phone face down. Do not accept local repairs that technically hide artifacts but
+make surfaces look pasted or unnatural; regenerate instead.

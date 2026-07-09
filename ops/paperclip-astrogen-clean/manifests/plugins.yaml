@@ -1,0 +1,79 @@
+plugins:
+  active:
+    - key: paperclip-plugin-telegram
+      packagePath: /app/packages/plugins/plugin-telegram
+      owner: OPS Human Interaction Agent
+      verification: config validation, no owner-facing spam
+      safety:
+        enableProactiveWatches: false
+        maxSuggestionsPerHourPerCompany: 0
+    - key: paperclip.payload-cms-agent-tools
+      packagePath: /app/packages/plugins/plugin-payload-cms-agent-tools
+      owner: Chief Technical Officer
+      verification: Payload health/build-state read
+    - key: paperclip.gsc-bing-ga4-mcp-agent-tools
+      packagePath: /app/packages/plugins/plugin-gsc-bing-ga4-mcp-agent-tools
+      owner: SEO Performance Analyst
+      verification: Astrogen site/property read-only tool call
+    - key: paperclip.crawlobserver-agent-tools
+      packagePath: /app/packages/plugins/plugin-crawlobserver-agent-tools
+      owner: SEO Performance Analyst
+      verification: CrawlObserver project/session read
+    - key: paperclip.seo-performance-loop
+      packagePath: /app/packages/plugins/plugin-seo-performance-loop
+      owner: Chief Marketing Officer
+      verification: Ukrainian report settings load
+      safety:
+        articleCadenceEnabled: true
+        articleCadenceTargetPerDay: 1
+        articleCadencePreferredTimes: "10:00"
+        articleCadenceTimezone: Europe/Kiev
+    - key: paperclip.email-notifications
+      packagePath: /app/packages/plugins/plugin-email-notifications
+      owner: Chief Technical Officer
+      verification: dry-run plus live owner change-report send through Resend
+      safety:
+        recipients: "explicit allowlist only; default o.savitsky@gmail.com"
+        idempotency: required or deterministic fallback
+        costAccountingMode: estimated_per_email
+    - key: paperclip.openrouter-image-agent-tools
+      packagePath: /app/packages/plugins/plugin-openrouter-image-agent-tools
+      owner: SEO Blog Image Runtime Executor
+      verification: provider config resolves image key
+
+  parked:
+    - key: paperclip.collaborator-agent-tools
+      packagePath: /app/packages/plugins/plugin-collaborator-agent-tools
+      reason: backlink/provider workflow can create external obligations
+    - key: paperclip.semantic-core-mcp-agent-tools
+      packagePath: /app/packages/plugins/plugin-semantic-core-mcp-agent-tools
+      reason: old live row currently fails worker load; require packaging fix
+    - key: paperclip.dataforseo-agent-tools
+      packagePath: /app/packages/plugins/plugin-dataforseo-agent-tools
+      reason: old live row currently fails worker load; require packaging fix
+    - key: paperclip.serper-agent-tools
+      packagePath: /app/packages/plugins/plugin-serper-agent-tools
+      reason: old live row currently fails worker load; require packaging fix
+    - key: paperclip.exa-agent-tools
+      packagePath: /app/packages/plugins/plugin-exa-agent-tools
+      reason: old live row currently fails worker load; require packaging fix
+    - key: paperclip.bright-data-agent-tools
+      packagePath: /app/packages/plugins/plugin-bright-data-agent-tools
+      reason: explicit crawling budget approval required
+    - key: paperclip.winning-structure-mcp-agent-tools
+      packagePath: /app/packages/plugins/plugin-winning-structure-mcp-agent-tools
+      reason: not required for Phase 40 traffic loop
+    - key: paperclip.search-console-mcp-agent-tools
+      packagePath: /app/packages/plugins/plugin-search-console-mcp-agent-tools
+      reason: superseded by gsc-bing-ga4 plugin
+    - key: paperclip.diskinternals-bigquery-growth
+      packagePath: /app/packages/plugins/plugin-diskinternals-bigquery-growth
+      reason: cross-company plugin, never enable for Astrogen clean
+    - key: paperclip.perfex-crm-agent-tools
+      packagePath: /app/packages/plugins/plugin-perfex-crm-agent-tools
+      reason: not part of Astrogen traffic/SEO bootstrap
+
+policy:
+  companyScope: store Astrogen settings in plugin_company_settings and mirror only safe single-company config where legacy plugin runtime requires plugin_config
+  activation: parked plugins stay disabled until a separate smoke/approval issue
+  telegram: proactive watches stay disabled until explicitly re-enabled

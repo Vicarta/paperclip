@@ -44,6 +44,12 @@ If the layout package is missing, return `blocked` with blocker class `missing_l
 - Structured inline links are valid only through `paragraph.spans`, `editorialCallout.bodySpans`, `quietCta.textSpans`, and text-mode `twoColumnText.leftBodySpans`/`rightBodySpans`.
 - For every span array, concatenated `spans[].text` must exactly equal the parent text/body field. Reject empty span text, mismatched text, more than 5 linked spans in one text block, or more than 20 inline links in the article.
 - Span `linkUrl` values must be internal `/...` paths or HTTPS URLs. Reject `javascript:`, `data:`, protocol-relative `//example.com`, raw HTML links, Markdown links, raw visible URLs, and `links[]`.
+- Reject obvious internal-link overuse with blocker class `internal_link_overuse`:
+  two adjacent anchors to the same target URL in one sentence, repeated
+  near-synonym anchors to the same URL in one short paragraph, or several links
+  to the same target route without distinct reader-facing reasons. A normal
+  pattern of one contextual body link plus one final CTA to the same target is
+  acceptable.
 - Reject legacy/improvised field names such as list `style`, callout `text`, `leftText`, `rightText`, paragraph `links`, `links[]`, or `quietCta` without `title`.
 - For `iconList`, reject emoji, raw SVG, image URLs, file names, CSS classes, invented icon keys, missing labels, unsupported styles, or more than 40 items. Icon keys must come from the Payload icon registry.
 - Heading levels are only `h2`, `h3`, `h4`.
@@ -52,9 +58,20 @@ If the layout package is missing, return `blocked` with blocker class `missing_l
 - No raw Payload Lexical JSON, raw HTML, inline styles, CSS classes, unsupported embeds, or `javascript:` URLs.
 - Reject any attempt to encode related articles as an `articleContent.v1` block
   or arbitrary body field. Related posts must be handled only as top-level
-  Payload CMS `relatedPosts` with 0 to 3 existing numeric blog post IDs.
+  Payload CMS `relatedPosts`. For Astrogen article create/update, editorial
+  backfill, and internal-linking work, the accepted value is exactly 3 existing
+  numeric blog post IDs. Reject 1 or 2 related posts as incomplete.
 - No raw URLs in visible text fields. Reject `https://...`, `http://...`, or `www...` inside paragraphs, headings, lists, callouts, icon-list labels/text, two-column copy, CTA title/text/label/note, or any other user-visible copy. Contextual links must be represented through structured spans; CTA button links must use `quietCta.linkUrl`.
 - No internal routing/task notes in visible copy. Reject phrases such as `Контекстний другий маршрут`, `CTA route`, `SEO lock`, `brief route`, or other planning-language remnants.
+- No reader-facing SEO residue in visible copy. Reject paragraphs, headings,
+  lists, callouts, CTA text, or link labels that explain wording because it is a
+  search query, keyword, formulation, typo variant, adjacent query, or SEO
+  target. Examples: `це формулювання важливе`, `так люди шукають`, `це
+  нормальний запит`, `суміжний запит`, `опечатковий варіант`, `контентний
+  формат`, `інтент`, `keyword`, `query`, or `кластер`. The primary query may
+  appear only as natural Ukrainian reader language. If adjacent needs matter,
+  they must be rewritten as human situations with organic internal links. Return
+  `returned_for_revision` with blocker class `reader_facing_seo_residue`.
 - Product/service mention link rule:
   - if visible article copy names or clearly refers to an Astrogen product, service, route, offer, or commercial next step, the referenced thing must have a real supported link in the same article package;
   - this includes exact product names and product-like paraphrases such as `персональний прогноз`, `персоналізований тижневий формат`, `фінансовий розбір`, `такий формат`, `м'який старт`, `персоналізований старт`, `каталог спеціалістів`, `розбір для фінансових тем`, or other wording that points to a concrete Astrogen offer;
@@ -76,6 +93,12 @@ If the layout package is missing, return `blocked` with blocker class `missing_l
 - The layout preserves approved title, slug, H1, SEO title, SEO description, primary/supporting keyword intent, required links, and product/service framing.
 - The layout does not add new unverified factual claims.
 - The article has useful visual rhythm without over-decoration.
+- For normal new articles, reject a layout whose first reader-facing editorial
+  insert after the intro is not an `editorialCallout` titled exactly
+  `Коротко`, unless the handoff contains a specific
+  `noSummaryCalloutRationale`. A warning/caveat block such as `Важлива межа`,
+  an `iconList`, or a `twoColumnText` block does not satisfy this first-summary
+  requirement.
 - For editorial backfill, audit, repair, or republish tasks, reject cover-only updates. A package or batch cannot be accepted as editorial backfill unless each affected article has per-article evidence of actual body/editorial changes, or an explicit rationale that the existing body already had sufficient editorial structure.
 - Editorial backfill evidence must name the CMS/article identifier, title, whether body content changed, and which `articleContent.v1` blocks/spans/CTA/product-link/final-section changes were added or improved. Cover image status is separate evidence and does not satisfy this requirement.
 - CTAs are calm and useful, not aggressive sales copy.
@@ -83,7 +106,16 @@ If the layout package is missing, return `blocked` with blocker class `missing_l
   - at most one special CTA block appears after the last major explanatory section;
   - there is no stack of repeated CTA cards;
   - the same offer is not repeated under different names;
-  - the in-article final CTA stays lighter than the large global site CTA below the article.
+  - the same target URL is not repeated through adjacent or near-adjacent labels
+    such as `Каталог експертів` and `Маркет експертів` unless the surrounding
+    copy gives a clear, non-SEO reader reason for both labels;
+  - the in-article final CTA stays lighter than the large global site CTA below the article;
+  - reject `quietCta.text`, `quietCta.note`, or CTA labels that contain
+    internal/editorial justification residue such as "спокійний наступний крок",
+    "без обіцянки миттєвої точності", "без завищених очікувань",
+    "доречний прямий перехід", "окремо доступний", or similar phrasing. These
+    phrases read like a prompt/positioning note, not like reader-facing copy.
+    Return `returned_for_revision` with blocker class `cta_prompt_residue`.
 - The recommended final shape is:
   - a summary heading such as `Підсумок і чесний наступний крок`;
   - one short synthesis paragraph;
@@ -96,8 +128,11 @@ If the layout package is missing, return `blocked` with blocker class `missing_l
   - a topic-specific cover must reflect the article actual meaning and search intent, not merely the broad Astrogen category;
   - the cover must meet Astrogen premium editorial quality: strong photo/editorial-hero feel, polished lighting, clean composition, natural depth, refined detail, and no obvious AI artifacts;
   - when `/astrogen/docs/reference/ARTICLE_IMAGE_DESIGN_SYSTEM.md` is available, use it as the richer art-direction source for brand-fit validation;
-  - for articles about human experience, decisions, relationships, family, children, career, money, emotions, consultation, or personal life context, require a photorealistic premium editorial human scene unless the handoff gives a stronger topic-specific reason for a non-human visual;
-  - reject human covers that feel posed instead of lived: direct-to-camera models, generic smiles, glossy stock-photo perfection, lifeless laptop/coffee scenes, or people with no visible action, decision, conversation, preparation, or emotional context;
+  - require the image handoff to name a subject mode: `human_scene`, `abstract_graphic`, or a justified exception;
+  - require `human_scene` only for concrete human situations: relationship tension, family/child choice, career or money decision, personal confirmation, expert consultation, emotional state, or a reader deciding what to do next;
+  - require `abstract_graphic` for abstract concepts, definitions, zodiac-sign profiles, generic horoscope topics, frameworks, lists, comparisons, metrics, and other non-personal explanations. Reject `abstract_graphic` covers that contain people, faces, hands, bodies, silhouettes, or model-like figures;
+  - for `human_scene`, require a gaze plan for the single planned generation: either natural viewer-facing or off-camera/interaction, with the choice justified by article meaning. Direct gaze is acceptable only as a living editorial moment, not as a stock headshot;
+  - reject human covers that feel posed instead of lived: stock headshots, generic smiles, glossy stock-photo perfection, lifeless laptop/coffee scenes, or people with no visible action, decision, conversation, preparation, or emotional context;
   - accept human covers only when the image shows a concrete lived moment and natural micro-emotion, with enough context to understand the article topic without text;
   - reject covers that feel like cheap stock imagery, generic wellness consultation, neon-purple astrology, mystical clutter, stereotyped cultural decoration, random zodiac-wheel decoration, or a scene that could fit almost any Astrogen article;
   - reject covers that are near-duplicates of nearby Astrogen blog covers in the
@@ -131,6 +166,7 @@ For `returned_for_revision`, include structured blocker classes such as:
 - `raw_format_detected`
 - `raw_url_in_visible_text`
 - `internal_routing_note_leaked`
+- `reader_facing_seo_residue`
 - `required_link_not_representable`
 - `required_inline_product_link_not_supported`
 - `free_offer_not_labeled`

@@ -59,7 +59,9 @@ issue with one of these action classes:
 
 - `internal_linking`: add or adjust contextual links in body/article content;
 - `related_posts`: set or refresh Payload CMS `blogPosts.relatedPosts`;
-- `content_refresh`: refresh the article when internal links are not enough;
+- `content_refresh`: improve an existing article's body/content after relevant
+  keyphrase and SERP value-gap analysis proves missing user value that internal
+  links or related posts cannot solve;
 - `watch`: no change now, with a specific monitoring date and reason.
 
 Internal-linking and related-post changes are experiments. Each issue must

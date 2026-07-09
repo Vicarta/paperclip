@@ -1,5 +1,110 @@
 # Execution Log: Astrogen
 
+## 2026-07-09
+
+- Executed Phase 45 `SERP Value-Gap Content Refresh` for clean Astrogen.
+  - Added requirement `AST-SEO-19`: existing-article `content_refresh` must be
+    driven by relevant keyphrase and SERP value-gap analysis, not generic
+    editorial block insertion.
+  - Added `serp_value_gap_content_refresh` to clean workflow manifests and
+    bootstrap source.
+  - Updated live clean AGENTS.md for CMO, SEO Blog Content Strategist, SEO Blog
+    Content Plan Validator, MKT Competitive Intelligence Analyst, MKT Blog
+    Brief Strategist, SEO Blog Article Writer, SEO Blog Article Validator, and
+    SEO Performance Analyst.
+  - Updated live routine revisions: `Astrogen article slot allocator` revision
+    `6`, `Weekly Astrogen SEO/GEO action cycle` revision `8`.
+  - Backup before DB routine edits:
+    `/home/paperclip/backups/phase45-serp-refresh-20260709T104754Z/paperclip.dump`.
+  - Verified clean app health OK, 8/8 live AGENTS.md files contain `Phase 45`,
+    both routines have Phase 45 variables/revision rows, source bootstrap syntax
+    passed, and clean YAML manifests parse.
+- Ran a controlled Phase 14 article-algorithm test through clean Paperclip
+  without generating a new image or publishing CMS content.
+  - Manual allocator run created [AST-162](/AST/issues/AST-162), which correctly
+    refused to bypass topic safety and delegated topic refill to
+    [AST-163](/AST/issues/AST-163).
+  - [AST-163](/AST/issues/AST-163) produced a `topic_inventory_refill` packet
+    with 5 candidates and 0 `ready_for_brief_creation` topics; validation
+    [AST-164](/AST/issues/AST-164) accepted `zero_ready_topics=true`.
+  - Result: no article lane was created, because all candidate topics were
+    duplicates, recently consumed, cannibalization-risky, under cooldown, or
+    needed owner/business direction. This is the expected Phase 14/44 safety
+    outcome, not a generation failure.
+- Fixed the clean Paperclip issue-document DTO compatibility gap found during
+  the test.
+  - Source: `local-paperclip/server/src/services/documents.ts`.
+  - Live clean app hotfix: `/app/server/dist/services/documents.js` in
+    `paperclip-astrogen-clean-app-1`.
+  - The document API now returns both canonical fields (`body`,
+    `latestRevisionId`) and legacy agent-compatible aliases (`content`,
+    `revisionId`), so agents do not misread a valid issue document as empty.
+  - Verified AST-164 could read revision
+    `e3779f4b-7f31-4ac5-a3e4-53b8c85c8558` and complete successfully.
+
+## 2026-07-03
+
+- Completed the AST-36 article delivery recovery without another unbounded
+  retry loop.
+  - Recorded the article workflow invariant in source/workflow contracts and
+    live Layout Editor instructions before resuming CMS delivery.
+  - AST-45, AST-46, AST-47, and parent AST-36 are all `done`; CMS draft `117`
+    passed final refetch gates and CMO sent the Telegram delivery notification.
+  - Added `payload_cms_update_media` to the Payload CMS agent tools so future
+    cover/OG alt repairs PATCH an existing media record instead of uploading a
+    duplicate file.
+  - Deployed clean Paperclip image
+    `paperclip-app:v2026.626.0-vicarta.28-payload-update-media-tool-20260703T1528Z`;
+    `/api/health` is OK and Payload CMS registers 16 tools including
+    `payload_cms_update_media`.
+  - Full Docker build currently fails on an unrelated UI/Codex adapter export
+    mismatch (`isCodexLocalManualModel`), so this hotfix was deployed as a
+    derived image from the last healthy production image. Track this as a
+    rebuild hygiene follow-up before the next large Paperclip image rebuild.
+
+## 2026-06-30
+
+- Started Phase 37 `Article Cadence Stability And Runtime Recovery` after the
+  owner reported that Astrogen article generation was still unstable and new CMS
+  drafts were not arriving in the expected volume.
+- Restored Paperclip board login for `o.s@digital-r-evolution.com`:
+  - production logs showed `403` invalid credential responses before `429 Too
+    many requests`, so rate limiting was not the root cause;
+  - performed a targeted Better Auth password reset for the existing user;
+  - cleared stale sessions;
+  - verified `/api/auth/sign-in/email` returned HTTP 200 with the new
+    temporary password.
+- Deployed persistent production app image
+  `paperclip-app:v2026.626.0-vicarta.11-plugin-runtime-manifest-20260630T1920Z`
+  so the plugin SDK/shared manifest fix survives container recreation.
+- Verified production health and plugin boot:
+  - `/api/health` returned OK;
+  - plugin loader loaded 8/8 ready plugins;
+  - Payload CMS, Telegram, CrawlObserver, OpenRouter image, GSC/GA4,
+    Collaborator, and SEO loop plugins were `ready`.
+- Corrected live Astrogen issue state:
+  - removed stale `AST-2226 -> AST-2159` blocker because `AST-2226` was already
+    `done`;
+  - closed obsolete Payload CMS plugin runtime blockers `AST-2364` and
+    `AST-2365`;
+  - returned `AST-2363` to `todo` for `SEO CMS Technical Fixer`;
+  - queued a wakeup for `AST-2363` so the accepted April article can resume
+    Payload CMS draft delivery.
+
+## 2026-06-16
+
+- Recorded CrawlObserver generic page issue API for Astrogen SEO operations.
+  - CrawlObserver production now exposes
+    `/api/sessions/{session_id}/page-issues`.
+  - Issue types: `soft_404` (`error`), `generic_rendered_title` (`warning`),
+    and `generic_static_metadata` (`warning`).
+  - Paperclip agents should use `get-page-issues` when available, or the generic
+    allowlisted read endpoint as fallback.
+  - `soft_404` routes as deterministic technical SEO evidence after
+    dedupe/cooldown; generic title/metadata warnings feed content-refresh or
+    title/meta review queues and do not authorize automatic rewrites by
+    themselves.
+
 ## 2026-06-10
 
 - Tightened the weekly SEO report contract after the owner noted that traffic
@@ -813,6 +918,17 @@
   - Old sessions may require resource reparse or a fresh crawl before image
     rows exist; missing rows in an old session are an acquisition gap, not proof
     that images are healthy.
+- Recorded CrawlObserver page inventory and retention API changes for Astrogen
+  SEO/internal-linking work.
+  - `GET /api/sessions/{session_id}/pages` now exposes `page_type` and supports
+    `page_type=html`; agents should use HTML-only rows for SEO page inventory.
+  - Page rows now expose `internal_links_in` alongside `internal_links_out`;
+    use this direct inlink count when available and reserve link exports for
+    source/anchor evidence.
+  - CrawlObserver application logs are retained for 5 days, production keeps
+    only 2 inactive sessions per project, and production keeps the 4 latest
+    backups. Agents must record session ids, timestamps, and compact evidence in
+    Paperclip because old acquisition/debug state may disappear.
 - Hardened the weekly Astrogen SEO cycle from report-only to active SEO work.
   - Updated the reusable agency-core `SEO_PERFORMANCE_LOOP.md` with a weekly
     active SEO work rule: the Wednesday run must create/update the active SEO
@@ -833,3 +949,453 @@
     new-page, wrong-landing, off-page, and watch candidates; create/update
     follow-up issues when thresholds/cooldowns allow; and include experiment
     baselines plus monitoring dates in the detailed email/document.
+- Raised the live Astrogen SEO article cadence to three draft pipelines per day.
+  - Updated `paperclip.seo-performance-loop` global plugin config:
+    `articleCadenceTargetPerDay=3`,
+    `articleCadenceTimezone=Europe/Kiev`, and
+    `articleCadencePreferredTimes=10:00,15:00,19:00`.
+  - Updated routine `71b8513b-9c22-44a4-82a2-7f86dcf4fe41` title to
+    `Three-daily Astrogen SEO blog article cadence`.
+  - Updated trigger `99a32065-ba26-413d-9590-9948451b330b` to cron
+    `0 10,15,19 * * *` in `Europe/Kiev`; next run after the change is
+    2026-06-18 19:00 Europe/Kiev.
+- Hardened role-mismatch escalation after the [AST-1505](/AST/issues/AST-1505)
+  CMS fixer stall.
+  - Added `Out-Of-Role Handoff Rule` to the live and source-tracked
+    `SEO CMS Technical Fixer` contract: when an owner/manager asks for
+    editorial/content/layout work such as adding `Коротко`, changing CTA text,
+    or regenerating creative imagery, the fixer must route/reassign to CMO or a
+    CMO-owned follow-up instead of stopping at a terminal blocker.
+  - Added `Role-Mismatch Handoff Rule` to the live and source-tracked CMO
+    contract: CMO must adopt specialist role-mismatch blockers and route the
+    narrow repair through the correct lane, normally
+    `Layout Editor -> Layout Validator -> SEO CMS Technical Fixer`.
+  - Updated the shared Paperclip skill so out-of-role blockers are treated as
+    manager routing work, not owner/HIA decisions and not dead ends.
+- Generalized the role-mismatch fix from a local specialist patch to a
+  system-level Astrogen live contract rule.
+  - Added `Universal Role Boundary Handoff Rule` to all 32 active Astrogen
+    `instructionsFilePath` contracts from live Paperclip PostgreSQL.
+  - The rule requires every agent to route out-of-role assigned work to its
+    direct manager or a manager-owned follow-up, include enough context for
+    continuation, and only then stop or mark its own part blocked.
+  - Verified live result: `total=32`, `missing=0`, `no_rule=0`.
+  - Fixed a stale live DB instruction path for `MKT Audience Simulation Analyst`
+    from `/home/paperclip/astrogen/agents/audience-simulation-analyst/AGENTS.md`
+    to `/astrogen/agents/audience-simulation-analyst/AGENTS.md` before applying
+    the universal rule.
+  - Added reusable agency-core reference:
+    `.planning/agency-core/processes/ROLE_BOUNDARY_HANDOFF.md`.
+- Hardened Telegram done notifications for GSC 404 / wrong-public-URL fixes.
+  - Added a dedicated Telegram formatter for Astrogen blog URL availability
+    fixes so completed tasks such as [AST-1472](/AST/issues/AST-1472) no longer
+    fall back to a truncated generic `Що зроблено: Update...` summary.
+  - The message now explains what Google saw, what was fixed, what it means, and
+    gives the owner exact Google Search Console paths:
+    `Перевірка URL-адреси -> Перевірити опубліковану URL -> Запросити індексацію`
+    and `Індексування -> Сторінки -> Не знайдено (404) / Soft 404 -> Перевірити виправлення`.
+  - Added regression coverage in
+    `local-paperclip/packages/plugins/plugin-telegram/tests/formatters.test.ts`.
+  - Verified `paperclip-plugin-telegram` tests (`244 passed`) and build, synced
+    the plugin package to live production, restarted only `paperclip-app-1`, and
+    confirmed `/api/health` plus plugin loader `14/14` success.
+- Hardened live Stage 65 Codex image freshness handling after the
+  `blogPosts/69` stale-cover reuse incident.
+  - Patched `/home/paperclip/astrogen/bin/execute-seo-blog-image-provider-request-codex-safe.mjs`
+    so Codex-mode runs snapshot historical image SHA-256 values before dispatch
+    and reject any final `hero-image.png` that matches a pre-run image from the
+    Stage 65 work tree, direct-agent-imagegen temp tree, base Codex
+    `generated_images`, or the output directory.
+  - Added `provider-dispatch.json.execution.historicalImageHashGuard =
+    reject_exact_pre_run_sha256_match` for successful Codex-mode runs.
+  - Added and ran live regression test
+    `/home/paperclip/astrogen/bin/test-seo-blog-image-provider-codex-freshness.mjs`;
+    it verifies stale SHA rejection and fresh SHA acceptance without calling a
+    real provider.
+  - Re-ran the existing live provider regression
+    `/home/paperclip/astrogen/bin/test-seo-blog-image-provider-execution.mjs`.
+  - Updated live `SEO Blog Image Runtime Executor` override with the
+    `Codex Freshness Guard Rule`, then requeued [AST-1608](/AST/issues/AST-1608)
+    to rerun the `blogPosts/69` cover generation through the guarded helper.
+## 2026-06-24
+
+- Investigated the weekly Astrogen SEO operating cycle after the owner asked
+  for full SEO proposals, including internal linking and external link
+  acquisition.
+  - Confirmed the latest weekly issue `AST-1862` / live id
+    `8d2f9acd-7f10-479e-9359-28b36318ebd6` created technical/metadata actions
+    but did not create a separate internal-linking/off-page proposal package.
+  - Added GSD plan
+    `.planning/company/astrogen/phases/36-seo-linking-and-offpage-proposals/PLAN.md`.
+  - Hardened local contracts so weekly SEO completion requires explicit
+    internal-linking/relatedPosts and off-page sections, or evidence-backed
+    no-candidate decisions with next review dates.
+  - Created live `AST-1871` for `SEO Performance Analyst` to prepare today's
+    internal-linking and external link acquisition proposal package.
+  - `AST-1871` produced proposals for targeted body/hub links to
+    `/relationships` and `/money`, and off-page approval candidates for the same
+    routes; it created `AST-1872` and `AST-1873` for CMO review/routing.
+  - Created `AST-1874` for live runtime contract sync, because SSH/live file
+    access required a Tailscale auth check from this environment.
+  - Created heartbeat automation `astrogen-seo-linking-proposals-today` to
+    monitor `AST-1871`, `AST-1872`, `AST-1873`, and `AST-1874` every 30 minutes
+    until the owner-facing proposals and routing are complete.
+- Added the current Astrogen website-access limitation to local SEO/linking
+  contracts and live task comments.
+  - Agents and the owner currently do not have a confirmed edit/deploy path for
+    product, service, expert, landing, or other non-blog pages.
+  - Blog-origin links and Payload CMS `relatedPosts` remain normal CMS/Payload
+    lanes.
+  - Any internal-linking change that requires adding or editing links from a
+  page outside `/blog/` must become a technical task for a human/runtime
+  operator with the required website access.
+  - Posted the rule on live `AST-1872`, `AST-1875`, `AST-1876`, `AST-1874`, and
+    `AST-1877`; updated the monitoring automation to check that rule.
+
+## 2026-06-25
+
+- Hardened Telegram owner-notification noise policy after internal Astrogen
+  SEO/CrawlObserver closeouts were sent as owner-facing `Готово` messages.
+  - Generic `issue.done` lifecycle notifications now suppress internal
+    delta-checks, CrawlObserver/Internal PageRank audit closeouts, manager
+    routing closeouts, and "Paperclip needs a disposition..." handoff comments
+    unless an explicit owner-facing Telegram `notification-contract` exists.
+  - Removed the 1200-character truncation from generic completion summaries.
+  - Added Telegram API message chunking so oversized owner-worthy messages are
+    split across Telegram messages instead of being shortened.
+  - Updated the production plugin manifest and Astrogen user guide to state
+    that Telegram is for decisions, blockers, deliveries, and human-readable
+    owner summaries, not a stream of every internal task completion.
+  - Verified `paperclip-plugin-telegram` tests: 18 files, 253 tests passed.
+- Added the CrawlObserver quality trust gate to source and planning contracts
+  after the repaired CrawlObserver/Internal PageRank incident.
+  - Added `get-session-quality` to
+    `@paperclipai/plugin-crawlobserver-agent-tools`, mapped to
+    `GET /api/sessions/{session_id}/quality`, and added the endpoint to the
+    read allowlist.
+  - Updated plugin README, agency-core SEO Performance Loop, Astrogen user
+    guide, and production plugin manifest: agents may use CrawlObserver data for
+    SEO recommendations only when the session quality is trusted and blocking
+    findings are absent.
+  - Explicitly classified Daily Delta, partial sessions, canary failures,
+    coverage drops, graph drops, and PageRank instability as data-quality
+    incidents, not SEO optimization tasks.
+  - Verified `@paperclipai/plugin-crawlobserver-agent-tools` tests and
+    typecheck.
+- Added article cadence and internal-linking coupling governance after the
+  owner reported that new article publication had stalled again.
+  - Updated the CMO contract so CMO owns the daily article cadence target
+    (`3` new SEO blog CMS drafts per Europe/Kyiv day by default) and must send
+    a detailed Ukrainian Telegram explanation when the schedule is missed or
+    likely to be missed.
+  - Added a rule that internal-linking priorities must feed backlog expansion
+    and content-plan slots, not only retroactive CMS link edits.
+  - Updated the agency-core SEO Performance Loop with explicit dispositions for
+    internal-linking findings: existing content update, new support article,
+    non-blog human task, watch/cooldown, or data-quality blocker.
+  - Created owner-readable rolling plan:
+    `.planning/company/astrogen/CONTENT_PLAN_AND_INTERNAL_LINKING_UA.md`.
+
+## 2026-06-29
+
+- Hardened Astrogen Stage 65 cover-image subject/gaze policy after the owner
+  clarified that abstract topics should not use human photos.
+  - Added an explicit `subjectPolicy` gate: `human_scene` only for concrete
+    lived human situations; `abstract_graphic` for abstract concepts,
+    definitions, zodiac-sign profiles, generic horoscope topics, frameworks,
+    comparisons, lists, metrics, and non-personal explanations.
+  - For `abstract_graphic`, people/faces/hands/bodies/silhouettes/model-like
+    figures are now forbidden; prompts should use refined graphic/editorial
+    illustration, symbolic still life, or diagram-like composition.
+  - For `human_scene`, three-image candidate sets must count gaze at the bundle
+    level: at least one variant should have a natural viewer-facing primary
+    person; direct gaze is allowed only as a living editorial moment, not a
+    stock headshot or false smile.
+  - Live-synced the rule to Stage 65 process docs, image design system, CMO,
+    layout editor/validator, Image Runtime Executor override, managed Stage 65
+    specialist instructions, and the Stage 65 prompt/QA helpers.
+  - Verified live helper tests:
+    `node bin/test-seo-blog-image-prompt.mjs`,
+    `node bin/test-seo-blog-image-prompt-category-contract.mjs`, and syntax
+    checks for `prepare-seo-blog-image-prompt` /
+    `validate-seo-blog-image-bundle`.
+
+## 2026-06-30
+
+- Started Phase 37 for Astrogen article cadence stability and runtime recovery.
+- Fixed the board login/runtime issue in production:
+  - production now runs
+    `paperclip-app:v2026.626.0-vicarta.12-auth-plugin-tools-20260630T2012Z`;
+  - app-only restart, Postgres was not restarted;
+  - `/api/health` is OK;
+  - external login for `o.s@digital-r-evolution.com` returns HTTP 200;
+  - auth public URL remains on the public reverse-proxy URL instead of being
+    rewritten to the internal listener port;
+  - legacy agent plugin-tools routes are restored for active agents.
+- Closed stale runtime blocker `AST-2300` with production deploy proof because
+  it was still formally blocking CMS delivery after the route fix.
+- Rewoke article delivery lanes:
+  - `AST-2384` completed Stage 65 cover generation through OpenRouter
+    `google/gemini-3.1-flash-image`;
+  - `AST-2348` automatically resumed in CMO review after `AST-2384`;
+  - `AST-2390` is checked out and running in `SEO CMS Technical Fixer` after
+    stale `AST-2300` was resolved.
+
+## 2026-07-03
+
+- Recovered Astrogen clean semantic-core inventory/review data after migration
+  left legacy `seo_ops` state behind in the old Postgres volume.
+  - Source: old `paperclip_paperclip_pgdata` volume mounted read-only through a
+    temporary recovery Postgres container; temporary container was removed after
+    migration.
+  - Backup before import:
+    `/home/paperclip/backups/astrogen-clean-semantic-core/astrogen-clean-before-semantic-core-20260703T153616Z.dump`.
+  - Migration payload retained at:
+    `/home/paperclip/backups/astrogen-clean-semantic-core/legacy-semantic-core-payload-20260703T1537Z.jsonl`.
+  - Imported into clean `plugin_entities`: one
+    `semantic-core-import-candidate` snapshot and 887
+    `semantic-core-portal-keyword-action` lifecycle rows.
+  - Private portal smoke after restart:
+    review queue `2968` pending items, inventory `860` items
+    (`603` accepted, `52` deferred, `205` rejected), review groups `2968`.
+  - Applied clean app hotfix so semantic-core portal reads company-scoped
+    plugin entities from either `plugin_entities.company_id` or legacy-safe
+    `data.companyId`, with private route limits raised from `1000` to `10000`.
+
+## 2026-07-07
+
+- Started Phase 43: Paperclip core artifact registration service.
+  - Reason: AST-92 produced a QA-passed cover image in the execution workspace,
+    but the image lane blocked because raw Paperclip artifact work products now
+    correctly require `metadata.attachmentId`.
+  - Direction: keep the strict attachment-backed artifact contract, add a typed
+    core/harness registration route that turns a workspace-relative file into an
+    issue attachment and canonical work product atomically/idempotently.
+- Completed Phase 43 and deployed to Astrogen clean only.
+  - Added typed route:
+    `POST /api/issues/:id/work-products/register-workspace-artifact`.
+  - Route verifies company/issue/run authorization, workspace containment,
+    regular non-empty file constraints, max attachment size, and idempotency for
+    the same issue/workspace/path before creating the attachment-backed
+    `provider=paperclip`, `type=artifact` work product.
+  - Updated Paperclip artifact guidance, Astrogen bootstrap image-agent
+    contract, AGENTS guidance, and focused unit tests so image/runtime agents do
+    not guess raw work-product schemas for generated workspace deliverables.
+  - Fixed recovery dependency handling so manager parent tasks waiting on open
+    child work remain a normal `in_progress` dependency wait instead of becoming
+    false `blocked` tasks.
+  - Production image:
+    `paperclip-app:v2026.626.0-vicarta.42-child-wait-not-blocker-20260707T0832Z`.
+  - AST-92 was repaired without creating a new issue: the existing generated
+    cover image was registered as accepted/primary artifact work product
+    `87bdf1d5-16df-47f4-b662-4182b9971c82` with attachment
+    `a5775349-ea2b-4972-b327-6a0654e695da`.
+  - Article workflow continued from existing state: AST-86 and AST-94 are done,
+    CMS draft ID 119 passed authenticated refetch, and CMO sent the Telegram
+    article-link notification.
+  - Verification:
+    `pnpm --filter @paperclipai/server exec vitest run src/__tests__/workspace-artifact-registration.test.ts src/__tests__/issue-attachment-routes.test.ts`
+    passed 22/22, and `pnpm --filter @paperclipai/server build` passed.
+- Enabled bounded article-only missed-slot catch-up for the clean Astrogen
+  article allocator after the owner reported that new articles were not visible
+  often enough.
+  - Backup before live routine mutation:
+    `/home/paperclip/backups/astrogen-clean-routine-catchup/astrogen-clean-before-article-catchup-20260707T101649Z.dump`.
+  - Live routine changed:
+    `Astrogen article slot allocator`
+    (`830fe352-933b-44c6-ae4b-401d48190933`) now has
+    `catch_up_policy=enqueue_missed_with_cap`.
+  - Added explicit bounded flags in routine `variables`/`env`:
+    `missedSlotCatchUp=enabled`,
+    `missedSlotCatchUpPolicy=bounded_enqueue_missed_with_cap`,
+    `maxCatchUpSlotsPerRun=3`.
+  - Scope is article allocator only; all other active routines remain on
+    `skip_missed`.
+  - Updated bootstrap script, CMO contract, STATE, and user guide so future
+    re-bootstrap/audit does not revert the policy.
+  - Observed root cause: the 2026-07-07 10:00 Europe/Kyiv allocator run
+    (`AST-84`) did fire and completed one article pipeline (`AST-86` -> CMS
+    draft ID 119), but the allocator explicitly recorded
+    `Missed-slot catch-up: not used`; the routine had still been configured as
+    `skip_missed`.
+  - Correction during activation: an initial catch-up run (`AST-95`) failed
+    setup because `maxCatchUpSlotsPerRun` was placed in routine `env`, which is
+    interpreted as adapter environment binding. Removed catch-up flags from
+    `env`; bounded catch-up flags now live only in routine `variables`.
+  - `AST-95` was repaired instead of duplicated. It created `AST-96` bounded
+    expansion, then `AST-97` article parent for Human Design online. `AST-99`
+    produced the canonical draft, `AST-100` validation found a correctable
+    metadata/outline blocker, and `AST-101` is now the bounded Claude correction
+    pass against the same canonical artifact.
+  - Added contract notes: child expansion/validation results that a manager must
+    act on need parent-visible handoff, and correctable validation blockers
+    should route one bounded writer correction instead of parking the article
+    parent.
+- 2026-07-07 15:30 EEST: fixed the missing first editorial summary block
+  contract for Astrogen article delivery.
+  - Root cause: articles 118, 119, and 120 reached CMS draft state with
+    editorial inserts, CTA, related posts, and images, but the workflow did not
+    enforce the first reader-summary block titled exactly `Коротко`.
+  - Updated the article layout process, Layout Editor contract, Layout Validator
+    contract, CMO contract, and production manifest so normal new articles are
+    not considered complete unless an early `Коротко` editorialCallout exists
+    after the intro, or an explicit `noSummaryCalloutRationale` is recorded.
+  - Synced the same invariant into live Astrogen clean agent instructions inside
+    `paperclip-astrogen-clean-app-1` for Chief Marketing Officer, SEO Blog
+    Article Layout Editor, and SEO Blog Article Layout Validator.
+  - Created CMO-owned repair issue `AST-108` for CMS drafts 118-120. CMO
+    accepted ownership and created `AST-109` for Layout Editor to backfill the
+    required `Коротко` blocks before CMS update/refetch and final notification.
+  - Added a code-level Payload CMS articleContent guard in
+    `plugin-payload-cms-agent-tools`: `articleContent.v1` now rejects normal
+    blog content unless an early `editorialCallout` titled exactly `Коротко`
+    appears within the first five blocks.
+  - Focused local verification passed:
+    `pnpm --filter @paperclipai/plugin-payload-cms-agent-tools test` and
+    `pnpm --filter @paperclipai/plugin-payload-cms-agent-tools build`.
+  - Full remote monorepo Docker rebuild was not used because the remote source
+    currently has an unrelated UI/Codex adapter export mismatch
+    (`isCodexLocalManualModel`). Instead, deployed a narrow overlay image from
+    the known-good clean image, replacing only the built Payload article-content
+    artifact and source reference.
+  - Live image:
+    `paperclip-app:v2026.626.0-vicarta.43-korotko-summary-guard-20260707T1235Z`.
+  - Backup before live image switch:
+    `/home/paperclip/backups/korotko-summary-guard/astrogen-clean-before-korotko-summary-guard-20260707T1235Z.dump`.
+  - Live verification: clean app health passed on loopback and with the
+    MagicDNS Host header; container uses the v43 image; live Node smoke rejected
+    articleContent without `Коротко` and accepted valid early `Коротко`.
+- 2026-07-07 15:55 EEST: fixed Astrogen owner-facing draft notification link
+  and tone rules after Telegram reported draft public URLs and gendered wording.
+  - Updated source contracts for CMO, SEO CMS Technical Fixer, Stage 68 article
+    layout, Astrogen user guide, and the production manifest: owner-facing
+    Telegram/email text must be gender-neutral/status-first, and unpublished
+    blog draft notifications must use CMS admin edit URLs only.
+  - Synced live clean Astrogen AGENTS.md for Chief Marketing Officer and SEO CMS
+    Technical Fixer. Live rules now forbid first-person gendered verbs such as
+    `оновила`/`оновив` and public `https://astrogen.com.ua/blog/...` links for
+    drafts.
+  - Updated `paperclip.payload-cms-agent-tools` so blog post DTOs include
+    `adminUrl`, derived from the Payload CMS base URL and numeric `blogPosts` id.
+  - Focused local verification passed:
+    `pnpm --filter @paperclipai/plugin-payload-cms-agent-tools test` (27/27)
+    and `pnpm --filter @paperclipai/plugin-payload-cms-agent-tools build`.
+  - Live image:
+    `paperclip-app:v2026.626.0-vicarta.44-cms-admin-draft-links-20260707T1300Z`.
+  - Backup before live image switch:
+    `/home/paperclip/backups/cms-admin-draft-links/astrogen-clean-before-cms-admin-draft-links-20260707T1300Z.dump`.
+  - Live verification: clean app health passed on loopback and with the
+    MagicDNS Host header; Payload CMS plugin loaded successfully; live tool smoke
+    for CMS blog post 118 returned
+    `adminUrl=https://cms.astrogen.com.ua/admin/collections/blogPosts/118`.
+- 2026-07-08 18:37 EEST: reduced clean Astrogen blog cover image generation
+  cost policy after OpenRouter usage showed expensive Nano Banana 2 spend.
+  - Root cause: clean bootstrap and live plugin config defaulted
+    `paperclip.openrouter-image-agent-tools` to
+    `google/gemini-3.1-flash-image`; earlier layout/image contracts also
+    described three-candidate human-scene sets, which encouraged multiple paid
+    calls for a single cover.
+  - Live clean plugin config and company settings now use
+    `defaultModel=google/gemini-2.5-flash-image`,
+    `allowModelOverride=false`, `maxImagesPerRequest=1`,
+    `defaultImageSize=1472x822`, `defaultAspectRatio=16:9`, and
+    `estimatedImageCostUsd=0.04`.
+  - Live `SEO Blog Image Runtime Executor` AGENTS.md now requires one provider
+    call for one normal article cover and forbids Nano Banana 2/Pro or 2K/4K
+    overrides unless an explicit owner/CMO recovery reason is recorded.
+  - Source-controlled clean bootstrap, routines/workflows manifests, CMO,
+    layout editor, layout validator, and Stage 68 process docs were updated so
+    gaze planning is a single-image art-direction choice, not a three-image
+    generation requirement.
+  - `plugin-openrouter-image-agent-tools` default model changed to
+    `google/gemini-2.5-flash-image`; config now supports
+    `allowModelOverride`, `maxImagesPerRequest`, `defaultImageSize`, and
+    `defaultAspectRatio`, and caps `n`/`candidateCount`.
+  - Focused local verification passed:
+    `pnpm --filter @paperclipai/plugin-openrouter-image-agent-tools test -- --run tests/openrouter-image-client.spec.ts tests/plugin.spec.ts`
+    (12/12), and
+    `pnpm --filter @paperclipai/plugin-openrouter-image-agent-tools build`.
+  - Deployed clean overlay image with only the OpenRouter image plugin
+    dist/source replaced:
+    `paperclip-app:v2026.626.0-vicarta.48-image-cost-policy-20260708T1540Z`.
+  - Backup before live image switch:
+    `/home/paperclip/backups/image-cost-policy-20260708T1538Z/astrogen-clean-before-image-cost-policy.sql`.
+- Live verification: clean app health passed, compose app uses the v48 image,
+    plugin config reports `defaultModel=google/gemini-2.5-flash-image`,
+    `allowModelOverride=false`, `maxImagesPerRequest=1`, `defaultImageSize=1472x822`,
+    and plugin loader reported `failed=0`.
+
+## 2026-07-08
+
+- Executed Phase 44 Topic Inventory Refill Workflow for clean Astrogen.
+  - Backup before live changes:
+    `/home/paperclip/backups/phase44-topic-refill-20260708T154830Z/astrogen-clean-before-phase44.sql`.
+  - Restored agent-scoped secret bindings for Payload CMS, GSC/GA4 MCP, and
+    CrawlObserver to CMO, CTO, SEO Performance Analyst, SEO Blog Content
+    Strategist, SEO Blog Content Plan Validator, SEO GSC Indexing Auditor, SEO
+    Semantic Core Strategist, and SEO Semantic Core Validator.
+  - Deployed clean overlay image
+    `paperclip-app:v2026.626.0-vicarta.49-portal-semantic-core-20260708T1555Z`
+    from the v48 base to restore private portal semantic-core API routes without
+    rebuilding the whole monorepo.
+  - Verified health, plugin loader `succeeded=7 failed=0`, and private
+    semantic-core endpoints:
+    `/api/portal/companies/astrogen/semantic-core`,
+    `/api/portal/companies/astrogen/semantic-core/review`, and
+    `/api/portal/companies/astrogen/semantic-core/review-groups`.
+  - Updated live routine revisions:
+    `Astrogen article slot allocator` -> revision 5 and
+    `Weekly Astrogen SEO/GEO action cycle` -> revision 6.
+  - Updated source and live contracts so `no-safe-topic` is a
+    `topic_inventory_refill` trigger, not a successful final state. Article
+    allocator now consumes only `ready_for_brief_creation` topics, waits on a
+    refill/blocker chain when inventory is empty, and routes missing evidence
+    tools to CTO instead of asking the owner for incomplete topic choices.
+  - `paperclip.semantic-core-mcp-agent-tools` remains intentionally parked:
+    clean Astrogen has no Astrogen-scoped `semanticCoreMcpTokenSecretRef`.
+    Topic refill should use restored semantic-core inventory/review data unless
+    that token is later added and smoke-tested.
+
+- Restored weekly SEO/GEO detailed email delivery for clean Astrogen.
+  - Root cause: [AST-115](/AST/issues/AST-115) completed with an internal SEO
+    report/comment, but the live weekly SEO/GEO routine contract did not require
+    `seo-detailed-report-email-send` delivery proof before `done`.
+  - Backup before live routine/binding changes:
+    `/home/paperclip/backups/seo-weekly-email-gate-20260708T/astrogen-clean-before-seo-weekly-email-gate.sql`.
+  - Updated source manifests/bootstrap and live routine
+    `Weekly Astrogen SEO/GEO action cycle` -> revision 7. Completion now requires
+    detailed weekly SEO email delivery proof or a linked CTO-owned email
+    transport blocker.
+  - Added Resend secret bindings for `paperclip.seo-performance-loop` and
+    `SEO Performance Analyst`; the previous binding covered
+    `paperclip.email-notifications` only.
+  - Sent the missed [AST-115](/AST/issues/AST-115) report through
+    `paperclip.seo-performance-loop:seo-detailed-report-email-send` to
+    `o.savitsky@gmail.com`. Resend provider message id:
+    `08b80dab-4d06-43e5-a1b8-2c01838d2c7f`.
+
+## 2026-07-09
+
+- Reapplied Phase 14 SEO Blog Content Waves to clean Astrogen runtime.
+  - Backup before live DB changes:
+    `/home/paperclip/backups/astrogen-clean-phase14-serp-value-gap/paperclip-20260709-081857.dump`.
+  - Enabled `paperclip.serper-agent-tools` for Astrogen with active
+    company-scoped `serper-api-key`, Serper base URL
+    `https://google.serper.dev`, and `estimated_per_request` cost accounting.
+  - Updated `Astrogen article slot allocator` variables:
+    `phase14ContentWaves=enabled`, `serpValueGapGate=enabled`,
+    `serpValueGapProvider=paperclip.serper-agent-tools`,
+    `serpValueGapGeo=ua`, `serpValueGapLanguage=uk`,
+    `serpValueGapTopResults=10`, and `briefRequiresInformationGain=true`.
+  - Updated clean live AGENTS.md contracts for CMO, SEO Blog Content Strategist,
+    SEO Blog Content Plan Validator, MKT Competitive Intelligence Analyst, MKT
+    Blog Brief Strategist, SEO Blog Article Writer, and SEO Blog Article
+    Validator so article production cannot skip the SERP value-gap evidence and
+    information-gain handoff.
+  - Updated clean bootstrap source so future clean rebuilds preserve the Serper
+    plugin config and Phase 14 workflow invariants.
+  - Verification: clean health passed, plugin loader registered
+    `paperclip.serper-agent-tools:google-search` with `succeeded=8 failed=0`,
+    live DB verification passed, and
+    `pnpm --filter @paperclipai/plugin-serper-agent-tools test` passed 4/4.
+  - No article task was manually created or pushed during this change.

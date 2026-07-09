@@ -1,0 +1,259 @@
+routines:
+  - title: Daily Astrogen deterministic evidence collection
+    owner: SEO Performance Analyst
+    status: paused
+    triggerEnabled: false
+    cron: "10 6 * * *"
+    timezone: Europe/Kiev
+    concurrencyPolicy: coalesce_if_active
+    catchUpPolicy: skip_missed
+    workflow: seo_performance_loop
+    activationGate: plugin smoke plus registry write test
+    processContract:
+      canonicalTarget:
+        - primary domain is https://astrogen.com.ua
+        - GSC property is sc-domain:astrogen.com.ua
+        - Payload CMS base is https://cms.astrogen.com.ua/api
+        - app-store/developer-site evidence is secondary only and must not replace the canonical target
+      toolingPath:
+        - use /api/agents/me/plugin-tools and /api/agents/me/plugin-tools/execute with the run token when no native wrapper is available
+        - do not use board-only plugin/admin routes from an agent heartbeat
+        - route a CTO configuration issue when configured plugin tools are not callable
+      bounds:
+        - inspect at most 25 URLs unless a linked issue explicitly authorizes more
+        - compact deterministic evidence before any LLM reasoning
+        - request at most 10 rows per source by default
+        - never print raw plugin JSON or API payloads
+      allowedSideEffects:
+        - create or update compact evidence/action issues
+        - record explicit no-action evidence
+      forbidden:
+        - publish CMS content
+        - send Telegram messages
+        - run paid crawl/search/image providers
+        - create article-production tasks
+      completionGate: action queue, watch/cooldown decision, or explicit no-action packet with source timestamps
+
+  - title: Daily Astrogen due-URL GSC indexing audit
+    owner: SEO GSC Indexing Auditor
+    status: paused
+    triggerEnabled: false
+    cron: "20 6 * * *"
+    timezone: Europe/Kiev
+    concurrencyPolicy: coalesce_if_active
+    catchUpPolicy: skip_missed
+    workflow: technical_seo_finding
+    activationGate: URL Inspection smoke with quota/cooldown ledger
+    processContract:
+      canonicalTarget:
+        - inspect only URLs under https://astrogen.com.ua unless explicitly authorized
+        - GSC property is sc-domain:astrogen.com.ua
+      toolingPath:
+        - use /api/agents/me/plugin-tools and /api/agents/me/plugin-tools/execute with the run token when no native wrapper is available
+        - do not use board-only plugin/admin routes from an agent heartbeat
+      bounds:
+        - inspect at most 10 due URLs per run
+        - use sitemap discovery only when registry is empty, capped at 20 URLs for registration
+        - never print raw inspection/plugin JSON
+      allowedSideEffects:
+        - create or update URL-level technical SEO finding issues
+        - record inspected, skipped, no-data, and cooldown decisions
+      forbidden:
+        - request indexing in bulk
+        - mutate CMS content
+        - send Telegram messages
+        - spend paid provider budget
+      completionGate: every selected URL has finding routed, cooldown/watch recorded, skipped reason, or explicit no due URLs
+
+  - title: Astrogen article slot allocator
+    owner: Chief Marketing Officer
+    status: active
+    triggerEnabled: true
+    cron: "0 10 * * *"
+    timezone: Europe/Kiev
+    concurrencyPolicy: skip_if_active
+    catchUpPolicy: enqueue_missed_with_cap
+    workflow: article_cadence
+    activationGate: controlled clean activation, target 1 CMS draft per day
+    processContract:
+      activationMode:
+        - target 1 new CMS draft per Europe/Kiev day
+        - schedule daily at 10:00 Europe/Kiev
+        - bounded article-only catch-up may deliver up to maxCatchUpSlotsPerRun when explicitly configured
+      bounds:
+        - at most one new article slot per routine execution
+        - never use broad catch-up outside the article cadence contract
+        - skip if any open article-production issue is active
+        - no-safe-topic is a topic_inventory_refill trigger, not a successful terminal state
+      topicInventoryRefill:
+        - allocator consumes only topics with status ready_for_brief_creation
+        - if fewer than 3 ready topics exist, create or reuse one topic_inventory_refill child owned by SEO Blog Content Strategist
+        - the refill child must be validated by SEO Blog Content Plan Validator before allocator consumption
+        - refill uses Payload CMS, GSC/GA4, semantic-core inventory/review, CrawlObserver, active issue duplicate checks, and consumed topic history
+        - if refill returns any ready_for_brief_creation topic, reserve exactly one top safe topic and continue one normal article pipeline lane
+        - if refill returns zero ready topics, check whether a bounded serp_value_gap_content_refresh candidate exists before treating the cadence as no-slot
+        - content refresh candidates must point to an existing article and include SERP/value-gap evidence; do not create generic editorial insert, FAQ, CTA, relatedPosts, or metadata-only improvement tasks from article cadence
+        - if tools are unavailable, link a CTO-owned technical blocker and keep allocator blocked instead of asking the owner for topics
+      canonicalParentIdempotency:
+        - derive normalized articleParentKey from the exact article title before creating a top-level article parent
+        - search open top-level article parents for the same articleParentKey and reuse the existing canonical parent when found
+        - recovery never creates a second top-level parent for the same article title; retry only the failed stage as a bounded child
+        - duplicate parent creation errors from the clean DB mean reuse the canonical issue named in the error
+      writerRecovery:
+        - primary writer is SEO Blog Article Writer (Claude)
+        - ChatGPT fallback only after recorded Claude/OpenRouter blocker, missing canonical artifact, repeated same-class failure, or explicit CMO recovery
+        - writer slot is incomplete without canonical draft artifact or explicit no-draft blocker
+      imageGate:
+        - normal new articles require accepted cover image unless owner explicitly waives image generation
+        - use human_scene for human experience, decisions, relationships, family, children, career, money, emotions, consultation, or personal context
+        - normal cover generation uses one provider call for one image; human-scene prompts may use natural camera/viewer gaze when useful, but do not create three-candidate sets by default
+        - use abstract_graphic for abstract concepts, definitions, zodiac-sign profiles, generic horoscope topics, frameworks, lists, comparisons, metrics, or non-personal explanations
+        - abstract_graphic covers must not contain people, faces, hands, bodies, silhouettes, or model-like figures
+      parentCompletionGate:
+        - canonical article parent remains open until accepted cover image or explicit waiver, authenticated CMS draft/admin URL, verified CTA/editorial/relatedPosts gates, and CMO Telegram article-link proof exist
+        - ready_for_image_handoff, layout-ready, CMS-ready, or all-current-children-done is progress evidence, not parent completion
+        - if no active child exists and delivery proof is missing, resume the same parent and route the next missing stage instead of creating a duplicate article parent
+      allowedSideEffects:
+        - create one bounded article pipeline parent/child set when gates pass
+        - create one bounded topic_inventory_refill child when no safe approved ready topic exists yet
+        - when the current cadence scope allows refresh recovery and no safe new topic exists, route one bounded serp_value_gap_content_refresh issue instead of forcing a duplicate article
+        - if refill returns a ready_for_brief_creation topic, create the brief/writer pipeline slot for the top safe topic before closing the cadence path
+        - record no-slot/no-action evidence only after refill completes with zero ready topics or a concrete blocker is linked
+      forbidden:
+        - generate images in the allocator
+        - publish CMS content
+        - send owner-facing Telegram from the allocator
+        - create broad semantic-core or competitor-research batches
+      completionGate: one article slot created, refill completed with no ready topic and durable evidence, or concrete refill/runtime blocker linked
+    variables:
+      - key: missedSlotCatchUp
+        value: enabled
+      - key: missedSlotCatchUpPolicy
+        value: bounded_enqueue_missed_with_cap
+      - key: maxCatchUpSlotsPerRun
+        value: "3"
+      - key: topicInventoryRefill
+        value: enabled
+      - key: minReadyTopicsBeforeRefill
+        value: "3"
+      - key: maxRefillCandidatesPerRun
+        value: "10"
+
+  - title: Weekly Astrogen SEO/GEO action cycle
+    owner: SEO Performance Analyst
+    status: paused
+    triggerEnabled: false
+    cron: "0 9 * * 3"
+    timezone: Europe/Kiev
+    concurrencyPolicy: coalesce_if_active
+    catchUpPolicy: skip_missed
+    workflow: seo_performance_loop
+    activationGate: joined GSC/GA4/CrawlObserver/Payload evidence smoke
+    processContract:
+      canonicalTarget:
+        - primary domain is https://astrogen.com.ua
+        - GSC property is sc-domain:astrogen.com.ua
+        - app-store/developer-site mismatches are findings, not a replacement target
+      toolingPath:
+        - use /api/agents/me/plugin-tools and /api/agents/me/plugin-tools/execute with the run token when no native wrapper is available
+        - do not use board-only plugin/admin routes from an agent heartbeat
+      bounds:
+        - use compact evidence only
+        - create only high-confidence child issues
+        - prefer watch/cooldown/no-action decisions over speculative work
+        - use top 5-10 deltas and never print raw plugin JSON
+      allowedSideEffects:
+        - route child issues for technical fixes, content refreshes, monitoring, owner SEO decisions through Hermes/CMO, or strategy review
+        - produce concise internal weekly report evidence
+        - send the detailed weekly SEO report by email when the SEO Performance Loop delivery plan says email is configured
+      contentRefreshContract:
+        - content_refresh means improving an existing article's body/content after relevant keyphrase and SERP value-gap analysis
+        - required evidence is a compact SERP value-gap artifact with queries checked, top competitors, competitor coverage patterns, missing user questions, Astrogen information-gain angle, and exact article sections that need substantive improvement
+        - do not route content_refresh as generic insertion of Коротко, FAQ, CTA, comparison block, internal links, relatedPosts, or metadata-only edits
+        - FAQ, comparison, CTA, relatedPosts, or structured blocks are allowed only when the SERP/user-value gap explicitly justifies them
+        - editorial/layout defects stay in the editorial_backfill/layout repair lane; metadata, internal-link-only, and relatedPosts-only fixes stay in deterministic CMS/SEO fixer lanes
+      emailDeliveryContract:
+        - call paperclip.seo-performance-loop:seo-weekly-report-plan-get before finalizing the report
+        - when detailedReportChannel=email and deliveryReady=true, call paperclip.seo-performance-loop:seo-detailed-report-email-send with the Ukrainian detailed report, configured recipients, and an issue-scoped idempotency key
+        - record email delivery proof in the issue thread without exposing raw secrets or provider payloads
+        - if configured email delivery fails, create or link a CTO-owned email transport blocker and do not silently fall back to comment-only completion
+        - if email is not ready, keep the detailed report as Paperclip evidence and create or link a CTO blocker naming the missing sender, recipients, or Resend secret-ref
+      forbidden:
+        - publish CMS content
+        - send Telegram by default
+        - run paid providers without a linked budget approval
+        - create article slots directly
+        - close done with only an internal comment when email delivery is configured
+      completionGate: action issues, Hermes/CMO owner-brief decisions, watch/cooldown decisions, or explicit no-action evidence recorded, plus detailed weekly SEO email delivery proof or a linked CTO-owned email transport blocker
+
+  - title: Weekly Paperclip clean release check
+    owner: Chief Technical Officer
+    status: paused
+    triggerEnabled: false
+    cron: "0 6 * * 2"
+    timezone: Europe/Kiev
+    concurrencyPolicy: coalesce_if_active
+    catchUpPolicy: skip_missed
+    workflow: paperclip_release_check
+    activationGate: clean runtime provenance check
+    processContract:
+      bounds:
+        - read-only health, provenance, and upstream-release comparison only
+      allowedSideEffects:
+        - create CTO follow-up only for missing provenance, failing health, or release review
+        - record explicit no-action evidence
+      forbidden:
+        - rebuild, restart, pull images, deploy, or edit production config
+        - change plugin state
+        - notify owner directly
+      completionGate: health/provenance/latest-release evidence recorded and required follow-up linked
+
+  - title: Weekly Astrogen Paperclip operating improvement review
+    owner: Chief Technical Officer
+    status: active
+    triggerEnabled: true
+    cron: "30 12 * * 3"
+    timezone: Europe/Kiev
+    concurrencyPolicy: coalesce_if_active
+    catchUpPolicy: skip_missed
+    workflow: paperclip_operating_self_improvement
+    activationGate: active; backup/email gate required before any mutation
+    processContract:
+      purpose:
+        - learn from the previous Wednesday-Tuesday operating week
+        - improve Astrogen Paperclip agents, contracts, workflows, routines, plugins, and recovery paths
+        - keep CEO/CMO focused on direction while CTO owns Paperclip operating-system quality
+      inputs:
+        - failed, cancelled, stranded, retried, blocked, and long-running heartbeat/routine runs
+        - recovery issues and manual operator repairs
+        - agent AGENTS.md/contracts, workflow manifests, routine descriptions, plugin settings, and cost/accounting signals
+        - owner feedback from issue comments, email, Telegram writeback, or manual notes
+      decisionPolicy:
+        - prefer process and contract fixes before adding more routines
+        - distinguish agent behavior problems from plugin/runtime/config problems
+        - optimize primarily for reliability, bounded context, clear artifacts, and recovery paths
+        - route business-priority choices to CEO/CMO instead of deciding them in CTO review
+      mutationGate:
+        - read-only analysis may run without backup
+        - any live instruction, workflow, routine, plugin, scheduler, manifest, or runtime config change requires a fresh successful DB backup first
+        - backup path must be recorded in the issue and owner email
+        - if backup fails, do not mutate and create a CTO blocker
+        - if email delivery is unavailable, do not apply optional changes and create a CTO blocker to repair reporting
+      allowedSideEffects:
+        - update agent/routine/process contracts when backup and verification pass
+        - tighten validation gates, output caps, recovery classifications, and routing rules
+        - create bounded child issues for code/plugin/runtime work
+        - send email-change-report-send through paperclip.email-notifications with concrete recipients, what changed, why, backup path, verification, follow-ups, and rollback note
+      forbidden:
+        - silently change production behavior without backup and email report
+        - publish CMS content
+        - enable Telegram proactive watches
+        - call paid providers
+        - edit Roger/Hermes config unless a separate owner-approved issue explicitly scopes it
+        - create broad refactors or open-ended research loops
+      completionGate: improvement report created, changes backed up/verified/emailed when applied, and follow-up issues routed
+
+policy:
+  noAlwaysEnqueue: true
+  noMissedCatchup: true
+  activation: manual after smoke only
