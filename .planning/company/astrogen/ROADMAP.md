@@ -55,13 +55,13 @@ Human-facing Astrogen communication remains Ukrainian and should not expose inte
 - [x] **Phase 40: Clean Astrogen Growth OS Bootstrap** - Built the clean Astrogen Paperclip operating foundation from explicit manifests: encrypted secret refs, allowlisted plugins, active agent roster, typed SEO/GEO/content workflow manifests, paused routines with disabled triggers, and parked transition issues. Activation is handled separately in Phase 41.
 - [ ] **Phase 41: Clean Activation Gates** - Old live Astrogen is cold-stopped, Telegram proactive watches are disabled, clean read-only integration smoke has passed, and the current clean SEO/release activation set is live: daily evidence, daily GSC indexing, weekly SEO/GEO, and weekly Paperclip release check. Article slot allocation remains parked until the article cadence/CMS gate is explicitly enabled.
 - [x] **Phase 42: Email Notifications Plugin** - Created and activated `paperclip.email-notifications` as the dedicated Resend-backed, allowlisted, idempotent email tool plugin for Astrogen system/change/incident reports, replacing the temporary use of SEO Performance Loop email transport for non-SEO notifications.
-- [ ] **Phase 44: Topic Inventory Refill Workflow** - Add a bounded SEO/CMO-owned topic inventory refill loop so `no-safe-topic` from article cadence creates or waits on validated new article opportunities instead of closing the allocator as done. The allocator consumes only `ready_for_brief_creation` topics; missing evidence tools become CTO-owned technical blockers, not owner decisions.
+- [x] **Phase 44: Topic Inventory Refill Workflow** - Added bounded SEO/CMO-owned refill so low inventory advances validated native search-demand opportunities instead of closing article cadence or inventing topics directly.
 - [x] **Phase 45: SERP Value-Gap Content Refresh** - Made existing-article `content_refresh` a SERP/value-gap SEO improvement lane, not a generic editorial-block, FAQ, CTA, relatedPosts, metadata, or internal-link checklist.
 - [ ] **Phase 46: Autonomous Growth Execution Kernel** - Native Paperclip article/topic/growth pipelines and the live end-to-end canary are complete. Remaining Wave 4 work is deterministic scheduler/liveness/WIP/blocker-age/outcome-SLO verification and weekly learning from pipeline events.
 - [x] **Phase 47: Winning Structure And Evidence-Backed Article Value** - Replaced the old article SERP gate with the five-operation Winning Structure MCP lifecycle, typed article-specific value generation, durable paused-run decisions, final main-content quality audit, and separate trend/GEO/scaled-content controls. Two CMS-draft canaries reached `delivered` without publication or duplicate image work.
-- [ ] **Phase 48: Native Search Demand Opportunity Pipeline** - Remove the standalone SEO Performance Loop, preserve its useful methods in native contracts, enforce search-demand ownership and action selection before topic inventory, and migrate structured weekly SEO email delivery to the company-scoped email plugin.
+- [x] **Phase 48: Native Search Demand Opportunity Pipeline** - Removed the standalone SEO Performance Loop, preserved its useful methods in native contracts, enforced search-demand ownership and action selection before topic inventory, and migrated structured weekly SEO email delivery to the company-scoped email plugin.
 - [ ] **Phase 11: Client Portal Pilot** - Continue the standalone client portal work in `/path/to/paperclip-cs-portal`. Paperclip now owns the client-safe semantic-core API; the separate portal owns auth/session/access and UI. Public Nginx/Let's Encrypt activation remains a portal-project/server-network task.
-- [x] **Phase 19: Blog Page Registry And Publication Monitor** - Folded into the shared SEO Performance Loop as the Astrogen implementation profile: Payload CMS publishing state, sitemap discovery, GSC/GA4, URL Inspection, and CrawlObserver evidence now belong to one regular settings-driven cycle.
+- [x] **Phase 19: Blog Page Registry And Publication Monitor** - Its Payload CMS, sitemap, GSC/GA4, URL Inspection, and CrawlObserver methods are retained as evidence sources for the native search-demand opportunity pipeline; the former shared SEO Performance Loop is removed.
 - [x] **Phase 22: Telegram Attachment Delivery Groups** - Source implementation, local tests, production package cutover, plugin restart, and live proof are complete. [AST-827](/AST/issues/AST-827) produced Telegram message id `628`; the live registry now reports `paperclip-plugin-telegram@0.3.1-paperclip.1`.
 - [ ] **Phase 15: Paperclip Server Release Update** - Attempted and rolled back. Keep as evidence of the controlled update attempt, backup, failure mode, and rollback state.
 - [x] **Phase 16: Paperclip Plugin Compatibility Upgrade** - Compatibility gate and production cutover are complete for `v2026.513.0`: plugin packaging, manifest migration, secret/config smoke, worker dependency resolution, deterministic provenance, Astrogen portal endpoint smoke, and production plugin boot check all passed.
@@ -87,7 +87,7 @@ Human-facing Astrogen communication remains Ukrainian and should not expose inte
 
 - [ ] **Content Contracts And Quality Gates** - Stabilize Ukrainian article contracts, sanitizer checks, product confidence tone, internal links, synonyms, and HTML packaging.
 - [ ] **Image Delivery System Hardening** - Covered by Phase 22 for Telegram package delivery. Image-specific follow-up should focus on generation/provider quality, variant selection, and automated visual QA against the Astrogen premium cover standard, not file transport.
-- [x] **SEO Monitoring Loop** - Reframed as the regular SEO Performance Loop: daily CMS/sitemap/CrawlObserver discovery, fresh URL indexing checks, every-3-days high-value URL checks, Wednesday weekly GSC/GA4/CrawlObserver reporting, and monitoring-window experiment review.
+- [x] **SEO Monitoring Loop** - Reframed as native routines plus `astrogen-search-demand-opportunities`: daily CMS/sitemap/CrawlObserver discovery, URL indexing checks, Wednesday GSC/GA4/CrawlObserver reporting, explicit action selection, verification, and measurement.
 - [ ] **Detailed Blog SEO Dashboard** - Build the richer version of the weekly report: per-article trends, page-query matrices, indexed/submitted URL history, semantic-cluster coverage, low-CTR opportunities, conversion paths, and owner priority controls.
 - [x] **Actionable Issue Reliability** - Keep Paperclip event-driven without idle LLM polling by combining immediate issue-transition wakeups with a deterministic no-LLM stale actionable issue watchdog.
 - [ ] **Human Interaction And Telegram Quality** - Keep Telegram/HIA messages short, Ukrainian, human-readable, and action-oriented.
@@ -96,9 +96,9 @@ Human-facing Astrogen communication remains Ukrainian and should not expose inte
 
 ## Current Next Step
 
-Current SEO operating model: Astrogen blog and product SEO now follows the shared regular SEO Performance Loop. Payload CMS is the primary source for publishing/draft state, public sitemap and live HTML verify public visibility, GSC/GA4 provide search and engagement evidence, URL Inspection provides indexing evidence, and CrawlObserver provides technical/internal-link evidence.
+Current SEO operating model: Astrogen blog and product SEO uses native Paperclip routines and `astrogen-search-demand-opportunities`. Payload CMS is the primary source for publishing/draft state, public sitemap and live HTML verify public visibility, GSC/GA4 provide search and engagement evidence, URL Inspection provides indexing evidence, and CrawlObserver provides technical/internal-link evidence.
 
-GSC and CrawlObserver must now be joined before SEO routing. GSC answers demand, query, CTR, position, indexing, and wrong-landing questions. CrawlObserver answers rendered technical state, sitemap/canonical/status, internal links, related-post gaps, orphan/weak-link state, and internal PageRank questions. Paperclip turns the joined evidence into candidate actions such as `technical_fix`, `indexing_fix`, `internal_linking`, `related_posts`, `content_refresh`, `title_meta_ctr`, `new_page_opportunity`, `wrong_landing`, `offpage_candidate`, or `watch`.
+GSC and CrawlObserver must now be joined before SEO routing. GSC answers demand, query, CTR, position, indexing, and wrong-landing questions. CrawlObserver answers rendered technical state, sitemap/canonical/status, internal links, related-post gaps, orphan/weak-link state, and internal PageRank questions. Paperclip moves each joined signal through `discovered -> evidence_ready -> ownership_review -> action_selected -> delegated -> verified -> measured`. The selected action is exactly one of `new_article`, `refresh`, `merge`, `reposition`, `internal_link`, `technical`, or `no_action`. Only `new_article` may enter topic inventory.
 
 `content_refresh` is specifically an existing-article body/content improvement
 lane driven by relevant keyphrase and SERP value-gap evidence. It is not a
@@ -109,15 +109,15 @@ internal links unless the SERP/user-value gap proves that element is needed.
 CMS/publication discovery
 -> page registry and keyword target mapping
 -> GSC/GA4/indexing/CrawlObserver acquisition
--> joined SEO candidate queue
--> deduped findings and weekly report
--> technical fixes, refreshes, internal-linking, backlinks, or new content waves
--> monitoring-window review
--> next decision
+-> native search-demand opportunity
+-> ownership and cannibalization review
+-> one selected action and delegated execution lane
+-> implementation verification
+-> measurement window and next decision
 ```
 
 Do not create pages for every accepted keyword. Do not run SERP similarity for the entire semantic core by default. LLM evaluation of keyword/opportunity sets must be batch-first with stable row IDs, not one LLM call per keyword.
 
-Next clean-instance follow-up: continue Phase 41 in `paperclip-astrogen-clean` from the live SEO/release activation set. Gates 0-5 passed for current enabled routines: old Astrogen is cold, Telegram proactive watches are off, Payload/GSC/GA4/CrawlObserver/Telegram/OpenRouter smoke passed, and scheduler-backed runs completed for AST-6/AST-9/AST-10/AST-12. Keep the article slot allocator paused while `articleCadenceEnabled=false` and `articleCadenceTargetPerDay=0`; only enable it after a bounded article-to-CMS activation gate passes and cadence settings are intentionally raised.
+Next clean-instance follow-up: observe the first normal scheduled Phase 48 cycle without manual triggering. Verify that weekly evidence creates or updates deduplicated opportunities, ownership review selects one action, `new_article` alone reaches guarded topic inventory, other actions reach their execution lanes, and every completed action carries verification and measurement evidence.
 
-Keep `ops/paperclip-production/` updated for the old live instance while it exists. Future upstream release updates must reuse the Phase 16 packaging/compatibility approach, preserve the local-agent API URL invariant, keep human Telegram lifecycle messages owned by one sender path, avoid manual CTO/Observability nudges that duplicate Paperclip recovery actions, and apply the Phase 24 heartbeat policy intentionally: no idle LLM timer polling unless a temporary human-approved exception exists.
+Future upstream release updates must reuse the Phase 16 packaging/compatibility approach, preserve the local-agent API URL invariant, keep human Telegram lifecycle messages owned by one sender path, avoid manual CTO/Observability nudges that duplicate Paperclip recovery actions, and apply the Phase 24 heartbeat policy intentionally: no idle LLM timer polling unless a temporary human-approved exception exists.

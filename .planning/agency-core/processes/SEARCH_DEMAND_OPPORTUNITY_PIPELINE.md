@@ -73,9 +73,12 @@ Exactly one action is selected:
 | `technical` | Indexability, canonical, sitemap, rendering or metadata blocks ownership | Technical growth action / developer handoff |
 | `no_action` | Evidence is weak, demand is covered, or action is unsafe | Cooldown with reason and `nextReviewAt` |
 
-Only `new_article` may create a topic candidate. The topic intake API requires a
-parent opportunity at `action_selected` with `selectedAction=new_article`.
-Agents and routines cannot create valid topic candidates directly.
+Only `new_article` may create a topic candidate. After the decision is durable,
+the opportunity advances to `delegated`; native breakdown there creates the
+topic child and waits for its terminal outcome before verification. The topic
+intake API therefore requires a parent opportunity at `delegated` with
+`selectedAction=new_article`. Agents and routines cannot create valid topic
+candidates directly.
 
 ## Internal Linking And Cannibalization
 

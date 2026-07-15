@@ -286,6 +286,10 @@ pipelines:
         name: Action Selected
         kind: working
         position: 400
+      - key: delegated
+        name: Delegated
+        kind: working
+        position: 500
         config:
           breakdown:
             targetPipelineKey: astrogen-topic-inventory
@@ -336,11 +340,10 @@ pipelines:
               - currentOwnerUrl
               - ownershipVerdict
               - internalLinkPlan
-            advanceTo: delegated
-            waitForPieces: false
+            waitForPieces: true
+            whenFinishedMoveTo: verified
             whenCaseField: selectedAction
             whenCaseFieldEquals: new_article
-      - { key: delegated, name: Delegated, kind: working, position: 500 }
       - { key: verified, name: Verified, kind: review, position: 600 }
       - { key: measured, name: Measured, kind: done, position: 900 }
       - { key: cancelled, name: Cancelled, kind: cancelled, position: 1000 }
@@ -384,11 +387,11 @@ pipelines:
       action_selected:
         owner: Chief Marketing Officer
         instructions: |
-          Choose exactly one selectedAction: new_article, refresh, merge, reposition, internal_link, technical, or no_action. Manage and delegate; do not perform specialist work. new_article is allowed only for uncovered demand with safe ownership and must include stable topicKey, titleUk, fingerprint, queryCluster, intent, CTA route, semantic/frequency evidence, duplicate verdict, and an incoming/outgoing internalLinkPlan. Only then call native breakdown once; the server creates or reuses the guarded topic candidate and advances this case to delegated. For refresh, merge, reposition, internal_link, or technical, ingest or update one stable astrogen-growth-actions execution case and link its ID. no_action creates no child but still advances to delegated with a durable reason, cooldown, and nextReviewAt so verification and measurement remain explicit.
+          Choose exactly one selectedAction: new_article, refresh, merge, reposition, internal_link, technical, or no_action. Manage and delegate; do not perform specialist work. new_article is allowed only for uncovered demand with safe ownership and must include stable topicKey, titleUk, fingerprint, queryCluster, intent, CTA route, semantic/frequency evidence, duplicate verdict, and an incoming/outgoing internalLinkPlan. Transition the decision to delegated only after these fields are durable. For refresh, merge, reposition, internal_link, or technical, ingest or update one stable astrogen-growth-actions execution case and link its ID. no_action creates no child but still advances to delegated with a durable reason, cooldown, and nextReviewAt so verification and measurement remain explicit.
       delegated:
         owner: Chief Marketing Officer
         instructions: |
-          Control the linked downstream case without doing specialist execution. For new_article, require one guarded astrogen-topic-inventory child created by native breakdown. For refresh, merge, reposition, internal_link, or technical, require one linked astrogen-growth-actions case with the correct executor, completion proof, and measurement window. A blocked child affects only this opportunity; classify the blocker and keep unrelated cases moving. Transition to verified only after action-specific implementation evidence exists.
+          Control the linked downstream case without doing specialist execution. For new_article, call native breakdown once: the server creates or reuses one guarded astrogen-topic-inventory child, waits for its terminal delivery outcome, and advances this case to verified only after that child finishes. For refresh, merge, reposition, internal_link, or technical, require one linked astrogen-growth-actions case with the correct executor, completion proof, and measurement window. A blocked child affects only this opportunity; classify the blocker and keep unrelated cases moving. Transition non-article actions to verified only after action-specific implementation evidence exists.
       verified:
         owner: SEO Performance Analyst
         review:
@@ -441,7 +444,7 @@ pipelines:
         config:
           intakeGuard:
             requiredParentPipelineKey: astrogen-search-demand-opportunities
-            requiredParentStageKeys: [action_selected]
+            requiredParentStageKeys: [delegated]
             requiredParentCaseField: selectedAction
             requiredParentCaseFieldEquals: new_article
       - { key: evidence_ready, name: Evidence Ready, kind: working, position: 200 }
@@ -540,7 +543,7 @@ pipelines:
       - refill when ready count is below 3 and target 10
       - no-safe-topic triggers refill and never completes article cadence by itself
       - repeated evidence updates the same fingerprint
-      - candidate intake requires a parent astrogen-search-demand-opportunities case at action_selected with selectedAction=new_article
+      - candidate intake requires a parent astrogen-search-demand-opportunities case at delegated with selectedAction=new_article
       - agents and weekly routines never ingest topic candidates directly
 
   - key: astrogen-growth-actions

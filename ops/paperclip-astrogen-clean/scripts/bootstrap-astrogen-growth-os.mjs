@@ -389,7 +389,7 @@ Search-demand opportunity contract:
 - Combine GSC query/page evidence, semantic-core geo frequency, Payload/live coverage, CrawlObserver, current SERP evidence, and existing action history.
 - Resolve query-to-URL ownership and cannibalization before action selection.
 - Select exactly one action: new_article, refresh, merge, reposition, internal_link, technical, or no_action.
-- Only action_selected=new_article may call native breakdown into topic inventory. All other actions use linked growth execution cases.
+- Only a delegated opportunity with the durable decision selectedAction=new_article may call native breakdown into topic inventory. The breakdown waits for the topic/article child outcome before verification. All other actions use linked growth execution cases.
 
 Content refresh contract:
 - \`content_refresh\` means improving an existing article's body/content after

@@ -14,8 +14,8 @@ See: `.planning/company/astrogen/README.md`
 
 Phase: Astrogen growth/content operating system hardening
 Status: Active
-Last activity: 2026-07-03 - Updated clean Astrogen weekly SEO/Hermes/CEO operating rules.
-Current phase note: Phase 40 foundation is applied and Phase 41 activation passed for the current enabled set. Old live Astrogen was first cold-stopped at Paperclip level and is now also stopped at Docker level: compose projects `paperclip` and `astrogen-files` are exited, restart policies are `no`, and old ports `3200`/`8088` are intentionally unreachable. Telegram proactive watches are disabled. Clean Astrogen read-only smoke passed for Payload CMS, CrawlObserver, GSC/Bing/GA4 MCP, Telegram getMe, and OpenRouter auth/key. Active clean routines are daily deterministic evidence collection, daily due-URL GSC indexing audit, weekly SEO/GEO action cycle, weekly CEO business direction review, and weekly Paperclip release check. The article slot allocator remains paused because article cadence config is disabled (`articleCadenceEnabled=false`, `articleCadenceTargetPerDay=0`).
+Last activity: 2026-07-15 - Completed Phase 48 native search-demand opportunity pipeline and removed the standalone SEO Performance Loop.
+Current phase note: Clean Astrogen runs native article, topic, growth-action, and search-demand opportunity pipelines. Search demand now follows `discovered -> evidence_ready -> ownership_review -> action_selected -> delegated -> verified -> measured`; only a delegated `selectedAction=new_article` case may create a guarded topic candidate. Refresh, merge, reposition, internal-link, technical, and no-action decisions remain outside topic inventory. Weekly SEO/GEO and CMO routines are active, and detailed weekly HTML email uses the company-scoped `paperclip.email-notifications` plugin. The old `paperclip.seo-performance-loop` source, image bundle, manifest, registry row, and jobs are removed. Old Paperclip remains stopped, Telegram proactive watches remain disabled, and CMS publication remains manual.
 
 ## Current Focus
 
@@ -98,7 +98,7 @@ Current phase note: Phase 40 foundation is applied and Phase 41 activation passe
 - Agent tasks must follow agency-core `AGENT_EXECUTION_GOVERNANCE`: no silent hanging `in_progress` work, explicit blockers, clear parent/child handoffs, and plugin use only through Paperclip capabilities.
 - Manager-created execution child issues must be `todo`, not `backlog`, unless intentionally parked. Managers must verify assignee availability and wakeup/active-run evidence after delegation. Recovery checks must re-read child status/comments first and must not move `done` or `cancelled` children back to `todo` unless explicit rework is requested.
 - Manager parent issues should remain `in_progress` while execution children are running; do not use `blocked` to mean "waiting for child", because Paperclip treats `blocked` as a human-decision gate.
-- SEO monitoring and growth should follow agency-core `SEO_PERFORMANCE_LOOP`: pages can be discovered outside Paperclip, GSC queries feed keyword candidates and new-page opportunities, and rank tracking follows company/project tier policies.
+- SEO monitoring and growth should follow agency-core `SEARCH_DEMAND_OPPORTUNITY_PIPELINE`: evidence may be discovered outside Paperclip, but ownership, action selection, delegation, verification, and measurement are durable native cases. GSC queries never create topic candidates directly.
 - Semantic-core agents should follow agency-core `SEMANTIC_CORE_MCP_AGENT_INSTRUCTIONS`: parsed competitor content terms are candidate evidence only, `recall_ledger` should be preserved, and `competitor_expansion_endpoint`/`serp_result_classification_reason` should be visible in review when returned.
 - Live Astrogen workspace permissions must follow `ops/paperclip/company-workspace-permissions.md`: `/home/paperclip/astrogen` is shared by Paperclip app/agents (`oc`/uid 1000) and File Browser (`paperclip`/uid 1002), so ACL/default ACL must keep both runtimes writable.
 - Paperclip runtime now treats issue-assigned successful runs with no meaningful issue-side effect as `failed/silent_noop`, writes a diagnostic comment, releases the issue lock, and sends a Telegram alert with responsible agent attribution.
@@ -187,7 +187,7 @@ Current phase note: Phase 40 foundation is applied and Phase 41 activation passe
 - Keep Semantic Core MCP, DataForSEO, Serper, Exa, Collaborator, Bright Data, paid ads, and social parked until explicit packaging/access/budget gates pass.
 - Keep future commits scoped and documented.
 - Add direct references to agency-core execution governance in live CEO/CMO/CTO/HIA/Observability contracts during the next live contract maintenance pass.
-- Build or verify the code-backed SEO Performance Loop routines that implement the documented Astrogen cadence: CMS/sitemap/CrawlObserver discovery, URL Inspection snapshots, weekly Wednesday GSC/GA4 reporting, and monitoring-window experiment review.
+- Observe the first normal scheduled Phase 48 cycle and verify opportunity ingestion, ownership decisions, delegated action lanes, weekly HTML email proof, and measurement windows without manual triggering.
 - Keep Astrogen SEO loop thresholds, cooldowns, shortlist limits, ignored-noise classes, URL class cadence, report recipients, and email/Telegram settings in configuration rather than agent prompt text.
 - Review the Astrogen Semantic Core layer 1 GUI batch from [AST-708](/AST/issues/AST-708) in the deployed web UI; do not run layer 2 until accepted/review decisions are made or accepted-only import is explicitly approved.
 - Execute the Client Portal Foundation before making owner review a regular process outside Paperclip.

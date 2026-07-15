@@ -128,7 +128,7 @@ routines:
         - if fewer than 3 ready topics exist, ingest or update one astrogen-growth-actions case with fingerprint topic-inventory-refill:{ISO-week}; that execution discovers or advances astrogen-search-demand-opportunities, never topic candidates directly
         - never create a legacy refill issue tree from the allocator
         - refill uses Payload CMS, GSC/GA4, semantic-core inventory/review, CrawlObserver, active issue duplicate checks, and consumed topic history
-        - weekly CMO planning ingests or updates 3-10 stable astrogen-search-demand-opportunities cases at discovered; only a validated action_selected=new_article native breakdown may create a topic candidate
+        - weekly CMO planning ingests or updates 3-10 stable astrogen-search-demand-opportunities cases at discovered; only native delegated-stage breakdown after a validated selectedAction=new_article decision may create a topic candidate
         - if tools are unavailable, attach one typed blocker to the refill growth case instead of asking the owner for topics or stopping unrelated work
       atomicDispatch:
         - call POST /api/cases/{topicCaseId}/breakdown with one item keyed by topicKey:reservation-v{topicCaseVersion}
@@ -197,7 +197,7 @@ routines:
         - combine GSC query/page evidence, semantic-core geo frequency, Payload/live coverage, CrawlObserver and current SERP evidence before ownership review
         - resolve query-to-URL ownership and cannibalization before selecting an action
         - selectedAction must be exactly one of new_article, refresh, merge, reposition, internal_link, technical, or no_action
-        - only native breakdown from action_selected=new_article can create astrogen-topic-inventory candidate
+        - only native delegated-stage breakdown after selectedAction=new_article can create astrogen-topic-inventory candidate
         - refresh, merge, reposition, internal_link and technical go to linked astrogen-growth-actions execution cases
         - Cloudflare email-protection probe URLs are ignored; near-duplicate and zero-word JS findings require rendered confirmation before work is created
       allowedSideEffects:
