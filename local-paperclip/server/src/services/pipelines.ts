@@ -98,6 +98,13 @@ type CanonicalPipelineStageKind = Exclude<PipelineStageKind, "open">;
 export type PipelineStageConfig = Record<string, unknown> & {
   autonomy?: "manual" | "suggest" | "auto";
   autoAdvanceOnChildrenTerminal?: string;
+  childrenTerminalOutcome?: {
+    allDoneToStageKey?: string;
+    anyCancelledToStageKey?: string;
+    requireCurrentDirectChild?: boolean;
+    childCaseIdField?: string;
+    proofField?: string;
+  };
   approveToStageKey?: string;
   rejectToStageKey?: string;
   requestChangesToStageKey?: string;
@@ -543,7 +550,7 @@ function withDefaultWorkingChildrenGateConfig(
   return {
     ...config,
     requireChildrenTerminal: config.requireChildrenTerminal ?? true,
-    ...(config.autoAdvanceOnChildrenTerminal === undefined && nextStageKey
+    ...(config.autoAdvanceOnChildrenTerminal === undefined && config.childrenTerminalOutcome === undefined && nextStageKey
       ? { autoAdvanceOnChildrenTerminal: nextStageKey }
       : {}),
   };
@@ -707,6 +714,74 @@ function readOptionalStageKey(value: unknown, label: string) {
   return value.trim();
 }
 
+const PIPELINE_FIELD_KEY_PATTERN = /^[A-Za-z][A-Za-z0-9_]*$/;
+
+function readOptionalFieldKey(value: unknown, label: string) {
+  const key = readOptionalStageKey(value, label);
+  if (key && !PIPELINE_FIELD_KEY_PATTERN.test(key)) {
+    throw unprocessable(`${label} must be a valid case field key`, { code: "validation" });
+  }
+  return key;
+}
+
+interface PipelineChildrenTerminalOutcomeConfig {
+  allDoneToStageKey: string | null;
+  anyCancelledToStageKey: string | null;
+  requireCurrentDirectChild: boolean;
+  childCaseIdField: string | null;
+  proofField: string | null;
+}
+
+function readChildrenTerminalOutcomeConfig(
+  config?: PipelineStageConfig | null,
+): PipelineChildrenTerminalOutcomeConfig | null {
+  const raw = config?.childrenTerminalOutcome;
+  if (raw === undefined || raw === null) return null;
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    throw unprocessable("Stage childrenTerminalOutcome must be an object", { code: "validation" });
+  }
+  const record = raw as Record<string, unknown>;
+  const allDoneToStageKey = readOptionalStageKey(
+    record.allDoneToStageKey,
+    "childrenTerminalOutcome allDoneToStageKey",
+  );
+  const anyCancelledToStageKey = readOptionalStageKey(
+    record.anyCancelledToStageKey,
+    "childrenTerminalOutcome anyCancelledToStageKey",
+  );
+  if (!allDoneToStageKey && !anyCancelledToStageKey) {
+    throw unprocessable("childrenTerminalOutcome requires at least one destination stage", { code: "validation" });
+  }
+  if (
+    record.requireCurrentDirectChild !== undefined &&
+    typeof record.requireCurrentDirectChild !== "boolean"
+  ) {
+    throw unprocessable("childrenTerminalOutcome requireCurrentDirectChild must be boolean", { code: "validation" });
+  }
+  const childCaseIdField = readOptionalFieldKey(
+    record.childCaseIdField,
+    "childrenTerminalOutcome childCaseIdField",
+  );
+  const proofField = readOptionalFieldKey(
+    record.proofField,
+    "childrenTerminalOutcome proofField",
+  );
+  const requireCurrentDirectChild = record.requireCurrentDirectChild === true;
+  if ((childCaseIdField || proofField) && !requireCurrentDirectChild) {
+    throw unprocessable(
+      "childrenTerminalOutcome proof fields require requireCurrentDirectChild=true",
+      { code: "validation" },
+    );
+  }
+  return {
+    allDoneToStageKey,
+    anyCancelledToStageKey,
+    requireCurrentDirectChild,
+    childCaseIdField,
+    proofField,
+  };
+}
+
 function readStringList(value: unknown, label: string) {
   if (value === undefined || value === null) return [];
   if (!Array.isArray(value)) throw unprocessable(`${label} must be an array`, { code: "validation" });
@@ -810,13 +885,18 @@ function childrenGateConfig(
   options: { explicitZeroChildrenPass?: boolean } = {},
 ) {
   const breakdown = readBreakdownConfig(config);
+  const outcome = readChildrenTerminalOutcomeConfig(config);
   return {
-    requireChildrenTerminal: breakdown?.waitForPieces ?? config?.requireChildrenTerminal === true,
+    requireChildrenTerminal:
+      breakdown?.waitForPieces === true ||
+      config?.requireChildrenTerminal === true ||
+      outcome !== null,
     autoAdvanceOnChildrenTerminal: breakdown?.whenFinishedMoveTo ?? (
       typeof config?.autoAdvanceOnChildrenTerminal === "string" && config.autoAdvanceOnChildrenTerminal.trim()
         ? config.autoAdvanceOnChildrenTerminal.trim()
         : null
     ),
+    outcome,
     explicitZeroChildrenPass: options.explicitZeroChildrenPass === true,
   };
 }
@@ -980,6 +1060,16 @@ function normalizeStageConfig(kind: PipelineStageKind | string, config?: Pipelin
       ...(breakdown!.whenFinishedMoveTo ? { whenFinishedMoveTo: breakdown!.whenFinishedMoveTo } : {}),
     };
   }
+  if (next.childrenTerminalOutcome !== undefined) {
+    const outcome = readChildrenTerminalOutcomeConfig(next)!;
+    next.childrenTerminalOutcome = {
+      ...(outcome.allDoneToStageKey ? { allDoneToStageKey: outcome.allDoneToStageKey } : {}),
+      ...(outcome.anyCancelledToStageKey ? { anyCancelledToStageKey: outcome.anyCancelledToStageKey } : {}),
+      requireCurrentDirectChild: outcome.requireCurrentDirectChild,
+      ...(outcome.childCaseIdField ? { childCaseIdField: outcome.childCaseIdField } : {}),
+      ...(outcome.proofField ? { proofField: outcome.proofField } : {}),
+    };
+  }
 
   if (reviewerKind !== undefined && reviewerKind !== "human" && reviewerKind !== "any") {
     throw unprocessable("Review stage reviewerKind must be human or any", { code: "validation" });
@@ -1103,6 +1193,25 @@ function assertReviewTargetsInSet(
   }
   if (config.requestChangesToStageKey !== undefined && !stageKeys.has(config.requestChangesToStageKey)) {
     throw unprocessable("Review requestChangesToStageKey references an unknown stage", { code: "validation" });
+  }
+}
+
+function assertChildrenTerminalTargetsInSet(
+  config: PipelineStageConfig,
+  stageKeys: Set<string>,
+) {
+  const outcome = readChildrenTerminalOutcomeConfig(config);
+  if (!outcome) return;
+  for (const [label, key] of [
+    ["allDoneToStageKey", outcome.allDoneToStageKey],
+    ["anyCancelledToStageKey", outcome.anyCancelledToStageKey],
+  ] as const) {
+    if (key && !stageKeys.has(key)) {
+      throw unprocessable(`childrenTerminalOutcome ${label} must reference a stage in the same pipeline`, {
+        code: "validation",
+        stageKey: key,
+      });
+    }
   }
 }
 
@@ -1709,6 +1818,106 @@ async function computeCaseRollup(db: PipelineDb, companyId: string, caseId: stri
   return { total: descendants.length, done, cancelled, open, complete: open === 0 };
 }
 
+async function listDirectTerminalChildren(db: PipelineDb, companyId: string, parentCaseId: string) {
+  return db
+    .select({
+      id: pipelineCases.id,
+      caseKey: pipelineCases.caseKey,
+      pipelineId: pipelineCases.pipelineId,
+      stageKey: pipelineStages.key,
+      terminalKind: pipelineCases.terminalKind,
+      terminalAt: pipelineCases.terminalAt,
+      retiredAt: pipelineCases.retiredAt,
+    })
+    .from(pipelineCases)
+    .innerJoin(pipelineStages, eq(pipelineCases.stageId, pipelineStages.id))
+    .where(and(
+      eq(pipelineCases.companyId, companyId),
+      eq(pipelineCases.parentCaseId, parentCaseId),
+      or(isNotNull(pipelineCases.terminalKind), isNotNull(pipelineCases.retiredAt)),
+    ))
+    .orderBy(desc(pipelineCases.createdAt), desc(pipelineCases.id));
+}
+
+function childrenTerminalTarget(
+  gate: ReturnType<typeof childrenGateConfig>,
+  rollup: Awaited<ReturnType<typeof computeCaseRollup>>,
+  currentChildTerminalKind?: string | null,
+) {
+  if (!gate.outcome) return gate.autoAdvanceOnChildrenTerminal;
+  if (currentChildTerminalKind === "cancelled") return gate.outcome.anyCancelledToStageKey;
+  if (currentChildTerminalKind === "done") return gate.outcome.allDoneToStageKey;
+  if (rollup.cancelled > 0) return gate.outcome.anyCancelledToStageKey;
+  if (rollup.total > 0 && rollup.done === rollup.total) return gate.outcome.allDoneToStageKey;
+  return null;
+}
+
+async function childrenTerminalOutcomeFieldPatch(
+  db: PipelineDb,
+  input: {
+    companyId: string;
+    parentCaseId: string;
+    parentFields: Record<string, unknown>;
+    outcome: PipelineChildrenTerminalOutcomeConfig;
+    rollup: Awaited<ReturnType<typeof computeCaseRollup>>;
+  },
+) {
+  if (!input.outcome.requireCurrentDirectChild) {
+    return { fieldPatch: {}, currentChildTerminalKind: null };
+  }
+  const children = await listDirectTerminalChildren(db, input.companyId, input.parentCaseId);
+  const configuredChildId = input.outcome.childCaseIdField
+    ? input.parentFields[input.outcome.childCaseIdField]
+    : null;
+  if (configuredChildId !== null && configuredChildId !== undefined && typeof configuredChildId !== "string") {
+    throw conflict("Children terminal outcome current child field must contain a case id", {
+      code: "children_terminal_outcome_child_field_invalid",
+      parentCaseId: input.parentCaseId,
+      childCaseIdField: input.outcome.childCaseIdField,
+    });
+  }
+  const latestNonRetiredChild = children.find((candidate) => candidate.retiredAt === null) ?? null;
+  if (
+    typeof configuredChildId === "string" &&
+    configuredChildId.trim() &&
+    latestNonRetiredChild &&
+    configuredChildId.trim() !== latestNonRetiredChild.id
+  ) {
+    throw conflict("Children terminal outcome current child field is stale", {
+      code: "children_terminal_outcome_stale_current_child",
+      parentCaseId: input.parentCaseId,
+      configuredChildId: configuredChildId.trim(),
+      latestNonRetiredChildId: latestNonRetiredChild.id,
+    });
+  }
+  const child = latestNonRetiredChild;
+  if (!child) {
+    throw conflict("Children terminal outcome could not resolve the current direct terminal child", {
+      code: "children_terminal_outcome_child_not_found",
+      parentCaseId: input.parentCaseId,
+      configuredChildId: typeof configuredChildId === "string" ? configuredChildId : null,
+      directTerminalChildIds: children.map((candidate) => candidate.id),
+    });
+  }
+  const proof = {
+    childCaseId: child.id,
+    childCaseKey: child.caseKey,
+    childPipelineId: child.pipelineId,
+    childStageKey: child.stageKey,
+    terminalKind: child.terminalKind ?? "cancelled",
+    terminalAt: child.terminalAt?.toISOString() ?? null,
+    retiredAt: child.retiredAt?.toISOString() ?? null,
+    rollup: input.rollup,
+  };
+  return {
+    fieldPatch: {
+      ...(input.outcome.childCaseIdField ? { [input.outcome.childCaseIdField]: child.id } : {}),
+      ...(input.outcome.proofField ? { [input.outcome.proofField]: proof } : {}),
+    },
+    currentChildTerminalKind: child.terminalKind ?? "cancelled",
+  };
+}
+
 async function hasBlockersResolvedForLatestBlockerSet(db: PipelineDb, caseId: string) {
   const latestBlockersSet = await db
     .select({ createdAt: pipelineCaseEvents.createdAt })
@@ -2038,6 +2247,94 @@ async function handleBlockersResolved(db: PipelineDb, companyId: string, blocker
       body: `Pipeline blockers resolved for case ${blocked.caseId}. The case can be retried now that blocker ${blockerCaseId} is done.`,
     });
   }
+}
+
+async function reconcileBlockedExecutionIssuesForTerminalCase(
+  db: PipelineDb,
+  input: { companyId: string; caseId: string; terminalKind: "done" | "cancelled" },
+) {
+  const candidates = await db
+    .selectDistinct({ issueId: issues.id })
+    .from(pipelineCaseIssueLinks)
+    .innerJoin(issues, eq(pipelineCaseIssueLinks.issueId, issues.id))
+    .where(and(
+      eq(pipelineCaseIssueLinks.companyId, input.companyId),
+      eq(pipelineCaseIssueLinks.caseId, input.caseId),
+      inArray(pipelineCaseIssueLinks.role, ["automation", "work"]),
+      isNull(pipelineCaseIssueLinks.retiredAt),
+      eq(issues.companyId, input.companyId),
+      eq(issues.status, "blocked"),
+    ));
+  if (candidates.length === 0) return [];
+
+  const candidateIssueIds = candidates.map((row) => row.issueId);
+  const activeLinks = await db
+    .select({
+      issueId: pipelineCaseIssueLinks.issueId,
+      linkId: pipelineCaseIssueLinks.id,
+      role: pipelineCaseIssueLinks.role,
+      terminalKind: pipelineCases.terminalKind,
+      retiredAt: pipelineCases.retiredAt,
+    })
+    .from(pipelineCaseIssueLinks)
+    .innerJoin(pipelineCases, eq(pipelineCaseIssueLinks.caseId, pipelineCases.id))
+    .where(and(
+      eq(pipelineCaseIssueLinks.companyId, input.companyId),
+      inArray(pipelineCaseIssueLinks.issueId, candidateIssueIds),
+      isNull(pipelineCaseIssueLinks.retiredAt),
+    ));
+  const eligibleIssueIds = candidateIssueIds.filter((issueId) => {
+    const links = activeLinks.filter((link) => link.issueId === issueId);
+    return links.length > 0 && links.every((link) => isTerminalKind(link.terminalKind) || link.retiredAt !== null);
+  });
+  if (eligibleIssueIds.length === 0) return [];
+
+  const eligibleLinkIds = activeLinks
+    .filter((link) => eligibleIssueIds.includes(link.issueId) && (link.role === "automation" || link.role === "work"))
+    .map((link) => link.linkId);
+
+  const now = nowDate();
+  await db
+    .update(issues)
+    .set({
+      status: "cancelled",
+      cancelledAt: now,
+      completedAt: null,
+      checkoutRunId: null,
+      executionRunId: null,
+      executionAgentNameKey: null,
+      executionLockedAt: null,
+      monitorNextCheckAt: null,
+      monitorWakeRequestedAt: null,
+      updatedAt: now,
+    })
+    .where(and(eq(issues.companyId, input.companyId), inArray(issues.id, eligibleIssueIds), eq(issues.status, "blocked")));
+  if (eligibleLinkIds.length > 0) {
+    await db
+      .update(pipelineCaseIssueLinks)
+      .set({
+        retiredAt: now,
+        retiredReason: `case_terminal_${input.terminalKind}`,
+        updatedAt: now,
+      })
+      .where(and(
+        eq(pipelineCaseIssueLinks.companyId, input.companyId),
+        inArray(pipelineCaseIssueLinks.id, eligibleLinkIds),
+        isNull(pipelineCaseIssueLinks.retiredAt),
+      ));
+  }
+  await writeCaseEvent(db, {
+    companyId: input.companyId,
+    caseId: input.caseId,
+    type: "terminal_execution_issues_reconciled",
+    actor: { type: "system" },
+    payload: {
+      terminalKind: input.terminalKind,
+      cancelledIssueIds: eligibleIssueIds,
+      retiredLinkIds: eligibleLinkIds,
+    },
+  });
+  return eligibleIssueIds;
 }
 
 async function notifyDependentWorkIssuesOfUpstreamContentChange(
@@ -2954,13 +3251,14 @@ export function pipelineService(db: Db, deps: { heartbeat?: IssueAssignmentWakeu
   }
 
   async function validateStageTargets(companyId: string, pipelineId: string, kind: PipelineStageKind | string, config: PipelineStageConfig) {
-    if (kind !== "review") return;
     const rows = await db
       .select({ key: pipelineStages.key })
       .from(pipelineStages)
       .innerJoin(pipelines, eq(pipelineStages.pipelineId, pipelines.id))
       .where(and(eq(pipelineStages.pipelineId, pipelineId), eq(pipelines.companyId, companyId)));
-    assertReviewTargetsInSet(kind, config, new Set(rows.map((row) => row.key)));
+    const stageKeys = new Set(rows.map((row) => row.key));
+    assertReviewTargetsInSet(kind, config, stageKeys);
+    assertChildrenTerminalTargetsInSet(config, stageKeys);
   }
 
   async function executeAutomationLedger(
@@ -3276,6 +3574,7 @@ export function pipelineService(db: Db, deps: { heartbeat?: IssueAssignmentWakeu
       automationLedgers?: Array<typeof pipelineAutomationExecutions.$inferSelect>;
       autoAdvanceVisitedStageIds?: Set<string>;
       skipChildrenTerminalGate?: boolean;
+      systemFieldPatch?: Record<string, unknown>;
     },
   ) {
     if (input.transitionClass === "auto" && input.actor.type !== "system") {
@@ -3329,11 +3628,20 @@ export function pipelineService(db: Db, deps: { heartbeat?: IssueAssignmentWakeu
     }
     await assertNoOpenBlockers(tx, current, toStage);
 
+    if (input.systemFieldPatch && input.actor.type !== "system") {
+      throw unprocessable("Only system transitions may apply a system field patch", { code: "validation" });
+    }
+    const nextFields = input.systemFieldPatch
+      ? { ...(current.fields ?? {}), ...input.systemFieldPatch }
+      : current.fields;
+    assertJsonSize(nextFields, "fields");
+
     const enteringTerminal = terminalKindForStage(toStage.kind);
     const [updated] = await tx
       .update(pipelineCases)
       .set({
         stageId: toStage.id,
+        fields: nextFields,
         version: current.version + 1,
         terminalKind: enteringTerminal,
         terminalAt: enteringTerminal ? nowDate() : null,
@@ -3365,6 +3673,7 @@ export function pipelineService(db: Db, deps: { heartbeat?: IssueAssignmentWakeu
         suggestionId: input.suggestionId ?? null,
         reason: input.reason ?? null,
         transitionClass: input.transitionClass ?? "manual",
+        systemFieldPatchKeys: input.systemFieldPatch ? Object.keys(input.systemFieldPatch).sort() : [],
       },
     });
     if (forcedTransition) {
@@ -3402,6 +3711,11 @@ export function pipelineService(db: Db, deps: { heartbeat?: IssueAssignmentWakeu
       await handleBlockersResolved(tx, input.companyId, current.id);
     }
     if (!wasTerminal && isTerminal) {
+      await reconcileBlockedExecutionIssuesForTerminalCase(tx, {
+        companyId: input.companyId,
+        caseId: current.id,
+        terminalKind: updated.terminalKind as "done" | "cancelled",
+      });
       await handleChildrenTerminal(tx, input.companyId, current.parentCaseId, input.automationLedgers);
     }
     if (!isTerminal) {
@@ -3431,12 +3745,30 @@ export function pipelineService(db: Db, deps: { heartbeat?: IssueAssignmentWakeu
     },
   ) {
     const gate = childrenGateConfig(stageConfig(input.stage));
-    const toStageKey = gate.autoAdvanceOnChildrenTerminal;
-    if (!toStageKey) return;
     const visited = input.visitedStageIds ?? new Set<string>();
     if (visited.has(input.stage.id)) return;
     const rollup = await computeCaseRollup(tx, input.companyId, input.caseRow.id);
     if (!rollup.complete || (rollup.total === 0 && !gate.explicitZeroChildrenPass)) return;
+    const outcomeResolution = gate.outcome
+      ? await childrenTerminalOutcomeFieldPatch(tx, {
+          companyId: input.companyId,
+          parentCaseId: input.caseRow.id,
+          parentFields: input.caseRow.fields ?? {},
+          outcome: gate.outcome,
+          rollup,
+        })
+      : null;
+    const toStageKey = childrenTerminalTarget(gate, rollup, outcomeResolution?.currentChildTerminalKind);
+    if (!toStageKey) {
+      if (gate.outcome) {
+        throw conflict("Children terminal outcome has no destination for this rollup", {
+          code: "children_terminal_outcome_missing_destination",
+          rollup,
+        });
+      }
+      return;
+    }
+    const systemFieldPatch = outcomeResolution?.fieldPatch;
     const toStage = await getStageByKeyOrThrow(tx, input.caseRow.pipelineId, toStageKey);
     if (toStage.id === input.stage.id) return;
     visited.add(input.stage.id);
@@ -3452,8 +3784,10 @@ export function pipelineService(db: Db, deps: { heartbeat?: IssueAssignmentWakeu
         reason: "children_terminal",
         automationLedgers: input.automationLedgers,
         autoAdvanceVisitedStageIds: visited,
+        systemFieldPatch,
       });
     } catch (error) {
+      if (gate.outcome) throw error;
       // Best-effort: an unsatisfied gate (drift, approval) on the chained
       // advance must not roll back the transition that entered this stage.
       if (!(error instanceof HttpError)) throw error;
@@ -3494,10 +3828,26 @@ export function pipelineService(db: Db, deps: { heartbeat?: IssueAssignmentWakeu
         body: `All child cases for pipeline case "${ancestor.case.title}" are terminal. Rollup: ${rollup.done} done, ${rollup.cancelled} cancelled, ${rollup.open} open.`,
       });
 
-      const toStageKey = gate.autoAdvanceOnChildrenTerminal;
+      const outcomeResolution = gate.outcome
+        ? await childrenTerminalOutcomeFieldPatch(tx, {
+            companyId,
+            parentCaseId: ancestor.case.id,
+            parentFields: ancestor.case.fields ?? {},
+            outcome: gate.outcome,
+            rollup,
+          })
+        : null;
+      const toStageKey = childrenTerminalTarget(gate, rollup, outcomeResolution?.currentChildTerminalKind);
+      if (!toStageKey && gate.outcome) {
+        throw conflict("Children terminal outcome has no destination for this rollup", {
+          code: "children_terminal_outcome_missing_destination",
+          rollup,
+        });
+      }
       if (!toStageKey || isTerminalKind(ancestor.case.terminalKind)) {
         continue;
       }
+      const systemFieldPatch = outcomeResolution?.fieldPatch;
       try {
         const toStage = await getStageByKeyOrThrow(tx, ancestor.case.pipelineId, toStageKey);
         assertStageEnabled(toStage, "auto_advance");
@@ -3511,8 +3861,10 @@ export function pipelineService(db: Db, deps: { heartbeat?: IssueAssignmentWakeu
           transitionClass: "auto",
           reason: "children_terminal",
           automationLedgers,
+          systemFieldPatch,
         });
       } catch (error) {
+        if (gate.outcome) throw error;
         // Best-effort: an unsatisfied gate (drift, approval, blocker) on the
         // parent advance must not roll back the child transition that triggered it.
         if (!(error instanceof HttpError)) throw error;
@@ -3551,6 +3903,7 @@ export function pipelineService(db: Db, deps: { heartbeat?: IssueAssignmentWakeu
         const stageKeys = new Set(stageInputs.map((stage) => stage.key));
         for (const stage of stageInputs) {
           assertReviewTargetsInSet(stage.kind, stage.config, stageKeys);
+          assertChildrenTerminalTargetsInSet(stage.config, stageKeys);
           await validateStageAutomationConfig(input.companyId, stage.config);
         }
         const [pipeline] = await tx
@@ -3906,6 +4259,11 @@ export function pipelineService(db: Db, deps: { heartbeat?: IssueAssignmentWakeu
               await handleBlockersResolved(tx, input.companyId, movedCase.id);
             }
             if (!wasTerminal && isTerminal) {
+              await reconcileBlockedExecutionIssuesForTerminalCase(tx, {
+                companyId: input.companyId,
+                caseId: movedCase.id,
+                terminalKind: movedCase.terminalKind as "done" | "cancelled",
+              });
               await handleChildrenTerminal(tx, input.companyId, previous?.parentCaseId);
             }
           }
@@ -4653,6 +5011,11 @@ export function pipelineService(db: Db, deps: { heartbeat?: IssueAssignmentWakeu
         }
         const terminalDeltasByParent = new Map<string, number>();
         for (const row of retiredRows) {
+          await reconcileBlockedExecutionIssuesForTerminalCase(tx, {
+            companyId: input.companyId,
+            caseId: row.id,
+            terminalKind: "cancelled",
+          });
           if (!row.parentCaseId || isTerminalKind(row.terminalKind)) continue;
           terminalDeltasByParent.set(row.parentCaseId, (terminalDeltasByParent.get(row.parentCaseId) ?? 0) + 1);
         }

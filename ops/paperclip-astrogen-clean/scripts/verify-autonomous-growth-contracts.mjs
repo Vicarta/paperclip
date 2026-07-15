@@ -41,10 +41,20 @@ function main() {
   assert(ready.config.breakdown.whenFinishedMoveTo === "ready", "Cancelled article fallback must return topic to ready");
   assert(!topic.stageAutomation?.ready, "Ready stage must not have on-enter automation");
   const reserved = topic.stages.find((stage) => stage.key === "reserved");
-  assert(reserved?.config?.autoAdvanceOnChildrenTerminal === "ready", "Reserved topic must recover after terminal child cancellation");
+  const outcome = reserved?.config?.childrenTerminalOutcome;
+  assert(outcome?.allDoneToStageKey === "consumed", "Delivered article must consume the reserved topic");
+  assert(outcome?.anyCancelledToStageKey === "ready", "Cancelled article must release the reserved topic");
+  assert(outcome?.requireCurrentDirectChild === true, "Topic terminal outcome must require the current article child");
+  assert(outcome?.childCaseIdField === "consumingArticleCaseId", "Topic terminal outcome must store the article child id");
+  assert(outcome?.proofField === "consumingArticleProof", "Topic terminal outcome must store durable terminal proof");
+  assert(
+    topic.transitions.some((transition) => transition.from === "ready" && transition.to === "rejected_duplicate"),
+    "Proven duplicate reconciliation must be able to reject a released topic",
+  );
 
   includesAll(routineContracts.articleSlotAllocator, [
     "POST /api/cases/{topicCaseId}/breakdown",
+    "{topicKey}:reservation-v{topicCaseVersion}",
     "topic-inventory-refill:{ISO-week}",
     "Never create a legacy article parent",
   ], "Article allocator contract");
@@ -64,6 +74,7 @@ function main() {
     checks: [
       "active native manifest",
       "ready breakdown to article opportunity",
+      "outcome-aware topic consume/release",
       "no ready-stage automation",
       "allocator native dispatch and refill",
       "CEO foreign-issue boundary",

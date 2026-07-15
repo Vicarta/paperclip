@@ -208,7 +208,7 @@ pipelines:
       cmo_delivery:
         owner: Chief Marketing Officer
         instructions: |
-          Verify the CMS draft/admin URL and all completion evidence. Send one gender-neutral Ukrainian Telegram message containing only the article title and CMS admin edit URL. Record ok=true, messageId and delivery-proof writeback in case fields. For operation=create, find the linked topic case, verify it is reserved by this article case, and transition that topic from reserved to consumed with expectedVersion. For operation=refresh or repair, require the verified before-after diff and do not require or mutate a topic reservation. Transition the article to delivered only after Telegram delivery proof and the operation-specific create or refresh gate succeed. Never send internal stage or technical status.
+          Verify the CMS draft/admin URL and all completion evidence. Send one gender-neutral Ukrainian Telegram message containing only the article title and CMS admin edit URL. Record ok=true, messageId and delivery-proof writeback in case fields. For operation=create, verify the linked topic is reserved by this article case; the native children-terminal outcome contract consumes that topic atomically when this article transitions to delivered. Never mutate the topic lifecycle manually. For operation=refresh or repair, require the verified before-after diff and do not require or mutate a topic reservation. Transition the article to delivered only after Telegram delivery proof and the operation-specific create or refresh gate succeed. Never send internal stage or technical status.
     invariants:
       - blocked cases do not consume productive WIP
       - one task revision maps to one Winning Structure idempotency key and one resumable run
@@ -234,7 +234,7 @@ pipelines:
       - CMS remains draft-only
       - operation refresh reuses accepted existing media unless an image defect is explicitly scoped
       - delivered requires cmsAdminUrl, Telegram messageId, and delivery-proof writeback
-      - operation create requires the linked reserved topic case to be consumed by the same article case before delivery
+      - operation create atomically consumes the linked reserved topic through the native children-terminal outcome when the article transitions to delivered
       - operation refresh or repair requires verified before-after diff and does not require a topic reservation
       - recovery resumes the same case and stage
       - technical stage status and blocker details are never sent through owner-facing Telegram
@@ -298,7 +298,12 @@ pipelines:
         position: 400
         config:
           requireChildrenTerminal: true
-          autoAdvanceOnChildrenTerminal: ready
+          childrenTerminalOutcome:
+            allDoneToStageKey: consumed
+            anyCancelledToStageKey: ready
+            requireCurrentDirectChild: true
+            childCaseIdField: consumingArticleCaseId
+            proofField: consumingArticleProof
       - { key: consumed, name: Consumed, kind: done, position: 900 }
       - { key: rejected_duplicate, name: Rejected Duplicate, kind: cancelled, position: 1000 }
       - { key: needs_owner_direction, name: Needs Owner Direction, kind: review, position: 1100 }
@@ -313,6 +318,7 @@ pipelines:
       - { from: evidence_ready, to: waiting_evidence }
       - { from: waiting_evidence, to: evidence_ready }
       - { from: ready, to: reserved }
+      - { from: ready, to: rejected_duplicate, label: terminal child proved existing duplicate }
       - { from: reserved, to: consumed }
       - { from: reserved, to: ready, label: lease expired }
       - { from: reserved, to: rejected_duplicate, label: child proved existing duplicate }
@@ -332,7 +338,7 @@ pipelines:
       reserved:
         owner: Chief Marketing Officer
         instructions: |
-          Verify the single child article case created by native breakdown exists and remains live. If consumingArticleCaseId is empty, derive it from that child and update this topic case. Keep this topic reserved while the article is active, transition to consumed only after article delivery, or return to ready when the lease expires and no live article case exists. Do not create or duplicate the article case.
+          Verify the current child article case returned by native breakdown exists and remains live. Set consumingArticleCaseId to that current reservation child whenever it differs from the stored value; a released topic may retain proof of an older cancelled child. Keep this topic reserved while the current article is active. Native children-terminal outcomes atomically move it to consumed after delivery or release it to ready after cancellation and store consumingArticleProof; do not perform those terminal transitions manually. Return it to ready manually only when the lease expires and no live article case exists. Do not create or duplicate the article case.
       needs_owner_direction:
         owner: Chief Marketing Officer
         review:
@@ -348,7 +354,9 @@ pipelines:
     invariants:
       - reserve atomically by topicKey and lease
       - ready topics are dispatched only by the scheduled CMO allocator through native breakdown
-      - a cancelled terminal article returns a still-reserved topic to ready through the children-terminal fallback
+      - a delivered article atomically consumes its still-reserved topic and stores terminal child proof
+      - a cancelled article atomically releases its still-reserved topic to ready and stores terminal child proof
+      - a child cancelled for a proven existing-content duplicate rejects the topic instead of releasing it for reallocation
       - refill when ready count is below 3 and target 10
       - no-safe-topic triggers refill and never completes article cadence by itself
       - repeated evidence updates the same fingerprint

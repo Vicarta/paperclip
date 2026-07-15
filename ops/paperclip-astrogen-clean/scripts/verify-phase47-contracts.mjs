@@ -31,6 +31,8 @@ const quality = loadYaml(resolve(root, "reference/content-quality-contract.yaml"
 const plugins = loadYaml(resolve(root, "manifests/plugins.yaml"));
 const article = pipelines.pipelines.find((pipeline) => pipeline.key === "astrogen-article-production");
 requireValue(article, "Astrogen article pipeline is missing");
+const topic = pipelines.pipelines.find((pipeline) => pipeline.key === "astrogen-topic-inventory");
+requireValue(topic, "Astrogen topic inventory pipeline is missing");
 
 const expectedStages = [
   "opportunity",
@@ -55,6 +57,15 @@ const stageKeys = article.stages.map((stage) => stage.key);
 requireValue(JSON.stringify(stageKeys) === JSON.stringify(expectedStages), "Article stage order is not the Phase 47 contract");
 requireValue(article.stageMigrations?.serp_check === "strategy_input", "serp_check migration is missing");
 requireValue(!stageKeys.includes("serp_check"), "Legacy serp_check stage remains in the desired pipeline");
+const reservedTopic = topic.stages.find((stage) => stage.key === "reserved");
+requireValue(
+  reservedTopic?.config?.childrenTerminalOutcome?.allDoneToStageKey === "consumed",
+  "Delivered article must atomically consume its reserved topic",
+);
+requireValue(
+  reservedTopic?.config?.childrenTerminalOutcome?.anyCancelledToStageKey === "ready",
+  "Cancelled article must atomically release its reserved topic",
+);
 requireValue(
   article.stageAutomation?.strategy_input?.instructions?.includes("Leave winningStructureRunId"),
   "Strategy Input must preserve MCP runtime field ownership",

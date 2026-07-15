@@ -2548,6 +2548,9 @@ function stageHasChildrenTerminalGate(config: unknown) {
   if (!config || typeof config !== "object" || Array.isArray(config)) return false;
   const record = config as Record<string, unknown>;
   return record.requireChildrenTerminal === true ||
+    (record.childrenTerminalOutcome !== null &&
+      typeof record.childrenTerminalOutcome === "object" &&
+      !Array.isArray(record.childrenTerminalOutcome)) ||
     (typeof record.autoAdvanceOnChildrenTerminal === "string" && record.autoAdvanceOnChildrenTerminal.trim().length > 0);
 }
 

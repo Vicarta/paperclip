@@ -71,6 +71,27 @@ export const pipelineStageBreakdownSchema = z.object({
   }
 });
 
+export const pipelineStageChildrenTerminalOutcomeSchema = z.object({
+  allDoneToStageKey: z.string().trim().min(1).max(120).optional(),
+  anyCancelledToStageKey: z.string().trim().min(1).max(120).optional(),
+  requireCurrentDirectChild: z.boolean().optional().default(false),
+  childCaseIdField: routineVariableLikeNameSchema.optional(),
+  proofField: routineVariableLikeNameSchema.optional(),
+}).superRefine((value, ctx) => {
+  if (!value.allDoneToStageKey && !value.anyCancelledToStageKey) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Children terminal outcome requires at least one destination stage",
+    });
+  }
+  if ((value.childCaseIdField || value.proofField) && !value.requireCurrentDirectChild) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Children terminal proof fields require a current direct child",
+    });
+  }
+});
+
 export const pipelineStageVariableSchema = z.object({
   key: routineVariableLikeNameSchema,
   label: z.string().trim().max(120),
@@ -107,6 +128,7 @@ export const pipelineStageConfigSchema = z.object({
   onEnter: pipelineStageOnEnterSchema.optional(),
   automation: pipelineStageAutomationSchema.optional(),
   breakdown: pipelineStageBreakdownSchema.optional(),
+  childrenTerminalOutcome: pipelineStageChildrenTerminalOutcomeSchema.optional(),
   approveToStageKey: z.string().trim().min(1).max(120).optional(),
   rejectToStageKey: z.string().trim().min(1).max(120).optional(),
   requestChangesToStageKey: z.string().trim().min(1).max(120).optional(),
@@ -153,6 +175,7 @@ export type PipelineStageOnEnter = z.infer<typeof pipelineStageOnEnterSchema>;
 export type PipelineStageAutomationConfig = z.infer<typeof pipelineStageAutomationSchema>;
 export type PipelineStageCarryOverPolicy = z.infer<typeof pipelineStageCarryOverPolicySchema>;
 export type PipelineStageBreakdown = z.infer<typeof pipelineStageBreakdownSchema>;
+export type PipelineStageChildrenTerminalOutcome = z.infer<typeof pipelineStageChildrenTerminalOutcomeSchema>;
 export type PipelineStageVariable = z.infer<typeof pipelineStageVariableSchema>;
 export type PipelineStageConfig = z.infer<typeof pipelineStageConfigSchema>;
 export type PipelineAutomationRetryScope = z.infer<typeof pipelineAutomationRetryScopeSchema>;

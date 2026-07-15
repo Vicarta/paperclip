@@ -131,10 +131,11 @@ routines:
         - weekly CMO planning ingests 3-10 stable candidate topic cases; candidate and evidence-ready automations validate them
         - if tools are unavailable, attach one typed blocker to the refill growth case instead of asking the owner for topics or stopping unrelated work
       atomicDispatch:
-        - call POST /api/cases/{topicCaseId}/breakdown with one item keyed by topicKey
+        - call POST /api/cases/{topicCaseId}/breakdown with one item keyed by topicKey:reservation-v{topicCaseVersion}
         - ready-stage breakdown targets astrogen-article-production opportunity and advances the topic to reserved
         - record the returned child article case id as consumingArticleCaseId and set a bounded reservation expiry
-        - native requestKey and caseKey provide idempotency; do not create article, brief, writer, or recovery issue trees
+        - topic case version is the reservation generation; retries of the same generation reuse one child, while a released topic creates a new child on its newer version
+        - native requestKey and caseKey provide per-generation idempotency; do not create article, brief, writer, or recovery issue trees
       writerRecovery:
         - primary writer is SEO Blog Article Writer (Claude)
         - ChatGPT fallback only after recorded Claude/OpenRouter blocker, missing canonical artifact, repeated same-class failure, or explicit CMO recovery

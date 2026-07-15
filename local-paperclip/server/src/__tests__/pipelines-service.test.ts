@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { eq, sql } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import {
   activityLog,
@@ -1253,6 +1253,405 @@ describeEmbeddedPostgres("pipelineService", () => {
     expect(rootEvents.map((event) => event.type)).toEqual(["ingested", "claimed", "children_terminal", "transitioned"]);
   });
 
+  it("atomically consumes a parent and records proof when its single child is done", async () => {
+    const company = await seedCompany();
+    const topics = await svc.createPipeline({
+      companyId: company.id,
+      key: "topic-outcome-done",
+      name: "Topic outcome done",
+      actor: userActor,
+      stages: [
+        {
+          key: "reserved",
+          name: "Reserved",
+          kind: "working",
+          config: {
+            childrenTerminalOutcome: {
+              allDoneToStageKey: "consumed",
+              anyCancelledToStageKey: "ready",
+              requireCurrentDirectChild: true,
+              childCaseIdField: "consumingArticleCaseId",
+              proofField: "consumingArticleProof",
+            },
+          },
+        },
+        { key: "ready", name: "Ready", kind: "working" },
+        { key: "consumed", name: "Consumed", kind: "done" },
+        { key: "cancelled", name: "Cancelled", kind: "cancelled" },
+      ],
+    });
+    const articles = await svc.createPipeline({
+      companyId: company.id,
+      key: "article-outcome-done",
+      name: "Article outcome done",
+      actor: userActor,
+      stages: [
+        { key: "work", name: "Work", kind: "working" },
+        { key: "delivered", name: "Delivered", kind: "done" },
+        { key: "cancelled", name: "Cancelled", kind: "cancelled" },
+      ],
+    });
+    const topic = await svc.ingestCase({
+      companyId: company.id,
+      pipelineId: topics.id,
+      stageKey: "reserved",
+      caseKey: "topic:done",
+      title: "Done topic",
+      actor: userActor,
+    });
+    const article = await svc.ingestCase({
+      companyId: company.id,
+      pipelineId: articles.id,
+      stageKey: "work",
+      caseKey: "article:done",
+      title: "Done article",
+      parentCaseId: topic.case.id,
+      actor: userActor,
+    });
+
+    await svc.transitionCase({
+      companyId: company.id,
+      caseId: article.case.id,
+      toStageKey: "delivered",
+      expectedVersion: article.case.version,
+      actor: userActor,
+    });
+
+    const [freshTopic] = await db
+      .select({ stageKey: pipelineStages.key, fields: pipelineCases.fields, version: pipelineCases.version })
+      .from(pipelineCases)
+      .innerJoin(pipelineStages, eq(pipelineCases.stageId, pipelineStages.id))
+      .where(eq(pipelineCases.id, topic.case.id));
+    expect(freshTopic!.stageKey).toBe("consumed");
+    expect(freshTopic!.fields.consumingArticleCaseId).toBe(article.case.id);
+    expect(freshTopic!.fields.consumingArticleProof).toMatchObject({
+      childCaseId: article.case.id,
+      childCaseKey: "article:done",
+      terminalKind: "done",
+      rollup: { total: 1, done: 1, cancelled: 0, open: 0, complete: true },
+    });
+    expect(freshTopic!.version).toBe(2);
+    const events = await svc.listCaseEvents(company.id, topic.case.id);
+    expect(events.filter((event) => event.type === "children_terminal")).toHaveLength(1);
+    expect(events.filter((event) => event.type === "transitioned")).toHaveLength(1);
+  });
+
+  it("atomically releases a parent to ready when its single child is cancelled", async () => {
+    const company = await seedCompany();
+    const topics = await svc.createPipeline({
+      companyId: company.id,
+      key: "topic-outcome-cancelled",
+      name: "Topic outcome cancelled",
+      actor: userActor,
+      stages: [
+        {
+          key: "reserved",
+          name: "Reserved",
+          kind: "working",
+          config: {
+            childrenTerminalOutcome: {
+              allDoneToStageKey: "consumed",
+              anyCancelledToStageKey: "ready",
+              requireCurrentDirectChild: true,
+              childCaseIdField: "consumingArticleCaseId",
+              proofField: "consumingArticleProof",
+            },
+          },
+        },
+        { key: "ready", name: "Ready", kind: "working" },
+        { key: "consumed", name: "Consumed", kind: "done" },
+        { key: "cancelled", name: "Cancelled", kind: "cancelled" },
+      ],
+    });
+    const articles = await svc.createPipeline({
+      companyId: company.id,
+      key: "article-outcome-cancelled",
+      name: "Article outcome cancelled",
+      actor: userActor,
+      stages: [
+        { key: "work", name: "Work", kind: "working" },
+        { key: "delivered", name: "Delivered", kind: "done" },
+        { key: "cancelled", name: "Cancelled", kind: "cancelled" },
+      ],
+    });
+    const topic = await svc.ingestCase({
+      companyId: company.id,
+      pipelineId: topics.id,
+      stageKey: "reserved",
+      caseKey: "topic:cancelled",
+      title: "Cancelled topic",
+      actor: userActor,
+    });
+    const article = await svc.ingestCase({
+      companyId: company.id,
+      pipelineId: articles.id,
+      stageKey: "work",
+      caseKey: "article:cancelled",
+      title: "Cancelled article",
+      parentCaseId: topic.case.id,
+      actor: userActor,
+    });
+
+    await svc.transitionCase({
+      companyId: company.id,
+      caseId: article.case.id,
+      toStageKey: "cancelled",
+      expectedVersion: article.case.version,
+      actor: userActor,
+    });
+
+    const [freshTopic] = await db
+      .select({ stageKey: pipelineStages.key, fields: pipelineCases.fields })
+      .from(pipelineCases)
+      .innerJoin(pipelineStages, eq(pipelineCases.stageId, pipelineStages.id))
+      .where(eq(pipelineCases.id, topic.case.id));
+    expect(freshTopic!.stageKey).toBe("ready");
+    expect(freshTopic!.fields.consumingArticleCaseId).toBe(article.case.id);
+    expect(freshTopic!.fields.consumingArticleProof).toMatchObject({
+      childCaseId: article.case.id,
+      terminalKind: "cancelled",
+      rollup: { total: 1, done: 0, cancelled: 1, open: 0, complete: true },
+    });
+
+    const releasedTopic = await db
+      .select()
+      .from(pipelineCases)
+      .where(eq(pipelineCases.id, topic.case.id))
+      .then((rows) => rows[0]!);
+    const retryArticle = await svc.ingestCase({
+      companyId: company.id,
+      pipelineId: articles.id,
+      stageKey: "work",
+      caseKey: "article:cancelled:allocation-2",
+      title: "Retry article",
+      parentCaseId: topic.case.id,
+      actor: userActor,
+    });
+    const reservedAgain = await svc.transitionCase({
+      companyId: company.id,
+      caseId: topic.case.id,
+      toStageKey: "reserved",
+      expectedVersion: releasedTopic.version,
+      actor: userActor,
+    });
+    await expect(svc.transitionCase({
+      companyId: company.id,
+      caseId: retryArticle.case.id,
+      toStageKey: "delivered",
+      expectedVersion: retryArticle.case.version,
+      actor: userActor,
+    })).rejects.toMatchObject({
+      status: 409,
+      details: { code: "children_terminal_outcome_stale_current_child" },
+    });
+    const [rolledBackRetryArticle] = await db
+      .select()
+      .from(pipelineCases)
+      .where(eq(pipelineCases.id, retryArticle.case.id));
+    expect(rolledBackRetryArticle!.terminalKind).toBeNull();
+    const topicWithCurrentAllocation = await svc.patchCaseContent({
+      companyId: company.id,
+      caseId: topic.case.id,
+      expectedVersion: reservedAgain.case.version,
+      fields: {
+        ...reservedAgain.case.fields,
+        consumingArticleCaseId: retryArticle.case.id,
+      },
+      actor: userActor,
+    });
+    await svc.transitionCase({
+      companyId: company.id,
+      caseId: retryArticle.case.id,
+      toStageKey: "delivered",
+      expectedVersion: retryArticle.case.version,
+      actor: userActor,
+    });
+
+    const [consumedAfterRetry] = await db
+      .select({ stageKey: pipelineStages.key, fields: pipelineCases.fields })
+      .from(pipelineCases)
+      .innerJoin(pipelineStages, eq(pipelineCases.stageId, pipelineStages.id))
+      .where(eq(pipelineCases.id, topicWithCurrentAllocation.id));
+    expect(consumedAfterRetry!.stageKey).toBe("consumed");
+    expect(consumedAfterRetry!.fields.consumingArticleCaseId).toBe(retryArticle.case.id);
+    expect(consumedAfterRetry!.fields.consumingArticleProof).toMatchObject({
+      childCaseId: retryArticle.case.id,
+      terminalKind: "done",
+      rollup: { total: 2, done: 1, cancelled: 1, open: 0, complete: true },
+    });
+  });
+
+  it("rolls back child completion when a typed children-terminal outcome cannot transition the parent", async () => {
+    const company = await seedCompany();
+    const pipeline = await svc.createPipeline({
+      companyId: company.id,
+      key: "strict-child-outcome",
+      name: "Strict child outcome",
+      actor: userActor,
+      stages: [
+        {
+          key: "reserved",
+          name: "Reserved",
+          kind: "working",
+          config: {
+            childrenTerminalOutcome: {
+              allDoneToStageKey: "consumed",
+              anyCancelledToStageKey: "ready",
+              requireCurrentDirectChild: true,
+              childCaseIdField: "consumingArticleCaseId",
+              proofField: "consumingArticleProof",
+            },
+          },
+        },
+        { key: "ready", name: "Ready", kind: "working" },
+        { key: "consumed", name: "Consumed", kind: "done" },
+        { key: "done", name: "Done", kind: "done" },
+        { key: "cancelled", name: "Cancelled", kind: "cancelled" },
+      ],
+    });
+    const topic = await svc.ingestCase({
+      companyId: company.id,
+      pipelineId: pipeline.id,
+      stageKey: "reserved",
+      caseKey: "strict-parent",
+      title: "Strict parent",
+      actor: userActor,
+    });
+    const article = await svc.ingestCase({
+      companyId: company.id,
+      pipelineId: pipeline.id,
+      stageKey: "ready",
+      caseKey: "strict-child",
+      title: "Strict child",
+      parentCaseId: topic.case.id,
+      actor: userActor,
+    });
+    const blocker = await svc.ingestCase({
+      companyId: company.id,
+      pipelineId: pipeline.id,
+      stageKey: "ready",
+      caseKey: "strict-blocker",
+      title: "Strict blocker",
+      actor: userActor,
+    });
+    await svc.replaceBlockers({
+      companyId: company.id,
+      caseId: topic.case.id,
+      blockedByCaseIds: [blocker.case.id],
+      actor: userActor,
+    });
+
+    await expect(svc.transitionCase({
+      companyId: company.id,
+      caseId: article.case.id,
+      toStageKey: "done",
+      expectedVersion: article.case.version,
+      actor: userActor,
+    })).rejects.toMatchObject({ status: 409, details: { code: "blocked" } });
+
+    const [freshArticle] = await db.select().from(pipelineCases).where(eq(pipelineCases.id, article.case.id));
+    const [freshTopic] = await db.select().from(pipelineCases).where(eq(pipelineCases.id, topic.case.id));
+    expect(freshArticle!.terminalKind).toBeNull();
+    expect(freshArticle!.stageId).toBe(article.case.stageId);
+    expect(freshTopic!.terminalChildCount).toBe(0);
+    expect(freshTopic!.fields).toEqual({});
+    const events = await svc.listCaseEvents(company.id, topic.case.id);
+    expect(events.map((event) => event.type)).toEqual(["ingested", "blockers_set"]);
+  });
+
+  it("reconciles stale blocked execution links only when every active linked case is terminal or retired", async () => {
+    const company = await seedCompany();
+    const pipeline = await svc.createPipeline({
+      companyId: company.id,
+      key: "terminal-issue-reconciliation",
+      name: "Terminal issue reconciliation",
+      actor: userActor,
+      stages: [
+        { key: "work", name: "Work", kind: "working" },
+        { key: "external_wait", name: "External wait", kind: "working" },
+        { key: "done", name: "Done", kind: "done" },
+        { key: "cancelled", name: "Cancelled", kind: "cancelled" },
+      ],
+    });
+    const terminalCase = await svc.ingestCase({
+      companyId: company.id,
+      pipelineId: pipeline.id,
+      stageKey: "work",
+      caseKey: "terminal-link-case",
+      title: "Terminal linked case",
+      actor: userActor,
+    });
+    const liveCase = await svc.ingestCase({
+      companyId: company.id,
+      pipelineId: pipeline.id,
+      stageKey: "external_wait",
+      caseKey: "live-external-wait-case",
+      title: "Live external wait case",
+      actor: userActor,
+    });
+    const staleAutomation = await seedLinkedIssue({
+      companyId: company.id,
+      caseId: terminalCase.case.id,
+      role: "automation",
+      status: "blocked",
+      title: "Stale automation",
+    });
+    const staleWork = await seedLinkedIssue({
+      companyId: company.id,
+      caseId: terminalCase.case.id,
+      role: "work",
+      status: "blocked",
+      title: "Stale work",
+    });
+    const sharedLive = await seedLinkedIssue({
+      companyId: company.id,
+      caseId: terminalCase.case.id,
+      role: "work",
+      status: "blocked",
+      title: "Shared live work",
+    });
+    await db.insert(pipelineCaseIssueLinks).values({
+      companyId: company.id,
+      caseId: liveCase.case.id,
+      issueId: sharedLive.id,
+      role: "automation",
+    });
+    const unrelatedOrigin = await seedLinkedIssue({
+      companyId: company.id,
+      caseId: terminalCase.case.id,
+      role: "origin",
+      status: "blocked",
+      title: "Origin wait",
+    });
+
+    await svc.transitionCase({
+      companyId: company.id,
+      caseId: terminalCase.case.id,
+      toStageKey: "done",
+      expectedVersion: terminalCase.case.version,
+      actor: userActor,
+    });
+
+    const issueRows = await db
+      .select({ id: issues.id, status: issues.status, cancelledAt: issues.cancelledAt })
+      .from(issues)
+      .where(inArray(issues.id, [staleAutomation.id, staleWork.id, sharedLive.id, unrelatedOrigin.id]));
+    const issueById = new Map(issueRows.map((row) => [row.id, row]));
+    expect(issueById.get(staleAutomation.id)).toMatchObject({ status: "cancelled" });
+    expect(issueById.get(staleAutomation.id)!.cancelledAt).not.toBeNull();
+    expect(issueById.get(staleWork.id)).toMatchObject({ status: "cancelled" });
+    expect(issueById.get(sharedLive.id)).toMatchObject({ status: "blocked", cancelledAt: null });
+    expect(issueById.get(unrelatedOrigin.id)).toMatchObject({ status: "blocked", cancelledAt: null });
+
+    const links = await db
+      .select({ issueId: pipelineCaseIssueLinks.issueId, retiredAt: pipelineCaseIssueLinks.retiredAt })
+      .from(pipelineCaseIssueLinks)
+      .where(inArray(pipelineCaseIssueLinks.issueId, [staleAutomation.id, staleWork.id, sharedLive.id]));
+    expect(links.filter((link) => link.issueId === staleAutomation.id).every((link) => link.retiredAt !== null)).toBe(true);
+    expect(links.filter((link) => link.issueId === staleWork.id).every((link) => link.retiredAt !== null)).toBe(true);
+    expect(links.filter((link) => link.issueId === sharedLive.id).every((link) => link.retiredAt === null)).toBe(true);
+  });
+
   it("keeps child completion committed when parent children-terminal auto-advance is gated", async () => {
     const company = await seedCompany();
     const pipeline = await svc.createPipeline({
@@ -1764,6 +2163,13 @@ describeEmbeddedPostgres("pipelineService", () => {
       .innerJoin(pipelineStages, eq(pipelineCases.stageId, pipelineStages.id))
       .where(eq(pipelineCases.id, parent.case.id));
     expect(reviewingParent!.stageKey).toBe("review");
+    const staleRetriedAutomation = await seedLinkedIssue({
+      companyId: company.id,
+      caseId: child.case.id,
+      role: "automation",
+      status: "blocked",
+      title: "Stale retried automation",
+    });
 
     const retry = await svc.retryStageAutomation({
       companyId: company.id,
@@ -1809,6 +2215,13 @@ describeEmbeddedPostgres("pipelineService", () => {
     expect(freshParent!.stageKey).toBe("review");
     expect(freshChild!.terminalKind).toBe("cancelled");
     expect(freshChild!.retiredReason).toBe("automation_retry");
+    const [staleRetriedIssue] = await db.select().from(issues).where(eq(issues.id, staleRetriedAutomation.id));
+    expect(staleRetriedIssue!.status).toBe("cancelled");
+    const [staleRetriedLink] = await db
+      .select()
+      .from(pipelineCaseIssueLinks)
+      .where(eq(pipelineCaseIssueLinks.issueId, staleRetriedAutomation.id));
+    expect(staleRetriedLink!.retiredReason).toBe("case_terminal_cancelled");
     const events = await svc.listCaseEvents(company.id, parent.case.id);
     expect(events.filter((pipelineEvent) => pipelineEvent.type === "children_terminal")).toHaveLength(2);
   });

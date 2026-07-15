@@ -344,9 +344,9 @@ Capacity and selection:
 
 Atomic dispatch:
 - Call \`POST /api/cases/{topicCaseId}/breakdown\` once with one item. The ready stage configuration must target \`astrogen-article-production\` stage \`opportunity\`, use piece noun \`article\`, and advance the topic to \`reserved\`.
-- The item key is the topicKey. Its fields include operation=create, targetQueryCluster from queryCluster, blockerClass=null, nextReviewAt=null, attemptCount=0, cmsDraftId=null, cmsAdminUrl=null, and telegramMessageId=null. Inherited topic fields provide topicKey, titleUk, ctaRoute, and evidenceRefs.
+- The item key is \`{topicKey}:reservation-v{topicCaseVersion}\`. The ready topic case version is the reservation generation: a retry of the same generation reuses one child, while a topic released after cancellation has a newer version and creates a new child instead of reusing the cancelled case. Its fields include operation=create, targetQueryCluster from queryCluster, blockerClass=null, nextReviewAt=null, attemptCount=0, cmsDraftId=null, cmsAdminUrl=null, and telegramMessageId=null. Inherited topic fields provide topicKey, titleUk, ctaRoute, and evidenceRefs.
 - Treat the breakdown response as the reservation proof. Record the returned child article case id as consumingArticleCaseId and set a bounded reservationExpiresAt if the reserved-stage automation has not already done so.
-- Breakdown request keys and native case keys are the idempotency boundary. Never create a legacy article parent, brief child, writer child, refill child, or recovery issue from the allocator.
+- Breakdown request keys and native case keys are the per-reservation-generation idempotency boundary. Never create a legacy article parent, brief child, writer child, refill child, or recovery issue from the allocator.
 
 Inventory refill:
 - When ready inventory is below 3, ingest or update one canonical \`astrogen-growth-actions\` case with fingerprint \`topic-inventory-refill:{ISO-week}\`; do not create a blocked issue chain.
