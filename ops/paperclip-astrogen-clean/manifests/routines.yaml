@@ -206,7 +206,11 @@ routines:
         - editorial/layout defects stay in the editorial_backfill/layout repair lane; metadata, internal-link-only, and relatedPosts-only fixes stay in deterministic CMS/SEO fixer lanes
       emailDeliveryContract:
         - call paperclip.seo-performance-loop:seo-weekly-report-plan-get before finalizing the report
-        - when detailedReportChannel=email and deliveryReady=true, call paperclip.seo-performance-loop:seo-detailed-report-email-send with the Ukrainian detailed report, configured recipients, and an issue-scoped idempotency key
+        - write for a non-technical company owner in simple Ukrainian; explain business meaning first and keep tool names, payload details, and internal implementation terms out of the main summary
+        - the first section must say what Paperclip will do next; every action must name the existing issue or native case, accountable agent, current status, exact next step, and review date when known
+        - separate executable actions from watch/cooldown/no-action decisions; never present a blocked or external-wait issue as completed work
+        - when detailedReportChannel=email and deliveryReady=true, call paperclip.seo-performance-loop:seo-detailed-report-email-send with the structured report object and an issue-scoped idempotency key; the plugin renders safe HTML plus a plain-text fallback
+        - set ownerAction only when the owner can make a concrete decision; otherwise state plainly that no owner action is required
         - record email delivery proof in the issue thread without exposing raw secrets or provider payloads
         - if configured email delivery fails, create or link a CTO-owned email transport blocker and do not silently fall back to comment-only completion
         - if email is not ready, keep the detailed report as Paperclip evidence and create or link a CTO blocker naming the missing sender, recipients, or Resend secret-ref

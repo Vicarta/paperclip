@@ -408,7 +408,11 @@ Content refresh contract:
 
 Email delivery contract:
 - Call paperclip.seo-performance-loop:seo-weekly-report-plan-get before finalizing the report.
-- If the plan returns detailedReportChannel=email and deliveryReady=true, call paperclip.seo-performance-loop:seo-detailed-report-email-send with the Ukrainian detailed report, configured recipients, and an idempotency key tied to the routine issue.
+- Write for a non-technical company owner in simple Ukrainian. Explain business meaning first; keep tool names, payload details, and internal implementation terms out of the main summary.
+- The first section must say what Paperclip will do next. Every action must name the existing issue or native case, accountable agent, current status, exact next step, and review date when known.
+- Separate executable actions from watch/cooldown/no-action decisions. Never present a blocked or external-wait issue as completed work.
+- If the plan returns detailedReportChannel=email and deliveryReady=true, call paperclip.seo-performance-loop:seo-detailed-report-email-send with the structured report object and an idempotency key tied to the routine issue. The plugin renders safe HTML plus a plain-text fallback.
+- Set ownerAction only when the owner can make a concrete decision. Otherwise state plainly that no owner action is required.
 - Record email delivery proof in the issue thread without exposing raw secrets or provider payloads.
 - If email delivery is configured but the tool/transport fails, create or link a CTO-owned blocker for the email transport and leave the weekly SEO issue blocked or in progress; do not silently fall back to comment-only completion.
 - If the plan explicitly says email is not ready, keep the detailed report as a Paperclip issue document/comment and create or link a CTO blocker that names the missing sender, recipients, or Resend secret-ref.

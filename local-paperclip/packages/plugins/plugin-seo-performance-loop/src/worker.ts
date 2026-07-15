@@ -16,6 +16,7 @@ import {
   buildWeeklyReportPlan,
   routeCrawlFinding,
 } from "./report-policy.js";
+import { buildDetailedReportEmail } from "./report-email.js";
 
 type LoopConfig = {
   googleSearchConsoleCredentialSecretRef: string;
@@ -284,8 +285,8 @@ async function setState(ctx: PluginContext, stateKey: string, value: unknown) {
 async function sendDetailedReportEmail(ctx: PluginContext, params: Record<string, unknown>) {
   const config = await getConfig(ctx);
   const subject = stringValue(params, "subject");
-  const text = stringValue(params, "text");
-  const html = stringValue(params, "html");
+  const body = buildDetailedReportEmail(params);
+  const { text, html } = body;
   const dryRun = booleanValue(params, "dryRun");
   const reportLanguage = stringValue(config, "detailedReportLanguage", DEFAULT_CONFIG.detailedReportLanguage);
   const explicitRecipients = Array.isArray(params.recipientEmails) ? arrayOfStrings(params.recipientEmails) : [];
@@ -294,7 +295,6 @@ async function sendDetailedReportEmail(ctx: PluginContext, params: Record<string
   const secretRef = stringValue(config, "resendApiKeySecretRef");
 
   if (!subject) throw new Error("subject is required for detailed report email");
-  if (!text) throw new Error("text is required for detailed report email");
   if (!from || !isReasonableEmail(from)) throw new Error("detailedReportFromEmail must be configured as a valid email address");
   if (!recipients.length) throw new Error("detailedReportRecipientEmails must contain at least one recipient");
   const invalidRecipients = recipients.filter((recipient) => !isReasonableEmail(recipient));
@@ -302,7 +302,14 @@ async function sendDetailedReportEmail(ctx: PluginContext, params: Record<string
   if (!secretRef) throw new Error("resendApiKeySecretRef is required for email transport");
   assertReportLanguage({ subject, text, html, language: reportLanguage });
 
-  const deliveryId = `seo_email_${stableHash({ subject, recipients, at: nowIso() })}`;
+  const idempotencyKey = stringValue(params, "idempotencyKey") || `seo-weekly-report:${stableHash({ subject, recipients, text })}`;
+  const idempotencyStateKey = `email-delivery-key:${stableHash({ idempotencyKey, recipients })}`;
+  const existingProof = await getState<Record<string, unknown>>(ctx, idempotencyStateKey);
+  if (!dryRun && existingProof && existingProof.sentAt) {
+    return { proof: existingProof, deduplicated: true };
+  }
+
+  const deliveryId = `seo_email_${stableHash({ idempotencyKey, recipients })}`;
   if (dryRun) {
     const proof = {
       id: deliveryId,
@@ -311,11 +318,13 @@ async function sendDetailedReportEmail(ctx: PluginContext, params: Record<string
       from,
       recipients,
       subject,
+      format: body.format,
+      idempotencyKey,
       sentAt: null,
       providerMessageId: null,
     };
     await setState(ctx, emailDeliveryKey(deliveryId), proof);
-    return { proof };
+    return { proof, deduplicated: false };
   }
 
   const apiKey = await ctx.secrets.resolve(secretRef);
@@ -354,11 +363,14 @@ async function sendDetailedReportEmail(ctx: PluginContext, params: Record<string
     from,
     recipients,
     subject,
+    format: body.format,
+    idempotencyKey,
     sentAt: nowIso(),
     providerMessageId,
   };
   await setState(ctx, emailDeliveryKey(deliveryId), proof);
-  return { proof };
+  await setState(ctx, idempotencyStateKey, proof);
+  return { proof, deduplicated: false };
 }
 
 async function getIndex(ctx: PluginContext): Promise<ArticleIndex> {
@@ -1037,12 +1049,29 @@ async function registerTools(ctx: PluginContext) {
     TOOL_NAMES.detailedReportEmailSend,
     {
       displayName: "Send SEO Detailed Report Email",
-      description: "Sends the detailed weekly SEO report through the configured Resend transport.",
-      parametersSchema: {},
+      description: "Sends a structured weekly SEO report as safe HTML with a plain-text fallback through the configured Resend transport.",
+      parametersSchema: {
+        type: "object",
+        properties: {
+          subject: { type: "string" },
+          text: { type: "string" },
+          html: { type: "string" },
+          report: { type: "object" },
+          recipientEmails: { type: "array", items: { type: "string" } },
+          idempotencyKey: { type: "string" },
+          dryRun: { type: "boolean" },
+        },
+        required: ["subject"],
+      },
     },
     async (params: unknown): Promise<ToolResult> => {
       const result = await sendDetailedReportEmail(ctx, objectValue(params));
-      return toolResult(result.proof.dryRun ? "SEO detailed report email dry-run validated." : "SEO detailed report email sent.", result);
+      const message = result.proof.dryRun
+        ? "SEO detailed report email dry-run validated."
+        : result.deduplicated
+          ? "SEO detailed report email was already delivered for this idempotency key."
+          : "SEO detailed report email sent.";
+      return toolResult(message, result);
     },
   );
 

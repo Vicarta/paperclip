@@ -66,8 +66,13 @@ The weekly owner report is split by channel:
   document until email transport is configured.
 - Resend transport is configured through `resendApiKeySecretRef` only. Do not
   store a raw Resend API key in plugin config, issue comments, docs, or Git.
-- Agents send the detailed report with `seo-detailed-report-email-send`. Use
-  `dryRun=true` for validation before first live delivery.
+- Agents send the detailed report with `seo-detailed-report-email-send`. The
+  canonical weekly flow passes the structured `report` object, and the plugin
+  renders safe HTML plus a plain-text fallback. Legacy text-only calls are also
+  wrapped in HTML so a missed `html` field cannot produce an unformatted email.
+  Use an issue-scoped `idempotencyKey`; retries return the existing delivery
+  proof instead of sending a duplicate. Use `dryRun=true` for validation before
+  first live delivery.
 - The email tool rejects an obviously wrong-language detailed report for
   Ukrainian companies before calling Resend, so agents must rewrite the report
   instead of sending an English fallback.

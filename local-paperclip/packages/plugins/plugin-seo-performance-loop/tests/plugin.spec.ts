@@ -439,7 +439,81 @@ describe("seo performance loop plugin", () => {
       expect(calls[0].init?.headers).toMatchObject({
         Authorization: "Bearer resolved:00000000-0000-4000-8000-000000000001",
       });
+      const requestBody = JSON.parse(String(calls[0].init?.body));
+      expect(requestBody.text).toContain("Детальний SEO-звіт");
+      expect(requestBody.html).toContain("<!doctype html>");
       expect(JSON.stringify(result.data)).not.toContain("resolved:");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("renders a simple structured HTML report and deduplicates retries", async () => {
+    const originalFetch = globalThis.fetch;
+    const calls: Array<{ url: string; init?: RequestInit }> = [];
+    globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
+      calls.push({ url: String(url), init });
+      return new Response(JSON.stringify({ id: "structured-provider-id" }), { status: 200 });
+    }) as typeof fetch;
+
+    try {
+      const harness = createTestHarness({ manifest });
+      harness.setConfig({
+        detailedReportChannel: "email",
+        detailedReportRecipientEmails: "owner@example.com",
+        resendApiKeySecretRef: "00000000-0000-4000-8000-000000000001",
+      });
+      await plugin.definition.setup(harness.ctx);
+
+      const params = {
+        subject: "Щотижневий SEO/GEO звіт Astrogen: 8-14 липня 2026",
+        idempotencyKey: "weekly-seo:AST-378",
+        report: {
+          period: "8-14 липня 2026",
+          executiveSummary: "Пошуковий трафік трохи знизився. Paperclip уже передав одну технічну проблему відповідальному агенту. Від власника зараз нічого не потрібно. <script>alert(1)</script>",
+          metrics: [{
+            label: "Кліки з Google",
+            current: "24",
+            previous: "31",
+            interpretation: "Поки спостерігаємо: обсяг невеликий.",
+          }],
+          actions: [{
+            issueId: "AST-379",
+            title: "Виправити помилки карти сайту",
+            owner: "SEO CMS Technical Fixer",
+            status: "blocked",
+            nextStep: "CTO має передати виправлення розробнику сайту, після чого SEO-агент повторить перевірку.",
+            url: "javascript:alert(1)",
+          }],
+          watchItems: [{
+            title: "Продажі money-продукту",
+            reason: "Падіння ще не доведено як SEO-проблему.",
+            nextReview: "22 липня 2026",
+          }],
+          ownerAction: "",
+        },
+      };
+
+      const first = await harness.executeTool<{
+        data: { deduplicated: boolean; proof: { format: string; providerMessageId: string | null } };
+      }>(TOOL_NAMES.detailedReportEmailSend, params);
+      const second = await harness.executeTool<{
+        data: { deduplicated: boolean; proof: { providerMessageId: string | null } };
+      }>(TOOL_NAMES.detailedReportEmailSend, params);
+
+      expect(first.data.deduplicated).toBe(false);
+      expect(first.data.proof.format).toBe("structured_html");
+      expect(second.data.deduplicated).toBe(true);
+      expect(second.data.proof.providerMessageId).toBe("structured-provider-id");
+      expect(calls).toHaveLength(1);
+
+      const requestBody = JSON.parse(String(calls[0].init?.body));
+      expect(requestBody.html).toContain("Що Paperclip робить далі");
+      expect(requestBody.html).toContain("Від вас нічого не потрібно");
+      expect(requestBody.html).toContain("&lt;script&gt;alert(1)&lt;/script&gt;");
+      expect(requestBody.html).not.toContain("<script>");
+      expect(requestBody.html).not.toContain("javascript:");
+      expect(requestBody.text).toContain("AST-379");
     } finally {
       globalThis.fetch = originalFetch;
     }

@@ -440,17 +440,80 @@ const manifest: PaperclipPluginManifestV1 = {
       name: TOOL_NAMES.detailedReportEmailSend,
       displayName: "Send SEO Detailed Report Email",
       description:
-        "Sends the detailed weekly SEO report through the configured Resend transport. Use only for detailed report email delivery, not Telegram summaries. The subject and body must be written in the configured detailedReportLanguage.",
+        "Sends the detailed weekly SEO report through the configured Resend transport. Prefer the structured report input: the plugin renders safe HTML and a plain-text fallback. Use only for detailed report email delivery, not Telegram summaries.",
       parametersSchema: {
         type: "object",
         properties: {
           subject: { type: "string" },
           text: { type: "string" },
           html: { type: "string" },
+          report: {
+            type: "object",
+            description: "Structured owner-facing weekly report. Required for the canonical Astrogen weekly flow.",
+            properties: {
+              period: { type: "string" },
+              executiveSummary: { type: "string" },
+              metrics: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    label: { type: "string" },
+                    current: { type: "string" },
+                    previous: { type: "string" },
+                    interpretation: { type: "string" },
+                  },
+                  required: ["label", "current"],
+                },
+              },
+              actions: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    issueId: { type: "string" },
+                    title: { type: "string" },
+                    owner: { type: "string" },
+                    status: { type: "string" },
+                    nextStep: { type: "string" },
+                    url: { type: "string" },
+                  },
+                  required: ["title", "nextStep"],
+                },
+              },
+              watchItems: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    title: { type: "string" },
+                    reason: { type: "string" },
+                    nextReview: { type: "string" },
+                  },
+                  required: ["title", "reason"],
+                },
+              },
+              noActionReason: { type: "string" },
+              ownerAction: { type: "string" },
+              details: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    title: { type: "string" },
+                    body: { type: "string" },
+                  },
+                  required: ["title", "body"],
+                },
+              },
+            },
+            required: ["period", "executiveSummary", "actions"],
+          },
           recipientEmails: { type: "array", items: { type: "string" } },
+          idempotencyKey: { type: "string" },
           dryRun: { type: "boolean" },
         },
-        required: ["subject", "text"],
+        required: ["subject"],
       },
     },
     {
