@@ -61,6 +61,8 @@ export const pipelineStageBreakdownSchema = z.object({
   advanceTo: z.string().trim().min(1).max(120).optional(),
   waitForPieces: z.boolean().optional().default(false),
   whenFinishedMoveTo: z.string().trim().min(1).max(120).optional(),
+  whenCaseField: routineVariableLikeNameSchema.optional(),
+  whenCaseFieldEquals: z.union([z.string(), z.number(), z.boolean()]).optional(),
 }).superRefine((value, ctx) => {
   if (value.waitForPieces && !value.whenFinishedMoveTo) {
     ctx.addIssue({
@@ -69,6 +71,19 @@ export const pipelineStageBreakdownSchema = z.object({
       message: "Breakdown stages that wait for pieces need a destination stage",
     });
   }
+  if ((value.whenCaseField === undefined) !== (value.whenCaseFieldEquals === undefined)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Conditional breakdown requires both whenCaseField and whenCaseFieldEquals",
+    });
+  }
+});
+
+export const pipelineStageIntakeGuardSchema = z.object({
+  requiredParentPipelineId: z.string().uuid(),
+  requiredParentStageKeys: z.array(z.string().trim().min(1).max(120)).min(1).max(20),
+  requiredParentCaseField: routineVariableLikeNameSchema,
+  requiredParentCaseFieldEquals: z.union([z.string(), z.number(), z.boolean()]),
 });
 
 export const pipelineStageChildrenTerminalOutcomeSchema = z.object({
@@ -145,6 +160,7 @@ export const pipelineStageConfigSchema = z.object({
   onEnter: pipelineStageOnEnterSchema.optional(),
   automation: pipelineStageAutomationSchema.optional(),
   breakdown: pipelineStageBreakdownSchema.optional(),
+  intakeGuard: pipelineStageIntakeGuardSchema.optional(),
   childrenTerminalOutcome: pipelineStageChildrenTerminalOutcomeSchema.optional(),
   pipelineStageCountRequirements: z.array(pipelineStageCountRequirementSchema).max(20).optional(),
   approveToStageKey: z.string().trim().min(1).max(120).optional(),
@@ -193,6 +209,7 @@ export type PipelineStageOnEnter = z.infer<typeof pipelineStageOnEnterSchema>;
 export type PipelineStageAutomationConfig = z.infer<typeof pipelineStageAutomationSchema>;
 export type PipelineStageCarryOverPolicy = z.infer<typeof pipelineStageCarryOverPolicySchema>;
 export type PipelineStageBreakdown = z.infer<typeof pipelineStageBreakdownSchema>;
+export type PipelineStageIntakeGuard = z.infer<typeof pipelineStageIntakeGuardSchema>;
 export type PipelineStageChildrenTerminalOutcome = z.infer<typeof pipelineStageChildrenTerminalOutcomeSchema>;
 export type PipelineStageCountRequirement = z.infer<typeof pipelineStageCountRequirementSchema>;
 export type PipelineStageVariable = z.infer<typeof pipelineStageVariableSchema>;

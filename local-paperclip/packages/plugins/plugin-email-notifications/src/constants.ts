@@ -1,11 +1,12 @@
 export const PLUGIN_ID = "paperclip.email-notifications";
-export const PLUGIN_VERSION = "0.2.0";
+export const PLUGIN_VERSION = "0.3.0";
 
 export const TOOL_NAMES = {
   sendEmailNotification: "email-notification-send",
   sendChangeReport: "email-change-report-send",
   sendIncidentReport: "email-incident-report-send",
   sendDeveloperHandoff: "email-developer-handoff-send",
+  sendWeeklySeoReport: "email-seo-weekly-report-send",
 } as const;
 
 export const DEFAULT_RESEND_API_BASE_URL = "https://api.resend.com";

@@ -168,6 +168,14 @@ export type PipelineStageConfig = Record<string, unknown> & {
     advanceTo?: unknown;
     waitForPieces?: unknown;
     whenFinishedMoveTo?: unknown;
+    whenCaseField?: unknown;
+    whenCaseFieldEquals?: unknown;
+  };
+  intakeGuard?: {
+    requiredParentPipelineId?: unknown;
+    requiredParentStageKeys?: unknown;
+    requiredParentCaseField?: unknown;
+    requiredParentCaseFieldEquals?: unknown;
   };
   onEnter?: {
     type?: "run_routine";
@@ -702,6 +710,15 @@ export interface PipelineBreakdownConfig {
   advanceTo: string | null;
   waitForPieces: boolean;
   whenFinishedMoveTo: string | null;
+  whenCaseField: string | null;
+  whenCaseFieldEquals: string | number | boolean | null;
+}
+
+interface PipelineIntakeGuardConfig {
+  requiredParentPipelineId: string;
+  requiredParentStageKeys: string[];
+  requiredParentCaseField: string;
+  requiredParentCaseFieldEquals: string | number | boolean;
 }
 
 export interface PipelineCarryOverPolicy {
@@ -876,6 +893,23 @@ function readBreakdownConfig(config?: PipelineStageConfig | null): PipelineBreak
     "Breakdown whenFinishedMoveTo",
   );
   const carryOverPolicy = readBreakdownCarryOverPolicy(raw);
+  const whenCaseField = readOptionalFieldKey(raw.whenCaseField, "Breakdown whenCaseField");
+  const whenCaseFieldEquals = raw.whenCaseFieldEquals;
+  if ((whenCaseField === null) !== (whenCaseFieldEquals === undefined)) {
+    throw unprocessable("Conditional breakdown requires both whenCaseField and whenCaseFieldEquals", {
+      code: "validation",
+    });
+  }
+  if (
+    whenCaseFieldEquals !== undefined &&
+    typeof whenCaseFieldEquals !== "string" &&
+    typeof whenCaseFieldEquals !== "number" &&
+    typeof whenCaseFieldEquals !== "boolean"
+  ) {
+    throw unprocessable("Breakdown whenCaseFieldEquals must be a string, number, or boolean", {
+      code: "validation",
+    });
+  }
   return {
     targetPipelineId,
     targetStageKey,
@@ -886,7 +920,103 @@ function readBreakdownConfig(config?: PipelineStageConfig | null): PipelineBreak
     advanceTo: readOptionalStageKey(raw.advanceTo, "Breakdown advanceTo"),
     waitForPieces,
     whenFinishedMoveTo,
+    whenCaseField,
+    whenCaseFieldEquals: whenCaseFieldEquals ?? null,
   };
+}
+
+function readIntakeGuardConfig(config?: PipelineStageConfig | null): PipelineIntakeGuardConfig | null {
+  const raw = config?.intakeGuard;
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const requiredParentPipelineId = typeof raw.requiredParentPipelineId === "string"
+    ? raw.requiredParentPipelineId.trim()
+    : "";
+  const requiredParentStageKeys = readStringList(
+    raw.requiredParentStageKeys,
+    "Intake guard requiredParentStageKeys",
+  );
+  const requiredParentCaseField = readOptionalFieldKey(
+    raw.requiredParentCaseField,
+    "Intake guard requiredParentCaseField",
+  );
+  const requiredParentCaseFieldEquals = raw.requiredParentCaseFieldEquals;
+  if (!requiredParentPipelineId) {
+    throw unprocessable("Intake guard requiredParentPipelineId is required", { code: "validation" });
+  }
+  if (!requiredParentStageKeys.length) {
+    throw unprocessable("Intake guard requires at least one parent stage key", { code: "validation" });
+  }
+  if (!requiredParentCaseField) {
+    throw unprocessable("Intake guard requiredParentCaseField is required", { code: "validation" });
+  }
+  if (
+    typeof requiredParentCaseFieldEquals !== "string" &&
+    typeof requiredParentCaseFieldEquals !== "number" &&
+    typeof requiredParentCaseFieldEquals !== "boolean"
+  ) {
+    throw unprocessable("Intake guard requiredParentCaseFieldEquals must be a string, number, or boolean", {
+      code: "validation",
+    });
+  }
+  return {
+    requiredParentPipelineId,
+    requiredParentStageKeys,
+    requiredParentCaseField,
+    requiredParentCaseFieldEquals,
+  };
+}
+
+function assertBreakdownCondition(
+  config: PipelineBreakdownConfig,
+  fields: Record<string, unknown> | null | undefined,
+) {
+  if (!config.whenCaseField) return;
+  const actual = fields?.[config.whenCaseField];
+  if (actual === config.whenCaseFieldEquals) return;
+  throw conflict("Pipeline case does not satisfy the configured breakdown condition", {
+    code: "breakdown_condition_not_met",
+    field: config.whenCaseField,
+    expected: config.whenCaseFieldEquals,
+    actual: actual ?? null,
+  });
+}
+
+async function assertIntakeGuard(
+  db: PipelineDb,
+  stage: typeof pipelineStages.$inferSelect,
+  parentCase: typeof pipelineCases.$inferSelect | null,
+) {
+  const guard = readIntakeGuardConfig(stageConfig(stage));
+  if (!guard) return;
+  if (!parentCase) {
+    throw unprocessable("This pipeline stage requires a guarded parent case", {
+      code: "intake_parent_required",
+    });
+  }
+  if (parentCase.pipelineId !== guard.requiredParentPipelineId) {
+    throw unprocessable("Parent case belongs to a pipeline that is not allowed for this intake stage", {
+      code: "intake_parent_pipeline_not_allowed",
+      expectedPipelineId: guard.requiredParentPipelineId,
+      actualPipelineId: parentCase.pipelineId,
+    });
+  }
+  const parentStage = await getStageOrThrow(db, parentCase.pipelineId, parentCase.stageId);
+  if (!guard.requiredParentStageKeys.includes(parentStage.key)) {
+    throw unprocessable("Parent case is not at an allowed stage for this intake", {
+      code: "intake_parent_stage_not_allowed",
+      expectedStageKeys: guard.requiredParentStageKeys,
+      actualStageKey: parentStage.key,
+    });
+  }
+  const actual = (parentCase.fields ?? {})[guard.requiredParentCaseField];
+  if (actual !== guard.requiredParentCaseFieldEquals) {
+    throw unprocessable("Parent case does not carry the action required for this intake", {
+      code: "intake_parent_field_not_allowed",
+      field: guard.requiredParentCaseField,
+      expected: guard.requiredParentCaseFieldEquals,
+      actual: actual ?? null,
+    });
+  }
 }
 
 function childrenGateConfig(
@@ -1067,7 +1197,15 @@ function normalizeStageConfig(kind: PipelineStageKind | string, config?: Pipelin
       ...(breakdown!.advanceTo ? { advanceTo: breakdown!.advanceTo } : {}),
       waitForPieces: breakdown!.waitForPieces,
       ...(breakdown!.whenFinishedMoveTo ? { whenFinishedMoveTo: breakdown!.whenFinishedMoveTo } : {}),
+      ...(breakdown!.whenCaseField ? {
+        whenCaseField: breakdown!.whenCaseField,
+        whenCaseFieldEquals: breakdown!.whenCaseFieldEquals!,
+      } : {}),
     };
+  }
+  if (next.intakeGuard !== undefined) {
+    const intakeGuard = readIntakeGuardConfig(next)!;
+    next.intakeGuard = intakeGuard;
   }
   if (next.childrenTerminalOutcome !== undefined) {
     const outcome = readChildrenTerminalOutcomeConfig(next)!;
@@ -2816,6 +2954,15 @@ export function pipelineService(db: Db, deps: { heartbeat?: IssueAssignmentWakeu
       whenFinishedMoveTo: typeof config.whenFinishedMoveTo === "string" && config.whenFinishedMoveTo.trim()
         ? config.whenFinishedMoveTo.trim()
         : null,
+      whenCaseField: typeof config.whenCaseField === "string" && config.whenCaseField.trim()
+        ? config.whenCaseField.trim()
+        : null,
+      whenCaseFieldEquals:
+        typeof config.whenCaseFieldEquals === "string" ||
+        typeof config.whenCaseFieldEquals === "number" ||
+        typeof config.whenCaseFieldEquals === "boolean"
+          ? config.whenCaseFieldEquals
+          : null,
     };
   }
 
@@ -2826,6 +2973,7 @@ export function pipelineService(db: Db, deps: { heartbeat?: IssueAssignmentWakeu
     if (!config) {
       throw unprocessable("This pipeline stage is not configured for breakdown", { code: "breakdown_not_configured" });
     }
+    assertBreakdownCondition(config, detail.case.fields);
     const { targetPipeline, targetStage } = await loadBreakdownTarget(db, input.companyId, config);
     return { targetPipeline, targetStage, config };
   }
@@ -4439,6 +4587,7 @@ export function pipelineService(db: Db, deps: { heartbeat?: IssueAssignmentWakeu
             .then((rows) => rows[0] ?? null);
         if (!stage) throw unprocessable("Pipeline has no stages", { code: "validation" });
         assertStageEnabled(stage, "ingest");
+        await assertIntakeGuard(tx, stage, parentCase);
         validateAddFormFieldsForStage(stage, input.fields ?? {});
 
         const [inserted] = await tx
@@ -4699,6 +4848,7 @@ export function pipelineService(db: Db, deps: { heartbeat?: IssueAssignmentWakeu
       if (!config) {
         throw unprocessable("This pipeline stage is not configured for breakdown", { code: "breakdown_not_configured" });
       }
+      assertBreakdownCondition(config, detail.case.fields);
       const replayingCompletedBreakdown = currentStageConfig === null;
       const { targetPipeline, targetStage } = await loadBreakdownTarget(db, input.companyId, config);
       assertStageEnabled(targetStage, "breakdown");

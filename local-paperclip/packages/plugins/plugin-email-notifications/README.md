@@ -22,11 +22,16 @@ If it omits `recipientEmails`, the plugin sends to the configured defaults.
 - `email-incident-report-send` - structured incident or blocker report.
 - `email-developer-handoff-send` - implementer-ready handoff that requires exact
   affected URLs, per-page changes, and verification steps.
+- `email-seo-weekly-report-send` - typed Ukrainian weekly SEO/GEO report with
+  safe HTML, plain-text fallback, simple owner-facing language, action status,
+  KPI tables, watch/cooldown items, and explicit owner-action handling.
 
 Human prose that arrives with escaped paragraph separators (`\\n\\n`) is
 normalized at the transport boundary so recipients see real paragraphs.
 Developer handoffs must use the typed handoff tool; a generic notification is
 not sufficient for work that needs to be passed to site developers.
+Weekly SEO/GEO delivery must use the typed weekly report tool. It rejects an
+obvious English fallback when the configured company language is Ukrainian.
 
 Every successful non-dry-run send writes:
 

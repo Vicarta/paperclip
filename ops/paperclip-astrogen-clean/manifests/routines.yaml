@@ -125,10 +125,10 @@ routines:
         - no-safe-topic is a canonical native growth-case refill trigger, not a successful terminal state
       topicInventoryRefill:
         - allocator consumes only astrogen-topic-inventory cases at stage ready
-        - if fewer than 3 ready topics exist, ingest or update one astrogen-growth-actions case with fingerprint topic-inventory-refill:{ISO-week}
+        - if fewer than 3 ready topics exist, ingest or update one astrogen-growth-actions case with fingerprint topic-inventory-refill:{ISO-week}; that execution discovers or advances astrogen-search-demand-opportunities, never topic candidates directly
         - never create a legacy refill issue tree from the allocator
         - refill uses Payload CMS, GSC/GA4, semantic-core inventory/review, CrawlObserver, active issue duplicate checks, and consumed topic history
-        - weekly CMO planning ingests 3-10 stable candidate topic cases; candidate and evidence-ready automations validate them
+        - weekly CMO planning ingests or updates 3-10 stable astrogen-search-demand-opportunities cases at discovered; only a validated action_selected=new_article native breakdown may create a topic candidate
         - if tools are unavailable, attach one typed blocker to the refill growth case instead of asking the owner for topics or stopping unrelated work
       atomicDispatch:
         - call POST /api/cases/{topicCaseId}/breakdown with one item keyed by topicKey:reservation-v{topicCaseVersion}
@@ -177,7 +177,7 @@ routines:
     timezone: Europe/Kiev
     concurrencyPolicy: coalesce_if_active
     catchUpPolicy: skip_missed
-    workflow: seo_performance_loop
+    workflow: native_search_demand_opportunities
     activationGate: joined GSC/GA4/CrawlObserver/Payload evidence smoke
     processContract:
       canonicalTarget:
@@ -192,10 +192,18 @@ routines:
         - create only high-confidence child issues
         - prefer watch/cooldown/no-action decisions over speculative work
         - use top 5-10 deltas and never print raw plugin JSON
+      demandOpportunityContract:
+        - every new search-demand finding is ingested or updated in astrogen-search-demand-opportunities at discovered with a stable fingerprint
+        - combine GSC query/page evidence, semantic-core geo frequency, Payload/live coverage, CrawlObserver and current SERP evidence before ownership review
+        - resolve query-to-URL ownership and cannibalization before selecting an action
+        - selectedAction must be exactly one of new_article, refresh, merge, reposition, internal_link, technical, or no_action
+        - only native breakdown from action_selected=new_article can create astrogen-topic-inventory candidate
+        - refresh, merge, reposition, internal_link and technical go to linked astrogen-growth-actions execution cases
+        - Cloudflare email-protection probe URLs are ignored; near-duplicate and zero-word JS findings require rendered confirmation before work is created
       allowedSideEffects:
         - route child issues for technical fixes, content refreshes, monitoring, owner SEO decisions through Hermes/CMO, or strategy review
         - produce concise internal weekly report evidence
-        - send the detailed weekly SEO report by email when the SEO Performance Loop delivery plan says email is configured
+        - send the detailed weekly SEO report by email through the company-scoped email plugin
       contentRefreshContract:
         - content_refresh means improving an existing article's body/content through the native article pipeline after one durable Winning Structure run for the refresh revision
         - required evidence is an imported Winning Structure result with ownership/cannibalization boundaries, reader-value evidence or fulfilled commitment, accepted sections, content quality requirements, publication requirements, and exact sections that need substantive improvement
@@ -205,11 +213,11 @@ routines:
         - refresh preserves accepted existing cover/media unless the issue explicitly scopes an image defect
         - editorial/layout defects stay in the editorial_backfill/layout repair lane; metadata, internal-link-only, and relatedPosts-only fixes stay in deterministic CMS/SEO fixer lanes
       emailDeliveryContract:
-        - call paperclip.seo-performance-loop:seo-weekly-report-plan-get before finalizing the report
+        - use the completed Wednesday-Tuesday Europe/Kiev reporting window and the previous Wednesday-Tuesday comparison window; treat the latest 2 days as provisional when source latency applies
         - write for a non-technical company owner in simple Ukrainian; explain business meaning first and keep tool names, payload details, and internal implementation terms out of the main summary
         - the first section must say what Paperclip will do next; every action must name the existing issue or native case, accountable agent, current status, exact next step, and review date when known
         - separate executable actions from watch/cooldown/no-action decisions; never present a blocked or external-wait issue as completed work
-        - when detailedReportChannel=email and deliveryReady=true, call paperclip.seo-performance-loop:seo-detailed-report-email-send with the structured report object and an issue-scoped idempotency key; the plugin renders safe HTML plus a plain-text fallback
+        - call paperclip.email-notifications:email-seo-weekly-report-send with the structured report object and an issue-scoped idempotency key; the plugin renders safe Ukrainian HTML plus a plain-text fallback
         - set ownerAction only when the owner can make a concrete decision; otherwise state plainly that no owner action is required
         - record email delivery proof in the issue thread without exposing raw secrets or provider payloads
         - if configured email delivery fails, create or link a CTO-owned email transport blocker and do not silently fall back to comment-only completion
@@ -220,7 +228,7 @@ routines:
         - run paid providers without a linked budget approval
         - create article slots directly
         - close done with only an internal comment when email delivery is configured
-      completionGate: action issues, Hermes/CMO owner-brief decisions, watch/cooldown decisions, or explicit no-action evidence recorded, plus detailed weekly SEO email delivery proof or a linked CTO-owned email transport blocker
+      completionGate: every actionable demand finding has a nonterminal astrogen-search-demand-opportunities or linked execution case, watch/cooldown decisions have nextReviewAt, explicit no-action evidence is recorded, and detailed weekly SEO email delivery proof or a linked CTO-owned email transport blocker exists
 
   - title: Weekly Astrogen CMO growth portfolio plan
     owner: Chief Marketing Officer
@@ -248,12 +256,13 @@ routines:
         - repeated findings update one canonical remediation issue
       output:
         - weekly-growth-plan document with 3-7 evidence-backed actions when safe actions exist
-        - ingest or update 3-10 evidence-backed astrogen-topic-inventory cases at candidate with stable topic keys
+        - ingest or update 3-10 evidence-backed astrogen-search-demand-opportunities cases at discovered with stable fingerprints; never ingest topic candidates directly
+        - drive ownership_review and action_selected decisions so only safe uncovered demand reaches topic inventory through native breakdown
         - keep ready inventory target 10 and low-water mark 3; a Markdown-only content plan is incomplete
-        - manage delegated topic generation through validator outcomes; candidate submissions and case IDs are progress, not inventory success
+        - manage delegated opportunity actions through downstream outcomes; discovered cases and candidate IDs are progress, not inventory success
         - every accepted action is delegated or linked to an executable existing issue or pipeline case
         - record ready-topic inventory, productive and blocked article WIP, CMS drafts delivered, and SEO actions completed
-      completionGate: accepted actions delegated or linked, blockers classified, and unrelated lanes continue; content supply additionally requires at least 3 current ready topics or one nonterminal canonical refill case in delegated, executing, verify, or external_wait with an accountable specialist and nextReviewAt; candidate or rejected topic IDs never satisfy this gate
+      completionGate: accepted actions delegated or linked, blockers classified, and unrelated lanes continue; content supply additionally requires at least 3 current ready topics or one nonterminal search-demand opportunity/refill execution path with an accountable specialist and nextReviewAt; discovered, candidate, rejected or no-action records never satisfy inventory readiness
 
   - title: Monthly Astrogen trend discovery
     owner: Chief Marketing Officer

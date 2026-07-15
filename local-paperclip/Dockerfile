@@ -58,7 +58,6 @@ RUN pnpm --filter paperclip-plugin-telegram build \
   && pnpm --filter @paperclipai/plugin-payload-cms-agent-tools build \
   && pnpm --filter @paperclipai/plugin-gsc-bing-ga4-mcp-agent-tools build \
   && pnpm --filter @paperclipai/plugin-crawlobserver-agent-tools build \
-  && pnpm --filter @paperclipai/plugin-seo-performance-loop build \
   && pnpm --filter @paperclipai/plugin-email-notifications build \
   && pnpm --filter @paperclipai/plugin-openrouter-image-agent-tools build \
   && pnpm --filter @paperclipai/plugin-serper-agent-tools build \

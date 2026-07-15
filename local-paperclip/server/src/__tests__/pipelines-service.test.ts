@@ -275,6 +275,108 @@ describeEmbeddedPostgres("pipelineService", () => {
     expect(count).toBe(5);
   });
 
+  it("enforces conditional breakdown and guarded child-pipeline intake", async () => {
+    const company = await seedCompany();
+    const topics = await svc.createPipeline({
+      companyId: company.id,
+      key: "guarded-topic-inventory",
+      name: "Guarded topic inventory",
+      actor: userActor,
+      stages: [
+        { key: "candidate", name: "Candidate", kind: "working" },
+        { key: "consumed", name: "Consumed", kind: "done" },
+        { key: "rejected", name: "Rejected", kind: "cancelled" },
+      ],
+    });
+    const opportunities = await svc.createPipeline({
+      companyId: company.id,
+      key: "search-demand-opportunities",
+      name: "Search demand opportunities",
+      actor: userActor,
+      stages: [
+        {
+          key: "action_selected",
+          name: "Action selected",
+          kind: "working",
+          config: {
+            breakdown: {
+              targetPipelineId: topics.id,
+              targetStageKey: "candidate",
+              pieceNoun: "topic",
+              advanceTo: "delegated",
+              whenCaseField: "selectedAction",
+              whenCaseFieldEquals: "new_article",
+            },
+          },
+        },
+        { key: "delegated", name: "Delegated", kind: "working" },
+        { key: "measured", name: "Measured", kind: "done" },
+        { key: "rejected", name: "Rejected", kind: "cancelled" },
+      ],
+    });
+    const topicStages = await svc.listStages(company.id, topics.id);
+    const topicCandidate = topicStages.find((stage) => stage.key === "candidate")!;
+    await svc.updateStage({
+      companyId: company.id,
+      pipelineId: topics.id,
+      stageId: topicCandidate.id,
+      patch: {
+        config: {
+          intakeGuard: {
+            requiredParentPipelineId: opportunities.id,
+            requiredParentStageKeys: ["action_selected"],
+            requiredParentCaseField: "selectedAction",
+            requiredParentCaseFieldEquals: "new_article",
+          },
+        },
+      },
+      actor: userActor,
+    });
+
+    const refresh = await svc.ingestCase({
+      companyId: company.id,
+      pipelineId: opportunities.id,
+      stageKey: "action_selected",
+      caseKey: "refresh-opportunity",
+      title: "Refresh an existing page",
+      fields: { selectedAction: "refresh_existing" },
+      actor: userActor,
+    });
+    await expect(svc.resolveBreakdownTarget({
+      companyId: company.id,
+      caseId: refresh.case.id,
+    })).rejects.toMatchObject({ status: 409, details: { code: "breakdown_condition_not_met" } });
+    await expect(svc.ingestCase({
+      companyId: company.id,
+      pipelineId: topics.id,
+      stageKey: "candidate",
+      caseKey: "direct-topic",
+      title: "Forbidden direct topic",
+      parentCaseId: refresh.case.id,
+      actor: userActor,
+    })).rejects.toMatchObject({ status: 422, details: { code: "intake_parent_field_not_allowed" } });
+
+    const article = await svc.ingestCase({
+      companyId: company.id,
+      pipelineId: opportunities.id,
+      stageKey: "action_selected",
+      caseKey: "article-opportunity",
+      title: "Create a new article",
+      fields: { selectedAction: "new_article" },
+      actor: userActor,
+    });
+    const breakdown = await svc.breakdownCase({
+      companyId: company.id,
+      caseId: article.case.id,
+      items: [{ key: "uncovered-query", title: "Uncovered query" }],
+      actor: userActor,
+    });
+
+    expect(breakdown.parentCase.stageId).not.toBe(article.case.stageId);
+    expect(breakdown.items).toHaveLength(1);
+    expect(breakdown.items[0]).toMatchObject({ ok: true, created: true });
+  });
+
   it("blocks a terminal transition until the required pipeline stage inventory reaches its minimum", async () => {
     const company = await seedCompany();
     const topics = await svc.createPipeline({

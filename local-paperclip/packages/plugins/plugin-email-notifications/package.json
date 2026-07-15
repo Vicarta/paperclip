@@ -1,9 +1,9 @@
 {
   "name": "@paperclipai/plugin-email-notifications",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
   "private": true,
-  "description": "Company-scoped Paperclip email notification tools with allowlisted recipients, Resend transport, idempotency, delivery proof, and cost accounting.",
+  "description": "Company-scoped Paperclip email notification and structured weekly SEO report tools with allowlisted recipients, Resend transport, idempotency, delivery proof, and cost accounting.",
   "exports": {
     ".": "./src/manifest.ts"
   },

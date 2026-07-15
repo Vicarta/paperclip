@@ -41,6 +41,7 @@ describe("plugin-email-notifications", () => {
       TOOL_NAMES.sendChangeReport,
       TOOL_NAMES.sendIncidentReport,
       TOOL_NAMES.sendDeveloperHandoff,
+      TOOL_NAMES.sendWeeklySeoReport,
     ]);
   });
 
@@ -295,5 +296,58 @@ describe("plugin-email-notifications", () => {
     expect(body.text).toContain("Сторінки для виправлення:\n1. https://astrogen.com.ua/children");
     expect(body.text).toContain("Що виправити:\n- Додати унікальні title і description.");
     expect(body.text).toContain("Як перевірити:\n- Перевірити initial HTML через curl.");
+  });
+
+  it("renders the weekly SEO report as Ukrainian HTML and rejects English fallback", async () => {
+    const fetchMock = mockResend("resend-seo-report");
+    const harness = createTestHarness({
+      manifest,
+      config: {
+        resendApiKeySecretRef: "secret-resend",
+        fromEmail: "paperclip@aibizmate.com",
+        defaultRecipientEmails: "o.savitsky@gmail.com",
+        allowlistedRecipientEmails: "o.savitsky@gmail.com",
+        defaultLanguage: "uk",
+      },
+    });
+    await plugin.definition.setup(harness.ctx);
+
+    await harness.executeTool(
+      TOOL_NAMES.sendWeeklySeoReport,
+      {
+        subject: "Щотижневий SEO/GEO звіт Astrogen",
+        report: {
+          period: "8-14 липня 2026",
+          executiveSummary: "Пошуковий трафік залишається невеликим. Paperclip перевіряє нові можливості та передає в роботу лише підтверджені дії.",
+          metrics: [{ label: "Кліки", current: "24", previous: "31", interpretation: "Поки спостерігаємо." }],
+          actions: [{ title: "Перевірити пошуковий попит", owner: "SEO Performance Analyst", status: "У роботі", nextStep: "Зіставити запити з наявними сторінками." }],
+          watchItems: [],
+          noActionReason: "Недостатньо даних для зміни сторінок.",
+          ownerAction: "",
+          details: [],
+        },
+        idempotencyKey: "weekly-seo-2026-07-15",
+      },
+      runCtx,
+    );
+
+    const request = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    const body = JSON.parse(String(request.body));
+    expect(body.html).toContain("Що Paperclip робить далі");
+    expect(body.html).toContain("Основні показники");
+    expect(body.text).toContain("ЩО PAPERCLIP РОБИТЬ ДАЛІ");
+
+    await expect(harness.executeTool(
+      TOOL_NAMES.sendWeeklySeoReport,
+      {
+        subject: "Weekly SEO report",
+        report: {
+          period: "Reporting week",
+          executiveSummary: "Executive summary and search visibility. Recommended experiments follow.",
+          actions: [],
+        },
+      },
+      runCtx,
+    )).rejects.toThrow("must be written in Ukrainian");
   });
 });

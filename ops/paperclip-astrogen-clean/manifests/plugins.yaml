@@ -19,19 +19,10 @@ plugins:
       packagePath: /app/packages/plugins/plugin-crawlobserver-agent-tools
       owner: SEO Performance Analyst
       verification: CrawlObserver project/session read
-    - key: paperclip.seo-performance-loop
-      packagePath: /app/packages/plugins/plugin-seo-performance-loop
-      owner: Chief Marketing Officer
-      verification: Ukrainian report settings load
-      safety:
-        articleCadenceEnabled: true
-        articleCadenceTargetPerDay: 1
-        articleCadencePreferredTimes: "10:00"
-        articleCadenceTimezone: Europe/Kiev
     - key: paperclip.email-notifications
       packagePath: /app/packages/plugins/plugin-email-notifications
       owner: Chief Technical Officer
-      verification: dry-run plus live owner change-report send through Resend
+      verification: dry-run plus live owner change-report and structured Ukrainian weekly SEO report through Resend
       safety:
         recipients: "explicit allowlist only; default o.savitsky@gmail.com"
         idempotency: required or deterministic fallback

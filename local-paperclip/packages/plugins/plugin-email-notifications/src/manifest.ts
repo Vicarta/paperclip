@@ -189,6 +189,84 @@ const manifest: PaperclipPluginManifestV1 = {
         required: ["summary", "impact", "affectedPages", "sharedActions", "sourceIssue"],
       },
     },
+    {
+      name: TOOL_NAMES.sendWeeklySeoReport,
+      displayName: "Send Weekly SEO/GEO Report",
+      description:
+        "Render and send a simple Ukrainian owner-facing weekly SEO/GEO report as safe HTML with a plain-text fallback.",
+      parametersSchema: {
+        type: "object",
+        properties: {
+          recipientEmails: recipientArraySchema,
+          subject: { type: "string" },
+          report: {
+            type: "object",
+            properties: {
+              period: { type: "string" },
+              executiveSummary: { type: "string" },
+              metrics: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    label: { type: "string" },
+                    current: { type: "string" },
+                    previous: { type: "string" },
+                    interpretation: { type: "string" },
+                  },
+                  required: ["label", "current"],
+                },
+              },
+              actions: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    issueId: { type: "string" },
+                    title: { type: "string" },
+                    owner: { type: "string" },
+                    status: { type: "string" },
+                    nextStep: { type: "string" },
+                    url: { type: "string" },
+                  },
+                  required: ["title", "nextStep"],
+                },
+              },
+              watchItems: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    title: { type: "string" },
+                    reason: { type: "string" },
+                    nextReview: { type: "string" },
+                  },
+                  required: ["title", "reason"],
+                },
+              },
+              noActionReason: { type: "string" },
+              ownerAction: { type: "string" },
+              details: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    title: { type: "string" },
+                    body: { type: "string" },
+                  },
+                  required: ["title", "body"],
+                },
+              },
+            },
+            required: ["period", "executiveSummary", "actions"],
+          },
+          idempotencyKey: { type: "string" },
+          dryRun: { type: "boolean" },
+          metadata: { type: "object" },
+        },
+        required: ["subject", "report"],
+      },
+    },
   ],
 };
 

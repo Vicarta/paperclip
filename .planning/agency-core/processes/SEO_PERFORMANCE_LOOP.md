@@ -1,5 +1,13 @@
 # SEO Performance Loop
 
+> Superseded for Astrogen on 2026-07-15. The standalone
+> `paperclip.seo-performance-loop` plugin is removed. Its useful discovery,
+> ownership, evidence, decision, measurement, report-channel and crawl-routing
+> policies are retained in
+> `.planning/agency-core/processes/SEARCH_DEMAND_OPPORTUNITY_PIPELINE.md` and in
+> the native Paperclip pipeline/routine manifests. This file remains historical
+> design evidence and must not be used as an installation or scheduler contract.
+
 ## Purpose
 
 This document defines the proposed SEO Performance Loop for Paperclip-managed client work.

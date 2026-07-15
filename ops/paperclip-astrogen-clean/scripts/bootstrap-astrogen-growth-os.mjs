@@ -80,13 +80,6 @@ const pluginDefs = [
     installOrder: 40,
   },
   {
-    key: "paperclip.seo-performance-loop",
-    packageName: "@paperclipai/plugin-seo-performance-loop",
-    packagePath: "/app/packages/plugins/plugin-seo-performance-loop",
-    active: true,
-    installOrder: 50,
-  },
-  {
     key: "paperclip.email-notifications",
     packageName: "@paperclipai/plugin-email-notifications",
     packagePath: "/app/packages/plugins/plugin-email-notifications",
@@ -387,9 +380,16 @@ Bounds:
 - Do not print raw plugin JSON or long issue histories. Use top 5-10 deltas from the latest evidence packets.
 
 Allowed side effects:
-- Route child issues for technical fixes, content refreshes, monitoring, owner SEO decisions through Hermes/CMO, or strategy review.
+- Ingest or update stable \`astrogen-search-demand-opportunities\` cases and route selected actions through native pipelines.
 - Produce a concise internal weekly report document/comment and a Hermes-ready owner brief when owner direction would help.
-- Send the detailed weekly SEO report by email when the SEO Performance Loop delivery plan says email is configured.
+- Send the detailed weekly SEO report through \`paperclip.email-notifications:email-seo-weekly-report-send\`.
+
+Search-demand opportunity contract:
+- Every finding follows discovered -> evidence_ready -> ownership_review -> action_selected -> delegated -> verified -> measured.
+- Combine GSC query/page evidence, semantic-core geo frequency, Payload/live coverage, CrawlObserver, current SERP evidence, and existing action history.
+- Resolve query-to-URL ownership and cannibalization before action selection.
+- Select exactly one action: new_article, refresh, merge, reposition, internal_link, technical, or no_action.
+- Only action_selected=new_article may call native breakdown into topic inventory. All other actions use linked growth execution cases.
 
 Content refresh contract:
 - \`content_refresh\` means improving an existing article's body/content after
@@ -407,11 +407,11 @@ Content refresh contract:
   CMS/SEO fixer lanes.
 
 Email delivery contract:
-- Call paperclip.seo-performance-loop:seo-weekly-report-plan-get before finalizing the report.
+- Use the completed Wednesday-Tuesday Europe/Kiev period and the previous Wednesday-Tuesday comparison period; mark the latest 2 source days provisional when applicable.
 - Write for a non-technical company owner in simple Ukrainian. Explain business meaning first; keep tool names, payload details, and internal implementation terms out of the main summary.
 - The first section must say what Paperclip will do next. Every action must name the existing issue or native case, accountable agent, current status, exact next step, and review date when known.
 - Separate executable actions from watch/cooldown/no-action decisions. Never present a blocked or external-wait issue as completed work.
-- If the plan returns detailedReportChannel=email and deliveryReady=true, call paperclip.seo-performance-loop:seo-detailed-report-email-send with the structured report object and an idempotency key tied to the routine issue. The plugin renders safe HTML plus a plain-text fallback.
+- Call paperclip.email-notifications:email-seo-weekly-report-send with the structured report object and an idempotency key tied to the routine issue. The company-scoped plugin renders safe HTML plus a plain-text fallback.
 - Set ownerAction only when the owner can make a concrete decision. Otherwise state plainly that no owner action is required.
 - Record email delivery proof in the issue thread without exposing raw secrets or provider payloads.
 - If email delivery is configured but the tool/transport fails, create or link a CTO-owned blocker for the email transport and leave the weekly SEO issue blocked or in progress; do not silently fall back to comment-only completion.
@@ -452,7 +452,8 @@ Continuity rules:
 
 Output contract:
 - Create/update a compact weekly-growth-plan issue document with 3-7 prioritized actions when evidence supports them.
-- Ingest or update 3-10 evidence-backed \`astrogen-topic-inventory\` cases at stage \`candidate\` using stable topic keys. A Markdown content plan without native topic cases is incomplete.
+- Ingest or update 3-10 evidence-backed \`astrogen-search-demand-opportunities\` cases at \`discovered\` using stable fingerprints. Never ingest topic candidates directly.
+- Drive each opportunity through ownership review and one action selection. Only guarded \`new_article\` breakdown may create a native topic candidate.
 - Maintain a target of 10 validated ready topics and a low-water mark of 3. Candidate and evidence-ready stage automations own enrichment and duplicate/cannibalization validation; CMO does not mark a candidate ready by narrative assertion.
 - Manage delegated topic generation through the final validator outcomes. Candidate submissions and case IDs are progress, not inventory success; candidate, evidence_ready, consumed, rejected_duplicate and narrative lists do not count as ready inventory.
 - Each action names the business/search outcome, evidence, accountable manager, specialist executor, completion proof, and review window.
@@ -461,7 +462,7 @@ Output contract:
 
 Completion gate:
 - A report alone is not completion. Every accepted action is delegated or linked to an executable existing path; blocked items have an owner and recovery/external-wait class; unrelated lanes continue.
-- Content-supply completion requires at least 3 current non-retired topic cases actually at ready. If the count is lower, one canonical topic-inventory-refill growth case must remain nonterminal in delegated, executing, verify, or external_wait with an accountable specialist and nextReviewAt.
+- Content-supply completion requires at least 3 current non-retired topic cases actually at ready. If the count is lower, one canonical refill case or search-demand opportunity must remain nonterminal with an accountable specialist and nextReviewAt.
 - Native topic case ids in candidate, evidence_ready, consumed, rejected_duplicate, or a list in comments/document never satisfy the ready-inventory gate.
 - If fewer than 3 safe actions exist, include durable no-safe-action evidence rather than inventing work.`,
 
@@ -1085,17 +1086,6 @@ function buildActivePluginConfig(pluginKey, oldConfig, secretIds) {
     config.requestTimeoutMs = 120000;
     config.allowMutatingTools = false;
   }
-  if (pluginKey === "paperclip.seo-performance-loop") {
-    config.articleCadenceEnabled = true;
-    config.articleCadenceTargetPerDay = 1;
-    config.articleCadenceTimezone = "Europe/Kiev";
-    config.articleCadencePreferredTimes = "10:00";
-    config.detailedReportLanguage = "uk";
-    config.detailedReportChannel = "email";
-    config.detailedReportFromEmail = "paperclip@aibizmate.com";
-    config.detailedReportRecipientEmails = config.detailedReportRecipientEmails || "o.savitsky@gmail.com";
-    config.resendApiKeySecretRef = secretIds["resend-api-key"];
-  }
   if (pluginKey === "paperclip.email-notifications") {
     config.resendApiKeySecretRef = secretIds["resend-api-key"];
     config.resendApiBaseUrl = "https://api.resend.com";
@@ -1362,11 +1352,11 @@ function agentSpecificInstructions(agent) {
 
 ## Topic Inventory Refill Contract
 
-- Own candidate enrichment for \`astrogen-topic-inventory\` and the execution work delegated from the canonical \`topic-inventory-refill\` growth case.
+- Own evidence enrichment for \`astrogen-search-demand-opportunities\` and guarded topic candidates delegated from approved \`new_article\` actions.
 - Use compact evidence from Payload CMS, GSC/GA4, semantic-core
   inventory/review, CrawlObserver/internal-link data, active Paperclip issues,
   and consumed topic history.
-- Ingest or update 3-10 native topic cases at \`candidate\` using stable topic keys. Enrich each assigned candidate and transition it to \`evidence_ready\`, \`waiting_evidence\`, or \`expired\`; the validator alone moves evidence-ready cases to \`ready\`, \`needs_owner_direction\`, or \`rejected_duplicate\`.
+- Ingest or update 3-10 native search-demand cases at \`discovered\` using stable opportunity fingerprints. Never ingest topic candidates directly. Enrich only a topic candidate created by guarded native breakdown after \`selectedAction=new_article\`, then transition it to \`evidence_ready\`, \`waiting_evidence\`, or \`expired\`; the validator alone moves evidence-ready cases to \`ready\`, \`needs_owner_direction\`, or \`rejected_duplicate\`.
 - Every ready topic must include topicKey, Ukrainian working title, primary
   query, supporting queries, intent, funnel role, audience segment, target
   service/route relationship, evidence references, CMS duplicate check, active
@@ -1820,11 +1810,10 @@ function upsertAgents(secretIds) {
   return ids;
 }
 
-function upsertResendEmailSecretBindings(secretIds, pluginIds, agentIds) {
+function upsertResendEmailSecretBindings(secretIds, pluginIds) {
   const resendSecretId = secretIds["resend-api-key"];
-  const seoPluginId = pluginIds["paperclip.seo-performance-loop"];
-  const seoAgentId = agentIds["SEO Performance Analyst"];
-  if (!resendSecretId || !seoPluginId || !seoAgentId) return;
+  const emailPluginId = pluginIds["paperclip.email-notifications"];
+  if (!resendSecretId || !emailPluginId) return;
 
   psql(
     CLEAN_DB,
@@ -1834,8 +1823,8 @@ function upsertResendEmailSecretBindings(secretIds, pluginIds, agentIds) {
         version_selector, required, label, created_at, updated_at
       ) values (
         ${qUuid(CLEAN_COMPANY_ID)}, ${qUuid(resendSecretId)}, 'plugin',
-        ${q(seoPluginId)}, 'settings.resendApiKeySecretRef', 'latest', true,
-        'Resend API key for SEO Performance Loop detailed weekly report email',
+        ${q(emailPluginId)}, 'resendApiKeySecretRef', 'latest', true,
+        'Resend API key for company-scoped email notifications and weekly SEO reports',
         now(), now()
       )
       on conflict (company_id, target_type, target_id, config_path) do update set
@@ -1847,26 +1836,6 @@ function upsertResendEmailSecretBindings(secretIds, pluginIds, agentIds) {
     `,
   );
 
-  psql(
-    CLEAN_DB,
-    `
-      insert into company_secret_bindings (
-        company_id, secret_id, target_type, target_id, config_path,
-        version_selector, required, label, created_at, updated_at
-      ) values (
-        ${qUuid(CLEAN_COMPANY_ID)}, ${qUuid(resendSecretId)}, 'agent',
-        ${q(seoAgentId)}, 'resendApiKeySecretRef', 'latest', true,
-        'SEO Performance Analyst: Resend API key for detailed weekly SEO report email',
-        now(), now()
-      )
-      on conflict (company_id, target_type, target_id, config_path) do update set
-        secret_id=excluded.secret_id,
-        version_selector=excluded.version_selector,
-        required=excluded.required,
-        label=excluded.label,
-        updated_at=now();
-    `,
-  );
 }
 
 function upsertSerperAgentToolsSecretBindings(secretIds, pluginIds, agentIds) {
@@ -2410,7 +2379,7 @@ function main() {
   }
   const plugins = upsertPlugins(secrets.secretIds);
   const agentIds = upsertAgents(secrets.secretIds);
-  upsertResendEmailSecretBindings(secrets.secretIds, plugins.pluginIds, agentIds);
+  upsertResendEmailSecretBindings(secrets.secretIds, plugins.pluginIds);
   upsertSerperAgentToolsSecretBindings(secrets.secretIds, plugins.pluginIds, agentIds);
   upsertWinningStructureSecretBinding(secrets.secretIds, plugins.pluginIds);
   const { goalId, projectId } = ensureGoalAndProject(agentIds);

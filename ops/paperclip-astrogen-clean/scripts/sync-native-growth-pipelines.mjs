@@ -101,18 +101,63 @@ function desiredReviewConfig(review, agentByName) {
 function desiredStaticStageConfig(stage, pipelines) {
   const config = structuredClone(stage.config ?? {});
   const breakdown = config.breakdown;
-  if (!breakdown) return config;
-  const targetPipelineKey = breakdown.targetPipelineKey;
-  if (typeof targetPipelineKey !== "string" || !targetPipelineKey.trim()) {
-    throw new Error(`Stage ${stage.key} breakdown targetPipelineKey is required`);
+  if (breakdown) {
+    const targetPipelineKey = breakdown.targetPipelineKey;
+    if (typeof targetPipelineKey !== "string" || !targetPipelineKey.trim()) {
+      throw new Error(`Stage ${stage.key} breakdown targetPipelineKey is required`);
+    }
+    const targetPipeline = pipelines.find((candidate) => candidate.key === targetPipelineKey);
+    if (!targetPipeline) {
+      throw new Error(`Stage ${stage.key} breakdown target pipeline is missing: ${targetPipelineKey}`);
+    }
+    breakdown.targetPipelineId = targetPipeline.id;
+    delete breakdown.targetPipelineKey;
   }
-  const targetPipeline = pipelines.find((candidate) => candidate.key === targetPipelineKey);
-  if (!targetPipeline) {
-    throw new Error(`Stage ${stage.key} breakdown target pipeline is missing: ${targetPipelineKey}`);
+  const intakeGuard = config.intakeGuard;
+  if (intakeGuard) {
+    const requiredParentPipelineKey = intakeGuard.requiredParentPipelineKey;
+    if (typeof requiredParentPipelineKey !== "string" || !requiredParentPipelineKey.trim()) {
+      throw new Error(`Stage ${stage.key} intakeGuard requiredParentPipelineKey is required`);
+    }
+    const parentPipeline = pipelines.find((candidate) => candidate.key === requiredParentPipelineKey);
+    if (!parentPipeline) {
+      throw new Error(`Stage ${stage.key} intakeGuard parent pipeline is missing: ${requiredParentPipelineKey}`);
+    }
+    intakeGuard.requiredParentPipelineId = parentPipeline.id;
+    delete intakeGuard.requiredParentPipelineKey;
   }
-  breakdown.targetPipelineId = targetPipeline.id;
-  delete breakdown.targetPipelineKey;
   return config;
+}
+
+function initialStageConfig(stage, review, agentByName) {
+  const config = structuredClone(stage.config ?? {});
+  delete config.breakdown;
+  delete config.intakeGuard;
+  return {
+    ...config,
+    ...desiredReviewConfig(review, agentByName),
+  };
+}
+
+async function ensurePipelineShells(token, definitions, pipelines, agentByName) {
+  for (const definition of definitions) {
+    if (pipelines.some((candidate) => candidate.key === definition.key)) continue;
+    const pipeline = await request(token, "POST", `/companies/${COMPANY_ID}/pipelines`, {
+      key: definition.key,
+      name: definition.name,
+      description: definition.description,
+      projectId: PROJECT_ID,
+      enforceTransitions: false,
+      stages: definition.stages.map((stage) => ({
+        key: stage.key,
+        name: stage.name,
+        kind: stage.kind,
+        position: stage.position,
+        config: initialStageConfig(stage, definition.stageAutomation?.[stage.key]?.review, agentByName),
+      })),
+    });
+    pipelines.push(pipeline);
+  }
 }
 
 function stageNeedsUpdate(current, desired, automation, agentByName, pipelines) {
@@ -401,6 +446,7 @@ async function main() {
     const pipelines = asArray(pipelineResponse, ["items", "pipelines"]);
     const agents = asArray(agentResponse, ["items", "agents"]);
     const agentByName = new Map(agents.map((agent) => [agent.name, agent]));
+    await ensurePipelineShells(token, manifest.pipelines, pipelines, agentByName);
     const results = [];
     for (const definition of manifest.pipelines) {
       results.push(await syncPipeline(token, definition, pipelines, agentByName));

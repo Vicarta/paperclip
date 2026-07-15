@@ -21,7 +21,6 @@ RUN for plugin in \
     packages/plugins/plugin-perfex-crm-agent-tools \
     packages/plugins/plugin-search-console-mcp-agent-tools \
     packages/plugins/plugin-semantic-core-mcp-agent-tools \
-    packages/plugins/plugin-seo-performance-loop \
     packages/plugins/plugin-serper-agent-tools \
     packages/plugins/plugin-winning-structure-mcp-agent-tools \
     packages/plugins/plugin-telegram; \

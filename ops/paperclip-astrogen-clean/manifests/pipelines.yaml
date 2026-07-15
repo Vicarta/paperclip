@@ -243,6 +243,175 @@ pipelines:
       - human-scene image generation requires typed emotional art direction and company-scoped visual-history preflight before provider spend
       - a human-scene concept with fewer than 4 distinct visual axes against a recent fingerprint is corrected before generation, not accepted as another similar cover
 
+  - key: astrogen-search-demand-opportunities
+    name: Astrogen Search Demand Opportunities
+    description: Native decision ledger that turns search demand into one ownership-safe action before any topic inventory intake.
+    enforceTransitions: true
+    caseKey: search-demand:<opportunityFingerprint>
+    requiredFields:
+      - opportunityFingerprint
+      - discoveredAt
+      - discoverySources
+      - primaryQuery
+      - queryCluster
+      - intent
+      - semanticOpportunityId
+      - semanticClusterId
+      - geo
+      - geoSearchVolume
+      - frequencySource
+      - evidenceRefs
+      - evidenceFreshAt
+      - coverageState
+      - currentOwnerUrl
+      - competingUrls
+      - gscQueryPageConflict
+      - ownershipVerdict
+      - cannibalizationRisk
+      - selectedAction
+      - actionReason
+      - targetUrl
+      - delegatedCaseId
+      - delegationProof
+      - verificationProof
+      - measurementBaseline
+      - measurementWindow
+      - measurementResult
+      - nextReviewAt
+    stages:
+      - { key: discovered, name: Discovered, kind: working, position: 100 }
+      - { key: evidence_ready, name: Evidence Ready, kind: working, position: 200 }
+      - { key: ownership_review, name: Ownership Review, kind: review, position: 300 }
+      - key: action_selected
+        name: Action Selected
+        kind: working
+        position: 400
+        config:
+          breakdown:
+            targetPipelineKey: astrogen-topic-inventory
+            targetStageKey: candidate
+            pieceNoun: topic
+            caseKeyPrefix: topic
+            carryOverPolicy:
+              version: 1
+              mode: only
+              includeFields:
+                - searchOpportunityCaseId
+                - opportunityFingerprint
+                - selectedAction
+                - topicKey
+                - titleUk
+                - fingerprint
+                - queryCluster
+                - intent
+                - ctaRoute
+                - evidenceRefs
+                - evidenceFreshAt
+                - duplicateVerdict
+                - semanticOpportunityId
+                - semanticClusterId
+                - geoSearchVolume
+                - frequencySource
+                - currentOwnerUrl
+                - ownershipVerdict
+                - internalLinkPlan
+              excludeFields: []
+            inheritFields:
+              - searchOpportunityCaseId
+              - opportunityFingerprint
+              - selectedAction
+              - topicKey
+              - titleUk
+              - fingerprint
+              - queryCluster
+              - intent
+              - ctaRoute
+              - evidenceRefs
+              - evidenceFreshAt
+              - duplicateVerdict
+              - semanticOpportunityId
+              - semanticClusterId
+              - geoSearchVolume
+              - frequencySource
+              - currentOwnerUrl
+              - ownershipVerdict
+              - internalLinkPlan
+            advanceTo: delegated
+            waitForPieces: false
+            whenCaseField: selectedAction
+            whenCaseFieldEquals: new_article
+      - { key: delegated, name: Delegated, kind: working, position: 500 }
+      - { key: verified, name: Verified, kind: review, position: 600 }
+      - { key: measured, name: Measured, kind: done, position: 900 }
+      - { key: cancelled, name: Cancelled, kind: cancelled, position: 1000 }
+    transitions:
+      - { from: discovered, to: evidence_ready }
+      - { from: discovered, to: cancelled, label: invalid or duplicate signal }
+      - { from: evidence_ready, to: ownership_review }
+      - { from: evidence_ready, to: discovered, label: evidence incomplete }
+      - { from: evidence_ready, to: cancelled, label: no durable demand }
+      - { from: ownership_review, to: action_selected, label: ownership resolved }
+      - { from: ownership_review, to: evidence_ready, label: request evidence changes }
+      - { from: ownership_review, to: cancelled, label: unsafe or duplicate }
+      - { from: action_selected, to: delegated }
+      - { from: action_selected, to: ownership_review, label: revise decision }
+      - { from: action_selected, to: cancelled, label: no action }
+      - { from: delegated, to: verified }
+      - { from: delegated, to: action_selected, label: reroute action }
+      - { from: delegated, to: cancelled, label: obsolete or unsafe }
+      - { from: verified, to: measured, label: implementation verified }
+      - { from: verified, to: delegated, label: request execution changes }
+      - { from: verified, to: cancelled, label: implementation rejected }
+      - { from: measured, to: delegated, label: outcome regressed }
+    stageAutomation:
+      discovered:
+        owner: SEO Performance Analyst
+        instructions: |
+          Normalize one search-demand signal into a stable opportunityFingerprint. Use current GSC query/page evidence, GA4 only for business context, semantic-core inventory/review with Ukraine geo frequency when present, Payload CMS/live URL inventory, CrawlObserver, trend hypotheses, and existing pipeline history. Broad astrology demand is valid when it serves Astrogen's audience; direct product binding is not mandatory. Update this same case on repeat discovery. Do not create topics, articles, refreshes, or technical tasks from this stage.
+      evidence_ready:
+        owner: MKT Competitive Intelligence Analyst
+        instructions: |
+          Build a compact evidence packet: primary query and cluster, semantic IDs when available, geo frequency and source, intent, current SERP shape, Astrogen coverage state, exact GSC query-to-page ownership/conflicts, current owner URL, competing URLs, freshness, and confidence. Coverage must be one of uncovered, weak_owner, covered, or conflicting. Missing optional semantic IDs are an explicit data gap; missing CMS/GSC ownership evidence blocks the case. Transition to ownership_review only when an action can be chosen without guessing.
+      ownership_review:
+        owner: SEO Blog Content Plan Validator
+        review:
+          approver: SEO Blog Content Plan Validator
+          approveTo: action_selected
+          requestChangesTo: evidence_ready
+          rejectTo: cancelled
+        instructions: |
+          Resolve query-to-URL ownership before new content is considered. Check title, H1, headings, body purpose, query overlap, current rankings, internal links, and product/service ownership. Record cannibalizationRisk, ownershipVerdict, currentOwnerUrl, any pages that should be merged or repositioned, and the link-graph boundary. Approve only when the evidence supports one bounded action family; request evidence changes when ownership is ambiguous; reject exact duplicates and unsafe opportunities.
+      action_selected:
+        owner: Chief Marketing Officer
+        instructions: |
+          Choose exactly one selectedAction: new_article, refresh, merge, reposition, internal_link, technical, or no_action. Manage and delegate; do not perform specialist work. new_article is allowed only for uncovered demand with safe ownership and must include stable topicKey, titleUk, fingerprint, queryCluster, intent, CTA route, semantic/frequency evidence, duplicate verdict, and an incoming/outgoing internalLinkPlan. Only then call native breakdown once; the server creates or reuses the guarded topic candidate and advances this case to delegated. For refresh, merge, reposition, internal_link, or technical, ingest or update one stable astrogen-growth-actions execution case and link its ID. no_action creates no child but still advances to delegated with a durable reason, cooldown, and nextReviewAt so verification and measurement remain explicit.
+      delegated:
+        owner: Chief Marketing Officer
+        instructions: |
+          Control the linked downstream case without doing specialist execution. For new_article, require one guarded astrogen-topic-inventory child created by native breakdown. For refresh, merge, reposition, internal_link, or technical, require one linked astrogen-growth-actions case with the correct executor, completion proof, and measurement window. A blocked child affects only this opportunity; classify the blocker and keep unrelated cases moving. Transition to verified only after action-specific implementation evidence exists.
+      verified:
+        owner: SEO Performance Analyst
+        review:
+          approver: SEO Performance Analyst
+          approveTo: measured
+          requestChangesTo: delegated
+          rejectTo: cancelled
+        instructions: |
+          Verify the selected action, not merely task closure. new_article requires the guarded topic/article chain and CMS delivery evidence; refresh requires a before-after value diff; merge/reposition require canonical, redirect, ownership and indexability proof; internal_link requires source/target/anchor and rendered link-graph proof; technical requires exact affected URLs and production verification. Store verificationProof, baseline, measurement window and nextReviewAt. Approve to measured only when implementation is real and measurement is scheduled or complete.
+    invariants:
+      - every opportunity follows discovered -> evidence_ready -> ownership_review -> action_selected -> delegated -> verified -> measured
+      - repeated signals update one opportunityFingerprint instead of creating duplicates
+      - query-to-URL ownership is resolved before action selection
+      - only selectedAction=new_article can invoke native breakdown into astrogen-topic-inventory candidate
+      - topic inventory intake rejects cases without the guarded new_article parent
+      - refresh, merge, reposition, internal_link and technical route to execution lanes, never topic inventory
+      - no_action follows delegated -> verified -> measured with reason, cooldown and nextReviewAt but creates no downstream work
+      - broad audience demand is allowed, but every action must avoid cannibalizing an existing owner
+      - new_article requires an incoming and outgoing internal-link plan before topic validation
+      - merge and reposition require redirect, canonical, sitemap, link migration and rollback evidence
+      - verified means action-specific production or CMS proof exists; measured means baseline and review window are recorded
+      - one blocked opportunity never freezes unrelated safe work
+
   - key: astrogen-topic-inventory
     name: Astrogen Topic Inventory
     description: Transactional lifecycle for evidence-backed article ideas and reservations.
@@ -251,6 +420,8 @@ pipelines:
     readyTarget: 10
     caseKey: topic:<topicKey>
     requiredFields:
+      - searchOpportunityCaseId
+      - selectedAction
       - topicKey
       - titleUk
       - fingerprint
@@ -263,7 +434,16 @@ pipelines:
       - reservationExpiresAt
       - consumingArticleCaseId
     stages:
-      - { key: candidate, name: Candidate, kind: working, position: 100 }
+      - key: candidate
+        name: Candidate
+        kind: working
+        position: 100
+        config:
+          intakeGuard:
+            requiredParentPipelineKey: astrogen-search-demand-opportunities
+            requiredParentStageKeys: [action_selected]
+            requiredParentCaseField: selectedAction
+            requiredParentCaseFieldEquals: new_article
       - { key: evidence_ready, name: Evidence Ready, kind: working, position: 200 }
       - key: ready
         name: Ready For Brief
@@ -330,7 +510,7 @@ pipelines:
       candidate:
         owner: SEO Blog Content Strategist
         instructions: |
-          Enrich this topic case from Payload CMS, GSC/GA4, semantic-core, CrawlObserver, active pipeline/issue duplicates, and consumed history. Update typed case fields and transition to evidence_ready, waiting_evidence, or expired. Do not create article work yet.
+          Accept only the guarded new_article child of astrogen-search-demand-opportunities. Preserve searchOpportunityCaseId, semantic IDs, frequency source, ownership verdict and internal-link plan. Enrich the candidate without reopening the action decision, update typed case fields, and transition to evidence_ready, waiting_evidence, or expired. Do not create article work yet.
       evidence_ready:
         owner: SEO Blog Content Plan Validator
         instructions: |
@@ -360,6 +540,8 @@ pipelines:
       - refill when ready count is below 3 and target 10
       - no-safe-topic triggers refill and never completes article cadence by itself
       - repeated evidence updates the same fingerprint
+      - candidate intake requires a parent astrogen-search-demand-opportunities case at action_selected with selectedAction=new_article
+      - agents and weekly routines never ingest topic candidates directly
 
   - key: astrogen-growth-actions
     name: Astrogen Growth Actions

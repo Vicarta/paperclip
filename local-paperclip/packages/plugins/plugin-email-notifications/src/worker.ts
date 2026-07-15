@@ -13,6 +13,7 @@ import {
   PLUGIN_ID,
   TOOL_NAMES,
 } from "./constants.js";
+import { buildDetailedReportEmail } from "./weekly-seo-report.js";
 
 type EmailNotificationsConfig = typeof DEFAULT_CONFIG & Record<string, unknown>;
 
@@ -103,6 +104,29 @@ function normalizeEmailText(value: string) {
     && !normalizedLineEndings.includes("\\r\\n\\r\\n")
   ) return normalizedLineEndings;
   return normalizedLineEndings.replace(/\\r\\n|\\n/g, "\n");
+}
+
+function looksLikeEnglishSeoReport(value: string) {
+  const normalized = value.toLowerCase();
+  const markers = [
+    "reporting week",
+    "comparison week",
+    "executive summary",
+    "freshness note",
+    "page-level appendix",
+    "recommended experiments",
+    "indexing evidence",
+    "search visibility",
+  ];
+  return markers.filter((marker) => normalized.includes(marker)).length >= 2;
+}
+
+function assertWeeklySeoReportLanguage(input: { subject: string; text: string; html: string; language: string }) {
+  if (!input.language.trim().toLowerCase().startsWith("uk")) return;
+  const visibleText = `${input.subject}\n${input.text}\n${input.html}`;
+  const cyrillicCount = (visibleText.match(/[А-Яа-яІіЇїЄєҐґ]/g) ?? []).length;
+  if (cyrillicCount >= 40 && !looksLikeEnglishSeoReport(visibleText)) return;
+  throw new Error("weekly SEO/GEO report must be written in Ukrainian before delivery");
 }
 
 async function getConfig(ctx: PluginContext) {
@@ -619,6 +643,49 @@ const plugin = definePlugin({
           params: record,
           subject: report.subject,
           text: report.text,
+        });
+      },
+    );
+
+    ctx.tools.register(
+      TOOL_NAMES.sendWeeklySeoReport,
+      {
+        displayName: "Send Weekly SEO/GEO Report",
+        description:
+          "Render and send a simple Ukrainian owner-facing weekly SEO/GEO report as safe HTML with a plain-text fallback.",
+        parametersSchema: {
+          type: "object",
+          properties: {
+            recipientEmails: { type: "array", items: { type: "string" } },
+            subject: { type: "string" },
+            report: { type: "object" },
+            idempotencyKey: { type: "string" },
+            dryRun: { type: "boolean" },
+            metadata: { type: "object" },
+          },
+          required: ["subject", "report"],
+        },
+      },
+      async (params, runCtx) => {
+        const record = objectValue(params);
+        const subject = stringValue(record.subject);
+        const body = buildDetailedReportEmail(record);
+        const config = await getConfig(ctx);
+        assertWeeklySeoReportLanguage({
+          subject,
+          text: body.text,
+          html: body.html,
+          language: stringValue(config.defaultLanguage, DEFAULT_CONFIG.defaultLanguage),
+        });
+        return await sendEmail({
+          ctx,
+          runCtx,
+          toolName: TOOL_NAMES.sendWeeklySeoReport,
+          kind: "weekly_seo_report",
+          params: record,
+          subject,
+          text: body.text,
+          html: body.html,
         });
       },
     );

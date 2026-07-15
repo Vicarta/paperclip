@@ -144,12 +144,19 @@ is unavailable, the routine must not apply optional changes and must route a CTO
 blocker instead.
 
 The `Weekly Astrogen SEO/GEO action cycle` routine must deliver its detailed
-weekly report through `paperclip.seo-performance-loop:seo-detailed-report-email-send`
-when the SEO Performance Loop delivery plan reports configured email transport.
+weekly report through `paperclip.email-notifications:email-seo-weekly-report-send`.
 It may close `done` only after recording email delivery proof, or after linking a
 CTO-owned email transport blocker when sender, recipients, Resend secret-ref, or
 the email tool path is unavailable. Internal Paperclip comments/documents alone
 are fallback evidence, not successful delivery, when email is configured.
+
+Search-demand discovery and action selection are native Paperclip pipelines.
+`astrogen-search-demand-opportunities` runs before topic inventory and enforces
+`discovered -> evidence_ready -> ownership_review -> action_selected -> delegated
+-> verified -> measured`. Only `selectedAction=new_article` can use guarded
+native breakdown to create an `astrogen-topic-inventory` candidate. Refresh,
+merge, reposition, internal-link and technical decisions route to execution
+lanes instead of creating article ideas.
 
 ## Old Runtime Stop
 
