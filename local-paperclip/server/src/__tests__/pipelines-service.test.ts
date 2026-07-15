@@ -275,6 +275,99 @@ describeEmbeddedPostgres("pipelineService", () => {
     expect(count).toBe(5);
   });
 
+  it("blocks a terminal transition until the required pipeline stage inventory reaches its minimum", async () => {
+    const company = await seedCompany();
+    const topics = await svc.createPipeline({
+      companyId: company.id,
+      key: "topic-inventory",
+      name: "Topic inventory",
+      actor: userActor,
+      stages: [
+        { key: "candidate", name: "Candidate", kind: "working" },
+        { key: "ready", name: "Ready", kind: "working" },
+        { key: "consumed", name: "Consumed", kind: "done" },
+        { key: "rejected", name: "Rejected", kind: "cancelled" },
+      ],
+    });
+    const growth = await svc.createPipeline({
+      companyId: company.id,
+      key: "growth-actions",
+      name: "Growth actions",
+      actor: userActor,
+      stages: [
+        {
+          key: "verify",
+          name: "Verify",
+          kind: "working",
+          config: {
+            pipelineStageCountRequirements: [{
+              toStageKey: "measured",
+              pipelineKey: "topic-inventory",
+              stageKey: "ready",
+              minimumCount: 3,
+              activeOnly: true,
+              whenCaseField: "actionType",
+              whenCaseFieldEquals: "topic_inventory_refill",
+            }],
+          },
+        },
+        { key: "measured", name: "Measured", kind: "done" },
+        { key: "rejected", name: "Rejected", kind: "cancelled" },
+      ],
+    });
+
+    for (const topicKey of ["ready-a", "ready-b"]) {
+      await svc.ingestCase({
+        companyId: company.id,
+        pipelineId: topics.id,
+        stageKey: "ready",
+        caseKey: topicKey,
+        title: topicKey,
+        actor: userActor,
+      });
+    }
+    const refill = await svc.ingestCase({
+      companyId: company.id,
+      pipelineId: growth.id,
+      stageKey: "verify",
+      caseKey: "refill",
+      title: "Refill topics",
+      fields: { actionType: "topic_inventory_refill" },
+      actor: userActor,
+    });
+
+    await expect(svc.transitionCase({
+      companyId: company.id,
+      caseId: refill.case.id,
+      toStageKey: "measured",
+      expectedVersion: refill.case.version,
+      actor: userActor,
+    })).rejects.toMatchObject({
+      status: 409,
+      details: {
+        code: "pipeline_stage_count_below_minimum",
+        minimumCount: 3,
+        actualCount: 2,
+      },
+    });
+
+    await svc.ingestCase({
+      companyId: company.id,
+      pipelineId: topics.id,
+      stageKey: "ready",
+      caseKey: "ready-c",
+      title: "ready-c",
+      actor: userActor,
+    });
+    await expect(svc.transitionCase({
+      companyId: company.id,
+      caseId: refill.case.id,
+      toStageKey: "measured",
+      expectedVersion: refill.case.version,
+      actor: userActor,
+    })).resolves.toMatchObject({ case: { terminalKind: "done" } });
+  });
+
   it("persists workspaceRef during ingest", async () => {
     const { company, pipeline } = await seedPipeline();
     const workspaceRef = {

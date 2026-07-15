@@ -250,9 +250,10 @@ routines:
         - weekly-growth-plan document with 3-7 evidence-backed actions when safe actions exist
         - ingest or update 3-10 evidence-backed astrogen-topic-inventory cases at candidate with stable topic keys
         - keep ready inventory target 10 and low-water mark 3; a Markdown-only content plan is incomplete
+        - manage delegated topic generation through validator outcomes; candidate submissions and case IDs are progress, not inventory success
         - every accepted action is delegated or linked to an executable existing issue or pipeline case
         - record ready-topic inventory, productive and blocked article WIP, CMS drafts delivered, and SEO actions completed
-      completionGate: accepted actions delegated or linked, blockers classified, and unrelated lanes continue; otherwise durable no-safe-action evidence
+      completionGate: accepted actions delegated or linked, blockers classified, and unrelated lanes continue; content supply additionally requires at least 3 current ready topics or one nonterminal canonical refill case in delegated, executing, verify, or external_wait with an accountable specialist and nextReviewAt; candidate or rejected topic IDs never satisfy this gate
 
   - title: Monthly Astrogen trend discovery
     owner: Chief Marketing Officer

@@ -89,7 +89,8 @@ workflows:
       - every accepted action is delegated or linked to an executable existing issue or native pipeline case
       - new native-case specialist delegation uses atomic issue create with pipelineCaseLink and a stable requestKey; the standalone issue-link route is only for existing or migrated work
       - record ready-topic inventory, productive and blocked article WIP, weekly CMS drafts, and completed SEO actions
-    completionGate: accepted actions delegated or linked and blocker isolation verified; otherwise durable no-safe-action evidence
+      - candidate creation is progress only; CMO follows enrichment and validation outcomes until the current ready count is known
+    completionGate: accepted actions delegated or linked and blocker isolation verified; content supply requires at least 3 current ready topics or one nonterminal canonical refill case with accountable specialist and nextReviewAt; otherwise durable no-safe-action evidence
 
   monthly_trend_discovery:
     owner: Chief Marketing Officer

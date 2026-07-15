@@ -105,6 +105,15 @@ export type PipelineStageConfig = Record<string, unknown> & {
     childCaseIdField?: string;
     proofField?: string;
   };
+  pipelineStageCountRequirements?: Array<{
+    toStageKey: string;
+    pipelineKey: string;
+    stageKey: string;
+    minimumCount: number;
+    activeOnly?: boolean;
+    whenCaseField?: string;
+    whenCaseFieldEquals?: string | number | boolean;
+  }>;
   approveToStageKey?: string;
   rejectToStageKey?: string;
   requestChangesToStageKey?: string;
@@ -2007,6 +2016,7 @@ async function assertStageTransitionGates(
   db: PipelineDb,
   current: typeof pipelineCases.$inferSelect,
   fromStage: typeof pipelineStages.$inferSelect,
+  toStage: typeof pipelineStages.$inferSelect,
   options: { skipChildrenTerminalGate?: boolean } = {},
 ) {
   const config = normalizeStageConfig(fromStage.kind, stageConfig(fromStage));
@@ -2069,6 +2079,62 @@ async function assertStageTransitionGates(
         driftEventId: first.id,
         upstreamCaseId: typeof payload.upstreamCaseId === "string" ? payload.upstreamCaseId : null,
         upstreamCaseKey: typeof payload.upstreamCaseKey === "string" ? payload.upstreamCaseKey : null,
+      });
+    }
+  }
+
+  for (const requirement of config.pipelineStageCountRequirements ?? []) {
+    if (requirement.toStageKey !== toStage.key) continue;
+    if (
+      requirement.whenCaseField
+      && current.fields?.[requirement.whenCaseField] !== requirement.whenCaseFieldEquals
+    ) {
+      continue;
+    }
+
+    const target = await db
+      .select({
+        pipelineId: pipelines.id,
+        stageId: pipelineStages.id,
+      })
+      .from(pipelines)
+      .innerJoin(pipelineStages, eq(pipelineStages.pipelineId, pipelines.id))
+      .where(and(
+        eq(pipelines.companyId, current.companyId),
+        eq(pipelines.key, requirement.pipelineKey),
+        isNull(pipelines.archivedAt),
+        eq(pipelineStages.key, requirement.stageKey),
+      ))
+      .limit(1)
+      .then((rows) => rows[0] ?? null);
+    if (!target) {
+      throw conflict("Required pipeline inventory stage is not configured", {
+        code: "pipeline_stage_count_target_missing",
+        pipelineKey: requirement.pipelineKey,
+        stageKey: requirement.stageKey,
+      });
+    }
+
+    const conditions = [
+      eq(pipelineCases.companyId, current.companyId),
+      eq(pipelineCases.pipelineId, target.pipelineId),
+      eq(pipelineCases.stageId, target.stageId),
+      isNull(pipelineCases.retiredAt),
+    ];
+    if (requirement.activeOnly !== false) conditions.push(isNull(pipelineCases.terminalKind));
+    const [{ count }] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(pipelineCases)
+      .where(and(...conditions));
+    const actualCount = count ?? 0;
+    if (actualCount < requirement.minimumCount) {
+      throw conflict("Required pipeline inventory is below its completion threshold", {
+        code: "pipeline_stage_count_below_minimum",
+        pipelineKey: requirement.pipelineKey,
+        stageKey: requirement.stageKey,
+        minimumCount: requirement.minimumCount,
+        actualCount,
+        toStageKey: toStage.key,
       });
     }
   }
@@ -3598,7 +3664,7 @@ export function pipelineService(db: Db, deps: { heartbeat?: IssueAssignmentWakeu
     }
     assertStageEnabled(toStage, "transition");
     assertActorCanApproveStageExit(fromStage, input.actor);
-    await assertStageTransitionGates(tx, current, fromStage, { skipChildrenTerminalGate: input.skipChildrenTerminalGate });
+    await assertStageTransitionGates(tx, current, fromStage, toStage, { skipChildrenTerminalGate: input.skipChildrenTerminalGate });
     await assertLatestReviewApprovalStillCurrent(tx, current, fromStage, toStage);
     const toConfig = stageConfig(toStage);
     if (toConfig.autonomy === "auto") {

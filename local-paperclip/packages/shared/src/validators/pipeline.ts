@@ -92,6 +92,23 @@ export const pipelineStageChildrenTerminalOutcomeSchema = z.object({
   }
 });
 
+export const pipelineStageCountRequirementSchema = z.object({
+  toStageKey: z.string().trim().min(1).max(120),
+  pipelineKey: z.string().trim().min(1).max(200),
+  stageKey: z.string().trim().min(1).max(120),
+  minimumCount: z.number().int().min(0).max(100_000),
+  activeOnly: z.boolean().optional().default(true),
+  whenCaseField: routineVariableLikeNameSchema.optional(),
+  whenCaseFieldEquals: z.union([z.string(), z.number(), z.boolean()]).optional(),
+}).superRefine((value, ctx) => {
+  if ((value.whenCaseField === undefined) !== (value.whenCaseFieldEquals === undefined)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Pipeline stage-count requirements need both whenCaseField and whenCaseFieldEquals",
+    });
+  }
+});
+
 export const pipelineStageVariableSchema = z.object({
   key: routineVariableLikeNameSchema,
   label: z.string().trim().max(120),
@@ -129,6 +146,7 @@ export const pipelineStageConfigSchema = z.object({
   automation: pipelineStageAutomationSchema.optional(),
   breakdown: pipelineStageBreakdownSchema.optional(),
   childrenTerminalOutcome: pipelineStageChildrenTerminalOutcomeSchema.optional(),
+  pipelineStageCountRequirements: z.array(pipelineStageCountRequirementSchema).max(20).optional(),
   approveToStageKey: z.string().trim().min(1).max(120).optional(),
   rejectToStageKey: z.string().trim().min(1).max(120).optional(),
   requestChangesToStageKey: z.string().trim().min(1).max(120).optional(),
@@ -176,6 +194,7 @@ export type PipelineStageAutomationConfig = z.infer<typeof pipelineStageAutomati
 export type PipelineStageCarryOverPolicy = z.infer<typeof pipelineStageCarryOverPolicySchema>;
 export type PipelineStageBreakdown = z.infer<typeof pipelineStageBreakdownSchema>;
 export type PipelineStageChildrenTerminalOutcome = z.infer<typeof pipelineStageChildrenTerminalOutcomeSchema>;
+export type PipelineStageCountRequirement = z.infer<typeof pipelineStageCountRequirementSchema>;
 export type PipelineStageVariable = z.infer<typeof pipelineStageVariableSchema>;
 export type PipelineStageConfig = z.infer<typeof pipelineStageConfigSchema>;
 export type PipelineAutomationRetryScope = z.infer<typeof pipelineAutomationRetryScopeSchema>;

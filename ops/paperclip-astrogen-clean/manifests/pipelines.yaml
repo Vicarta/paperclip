@@ -382,7 +382,19 @@ pipelines:
       - { key: portfolio_review, name: Portfolio Review, kind: review, position: 200 }
       - { key: delegated, name: Delegated, kind: working, position: 300 }
       - { key: executing, name: Executing, kind: working, position: 400 }
-      - { key: verify, name: Verify Outcome, kind: review, position: 500 }
+      - key: verify
+        name: Verify Outcome
+        kind: review
+        position: 500
+        config:
+          pipelineStageCountRequirements:
+            - toStageKey: measured
+              pipelineKey: astrogen-topic-inventory
+              stageKey: ready
+              minimumCount: 3
+              activeOnly: true
+              whenCaseField: actionType
+              whenCaseFieldEquals: topic_inventory_refill
       - { key: measured, name: Measured, kind: done, position: 900 }
       - { key: rejected, name: Rejected, kind: cancelled, position: 1000 }
       - { key: external_wait, name: External Wait, kind: working, position: 1100 }
@@ -398,6 +410,7 @@ pipelines:
       - { from: verify, to: measured, label: verified }
       - { from: verify, to: executing, label: request changes }
       - { from: verify, to: rejected, label: rejected }
+      - { from: measured, to: executing, label: outcome regressed below SLO }
       - { from: finding, to: rejected }
     stageAutomation:
       finding:
@@ -429,7 +442,7 @@ pipelines:
           requestChangesTo: executing
           rejectTo: rejected
         instructions: |
-          Verify implementation and the defined outcome evidence. Approve to measured only with completion proof and a valid measurement window; request changes to executing when remediation is incomplete; reject only when the action is obsolete or unsafe.
+          Verify implementation and the defined outcome evidence. For topic_inventory_refill, query the current non-retired astrogen-topic-inventory ready stage after every candidate validator has finished: candidate, evidence_ready, consumed, rejected_duplicate and narrative case IDs do not count. Approve to measured only when the current ready count is at least 3; the native transition gate enforces this count independently. If fewer than 3 are ready, request changes to executing with the actual count and rejected/waiting outcomes. For other actions, approve only with completion proof and a valid measurement window; request changes to executing when remediation is incomplete; reject only when the action is obsolete or unsafe.
       external_wait:
         owner: Chief Marketing Officer
         instructions: |
@@ -440,3 +453,5 @@ pipelines:
       - external_dependency has nextReviewAt and does not freeze other actions
       - duplicate fingerprints update one case instead of creating repeated blockers
       - executing evidence resolves deterministically to verify, external_wait, or one bounded recovery; a durable blocker artifact never creates another recovery chain
+      - topic inventory refill cannot enter measured while fewer than 3 non-retired topic cases are actually at ready
+      - a measured refill may return to executing when its ready-inventory outcome regresses below the low-water mark

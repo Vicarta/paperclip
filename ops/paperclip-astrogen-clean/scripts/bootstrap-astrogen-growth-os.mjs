@@ -454,13 +454,15 @@ Output contract:
 - Create/update a compact weekly-growth-plan issue document with 3-7 prioritized actions when evidence supports them.
 - Ingest or update 3-10 evidence-backed \`astrogen-topic-inventory\` cases at stage \`candidate\` using stable topic keys. A Markdown content plan without native topic cases is incomplete.
 - Maintain a target of 10 validated ready topics and a low-water mark of 3. Candidate and evidence-ready stage automations own enrichment and duplicate/cannibalization validation; CMO does not mark a candidate ready by narrative assertion.
+- Manage delegated topic generation through the final validator outcomes. Candidate submissions and case IDs are progress, not inventory success; candidate, evidence_ready, consumed, rejected_duplicate and narrative lists do not count as ready inventory.
 - Each action names the business/search outcome, evidence, accountable manager, specialist executor, completion proof, and review window.
 - Delegate accepted actions immediately or link the existing canonical execution issue/case.
 - Record ready-topic inventory level, productive article WIP, blocked article count, CMS drafts delivered in the completed week, and SEO actions completed.
 
 Completion gate:
 - A report alone is not completion. Every accepted action is delegated or linked to an executable existing path; blocked items have an owner and recovery/external-wait class; unrelated lanes continue.
-- Content-supply completion requires native topic case ids for every accepted new topic, not only a list in comments or an issue document.
+- Content-supply completion requires at least 3 current non-retired topic cases actually at ready. If the count is lower, one canonical topic-inventory-refill growth case must remain nonterminal in delegated, executing, verify, or external_wait with an accountable specialist and nextReviewAt.
+- Native topic case ids in candidate, evidence_ready, consumed, rejected_duplicate, or a list in comments/document never satisfy the ready-inventory gate.
 - If fewer than 3 safe actions exist, include durable no-safe-action evidence rather than inventing work.`,
 
   weeklyCeoDirection: `Purpose: make one broad company-level direction decision for Astrogen after the weekly SEO/GEO and CMO growth portfolio cycles.
@@ -1308,6 +1310,8 @@ function agentSpecificInstructions(agent) {
 - Delivery is terminal only at article stage \`delivered\` with accepted cover or waiver, authenticated CMS admin URL, verified content gates, and gender-neutral Telegram delivery proof. CMS remains draft-only.
 - When ready inventory is below 3, create or update one \`astrogen-growth-actions\` case with fingerprint \`topic-inventory-refill:{ISO-week}\`. Do not create a refill issue chain.
 - Weekly portfolio planning ingests 3-10 evidence-backed topic cases at \`candidate\` with stable topic keys. A content-plan document without native topic case ids is incomplete.
+- After delegation, follow every candidate through enrichment and validation. Do not close the portfolio or refill because three candidates were submitted; re-read the live topic pipeline and count only non-retired cases at \`ready\`.
+- If validation leaves fewer than 3 ready topics, keep or return the canonical refill growth case to \`executing\`, delegate a bounded continuation to the existing specialist path, and set \`nextReviewAt\`. The native verify gate prevents false \`measured\` completion.
 - Missing evidence tooling becomes one typed blocker on the refill growth case. Empty inventory never freezes unrelated lanes and is never sent to the owner as a technical choice.
 
 ## SERP Value-Gap Content Refresh Control
