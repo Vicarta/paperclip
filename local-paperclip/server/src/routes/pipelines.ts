@@ -487,6 +487,24 @@ async function assertPipelineWriteAccess(
   }
 }
 
+async function assertCaseWriteAccess(
+  db: Db,
+  req: Request,
+  input: {
+    access: ReturnType<typeof accessService>;
+    companyId: string;
+    caseId: string;
+  },
+) {
+  const pipelineId = await resolveCasePipelineId(db, input);
+  await assertPipelineWriteAccess(req, {
+    access: input.access,
+    companyId: input.companyId,
+    pipelineId,
+  });
+  return pipelineId;
+}
+
 function mapPipelineDocumentRevision(row: {
   id: string;
   companyId: string;
@@ -808,6 +826,46 @@ async function assertIssueLinkMutationAllowed(
   await input.issuesSvc.assertCheckoutOwner(input.issue.id, actorAgentId, runId);
 }
 
+async function assertIssueLinkCreateAllowed(
+  req: Request,
+  input: {
+    access: ReturnType<typeof accessService>;
+    issuesSvc: ReturnType<typeof issueService>;
+    issue: NonNullable<Awaited<ReturnType<typeof getIssueMutationTarget>>>;
+    role: z.infer<typeof issueLinkRoleSchema>;
+  },
+) {
+  if (input.role !== "work") {
+    await assertIssueLinkMutationAllowed(req, input);
+    return;
+  }
+
+  const decision = await input.access.decide({
+    actor: req.actor,
+    action: "tasks:assign",
+    resource: {
+      type: "issue",
+      companyId: input.issue.companyId,
+      issueId: input.issue.id,
+      projectId: input.issue.projectId,
+      parentIssueId: input.issue.parentId,
+      assigneeAgentId: input.issue.assigneeAgentId,
+      assigneeUserId: input.issue.assigneeUserId,
+      status: input.issue.status,
+    },
+    scope: {
+      issueId: input.issue.id,
+      projectId: input.issue.projectId,
+      parentIssueId: input.issue.parentId,
+      assigneeAgentId: input.issue.assigneeAgentId,
+      assigneeUserId: input.issue.assigneeUserId,
+    },
+  });
+  if (!decision.allowed) {
+    throw forbidden("Work issue is outside this actor's task delegation boundary");
+  }
+}
+
 export function pipelineRoutes(db: Db, options: Parameters<typeof pipelineService>[1] = {}) {
   const router = Router();
   const svc = pipelineService(db, options);
@@ -944,6 +1002,7 @@ export function pipelineRoutes(db: Db, options: Parameters<typeof pipelineServic
     const results = [];
     for (const item of req.body.items) {
       try {
+        await assertCaseWriteAccess(db, req, { access, companyId, caseId: item.caseId });
         results.push({ caseId: item.caseId, ok: true, result: await svc.reviewCase({ companyId, ...item, actor }) });
       } catch (error) {
         const httpError = error as { status?: number; message?: string; details?: unknown };
@@ -1482,6 +1541,7 @@ export function pipelineRoutes(db: Db, options: Parameters<typeof pipelineServic
     const caseId = req.params.caseId as string;
     const companyId = await assertCaseAccess(db, req, caseId);
     const target = await svc.resolveBreakdownTarget({ companyId, caseId });
+    await assertCaseWriteAccess(db, req, { access, companyId, caseId });
     await assertPipelineWriteAccess(req, { access, companyId, pipelineId: target.targetPipeline.id });
     const actor = actorForMutation(req);
     res.json(await svc.breakdownCase({ companyId, caseId, items: req.body.items, actor }));
@@ -1913,6 +1973,7 @@ export function pipelineRoutes(db: Db, options: Parameters<typeof pipelineServic
   router.patch("/cases/:caseId", validate(casePatchSchema), async (req, res) => {
     const caseId = req.params.caseId as string;
     const companyId = await assertCaseAccess(db, req, caseId);
+    await assertCaseWriteAccess(db, req, { access, companyId, caseId });
     const actor = actorForMutation(req);
     const updated = await svc.patchCaseContent({ companyId, caseId, ...req.body, actor });
     res.json(updated);
@@ -1921,6 +1982,7 @@ export function pipelineRoutes(db: Db, options: Parameters<typeof pipelineServic
   router.post("/cases/:caseId/claim", validate(claimCaseSchema), async (req, res) => {
     const caseId = req.params.caseId as string;
     const companyId = await assertCaseAccess(db, req, caseId);
+    await assertCaseWriteAccess(db, req, { access, companyId, caseId });
     const actor = actorForMutation(req);
     if (actor.type === "system") throw forbidden();
     const claimed = await svc.claimCase({ companyId, caseId, actor, leaseMs: req.body.leaseSeconds ? req.body.leaseSeconds * 1000 : undefined });
@@ -1930,6 +1992,7 @@ export function pipelineRoutes(db: Db, options: Parameters<typeof pipelineServic
   router.post("/cases/:caseId/release", validate(releaseCaseSchema), async (req, res) => {
     const caseId = req.params.caseId as string;
     const companyId = await assertCaseAccess(db, req, caseId);
+    await assertCaseWriteAccess(db, req, { access, companyId, caseId });
     const actor = actorForMutation(req);
     if (req.body.force && actor.type === "agent") throw new HttpError(403, "Agents cannot force-release pipeline leases", { code: "forbidden" });
     res.json(await svc.releaseCase({ companyId, caseId, actor, leaseToken: req.body.leaseToken, force: req.body.force }));
@@ -1938,7 +2001,11 @@ export function pipelineRoutes(db: Db, options: Parameters<typeof pipelineServic
   router.post("/cases/:caseId/transition", validate(transitionCaseSchema), async (req, res) => {
     const caseId = req.params.caseId as string;
     const companyId = await assertCaseAccess(db, req, caseId);
+    await assertCaseWriteAccess(db, req, { access, companyId, caseId });
     const actor = actorForMutation(req);
+    if (req.body.force && actor.type === "agent") {
+      throw new HttpError(403, "Agents cannot force pipeline transitions", { code: "forbidden" });
+    }
     res.json(await svc.transitionCase({
       companyId,
       caseId,
@@ -1955,6 +2022,7 @@ export function pipelineRoutes(db: Db, options: Parameters<typeof pipelineServic
   router.post("/cases/:caseId/suggest-transition", validate(suggestTransitionSchema), async (req, res) => {
     const caseId = req.params.caseId as string;
     const companyId = await assertCaseAccess(db, req, caseId);
+    await assertCaseWriteAccess(db, req, { access, companyId, caseId });
     const actor = actorForMutation(req);
     res.json(await svc.suggestTransition({ companyId, caseId, ...req.body, actor }));
   });
@@ -1962,6 +2030,7 @@ export function pipelineRoutes(db: Db, options: Parameters<typeof pipelineServic
   router.post("/cases/:caseId/resolve-suggestion", validate(resolveSuggestionSchema), async (req, res) => {
     const caseId = req.params.caseId as string;
     const companyId = await assertCaseAccess(db, req, caseId);
+    await assertCaseWriteAccess(db, req, { access, companyId, caseId });
     const actor = actorForMutation(req);
     res.json(await svc.resolveSuggestion({
       companyId,
@@ -1978,6 +2047,7 @@ export function pipelineRoutes(db: Db, options: Parameters<typeof pipelineServic
   router.post("/cases/:caseId/acknowledge-drift", validate(acknowledgeDriftSchema), async (req, res) => {
     const caseId = req.params.caseId as string;
     const companyId = await assertCaseAccess(db, req, caseId);
+    await assertCaseWriteAccess(db, req, { access, companyId, caseId });
     const actor = actorForMutation(req);
     res.json(await svc.acknowledgeDrift({
       companyId,
@@ -1990,6 +2060,7 @@ export function pipelineRoutes(db: Db, options: Parameters<typeof pipelineServic
   router.post("/cases/:caseId/review", validate(reviewCaseSchema), async (req, res) => {
     const caseId = req.params.caseId as string;
     const companyId = await assertCaseAccess(db, req, caseId);
+    await assertCaseWriteAccess(db, req, { access, companyId, caseId });
     const actor = actorForMutation(req);
     res.json(await svc.reviewCase({ companyId, caseId, ...req.body, actor }));
   });
@@ -1997,6 +2068,7 @@ export function pipelineRoutes(db: Db, options: Parameters<typeof pipelineServic
   router.put("/cases/:caseId/blockers", validate(blockersSchema), async (req, res) => {
     const caseId = req.params.caseId as string;
     const companyId = await assertCaseAccess(db, req, caseId);
+    await assertCaseWriteAccess(db, req, { access, companyId, caseId });
     const actor = actorForMutation(req);
     res.json(await svc.replaceBlockers({ companyId, caseId, blockedByCaseIds: req.body.blockedByCaseIds, actor }));
   });
@@ -2004,6 +2076,7 @@ export function pipelineRoutes(db: Db, options: Parameters<typeof pipelineServic
   router.post("/cases/:caseId/open-conversation", async (req, res) => {
     const caseId = req.params.caseId as string;
     const companyId = await assertCaseAccess(db, req, caseId);
+    await assertCaseWriteAccess(db, req, { access, companyId, caseId });
     const actor = actorForMutation(req);
     const conversationSource = await resolvePipelineCaseConversationSource(db, companyId, caseId);
     if (conversationSource?.isActive) {
@@ -2083,13 +2156,26 @@ export function pipelineRoutes(db: Db, options: Parameters<typeof pipelineServic
     res.json(await outputsSvc.listCaseOutputs(companyId, caseId));
   });
 
+  router.get("/cases/:caseId/outputs/documents/:documentId", async (req, res) => {
+    const caseId = req.params.caseId as string;
+    const documentId = z.string().uuid().parse(req.params.documentId);
+    const companyId = await assertCaseAccess(db, req, caseId);
+    res.json(await outputsSvc.getCaseOutputDocument(companyId, caseId, documentId));
+  });
+
   router.post("/cases/:caseId/issue-links", validate(createIssueLinkSchema), async (req, res) => {
     const caseId = req.params.caseId as string;
     const companyId = await assertCaseAccess(db, req, caseId);
+    await assertCaseWriteAccess(db, req, { access, companyId, caseId });
     const actor = actorForMutation(req);
     const targetIssue = await getIssueMutationTarget(db, { companyId, issueId: req.body.issueId });
     if (!targetIssue) throw notFound("Issue not found");
-    await assertIssueLinkMutationAllowed(req, { access, issuesSvc, issue: targetIssue });
+    await assertIssueLinkCreateAllowed(req, {
+      access,
+      issuesSvc,
+      issue: targetIssue,
+      role: req.body.role,
+    });
     try {
       const link = await db.transaction(async (tx) => {
         const [created] = await tx.insert(pipelineCaseIssueLinks).values({
@@ -2118,6 +2204,7 @@ export function pipelineRoutes(db: Db, options: Parameters<typeof pipelineServic
     const caseId = req.params.caseId as string;
     const linkId = req.params.linkId as string;
     const companyId = await assertCaseAccess(db, req, caseId);
+    await assertCaseWriteAccess(db, req, { access, companyId, caseId });
     const actor = actorForMutation(req);
     const existingLink = await db
       .select({ issueId: pipelineCaseIssueLinks.issueId })
@@ -2227,6 +2314,7 @@ export function pipelineRoutes(db: Db, options: Parameters<typeof pipelineServic
   router.post("/cases/:caseId/automation/retry", validate(pipelineAutomationRetryRequestSchema), async (req, res) => {
     const caseId = req.params.caseId as string;
     const companyId = await assertCaseAccess(db, req, caseId);
+    await assertCaseWriteAccess(db, req, { access, companyId, caseId });
     const actor = actorForMutation(req);
     const plan = await svc.getAutomationRetryPlan({
       companyId,
@@ -2252,6 +2340,7 @@ export function pipelineRoutes(db: Db, options: Parameters<typeof pipelineServic
     const caseId = req.params.caseId as string;
     const automationId = req.params.automationId as string;
     const companyId = await assertCaseAccess(db, req, caseId);
+    await assertCaseWriteAccess(db, req, { access, companyId, caseId });
     await assertCurrentStageAutomationTargetWriteAccess(db, req, { access, companyId, caseId, automationId });
     const actor = actorForMutation(req);
     res.json(await svc.retryAutomation({ companyId, caseId, automationId, actor }));
@@ -2260,6 +2349,7 @@ export function pipelineRoutes(db: Db, options: Parameters<typeof pipelineServic
   router.post("/cases/:caseId/automation/current-stage/rerun", async (req, res) => {
     const caseId = req.params.caseId as string;
     const companyId = await assertCaseAccess(db, req, caseId);
+    await assertCaseWriteAccess(db, req, { access, companyId, caseId });
     await assertCurrentStageAutomationTargetWriteAccess(db, req, { access, companyId, caseId });
     const actor = actorForMutation(req);
     res.json(await svc.rerunCurrentStageAutomation({ companyId, caseId, actor }));

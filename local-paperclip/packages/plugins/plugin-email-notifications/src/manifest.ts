@@ -12,6 +12,21 @@ const recipientArraySchema = {
   items: { type: "string" },
 } as const;
 
+const developerHandoffPagesSchema = {
+  type: "array",
+  minItems: 1,
+  items: {
+    type: "object",
+    properties: {
+      url: { type: "string" },
+      currentProblem: { type: "string" },
+      requiredChanges: { type: "array", items: { type: "string" }, minItems: 1 },
+      verification: { type: "array", items: { type: "string" }, minItems: 1 },
+    },
+    required: ["url", "currentProblem", "requiredChanges", "verification"],
+  },
+} as const;
+
 const manifest: PaperclipPluginManifestV1 = {
   id: PLUGIN_ID,
   apiVersion: 1,
@@ -109,7 +124,7 @@ const manifest: PaperclipPluginManifestV1 = {
       name: TOOL_NAMES.sendChangeReport,
       displayName: "Send Email Change Report",
       description:
-        "Send a structured change report after Paperclip process, agent, plugin, or runtime changes. Include backup and verification evidence.",
+        "Send a structured change report after Paperclip process, agent, plugin, or runtime changes. Canonical required fields: summary, changedItems (string[]), backupPath (string), verification (string[]). Include backup and verification evidence.",
       parametersSchema: {
         type: "object",
         properties: {
@@ -149,6 +164,29 @@ const manifest: PaperclipPluginManifestV1 = {
           metadata: { type: "object" },
         },
         required: ["severity", "status", "summary"],
+      },
+    },
+    {
+      name: TOOL_NAMES.sendDeveloperHandoff,
+      displayName: "Send Developer Email Handoff",
+      description:
+        "Send an implementer-ready technical handoff with exact affected URLs, required changes, and verification steps.",
+      parametersSchema: {
+        type: "object",
+        properties: {
+          recipientEmails: recipientArraySchema,
+          subject: { type: "string" },
+          summary: { type: "string" },
+          impact: { type: "string" },
+          affectedPages: developerHandoffPagesSchema,
+          sharedActions: { type: "array", items: { type: "string" }, minItems: 1 },
+          sourceIssue: { type: "string" },
+          sourceIssueUrl: { type: "string" },
+          idempotencyKey: { type: "string" },
+          dryRun: { type: "boolean" },
+          metadata: { type: "object" },
+        },
+        required: ["summary", "impact", "affectedPages", "sharedActions", "sourceIssue"],
       },
     },
   ],

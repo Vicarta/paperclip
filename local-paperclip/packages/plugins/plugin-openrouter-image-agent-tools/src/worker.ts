@@ -13,6 +13,14 @@ import {
   TOOL_NAMES,
 } from "./constants.js";
 import {
+  buildGovernedHumanPrompt,
+  compareFingerprint,
+  fingerprintFor,
+  HUMAN_ART_DIRECTION_SCHEMA,
+  parseHumanArtDirection,
+  type HumanVisualHistoryEntry,
+} from "./art-direction.js";
+import {
   generateOpenRouterImage,
   type OpenRouterGenerateImageParams,
   type OpenRouterImagePluginConfig,
@@ -50,6 +58,41 @@ function readRecord(value: unknown) {
 
 function readNonEmptyString(value: unknown) {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
+}
+
+function readStringArray(value: unknown) {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string").map((item) => item.trim()).filter(Boolean)
+    : [];
+}
+
+function boundedInteger(value: unknown, fallback: number, min: number, max: number) {
+  return typeof value === "number" && Number.isInteger(value)
+    ? Math.min(max, Math.max(min, value))
+    : fallback;
+}
+
+const VISUAL_HISTORY_NAMESPACE = "visual-history";
+const HUMAN_VISUAL_HISTORY_KEY = "human-scene-v1";
+
+function visualHistoryScope(runCtx: ToolRunContext) {
+  return {
+    scopeKind: "company" as const,
+    scopeId: runCtx.companyId,
+    namespace: VISUAL_HISTORY_NAMESPACE,
+    stateKey: HUMAN_VISUAL_HISTORY_KEY,
+  };
+}
+
+function parseVisualHistory(value: unknown): HumanVisualHistoryEntry[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is HumanVisualHistoryEntry => Boolean(
+      item
+      && typeof item === "object"
+      && typeof (item as HumanVisualHistoryEntry).articleKey === "string"
+      && (item as HumanVisualHistoryEntry).fingerprint,
+    ))
+    : [];
 }
 
 function slugPart(value: unknown, fallback: string) {
@@ -124,6 +167,11 @@ async function writeGeneratedImageFiles(input: {
     mimeType: string;
     extension: string;
     bytes: number;
+    targetDimensions: unknown;
+    actualDimensions: unknown;
+    dimensionDeviationPercent: unknown;
+    targetDimensionTolerancePercent: unknown;
+    acceptedWithinTolerance: unknown;
   }> = [];
   for (const image of images) {
     if (!image || typeof image !== "object") continue;
@@ -141,6 +189,11 @@ async function writeGeneratedImageFiles(input: {
       mimeType: parsed.mimeType,
       extension,
       bytes: parsed.bytes.length,
+      targetDimensions: record.targetDimensions ?? null,
+      actualDimensions: record.actualDimensions ?? null,
+      dimensionDeviationPercent: record.dimensionDeviationPercent ?? null,
+      targetDimensionTolerancePercent: record.targetDimensionTolerancePercent ?? null,
+      acceptedWithinTolerance: record.acceptedWithinTolerance ?? null,
     });
   }
   return workspaceFiles;
@@ -207,6 +260,31 @@ const plugin = definePlugin({
     ctx.logger.info(`${PLUGIN_ID} plugin setup complete`);
 
     ctx.tools.register(
+      TOOL_NAMES.getVisualHistory,
+      {
+        displayName: "Get Recent Image Visual History",
+        description:
+          "Read recent company-scoped human-scene visual fingerprints before planning a new paid image generation.",
+        parametersSchema: {
+          type: "object",
+          properties: {
+            limit: { type: "number", minimum: 1, maximum: 20 },
+          },
+        },
+      },
+      async (params, runCtx): Promise<ToolResult> => {
+        const config = await getConfig(ctx);
+        const record = readRecord(params);
+        const limit = boundedInteger(record.limit, boundedInteger(config.visualHistoryLimit, 8, 1, 20), 1, 20);
+        const history = parseVisualHistory(await ctx.state.get(visualHistoryScope(runCtx))).slice(0, limit);
+        return {
+          content: `Recent human-scene visual fingerprints: ${history.length}.`,
+          data: { history, limit },
+        };
+      },
+    );
+
+    ctx.tools.register(
       TOOL_NAMES.generateImage,
       {
         displayName: "OpenRouter Generate Image",
@@ -230,6 +308,8 @@ const plugin = definePlugin({
             seed: { type: "number" },
             metadata: { type: "object" },
             returnImageData: { type: "boolean" },
+            subjectMode: { type: "string", enum: ["human_scene", "abstract_graphic"] },
+            artDirection: HUMAN_ART_DIRECTION_SCHEMA,
           },
           required: ["prompt"],
         },
@@ -237,9 +317,61 @@ const plugin = definePlugin({
       async (params, runCtx): Promise<ToolResult> => {
         const config = await getConfig(ctx);
         const originalParams = readRecord(params);
+        const subjectMode = readNonEmptyString(originalParams.subjectMode);
+        if (
+          config.requireSubjectMode === true
+          && subjectMode !== "human_scene"
+          && subjectMode !== "abstract_graphic"
+        ) {
+          throw new Error("subjectMode must be human_scene or abstract_graphic");
+        }
+
+        let visualHistory: HumanVisualHistoryEntry[] = [];
+        let visualFingerprint = null;
+        let visualDiversityComparisons: Array<{
+          articleKey: string;
+          distinctAxisCount: number;
+          totalAxisCount: number;
+          matchingAxes: string[];
+        }> = [];
+        let governedParams = originalParams;
+        if (subjectMode === "human_scene") {
+          const artDirectionRequired = config.structuredArtDirectionMode === "required_for_human_scene";
+          if (artDirectionRequired && !originalParams.artDirection) {
+            throw new Error("artDirection is required for human_scene generation");
+          }
+          if (originalParams.artDirection) {
+            const direction = parseHumanArtDirection(originalParams.artDirection);
+            visualFingerprint = fingerprintFor(direction);
+            visualHistory = parseVisualHistory(await ctx.state.get(visualHistoryScope(runCtx)));
+            const minimumDistinctAxes = boundedInteger(config.minimumDistinctVisualAxes, 4, 1, 9);
+            visualDiversityComparisons = visualHistory.map((entry) => ({
+              articleKey: entry.articleKey,
+              ...compareFingerprint(visualFingerprint!, entry.fingerprint),
+            }));
+            const tooSimilar = visualDiversityComparisons.find(
+              (comparison) => comparison.distinctAxisCount < minimumDistinctAxes,
+            );
+            if (tooSimilar) {
+              throw new Error(
+                `Human-scene art direction is too similar to ${tooSimilar.articleKey}: `
+                + `${tooSimilar.distinctAxisCount}/9 distinct axes; minimum is ${minimumDistinctAxes}. `
+                + `Change scene, action, emotion, subjects, gaze, shot, angle, or props before the paid call.`,
+              );
+            }
+            governedParams = {
+              ...originalParams,
+              prompt: buildGovernedHumanPrompt({
+                prompt: readNonEmptyString(originalParams.prompt) ?? "",
+                direction,
+                legacyAvoidPatterns: readStringArray(config.legacyAvoidVisualPatterns),
+              }),
+            };
+          }
+        }
         const result = await generateOpenRouterImage({
           params: {
-            ...(params as OpenRouterGenerateImageParams),
+            ...(governedParams as OpenRouterGenerateImageParams),
             returnImageData: true,
           },
           config,
@@ -250,6 +382,10 @@ const plugin = definePlugin({
           model: string;
           providerCostUsd: number | null;
         } & Record<string, unknown>;
+        data.subjectMode = subjectMode;
+        data.visualFingerprint = visualFingerprint;
+        data.visualDiversityComparisons = visualDiversityComparisons;
+        data.governedArtDirectionApplied = Boolean(visualFingerprint);
 
         const workspaceFiles = await writeGeneratedImageFiles({
           config,
@@ -258,6 +394,27 @@ const plugin = definePlugin({
           data,
         });
         data.workspaceFiles = workspaceFiles;
+
+        let visualHistoryWarning: string | null = null;
+        if (visualFingerprint) {
+          const metadata = readRecord(originalParams.metadata);
+          const articleKey = readNonEmptyString(metadata.articleKey)
+            ?? readNonEmptyString(metadata.issueIdentifier)
+            ?? runCtx.issueId
+            ?? `run:${runCtx.runId}`;
+          const limit = boundedInteger(config.visualHistoryLimit, 8, 1, 20);
+          const nextHistory: HumanVisualHistoryEntry[] = [{
+            articleKey,
+            generatedAt: new Date().toISOString(),
+            fingerprint: visualFingerprint,
+          }, ...visualHistory.filter((entry) => entry.articleKey !== articleKey)].slice(0, limit);
+          try {
+            await ctx.state.set(visualHistoryScope(runCtx), nextHistory);
+          } catch (error) {
+            visualHistoryWarning = `Image visual history write failed: ${errorMessage(error)}`;
+            ctx.logger.warn(visualHistoryWarning);
+          }
+        }
 
         let costAccountingWarning: string | null = null;
         try {
@@ -276,14 +433,19 @@ const plugin = definePlugin({
         const resultWithoutImageData = originalParams.returnImageData === false
           ? stripImageDataUrls(result)
           : result;
-        if (!costAccountingWarning) return resultWithoutImageData;
+        if (!costAccountingWarning && !visualHistoryWarning) return resultWithoutImageData;
 
         return {
           ...resultWithoutImageData,
-          content: `${resultWithoutImageData.content}\nCost accounting warning: ${costAccountingWarning}`,
+          content: [
+            resultWithoutImageData.content,
+            ...(costAccountingWarning ? [`Cost accounting warning: ${costAccountingWarning}`] : []),
+            ...(visualHistoryWarning ? [visualHistoryWarning] : []),
+          ].join("\n"),
           data: {
             ...(resultWithoutImageData.data && typeof resultWithoutImageData.data === "object" ? resultWithoutImageData.data : {}),
-            costAccountingWarning,
+            ...(costAccountingWarning ? { costAccountingWarning } : {}),
+            ...(visualHistoryWarning ? { visualHistoryWarning } : {}),
           },
         };
       },

@@ -55,6 +55,7 @@ export const pipelineStageBreakdownSchema = z.object({
   targetPipelineId: z.string().uuid(),
   targetStageKey: z.string().trim().min(1).max(120),
   pieceNoun: z.string().trim().min(1).max(80).default("piece"),
+  caseKeyPrefix: z.string().trim().min(1).max(120).optional(),
   carryOverPolicy: pipelineStageCarryOverPolicySchema.optional(),
   inheritFields: z.array(routineVariableLikeNameSchema).max(100).default([]),
   advanceTo: z.string().trim().min(1).max(120).optional(),

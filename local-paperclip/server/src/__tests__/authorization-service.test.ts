@@ -99,7 +99,7 @@ async function grantAgentPermission(
   db: ReturnType<typeof createDb>,
   companyId: string,
   agentId: string,
-  permissionKey: "tasks:assign" | "tasks:assign_scope",
+  permissionKey: "tasks:assign" | "tasks:assign_scope" | "pipelines:write",
   scope: Record<string, unknown> | null = null,
 ) {
   await db.insert(companyMemberships).values({
@@ -1190,6 +1190,45 @@ describeEmbeddedPostgres("authorization service", () => {
       allowed: true,
       grant: { permissionKey: "tasks:assign" },
     });
+  });
+
+  it("enforces pipeline ids in scoped pipeline write grants", async () => {
+    const company = await createCompany(db, "ScopedPipelines");
+    const actorAgent = await createAgent(db, company.id);
+    const allowedPipelineId = randomUUID();
+    const deniedPipelineId = randomUUID();
+    await grantAgentPermission(db, company.id, actorAgent.id, "pipelines:write", {
+      pipelineIds: [allowedPipelineId],
+    });
+
+    const authz = authorizationService(db);
+    const actor = {
+      type: "agent" as const,
+      agentId: actorAgent.id,
+      companyId: company.id,
+      source: "agent_key" as const,
+    };
+
+    await expect(authz.decide({
+      actor,
+      action: "pipelines:write",
+      resource: { type: "company", companyId: company.id },
+      scope: { pipelineId: allowedPipelineId },
+    })).resolves.toMatchObject({ allowed: true });
+
+    await expect(authz.decide({
+      actor,
+      action: "pipelines:write",
+      resource: { type: "company", companyId: company.id },
+      scope: { pipelineId: deniedPipelineId },
+    })).resolves.toMatchObject({ allowed: false, reason: "deny_scope" });
+
+    await expect(authz.decide({
+      actor,
+      action: "pipelines:write",
+      resource: { type: "company", companyId: company.id },
+      scope: null,
+    })).resolves.toMatchObject({ allowed: false, reason: "deny_scope" });
   });
 
   it("scopes task bridge keys away from company-wide reads and unrelated issue writes", async () => {

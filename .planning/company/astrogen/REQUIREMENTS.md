@@ -9,6 +9,9 @@
 - `AST-GOV-05`: If a manager discovers a material scope expansion during Astrogen work, such as converting a narrow article/layout task into a large cover-image, CMS, SEO, or publication batch, the manager must notify before or at the moment of expansion. The parent issue comment must explain in Ukrainian what extra work was found, why it belongs to the current outcome, expected item count, whether it is required or optional, and whether the owner needs to decide anything. Owner-visible expansions should also use a concise Ukrainian Telegram notification or decision brief; do not let large child batches appear without explanation.
 - `AST-GOV-06`: Any change to Astrogen agent contracts, process contracts, plugin operating contracts, or other workflow instructions is not complete when it is only edited in planning/source files. The same work must immediately include a production Paperclip cutover/sync step, with verification evidence from the live contract path or a precise technical blocker naming the missing access/tool/owner. Do not close the contract-change issue while production still needs a separate unscheduled sync.
 - `AST-GOV-07`: Astrogen must maintain a reusable production contract-maintenance lane for live contract sync. If a contract-change issue cannot write to the live Paperclip contract path, this is a CTO-owned runtime/permission gap, not an owner business decision and not a reason to leave the change as source-only. The lane must define the writable production path or controlled sync procedure, responsible role, verification evidence, and fallback blocker format. Future contract-change issues must reuse that lane instead of creating one-off SSH/operator exceptions.
+- `AST-GOV-08`: Specialist agents may write durable evidence only to their assigned issue or native pipeline case. A manager-owned parent must aggregate completed child evidence through the manager's own authorized continuation. Cross-owner parent mutation must never be a child completion requirement.
+- `AST-GOV-09`: A blocker is scoped to its own case and dependency chain. Blocked or external-wait work must not consume productive WIP or prevent unrelated safe work from being delegated and executed.
+- `AST-GOV-10`: Multi-stage recurring production processes must use native Paperclip pipeline cases, stages, transitions, outputs, liveness, and automation where the platform provides them. Describing a process as typed only in agent prompt text is insufficient.
 
 ## Content
 
@@ -23,6 +26,10 @@
 - `AST-CONTENT-09`: If an Astrogen product or offer is free, every reader-facing mention/link label must make the free nature explicit with natural wording such as "безкоштовно", "без оплати", or "безкоштовний".
 - `AST-CONTENT-10`: Product-like references such as "персональний прогноз", "м'який старт", "фінансовий розбір", or "каталог спеціалістів" count as product/service mentions when they point to known Astrogen routes. They must be linked or returned for revision with a structured blocker.
 - `AST-CONTENT-11`: Editorial backfill, article-layout repair, or clean republish tasks must prove body/editorial changes separately from image/media changes. Cover-image replacement, media metadata, category, sitemap, relatedPosts, or other non-body updates are not enough to close an editorial backfill. Each affected article needs per-article evidence of actual `articleContent` improvements or an explicit no-body-change rationale.
+- `AST-CONTENT-12`: Every new article must contain a defensible reader-value contribution beyond SERP imitation. The contribution must be backed by accessible non-SERP evidence or by a concrete original-asset commitment with an owner, acceptance criteria, and publication deadline. LLM inference is never evidence.
+- `AST-CONTENT-13`: Added value must be selected by article type, not inserted as a universal block template. The article contract must classify the page and select two to four relevant value units from the approved Astrogen value system, while proving that their substantive role is not duplicated by recent sibling articles.
+- `AST-CONTENT-14`: Final article quality must be independently audited after the bounded humanizer pass and before layout. Passing requires useful task completion, original contribution, specificity, factual and claim safety, acceptable information density, fulfilled commitments, and compliance with the accepted Winning Structure.
+- `AST-CONTENT-15`: Editorial naturalness checks may detect templated introductions, repeated sentence openings, uniform paragraphs, generic transitions, abstraction, and padding, but must not report an AI probability, optimize for detector evasion, invent first-person experience, or run recursive rewrites.
 
 ## Images
 
@@ -37,6 +44,7 @@
 - `AST-IMG-09`: Blog cover images must not contain rendered text, words, letters, numbers, labels, UI captions, or text-like decoration. Meaning should come from the image concept, composition, and CMS alt text.
 - `AST-IMG-10`: Payload CMS metadata for blog cover/hero images must be deterministic: `alt` equals the exact article title, while `caption`, `credit`, and `sourceUrl` are empty or omitted. This rule applies only to cover/hero images; future inline explanatory images may use descriptive metadata when the CMS schema supports them.
 - `AST-IMG-11`: When an article is about human experience, decisions, relationships, family, children, career, money, emotions, consultation, or personal life context, the cover should normally be a photorealistic premium editorial scene with real-looking people in a specific lived moment. Human covers should feel observed rather than posed and must show concrete action, context, and natural micro-emotion instead of generic smiling models or lifeless stock-photo scenes.
+- `AST-IMG-12`: Every paid `human_scene` generation must consume company-scoped history of recent approved covers and provide typed emotional art direction: narrative moment, setting, subject arrangement, action, primary emotion with visible cues, gaze, shot, camera angle, props, brand anchors, and avoided patterns. The proposal must differ from every recent human cover on at least four of nine visual axes. Astrogen colors and editorial realism are the stable style layer; room, action, emotion, gaze, camera, and props must remain variable. A repeated seated-at-a-table laptop/notebook/cup composition or a merely labelled but visually blank emotion is rejected before provider spend.
 
 ## SEO
 
@@ -59,6 +67,11 @@
 - `AST-SEO-17`: Astrogen blog URLs discovered from the public sitemap must be registered in the Postgres `seo_ops` page registry, including canonical URL, page type, sitemap lastmod, live title/H1/meta, content snapshot when available, and monitoring status.
 - `AST-SEO-18`: After a human manually publishes a new article on the site, Paperclip must detect it through sitemap/page discovery, register the page, connect it to the approved article opportunity and keyword targets, and then start the post-publication telemetry/rank monitoring loop.
 - `AST-SEO-19`: Existing article `content_refresh` must be driven by relevant keyphrase and SERP value-gap analysis. A refresh task must identify missing user value, competitor coverage patterns, and Astrogen's information-gain angle before rewriting. It must not be treated as generic editorial block insertion, FAQ/CTA/relatedPosts backfill, metadata-only repair, or internal-link-only cleanup unless that element is explicitly justified by the SERP value gap.
+- `AST-SEO-20`: Winning Structure MCP replaces the article pipeline's standalone SERP value-gap gate. Paperclip must validate input, start or reuse one idempotent run, persist original and effective hashes, resume the same run after versioned decisions, import the result before artifact expiry, and never treat the recommendation as publishable prose.
+- `AST-SEO-21`: Ownership and cannibalization decisions that accept risk, merge or consolidate pages, reassign the primary owner, cancel the run, remove the primary keyword, or change canonical ownership require explicit policy authority or human approval. One paused article case must not stop unrelated article or growth work.
+- `AST-SEO-22`: GEO/retrievability checks are selective and evidence-based. They may test answer-first passages, entity clarity, self-contained fragments, factual specificity, and justified Q&A, but estimated LSI similarity, keyword repetition, or invented numeric precision must not become publication gates.
+- `AST-SEO-23`: Trend Discovery is an upstream monthly or quarterly opportunity workflow that creates evidence-backed hypotheses with confidence, horizon, business relevance, test and kill criteria. A trend hypothesis must not create an article until the normal topic, ownership, evidence, and reader-value gates pass.
+- `AST-SEO-24`: Scaled-content audit is a sitewide or cluster-level workflow, never a per-page verdict. It must use deterministic similarity screening before LLM review and must not classify shared layout elements such as `Коротко`, CTA, or related posts as spam without repeated substantive content.
 
 ## Growth Strategy
 
@@ -67,6 +80,9 @@
 - `AST-GROWTH-03`: Stage 15 outputs are strategy recommendations only; downstream execution requires explicit human approval.
 - `AST-GROWTH-04`: Strategic briefs must separate observed product facts, strategic inference, hypotheses, risks, and human decision requests.
 - `AST-GROWTH-05`: Stage 15 artifacts, issue comments, plan documents, decision packets, and handoff summaries must use the resolved human-facing output language by default; for Astrogen Ukraine this is Ukrainian unless explicitly overridden.
+- `AST-GROWTH-06`: CMO must maintain a weekly evidence-backed growth portfolio across content supply, technical SEO/indexing, GEO/entity visibility, and conversion/revenue learning. Every accepted action must be delegated or linked to an executable path; a report alone is not completion.
+- `AST-GROWTH-07`: CEO must review Astrogen at company level, including revenue, product readiness, customer value, delivery capacity, platform risk, measurement quality, and missing future capabilities. CEO delegates execution to managers and must ensure one blocker never freezes unrelated company work.
+- `AST-GROWTH-08`: Astrogen operating health is measured by business outputs and executable continuity, including CMS drafts delivered, SEO actions completed, validated opportunities available, productive WIP, blocker age, and outcome review evidence. Routine or issue `done` counts are not sufficient health metrics.
 
 ## Integrations
 
@@ -75,6 +91,7 @@
 - `AST-INT-03`: Astrogen CMS integration targets Payload CMS at `https://cms.astrogen.com.ua/api`. Paperclip must use a secret-backed service user API key, create/update drafts by default, upload media through Payload media APIs, and require explicit human approval before direct publish actions.
 - `AST-INT-04`: Live Astrogen plugins should use the current Paperclip plugin contract rather than long-lived compatibility bridges, unless a bridge has an explicit owner and expiry condition.
 - `AST-INT-05`: Provider, notification, portal, and MCP credentials should be migrated to Paperclip Secrets/provider-vault records where supported, with auditability and without plaintext values in Git, planning docs, issue comments, Telegram, or logs.
+- `AST-INT-06`: Winning Structure MCP must be private-network only, use a Paperclip company secret for bearer authentication, verify all five required tools at startup, write provider-reported cost when present, and expose compact typed results rather than raw MCP payloads to agents.
 
 ## Human Communication
 

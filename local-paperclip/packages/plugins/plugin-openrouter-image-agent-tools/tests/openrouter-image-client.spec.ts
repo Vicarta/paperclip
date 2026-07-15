@@ -7,6 +7,16 @@ import {
 
 const tinyPng = "data:image/png;base64,iVBORw0KGgo=";
 
+function pngDataUrl(width: number, height: number) {
+  const bytes = Buffer.alloc(24);
+  Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).copy(bytes);
+  bytes.writeUInt32BE(13, 8);
+  bytes.write("IHDR", 12, "ascii");
+  bytes.writeUInt32BE(width, 16);
+  bytes.writeUInt32BE(height, 20);
+  return `data:image/png;base64,${bytes.toString("base64")}`;
+}
+
 describe("openrouter-image-client", () => {
   it("extracts OpenRouter cost from common response fields", () => {
     expect(extractOpenRouterCostUsd({ usage: { cost: 0.12 } })).toBe(0.12);
@@ -106,6 +116,58 @@ describe("openrouter-image-client", () => {
     });
 
     expect(fetchFn).toHaveBeenCalledTimes(1);
+  });
+
+  it("accepts an image when both dimensions are within the default 20 percent tolerance", async () => {
+    const fetchFn = vi.fn(async () => new Response(JSON.stringify({
+      data: [{ url: pngDataUrl(800, 960) }],
+    }), { status: 200 }));
+
+    const result = await generateOpenRouterImage({
+      params: { prompt: "Generate image.", size: "1000x800" },
+      config: { openrouterApiKeySecretRef: "secret-1" },
+      resolveSecret: async () => "token-123",
+      fetchFn,
+    });
+
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+    expect(result.data).toMatchObject({
+      targetDimensions: { width: 1000, height: 800 },
+      targetDimensionTolerancePercent: 20,
+      acceptedWithinTolerance: true,
+      images: [{
+        actualDimensions: { width: 800, height: 960 },
+        dimensionDeviationPercent: { width: 20, height: 20 },
+        acceptedWithinTolerance: true,
+      }],
+    });
+  });
+
+  it("does not retry when either dimension exceeds the configured tolerance", async () => {
+    const fetchFn = vi.fn(async () => new Response(JSON.stringify({
+      data: [{ url: pngDataUrl(800, 970) }],
+    }), { status: 200 }));
+
+    const result = await generateOpenRouterImage({
+      params: { prompt: "Generate image.", resolution: "1000x800" },
+      config: {
+        openrouterApiKeySecretRef: "secret-1",
+        targetDimensionTolerancePercent: 21,
+      },
+      resolveSecret: async () => "token-123",
+      fetchFn,
+    });
+
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+    expect(result.data).toMatchObject({
+      targetDimensionTolerancePercent: 21,
+      acceptedWithinTolerance: false,
+      images: [{
+        actualDimensions: { width: 800, height: 970 },
+        dimensionDeviationPercent: { width: 20, height: 21.25 },
+        acceptedWithinTolerance: false,
+      }],
+    });
   });
 
   it("throws when OpenRouter returns no image data", async () => {

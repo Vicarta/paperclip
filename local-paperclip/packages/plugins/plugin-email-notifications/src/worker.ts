@@ -34,6 +34,13 @@ type DeliveryProof = {
   metadata: Record<string, unknown>;
 };
 
+type DeveloperHandoffPage = {
+  url: string;
+  currentProblem: string;
+  requiredChanges: string[];
+  verification: string[];
+};
+
 function stringValue(value: unknown, fallback = "") {
   return typeof value === "string" && value.trim() ? value.trim() : fallback;
 }
@@ -58,6 +65,18 @@ function arrayOfStrings(value: unknown) {
     : [];
 }
 
+function reportItems(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    if (typeof item === "string" && item.trim()) return [item.trim()];
+    const record = objectValue(item);
+    return [record.change, record.text, record.summary]
+      .filter((candidate): candidate is string => typeof candidate === "string" && candidate.trim().length > 0)
+      .slice(0, 1)
+      .map((candidate) => candidate.trim());
+  });
+}
+
 function splitEmails(value: unknown) {
   return stringValue(value)
     .split(/[,\n;]/)
@@ -75,6 +94,15 @@ function stableHash(value: unknown) {
 
 function truncate(value: string, max = 500) {
   return value.length > max ? `${value.slice(0, max)}...` : value;
+}
+
+function normalizeEmailText(value: string) {
+  const normalizedLineEndings = value.replace(/\r\n?/g, "\n");
+  if (
+    !normalizedLineEndings.includes("\\n\\n")
+    && !normalizedLineEndings.includes("\\r\\n\\r\\n")
+  ) return normalizedLineEndings;
+  return normalizedLineEndings.replace(/\\r\\n|\\n/g, "\n");
 }
 
 async function getConfig(ctx: PluginContext) {
@@ -121,9 +149,13 @@ function toMarkdownList(items: string[]) {
 
 function buildChangeReport(params: Record<string, unknown>) {
   const summary = stringValue(params.summary);
-  const changedItems = arrayOfStrings(params.changedItems);
-  const backupPath = stringValue(params.backupPath);
-  const verification = arrayOfStrings(params.verification);
+  const changedItems = reportItems(params.changedItems).length
+    ? reportItems(params.changedItems)
+    : reportItems(params.changes);
+  const backupPath = stringValue(params.backupPath) || reportItems(params.backups).join("; ");
+  const verification = reportItems(params.verification).length
+    ? reportItems(params.verification)
+    : reportItems(params.verificationEvidence);
   const followUps = arrayOfStrings(params.followUps);
   const rollbackNote = stringValue(params.rollbackNote, "Restore from the listed backup or revert the documented change set.");
   const subject = stringValue(params.subject, "Astrogen Paperclip: change report");
@@ -187,6 +219,82 @@ function buildIncidentReport(params: Record<string, unknown>) {
   };
 }
 
+function developerHandoffPages(value: unknown): DeveloperHandoffPage[] {
+  if (!Array.isArray(value) || !value.length) {
+    throw new Error("affectedPages must contain at least one page");
+  }
+
+  return value.map((item, index) => {
+    const record = objectValue(item);
+    const url = stringValue(record.url);
+    const currentProblem = stringValue(record.currentProblem);
+    const requiredChanges = arrayOfStrings(record.requiredChanges);
+    const verification = arrayOfStrings(record.verification);
+
+    let parsedUrl: URL;
+    try {
+      parsedUrl = new URL(url);
+    } catch {
+      throw new Error(`affectedPages[${index}].url must be a valid absolute URL`);
+    }
+    if (!["http:", "https:"].includes(parsedUrl.protocol)) {
+      throw new Error(`affectedPages[${index}].url must use http or https`);
+    }
+    if (!currentProblem) {
+      throw new Error(`affectedPages[${index}].currentProblem is required`);
+    }
+    if (!requiredChanges.length) {
+      throw new Error(`affectedPages[${index}].requiredChanges must contain at least one item`);
+    }
+    if (!verification.length) {
+      throw new Error(`affectedPages[${index}].verification must contain at least one item`);
+    }
+
+    return { url, currentProblem, requiredChanges, verification };
+  });
+}
+
+function buildDeveloperHandoff(params: Record<string, unknown>) {
+  const summary = stringValue(params.summary);
+  const impact = stringValue(params.impact);
+  const sharedActions = arrayOfStrings(params.sharedActions);
+  const pages = developerHandoffPages(params.affectedPages);
+  const sourceIssue = stringValue(params.sourceIssue);
+  const sourceIssueUrl = stringValue(params.sourceIssueUrl);
+  const subject = stringValue(params.subject, "Astrogen: технічне завдання для розробників");
+
+  if (!summary) throw new Error("summary is required");
+  if (!impact) throw new Error("impact is required");
+  if (!sharedActions.length) throw new Error("sharedActions must contain at least one item");
+  if (!sourceIssue) throw new Error("sourceIssue is required");
+
+  const pageSections = pages.flatMap((page, index) => [
+    `${index + 1}. ${page.url}`,
+    `Поточна проблема: ${page.currentProblem}`,
+    "Що виправити:",
+    toMarkdownList(page.requiredChanges),
+    "Як перевірити:",
+    toMarkdownList(page.verification),
+    "",
+  ]);
+
+  return {
+    subject,
+    text: [
+      summary,
+      "",
+      `Вплив: ${impact}`,
+      "",
+      "Сторінки для виправлення:",
+      ...pageSections,
+      "Спільні технічні зміни:",
+      toMarkdownList(sharedActions),
+      "",
+      `Джерело: ${sourceIssue}${sourceIssueUrl ? ` — ${sourceIssueUrl}` : ""}`,
+    ].join("\n"),
+  };
+}
+
 async function emitEmailCost(input: {
   ctx: PluginContext;
   runCtx: ToolRunContext;
@@ -213,6 +321,7 @@ async function emitEmailCost(input: {
     cachedInputTokens: 0,
     outputTokens: 0,
     costCents: Math.max(0, Math.floor(amountUsd * 100)),
+    amountMicros: Math.max(0, Math.round(amountUsd * 1_000_000)),
     occurredAt: new Date().toISOString(),
   });
 }
@@ -232,7 +341,7 @@ async function sendEmail(input: {
   const secretRef = stringValue(config.resendApiKeySecretRef);
   const baseUrl = stringValue(config.resendApiBaseUrl, DEFAULT_CONFIG.resendApiBaseUrl).replace(/\/+$/, "");
   const subject = input.subject.trim();
-  const text = input.text.trim();
+  const text = normalizeEmailText(input.text).trim();
   const html = stringValue(input.html);
   const dryRun = booleanValue(input.params.dryRun);
   const metadata = objectValue(input.params.metadata);
@@ -389,7 +498,7 @@ const plugin = definePlugin({
       {
         displayName: "Send Email Change Report",
         description:
-          "Send a structured change report after Paperclip process, agent, plugin, or runtime changes. Include backup and verification evidence.",
+          "Send a structured change report after Paperclip process, agent, plugin, or runtime changes. Canonical required fields: summary, changedItems (string[]), backupPath (string), verification (string[]). Include backup and verification evidence.",
         parametersSchema: {
           type: "object",
           properties: {
@@ -455,6 +564,58 @@ const plugin = definePlugin({
           runCtx,
           toolName: TOOL_NAMES.sendIncidentReport,
           kind: "incident_report",
+          params: record,
+          subject: report.subject,
+          text: report.text,
+        });
+      },
+    );
+
+    ctx.tools.register(
+      TOOL_NAMES.sendDeveloperHandoff,
+      {
+        displayName: "Send Developer Email Handoff",
+        description:
+          "Send an implementer-ready technical handoff. Every affected page must include its exact URL, current problem, required changes, and verification steps.",
+        parametersSchema: {
+          type: "object",
+          properties: {
+            recipientEmails: { type: "array", items: { type: "string" } },
+            subject: { type: "string" },
+            summary: { type: "string" },
+            impact: { type: "string" },
+            affectedPages: {
+              type: "array",
+              minItems: 1,
+              items: {
+                type: "object",
+                properties: {
+                  url: { type: "string" },
+                  currentProblem: { type: "string" },
+                  requiredChanges: { type: "array", items: { type: "string" }, minItems: 1 },
+                  verification: { type: "array", items: { type: "string" }, minItems: 1 },
+                },
+                required: ["url", "currentProblem", "requiredChanges", "verification"],
+              },
+            },
+            sharedActions: { type: "array", items: { type: "string" }, minItems: 1 },
+            sourceIssue: { type: "string" },
+            sourceIssueUrl: { type: "string" },
+            idempotencyKey: { type: "string" },
+            dryRun: { type: "boolean" },
+            metadata: { type: "object" },
+          },
+          required: ["summary", "impact", "affectedPages", "sharedActions", "sourceIssue"],
+        },
+      },
+      async (params, runCtx) => {
+        const record = objectValue(params);
+        const report = buildDeveloperHandoff(record);
+        return await sendEmail({
+          ctx,
+          runCtx,
+          toolName: TOOL_NAMES.sendDeveloperHandoff,
+          kind: "developer_handoff",
           params: record,
           subject: report.subject,
           text: report.text,

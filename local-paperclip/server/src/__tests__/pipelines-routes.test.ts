@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import express from "express";
 import request from "supertest";
-import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import {
   activityLog,
   agents,
@@ -43,6 +43,10 @@ import {
   PIPELINE_CONTEXT_PACK_EVENT_LIMIT,
 } from "../services/pipelines.js";
 import { instanceSettingsService } from "../services/instance-settings.js";
+
+vi.mock("../services/issue-assignment-wakeup.js", () => ({
+  queueIssueAssignmentWakeup: vi.fn(),
+}));
 
 const embeddedPostgresSupport = await getEmbeddedPostgresTestSupport();
 const describeEmbeddedPostgres = embeddedPostgresSupport.supported ? describe.sequential : describe.skip;
@@ -333,6 +337,175 @@ describeEmbeddedPostgres("pipeline routes", () => {
     expect(events[1]!.payload).toMatchObject({ materialChanged: true, workspaceRefChanged: true });
   });
 
+  it("rejects automation issue completion until the linked case exits its assigned stage", async () => {
+    const company = await seedCompany();
+    const http = request(app(boardActor));
+    const pipeline = await http
+      .post(`/api/companies/${company.id}/pipelines`)
+      .send({
+        key: "completion-proof",
+        name: "Completion proof",
+        stages: [
+          { key: "draft", name: "Draft", kind: "open", position: 100 },
+          { key: "done", name: "Done", kind: "done", position: 900 },
+          { key: "cancelled", name: "Cancelled", kind: "cancelled", position: 1000 },
+        ],
+      })
+      .expect(201);
+    const created = await http
+      .post(`/api/pipelines/${pipeline.body.id}/cases`)
+      .send({ caseKey: "proof-case", title: "Proof case" })
+      .expect(201);
+    const caseId = created.body.case.id as string;
+    const [entryEvent] = await db
+      .select()
+      .from(pipelineCaseEvents)
+      .where(eq(pipelineCaseEvents.caseId, caseId));
+    const draftStageId = pipeline.body.stages.find((stage: { key: string }) => stage.key === "draft").id as string;
+    expect(entryEvent?.toStageId).toBe(draftStageId);
+
+    const [routine] = await db.insert(routines).values({
+      companyId: company.id,
+      title: "Completion proof routine",
+    }).returning();
+    const [automationIssue] = await db.insert(issues).values({
+      companyId: company.id,
+      title: "Draft automation",
+      status: "in_progress",
+      priority: "medium",
+      assigneeUserId: "board-user",
+    }).returning();
+    const [attempt] = await db.insert(pipelineAutomationExecutions).values({
+      companyId: company.id,
+      caseId,
+      automationId: "draft-automation",
+      triggeringEventId: entryEvent!.id,
+      routineId: routine!.id,
+      status: "succeeded",
+      executionIssueId: automationIssue!.id,
+    }).returning();
+    await db.insert(pipelineCaseIssueLinks).values({
+      companyId: company.id,
+      caseId,
+      issueId: automationIssue!.id,
+      role: "automation",
+      automationAttemptId: attempt!.id,
+    });
+
+    const premature = await http
+      .patch(`/api/issues/${automationIssue!.id}`)
+      .send({ status: "done" })
+      .expect(422);
+    expect(JSON.stringify(premature.body)).toContain("pipeline_stage_transition_required");
+
+    await http
+      .post(`/api/cases/${caseId}/transition`)
+      .send({ toStageKey: "done", expectedVersion: 1 })
+      .expect(200);
+    await http
+      .patch(`/api/issues/${automationIssue!.id}`)
+      .send({ status: "done" })
+      .expect(200);
+  });
+
+  it("serves full linked documents through the case output boundary and rejects unlinked or retired sources", async () => {
+    const company = await seedCompany();
+    const ownerHttp = request(app(boardActor));
+    const [ownerAgent, readerAgent] = await db.insert(agents).values([
+      {
+        companyId: company.id,
+        name: "Output owner",
+        role: "engineer",
+        adapterType: "codex_local",
+        adapterConfig: {},
+        runtimeConfig: {},
+        permissions: {},
+      },
+      {
+        companyId: company.id,
+        name: "Output reader",
+        role: "manager",
+        adapterType: "codex_local",
+        adapterConfig: {},
+        runtimeConfig: {},
+        permissions: {},
+      },
+    ]).returning();
+    const pipeline = await ownerHttp
+      .post(`/api/companies/${company.id}/pipelines`)
+      .send({ key: "case-output-read", name: "Case output read" })
+      .expect(201);
+    const createdCase = await ownerHttp
+      .post(`/api/pipelines/${pipeline.body.id}/cases`)
+      .send({ caseKey: "case-output-read", title: "Case output read" })
+      .expect(201);
+    const [sourceIssue, unlinkedIssue] = await db.insert(issues).values([
+      {
+        companyId: company.id,
+        title: "Specialist completion evidence",
+        status: "done",
+        priority: "medium",
+        assigneeAgentId: ownerAgent!.id,
+      },
+      {
+        companyId: company.id,
+        title: "Unlinked private evidence",
+        status: "done",
+        priority: "medium",
+        assigneeAgentId: ownerAgent!.id,
+      },
+    ]).returning();
+    const sourceDocument = await ownerHttp
+      .put(`/api/issues/${sourceIssue!.id}/documents/completion-evidence`)
+      .send({ title: "Completion evidence", format: "markdown", body: "# Full proof\n\nDurable case evidence." })
+      .expect(201);
+    const unlinkedDocument = await ownerHttp
+      .put(`/api/issues/${unlinkedIssue!.id}/documents/private-evidence`)
+      .send({ title: "Private evidence", format: "markdown", body: "Not a case output." })
+      .expect(201);
+    const link = await ownerHttp
+      .post(`/api/cases/${createdCase.body.case.id}/issue-links`)
+      .send({ issueId: sourceIssue!.id, role: "work" })
+      .expect(201);
+
+    const readerActor: Express.Request["actor"] = {
+      type: "agent",
+      agentId: readerAgent!.id,
+      companyId: company.id,
+      runId: randomUUID(),
+      source: "agent_key",
+    };
+    const readerHttp = request(app(readerActor));
+    const outputDocumentId = sourceDocument.body.id as string;
+    const contextPack = await readerHttp
+      .get(`/api/cases/${createdCase.body.case.id}/context-pack`)
+      .expect(200);
+    expect(contextPack.body.outputSummaries.items[0].fetchHint).toContain(
+      `/api/cases/${createdCase.body.case.id}/outputs/documents/${outputDocumentId}`,
+    );
+    const output = await readerHttp
+      .get(`/api/cases/${createdCase.body.case.id}/outputs/documents/${outputDocumentId}`)
+      .expect(200);
+    expect(output.body.document).toMatchObject({
+      id: outputDocumentId,
+      key: "completion-evidence",
+      body: "# Full proof\n\nDurable case evidence.",
+      bodyRedacted: false,
+    });
+    expect(output.body.source).toMatchObject({
+      issueId: sourceIssue!.id,
+      role: "work",
+    });
+
+    await readerHttp
+      .get(`/api/cases/${createdCase.body.case.id}/outputs/documents/${unlinkedDocument.body.id}`)
+      .expect(404);
+    await ownerHttp.delete(`/api/cases/${createdCase.body.case.id}/issue-links/${link.body.id}`).expect(200);
+    await readerHttp
+      .get(`/api/cases/${createdCase.body.case.id}/outputs/documents/${outputDocumentId}`)
+      .expect(404);
+  });
+
   it("hides retired children from the flat case children route", async () => {
     const company = await seedCompany();
     const http = request(app(boardActor));
@@ -424,6 +597,195 @@ describeEmbeddedPostgres("pipeline routes", () => {
     });
     const remainingLinks = await db.select().from(pipelineCaseIssueLinks).where(eq(pipelineCaseIssueLinks.id, link.body.id));
     expect(remainingLinks).toHaveLength(0);
+  });
+
+  it("lets a pipeline manager link delegated work without mutating the assignee issue", async () => {
+    const company = await seedCompany();
+    const [manager, worker] = await db.insert(agents).values([
+      {
+        companyId: company.id,
+        name: "Pipeline Manager",
+        role: "manager",
+        adapterType: "codex_local",
+      },
+      {
+        companyId: company.id,
+        name: "Delegated Worker",
+        role: "engineer",
+        adapterType: "codex_local",
+      },
+    ]).returning();
+    await db.insert(companyMemberships).values([
+      {
+        companyId: company.id,
+        principalType: "agent",
+        principalId: manager!.id,
+        status: "active",
+        membershipRole: "member",
+      },
+      {
+        companyId: company.id,
+        principalType: "agent",
+        principalId: worker!.id,
+        status: "active",
+        membershipRole: "member",
+      },
+    ]);
+    await db.insert(principalPermissionGrants).values({
+      companyId: company.id,
+      principalType: "agent",
+      principalId: manager!.id,
+      permissionKey: "pipelines:write",
+      scope: null,
+    });
+
+    const managerHttp = request(app({
+      type: "agent",
+      agentId: manager!.id,
+      companyId: company.id,
+      runId: randomUUID(),
+      source: "agent_key",
+    }));
+    const pipeline = await managerHttp
+      .post(`/api/companies/${company.id}/pipelines`)
+      .send({ key: "delegation", name: "Delegation" })
+      .expect(201);
+    const createdCase = await managerHttp
+      .post(`/api/pipelines/${pipeline.body.id}/cases`)
+      .send({ caseKey: "delegated-work", title: "Delegated work" })
+      .expect(201);
+    const [workIssue, originIssue] = await db.insert(issues).values([
+      {
+        companyId: company.id,
+        title: "Worker-owned task",
+        status: "todo",
+        priority: "medium",
+        assigneeAgentId: worker!.id,
+      },
+      {
+        companyId: company.id,
+        title: "Worker-owned origin",
+        status: "todo",
+        priority: "medium",
+        assigneeAgentId: worker!.id,
+      },
+    ]).returning();
+
+    await managerHttp
+      .post(`/api/cases/${createdCase.body.case.id}/issue-links`)
+      .send({ issueId: workIssue!.id, role: "work" })
+      .expect(201);
+    await managerHttp
+      .post(`/api/cases/${createdCase.body.case.id}/issue-links`)
+      .send({ issueId: originIssue!.id, role: "origin" })
+      .expect(403);
+
+    const [unchangedIssue] = await db
+      .select({ status: issues.status, assigneeAgentId: issues.assigneeAgentId })
+      .from(issues)
+      .where(eq(issues.id, workIssue!.id));
+    expect(unchangedIssue).toEqual({ status: "todo", assigneeAgentId: worker!.id });
+  });
+
+  it("creates and links pipeline delegation work atomically and idempotently", async () => {
+    const company = await seedCompany();
+    const [manager, worker] = await db.insert(agents).values([
+      {
+        companyId: company.id,
+        name: "Atomic Delegation Manager",
+        role: "manager",
+        adapterType: "codex_local",
+      },
+      {
+        companyId: company.id,
+        name: "Atomic Delegation Worker",
+        role: "engineer",
+        adapterType: "codex_local",
+      },
+    ]).returning();
+    await db.insert(companyMemberships).values([
+      {
+        companyId: company.id,
+        principalType: "agent",
+        principalId: manager!.id,
+        status: "active",
+        membershipRole: "member",
+      },
+      {
+        companyId: company.id,
+        principalType: "agent",
+        principalId: worker!.id,
+        status: "active",
+        membershipRole: "member",
+      },
+    ]);
+    await db.insert(principalPermissionGrants).values({
+      companyId: company.id,
+      principalType: "agent",
+      principalId: manager!.id,
+      permissionKey: "pipelines:write",
+      scope: null,
+    });
+
+    const runId = randomUUID();
+    await db.insert(heartbeatRuns).values({
+      id: runId,
+      companyId: company.id,
+      agentId: manager!.id,
+      status: "running",
+      invocationSource: "on_demand",
+    });
+    const managerHttp = request(app({
+      type: "agent",
+      agentId: manager!.id,
+      companyId: company.id,
+      runId,
+      source: "agent_key",
+    }));
+    const pipeline = await managerHttp
+      .post(`/api/companies/${company.id}/pipelines`)
+      .send({ key: "atomic-delegation", name: "Atomic delegation" })
+      .expect(201);
+    const createdCase = await managerHttp
+      .post(`/api/pipelines/${pipeline.body.id}/cases`)
+      .send({ caseKey: "atomic-delegation", title: "Atomic delegation" })
+      .expect(201);
+    const requestBody = {
+      title: "Delegated specialist task",
+      assigneeAgentId: worker!.id,
+      pipelineCaseLink: {
+        caseId: createdCase.body.case.id,
+        requestKey: "specialist-execution-v1",
+      },
+    };
+
+    const first = await managerHttp
+      .post(`/api/companies/${company.id}/issues`)
+      .send(requestBody);
+    expect(first.status, JSON.stringify(first.body)).toBe(201);
+    const retry = await managerHttp
+      .post(`/api/companies/${company.id}/issues`)
+      .send(requestBody)
+      .expect(200);
+
+    expect(first.body.delegationCreated).toBe(true);
+    expect(retry.body.delegationCreated).toBe(false);
+    expect(retry.body.id).toBe(first.body.id);
+    const links = await db
+      .select()
+      .from(pipelineCaseIssueLinks)
+      .where(eq(pipelineCaseIssueLinks.issueId, first.body.id));
+    expect(links).toHaveLength(1);
+    expect(links[0]).toMatchObject({
+      caseId: createdCase.body.case.id,
+      role: "work",
+      createdByRunId: runId,
+    });
+    const linkEvents = await db
+      .select()
+      .from(pipelineCaseEvents)
+      .where(eq(pipelineCaseEvents.caseId, createdCase.body.case.id));
+    expect(linkEvents.filter((event) => event.type === "issue_linked")).toHaveLength(1);
   });
 
   it("includes the source automation metadata for cases built by automation", async () => {
@@ -891,6 +1253,7 @@ describeEmbeddedPostgres("pipeline routes", () => {
       { name: "case events", method: "get", path: `/api/cases/${caseId}/events` },
       { name: "case rollup", method: "get", path: `/api/cases/${caseId}/rollup` },
       { name: "case context-pack", method: "get", path: `/api/cases/${caseId}/context-pack` },
+      { name: "case output document", method: "get", path: `/api/cases/${caseId}/outputs/documents/${randomUUID()}` },
     ] as const;
 
     for (const route of routes) {
@@ -920,6 +1283,21 @@ describeEmbeddedPostgres("pipeline routes", () => {
 
   it("rejects agent exits from human review stages", async () => {
     const company = await seedCompany();
+    const agent = await seedAutomationAgent(company.id);
+    await db.insert(companyMemberships).values({
+      companyId: company.id,
+      principalType: "agent",
+      principalId: agent.id,
+      status: "active",
+      membershipRole: "member",
+    });
+    await db.insert(principalPermissionGrants).values({
+      companyId: company.id,
+      principalType: "agent",
+      principalId: agent.id,
+      permissionKey: "pipelines:write",
+      scope: null,
+    });
     const http = request(app(boardActor));
     const pipelineRes = await http
       .post(`/api/companies/${company.id}/pipelines`)
@@ -939,7 +1317,7 @@ describeEmbeddedPostgres("pipeline routes", () => {
 
     const agentActor: Express.Request["actor"] = {
       type: "agent",
-      agentId: randomUUID(),
+      agentId: agent.id,
       companyId: company.id,
       runId: randomUUID(),
       source: "agent_key",

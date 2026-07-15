@@ -94,6 +94,25 @@ const DNS_LOOKUP_TIMEOUT_MS = 5_000;
 const ALLOWED_PROTOCOLS = new Set(["http:", "https:"]);
 const TELEMETRY_EVENT_NAME_REGEX = /^[a-z0-9][a-z0-9_-]*$/;
 
+export function resolvePluginPrivateHttpAllowSet(
+  raw = process.env.PAPERCLIP_PLUGIN_PRIVATE_HTTP_ALLOWLIST,
+): ReadonlySet<string> {
+  const entries = (raw ?? "")
+    .split(",")
+    .map((entry) => entry.trim().toLowerCase())
+    .filter(Boolean);
+
+  for (const entry of entries) {
+    if (entry.includes("/") || entry.includes("://") || !entry.includes(":")) {
+      throw new Error(
+        `Invalid PAPERCLIP_PLUGIN_PRIVATE_HTTP_ALLOWLIST authority: ${entry}`,
+      );
+    }
+  }
+
+  return new Set(entries);
+}
+
 /**
  * Check if an IP address is in a private/reserved range (RFC 1918, loopback,
  * link-local, etc.) that plugins should never be able to reach.
@@ -171,6 +190,8 @@ async function validateAndResolveFetchUrl(urlString: string): Promise<ValidatedF
   // between DNS resolution here and the second resolution fetch() would do.
   const originalHostname = parsed.hostname.replace(/^\[|\]$/g, ""); // strip IPv6 brackets
   const hostHeader = parsed.host; // includes port if non-default
+  const privateAuthorityAllowed = resolvePluginPrivateHttpAllowSet()
+    .has(hostHeader.toLowerCase());
 
   // Race the DNS lookup against a timeout to prevent indefinite hangs
   // when DNS is misconfigured or unresponsive.
@@ -193,6 +214,18 @@ async function validateAndResolveFetchUrl(urlString: string): Promise<ValidatedF
     // to both private and public addresses.
     const safeResults = results.filter((entry) => !isPrivateIP(entry.address));
     if (safeResults.length === 0) {
+      if (privateAuthorityAllowed) {
+        const resolved = results[0]!;
+        return {
+          parsedUrl: parsed,
+          resolvedAddress: resolved.address,
+          hostHeader,
+          tlsServername: parsed.protocol === "https:" && isIP(originalHostname) === 0
+            ? originalHostname
+            : undefined,
+          useTls: parsed.protocol === "https:",
+        };
+      }
       throw new Error(
         `All resolved IPs for ${originalHostname} are in private/reserved ranges`,
       );

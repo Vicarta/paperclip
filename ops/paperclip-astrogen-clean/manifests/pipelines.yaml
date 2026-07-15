@@ -1,0 +1,434 @@
+version: 1
+company: Astrogen
+project: Astrogen Growth OS
+mode: active
+
+pipelines:
+  - key: astrogen-article-production
+    name: Astrogen Article Production
+    description: Evidence-backed draft-only article delivery from validated opportunity through one durable Winning Structure run to owner-notified CMS draft.
+    enforceTransitions: true
+    productiveWipCap: 3
+    caseKey: article:<topicKey>
+    stageMigrations:
+      serp_check: strategy_input
+    requiredFields:
+      - operation
+      - topicKey
+      - titleUk
+      - targetQueryCluster
+      - ctaRoute
+      - evidenceRefs
+      - taskRevision
+      - winningStructureNamespace
+      - winningStructureIdempotencyKey
+      - winningStructureInputDocumentId
+      - winningStructureRunId
+      - winningStructureInputHash
+      - winningStructureEffectiveInputHash
+      - winningStructureDecisionSetVersion
+      - winningStructureStatus
+      - winningStructureRetentionExpiresAt
+      - winningStructureResultDocumentId
+      - winningStructureOverlayDocumentId
+      - structureMappingStatus
+      - contentQualityRequirements
+      - publicationRequirements
+      - articleType
+      - selectedValueUnits
+      - valueEvidenceRefs
+      - valueCommitmentRefs
+      - geoRetrievabilityRequired
+      - mcQualityOutcome
+      - mcQualitySurfaceRevisionCount
+      - mcQualitySubstantiveRevisionCount
+      - blockerClass
+      - nextReviewAt
+      - attemptCount
+      - cmsDraftId
+      - cmsAdminUrl
+      - telegramMessageId
+    stages:
+      - { key: opportunity, name: Opportunity, kind: working, position: 100 }
+      - { key: strategy_input, name: Strategy Input, kind: working, position: 200 }
+      - { key: winning_structure, name: Winning Structure, kind: working, position: 300 }
+      - { key: structure_decision, name: Structure Decision, kind: working, position: 400 }
+      - { key: structure_review, name: Structure Review, kind: review, position: 500 }
+      - { key: brief, name: Brief, kind: working, position: 600 }
+      - { key: draft, name: Claude Draft, kind: working, position: 700 }
+      - { key: validate, name: Content Validation, kind: review, position: 800 }
+      - { key: humanize, name: Humanize, kind: working, position: 900 }
+      - { key: mc_quality, name: Main Content Quality, kind: working, position: 1000 }
+      - { key: layout, name: Layout, kind: working, position: 1100 }
+      - { key: layout_validate, name: Layout Validation, kind: review, position: 1200 }
+      - key: image
+        name: Cover Image
+        kind: working
+        position: 1300
+        config:
+          reviewSafeFieldPrefixes: [image, coverImage, coverMedia, ogImage]
+          reviewSafeFieldKeys: [coverMediaId, ogImageMediaId]
+      - key: cms_draft
+        name: CMS Draft
+        kind: working
+        position: 1400
+        config:
+          reviewSafeFieldPrefixes: [cmsDraft, beforeAfterDiff]
+          reviewSafeFieldKeys: [cmsAdminUrl]
+      - key: cmo_delivery
+        name: CMO Delivery
+        kind: working
+        position: 1500
+        config:
+          reviewSafeFieldPrefixes: [delivery, cmoDelivery, topicReservation]
+          reviewSafeFieldKeys: [telegramMessageId, blockerClass, nextReviewAt, attemptCount]
+      - { key: delivered, name: Delivered, kind: done, position: 1600 }
+      - { key: cancelled, name: Cancelled, kind: cancelled, position: 1700 }
+    transitions:
+      - { from: opportunity, to: strategy_input }
+      - { from: strategy_input, to: winning_structure }
+      - { from: winning_structure, to: strategy_input, label: proven pre-start payload repair }
+      - { from: winning_structure, to: structure_decision, label: decision required }
+      - { from: winning_structure, to: structure_review, label: completed and imported }
+      - { from: structure_decision, to: winning_structure, label: authorized decision submitted }
+      - { from: structure_review, to: winning_structure, label: re-import or verify same run }
+      - { from: structure_review, to: strategy_input, label: explicitly authorized new revision }
+      - { from: structure_review, to: brief, label: approved }
+      - { from: brief, to: draft }
+      - { from: draft, to: validate }
+      - { from: validate, to: humanize, label: approved }
+      - { from: validate, to: draft, label: request changes }
+      - { from: validate, to: cancelled, label: rejected }
+      - { from: humanize, to: mc_quality }
+      - { from: mc_quality, to: layout, label: pass }
+      - { from: mc_quality, to: humanize, label: revise_surface }
+      - { from: mc_quality, to: draft, label: revise_substantive }
+      - { from: mc_quality, to: cancelled, label: reject_unsafe }
+      - { from: layout, to: layout_validate }
+      - { from: layout_validate, to: image, label: approved }
+      - { from: layout_validate, to: layout, label: request changes }
+      - { from: layout_validate, to: cancelled, label: rejected }
+      - { from: image, to: cms_draft }
+      - { from: cms_draft, to: cmo_delivery }
+      - { from: cmo_delivery, to: delivered }
+      - { from: opportunity, to: cancelled }
+      - { from: strategy_input, to: cancelled }
+      - { from: winning_structure, to: cancelled }
+      - { from: structure_decision, to: cancelled, label: authorized cancel }
+      - { from: structure_review, to: cancelled, label: rejected }
+      - { from: brief, to: cancelled }
+      - { from: draft, to: cancelled }
+      - { from: humanize, to: cancelled }
+      - { from: layout, to: cancelled }
+      - { from: image, to: cancelled }
+      - { from: cms_draft, to: cancelled }
+      - { from: cmo_delivery, to: cancelled }
+    stageAutomation:
+      opportunity:
+        owner: Chief Marketing Officer
+        instructions: |
+          Act as article portfolio manager, not a specialist executor. Validate the case topicKey against accepted topic inventory and current duplicate/cannibalization evidence, set one stable taskRevision for this logical request, and reserve only this case. Always transition to strategy_input; old SERP evidence may support the payload but never bypasses Winning Structure. Never write the article, generate an image, mutate CMS, or send Telegram in this stage.
+      strategy_input:
+        owner: SEO Blog Content Strategist
+        instructions: |
+          Build one complete Winning Structure payload from the matching CMS page snapshot when operation=refresh, semantic-core cluster, GSC/GA4 query-to-URL evidence, ownership inventory, CTA/product bridge routes, editorial constraints, and verified first-party reader-value evidence or publication-blocking commitments. Classify exactly one articleType under /companies/astrogen/reference/article-value-system.yaml and propose 2-4 type-appropriate value units by reader problem, evidence availability, and sibling differentiation. Each selected value unit is invalid unless it has valueUnitId, generator, readerProblem, contribution, claimBoundaries, siblingDifferentiationFingerprint, evidenceRefsOrCommitmentRefs, acceptanceCriteria, and 1-4 canonical targetIntentCovered values from that reference. Do not write targetSectionIds: remote section IDs do not exist at strategy-input time. If this typed strategy input is incomplete, repair it in this stage; do not start an MCP run and do not hand a malformed unit to Winning Structure.
+
+          Persist a case document with key winning-structure-input whose body is one JSON object that can be passed unchanged to both validate_task_input and start_winning_structure_run. Its top-level fields are company_id, project_id, client_key=astrogen-ukraine, idempotency_key=winning-structure:{articleCaseId}:{taskRevision}, task, market, cache_policy, editorial_constraints, and optional current_page_snapshot, business_context, ownership_context, and reader_value_policy. The task object must contain page_mode, target_url, primary_keyword, auxiliary_keywords, intent_hypothesis, and content_goal; keyword_cluster_id is optional. The market object must contain geo=UA, search_language=uk, output_language=uk-UA, and primary_device. Put all reader_value_evidence, manual_value_commitments, product_bridge_targets, and other business fields inside one business_context object. Never emit task_input, namespace, run_id, decisions, validation results, internal wrapper metadata, or a Markdown fence in this document. Persist winningStructureInputDocumentId=winning-structure-input, winningStructureNamespace with the same company_id/project_id/client_key, evidence/commitment refs, geoRetrievabilityRequired, and warnings.
+
+          When existing non-SERP evidence is insufficient, create only a valid commitmentFallbackPolicy commitment for a concrete reader-facing asset that an assigned pipeline role can produce and the validator can verify before CMS delivery; data/tool access, semantic-core collection, ownership research, generic SEO improvement, or adding a layout block is never a reader-value commitment. Leave winningStructureRunId, winningStructureStatus, both input hashes, decision version, retention expiry, and result document ID null: only the winning_structure stage may populate them from actual plugin responses. Never write a heartbeat/session/issue ID into an MCP field. If operation=create is proven to duplicate an existing CMS page before a run starts, durably record the matching URL and evidence, transition the linked parent topic from reserved to rejected_duplicate, then cancel only this article case; do not leave the topic ready for repeated allocation. Do not invent evidence, product capabilities, expert observations, cases, statistics, or CTA routes; do not select a table, FAQ, checklist, or other layout device as value by itself. Transition to winning_structure only when the exact payload document is durable and parses as JSON.
+      winning_structure:
+        owner: MKT Competitive Intelligence Analyst
+        instructions: |
+          Use all five Winning Structure operations as one resumable lifecycle. Read the winning-structure-input case document, parse its body as JSON, and pass that exact object unchanged to validate_task_input and start_winning_structure_run; never reconstruct, rename, enrich, or guess fields. Reject the handoff before any remote start unless task and market are objects, task_input and namespace are absent, the payload namespace equals winningStructureNamespace, and idempotency_key equals winningStructureIdempotencyKey. Every later plugin call uses company_id, project_id, client_key, run_id, and decisions as top-level parameters exactly as declared by the tool schema; never wrap them in a nested namespace object.
+
+          Validate before any start. If validation is invalid, persist the typed validation errors and use the proven pre-start payload repair transition back to strategy_input; this transition is forbidden after any actual MCP run_id or input_hash has been returned. If no winningStructureRunId exists, start exactly once with the same validated object and persist only the plugin-returned run_id, reused status, original input hash, and current status. Otherwise poll only the stored run_id and namespace with 5-15 second bounded backoff, exponential delay capped at 30 seconds, safe status retries, and no repeated start. Perform at most 6 status reads in one heartbeat; if the run is still active, persist current status and nextReviewAt, release the heartbeat, and resume the same run later. On awaiting_ownership_decision or awaiting_added_value_input, persist the exact pending request and transition this case to structure_decision. On completed, call get result, import the full JSON/Markdown and every required artifact before retention expiry, and persist effective hash, decision set version, status, retention expiry, winningStructureResultDocumentId, contentQualityRequirements, publicationRequirements, added-value plans, quality flags, provenance, cache, and cost summaries before transition to structure_review. A paused, failed, expired, transport-blocked, or unresolved run affects only this case; classify it once with nextReviewAt and never stop unrelated cases. Old Serper may supply supporting evidence but cannot complete this gate.
+
+          Before the completed case enters structure_review, deterministically verify that every approved selected value unit maps to at least one ordered remote section through its canonical targetIntentCovered values and the section intent_covered list. Persist the resulting mappedSectionIds on the value unit. The remote MCP may add evidence-backed value plans, but it is not the authority that discards an already approved Astrogen value unit. When no generated section maps an approved unit, do not mutate or relabel raw MCP output and do not create a CTO blocker. Create a separate winning-structure-local-overlay document whose typed entry contains overlaySectionId, insertionAfterSectionId, sourceKind=selected_value_unit, sourceValueUnitId, mappedSupportIds, evidenceOrCommitmentRefs, sectionPurpose, writerInstruction, examplesToAvoid, claimBoundaries, and provenance=paperclip_normalization_from_selected_value_unit. A separate accepted-plan overlay remains allowed with provenance=paperclip_normalization_from_accepted_plan. Either overlay is low-risk only when it introduces no new evidence, claim, keyword owner, scope, CTA route, or publication capability. Persist winningStructureOverlayDocumentId and structureMappingStatus=normalized_with_overlay; otherwise set structureMappingStatus=raw_complete. A missing map that would require new claims, scope, ownership, evidence, or plan interpretation is a typed manager-review blocker, not a technical task.
+      structure_decision:
+        owner: Chief Marketing Officer
+        instructions: |
+          Fetch current status for the stored run_id using company_id, project_id, client_key, and run_id as top-level plugin parameters; never use a nested namespace object. Copy one exact pending decision_id, decision_version, decision_type, options, required response fields, evidence, and candidate URLs. Submit exactly one decision with company_id, project_id, client_key, run_id, and decisions at the top level only when the selected option and factual rationale are within explicit recorded authority; an identical accepted retry is allowed. For awaiting_added_value_input, submit only produced evidence or a valid /companies/astrogen/reference/article-value-system.yaml commitmentFallbackPolicy commitment for a concrete in-article asset with assigned role, validation method, acceptance criteria, and due_before_publication=true. Never submit semantic-core/ownership/tool access, generic research, more text, keywords, or a layout component as reader value. Never manufacture a version or overwrite a resolved response. Options that accept cannibalization risk, merge/consolidate, reassign ownership, cancel, remove the primary keyword, or otherwise exceed recorded authority require a human review task containing the complete decision request and evidence refs; keep only this case parked at structure_decision with a typed blocker and nextReviewAt. After an authorized submission, return to winning_structure and poll the same run_id. Stale/conflicting decisions require a fresh status read, not a new run. Technical failures are not owner Telegram decisions.
+      structure_review:
+        owner: SEO Blog Content Plan Validator
+        review:
+          approver: SEO Blog Content Plan Validator
+          approveTo: brief
+          requestChangesTo: winning_structure
+          rejectTo: cancelled
+        instructions: |
+          Review only a completed, durably imported Winning Structure result. Verify original/effective hashes, decision history and authority, retention import, ownership boundaries, confidence/quality flags, evidence or concrete commitments, contentQualityRequirements, publicationRequirements, and every ordered structure item with section_id, level, title, section_type, intent_covered, source_evidence, priority, section_purpose, writer_instruction, examples_to_avoid, and review_flags. Reject an incomplete strategy handoff where a selected value unit lacks canonical targetIntentCovered; return it to strategy_input before any re-import loop. Approve only when 2-4 accepted value units fit the article type, differ substantively from sibling pages, and preserve claim/privacy boundaries. Request same-run re-import or verification for an incomplete import; a genuinely changed scope requires an explicit new taskRevision through strategy_input. Never concatenate writer instructions into article prose or treat requirements as a content verdict.
+
+          Accept a separate winning-structure-local-overlay only when structureMappingStatus=normalized_with_overlay, every entry maps either an approved sourceValueUnitId or an accepted sourcePlanId/support ID, provenance is explicit, raw MCP artifacts remain immutable, and the overlay adds no new evidence, claims, scope, ownership, CTA route, or capability. Every selected value unit must map into either a raw section through targetIntentCovered or a valid local overlay before approval.
+      brief:
+        owner: MKT Blog Brief Strategist
+        instructions: |
+          Build the Stage 55 brief from the accepted topic and imported Winning Structure result. Preserve accepted section IDs and hierarchy, writer instructions, source evidence, claim boundaries, examples to avoid, review flags, content quality requirements, publication requirements, article type, and 2-4 selected value units as typed fields rather than concatenated prose. Lock title/H1, query cluster, reader intent, information gain, CTA route, internal links, safety constraints, GEO flag, and image mode. Store the brief as a case document and transition to draft. Do not write the final article, create generic value blocks, or copy raw prompt text.
+      draft:
+        owner: SEO Blog Article Writer (Claude)
+        instructions: |
+          Write the canonical Ukrainian Stage 59 draft from the accepted brief. Claude is the primary writer. Create a durable attachment-backed work product, update the case with its artifact reference, and transition to validate. Do not perform layout, image generation, CMS work, or Telegram delivery.
+      validate:
+        owner: SEO Blog Article Validator
+        review:
+          approver: SEO Blog Article Validator
+          approveTo: humanize
+          requestChangesTo: draft
+          rejectTo: cancelled
+        instructions: |
+          Validate the canonical draft against the accepted brief and imported Winning Structure sections. Approve only when every selected value unit is supported by its evidence or fulfilled commitment, sibling differentiation is substantive, publication requirements and claim/privacy boundaries are met, SEO locks are preserved, and no process or raw-prompt residue remains. Interpretive systems must not be presented as scientific proof, diagnosis, guaranteed prediction, or deterministic/fatalistic fact. Use the native pipeline review decision: approve to humanize, request changes to draft with deterministic reasons, or reject only with durable evidence.
+      humanize:
+        owner: SEO Blog Humanizer
+        instructions: |
+          Perform exactly one bounded editorial-naturalness pass under /companies/astrogen/reference/content-quality-contract.yaml. Correct only observed prose anti-patterns such as throat-clearing, formulaic openers/closers, repetitive transitions or sentence shapes, vague abstraction, forced triads, and unnecessary meta-rubrication. Preserve accepted structure, section IDs, evidence, claims, qualifiers, SEO locks, value units, CTA, and publication requirements. Do not invent a persona or experience, add deliberate errors, calculate an AI score/percentage, attribute a model, or recurse. Register the durable humanized artifact and transition to mc_quality.
+      mc_quality:
+        owner: SEO Blog Article Validator
+        instructions: |
+          Audit the final humanized main content under /companies/astrogen/reference/content-quality-contract.yaml before layout. Check purpose fulfillment, visible effort, evidence-backed originality and value, depth, usefulness, completeness, specificity, clarity, information density, sibling differentiation, claim safety, and delivered publication-blocking commitments. Run selective GEO/retrievability checks only when geoRetrievabilityRequired=true and the case is an eligible explanatory or refresh scope; these checks are answer-first, explicit-entity, and self-contained-fragment checks, never keyword-density or quota gates. Persist mcQualityOutcome as exactly pass, revise_surface, revise_substantive, or reject_unsafe with section/evidence-linked findings. Route pass to layout. A first revise_surface increments mcQualitySurfaceRevisionCount and permits exactly one finding-bounded humanize correction; a second surface failure must become revise_substantive or reject_unsafe. A revise_substantive increments mcQualitySubstantiveRevisionCount and returns to draft, but at most two substantive revisions are allowed for one taskRevision; the next failure becomes reject_unsafe or a manager-reviewed new taskRevision. Reject_unsafe routes to cancelled. Do not emit AI-detector scores or approve layout as a substitute for weak main content.
+      layout:
+        owner: SEO Blog Article Layout Editor
+        instructions: |
+          Convert the accepted article into canonical articleContent.v1. Include the early editorialCallout titled exactly Коротко, useful editorial blocks, final quiet CTA, and a related-post selection plan. Store layout JSON durably and transition to layout_validate. Do not generate images or mutate CMS.
+      layout_validate:
+        owner: SEO Blog Article Layout Validator
+        review:
+          approver: SEO Blog Article Layout Validator
+          approveTo: image
+          requestChangesTo: layout
+          rejectTo: cancelled
+        instructions: |
+          Validate articleContent.v1, Коротко, CTA, related-post plan, visible copy, and absence of schema/process residue. For human_scene cover direction, require one explicit typed gaze plan but never require a viewer-facing candidate or final image: viewer-facing is valid only when it strengthens the lived emotional event, while interaction/object/off-camera gaze is equally valid when it explains the topic better. Use the native review decision: approve to image, request changes to layout, or reject with durable evidence.
+      image:
+        owner: SEO Blog Image Runtime Executor
+        instructions: |
+          When operation=refresh and the current accepted cover has no explicitly scoped defect, preserve its media IDs, register reuse evidence, and transition to cms_draft without a provider call. Otherwise, before spending provider budget, call paperclip.openrouter-image-agent-tools:image-visual-history-get and inspect the latest 6-8 structured fingerprints. Generate exactly one cover with the configured default model and one candidate. For human_scene, send subjectMode=human_scene and a complete typed artDirection: narrative moment, scene archetype, setting, subject arrangement, action, a specific emotional beat with at least two visible cues, shot distance, camera angle, gaze plan, props, brand anchors, and avoid patterns. The new plan must differ from every recent fingerprint on at least 4 of 9 visual axes. Treat Astrogen burgundy/wine, warm gold, soft neutral light, and restrained esoteric detail as accents rather than a repeated wardrobe/room/table formula. A neutral seated person with laptop, notebook, cup, or generic calm expression does not pass. Request 1472x822, then inspect actual dimensions and visual quality. Accept and preserve the original when width and height deviations are each at most 20 percent and visual QA passes; never upscale, stretch, destructively crop, convert only for format, or call the provider again solely for a within-tolerance mismatch. Register one attachment-backed work product with the visual fingerprint and visible emotion evidence, then transition to cms_draft. A larger dimension miss is a typed runtime blocker, not an automatic retry.
+      cms_draft:
+        owner: SEO CMS Technical Fixer
+        instructions: |
+          Consume only accepted pipeline artifacts. Upload the accepted cover, create or update one Payload CMS draft, set exactly three valid relatedPosts, verify articleContent.v1, Коротко, CTA, cover/OG media and authenticated CMS refetch evidence. Keep draft-only, write cmsDraftId and cmsAdminUrl to the case, and transition to cmo_delivery. Never publish.
+      cmo_delivery:
+        owner: Chief Marketing Officer
+        instructions: |
+          Verify the CMS draft/admin URL and all completion evidence. Send one gender-neutral Ukrainian Telegram message containing only the article title and CMS admin edit URL. Record ok=true, messageId and delivery-proof writeback in case fields. For operation=create, find the linked topic case, verify it is reserved by this article case, and transition that topic from reserved to consumed with expectedVersion. For operation=refresh or repair, require the verified before-after diff and do not require or mutate a topic reservation. Transition the article to delivered only after Telegram delivery proof and the operation-specific create or refresh gate succeed. Never send internal stage or technical status.
+    invariants:
+      - blocked cases do not consume productive WIP
+      - one task revision maps to one Winning Structure idempotency key and one resumable run
+      - namespace and stored run_id are reused for every status, decision, and result operation
+      - Winning Structure tool parameters are always top-level and never wrapped in a nested namespace object
+      - strategy_input never writes MCP run, status, hash, decision, retention, or result fields; winning_structure populates them only from plugin responses
+      - winning-structure-input is exact tool payload JSON and is passed unchanged to validation and start
+      - winning_structure may return to strategy_input only before a real MCP run or input hash exists
+      - a paused Winning Structure run parks only its article case and never freezes unrelated topic or growth cases
+      - completed Winning Structure result, quality requirements, decisions, and required artifacts are imported before retention expiry
+      - raw MCP artifacts are immutable; a missing mapping for an approved selected value unit or accepted remote plan uses a separate typed Paperclip normalization overlay or a manager-review blocker
+      - expired temporary artifacts are recoverable only from an already imported result or an explicitly new task revision
+      - old Serper evidence may support input but never completes the Winning Structure gate
+      - accepted articles require non-SERP evidence or a fulfilled publication-blocking commitment
+      - each article has exactly one of eight approved article types and 2-4 evidence-backed type-appropriate value units
+      - layout devices are not value by themselves and no universal value block is applied across article types
+      - final MC quality runs after humanize and before layout with one of four typed outcomes
+      - one task revision allows at most one surface MC correction and two substantive MC corrections
+      - naturalness correction is bounded and never uses AI percentages, model attribution, invented personas, or recursive rewriting
+      - GEO retrievability checks run only when explicitly flagged for an eligible explanatory or refresh case and never enforce keyword density
+      - operation create never requires before-after-diff
+      - operation refresh or repair requires child-owned before-after-diff before CMO aggregation
+      - CMS remains draft-only
+      - operation refresh reuses accepted existing media unless an image defect is explicitly scoped
+      - delivered requires cmsAdminUrl, Telegram messageId, and delivery-proof writeback
+      - operation create requires the linked reserved topic case to be consumed by the same article case before delivery
+      - operation refresh or repair requires verified before-after diff and does not require a topic reservation
+      - recovery resumes the same case and stage
+      - technical stage status and blocker details are never sent through owner-facing Telegram
+      - image stage requests 1472x822 but accepts the original asset when width and height deviations are each at most 20 percent and visual QA passes
+      - image dimensions or output format within tolerance never trigger a second provider call or upscale
+      - human-scene image generation requires typed emotional art direction and company-scoped visual-history preflight before provider spend
+      - a human-scene concept with fewer than 4 distinct visual axes against a recent fingerprint is corrected before generation, not accepted as another similar cover
+
+  - key: astrogen-topic-inventory
+    name: Astrogen Topic Inventory
+    description: Transactional lifecycle for evidence-backed article ideas and reservations.
+    enforceTransitions: true
+    readyLowWaterMark: 3
+    readyTarget: 10
+    caseKey: topic:<topicKey>
+    requiredFields:
+      - topicKey
+      - titleUk
+      - fingerprint
+      - queryCluster
+      - intent
+      - ctaRoute
+      - evidenceRefs
+      - evidenceFreshAt
+      - duplicateVerdict
+      - reservationExpiresAt
+      - consumingArticleCaseId
+    stages:
+      - { key: candidate, name: Candidate, kind: working, position: 100 }
+      - { key: evidence_ready, name: Evidence Ready, kind: working, position: 200 }
+      - key: ready
+        name: Ready For Brief
+        kind: working
+        position: 300
+        config:
+          breakdown:
+            targetPipelineKey: astrogen-article-production
+            targetStageKey: opportunity
+            pieceNoun: article
+            caseKeyPrefix: article
+            carryOverPolicy:
+              version: 1
+              mode: only
+              includeFields:
+                - topicKey
+                - titleUk
+                - ctaRoute
+                - evidenceRefs
+              excludeFields: []
+            inheritFields:
+              - topicKey
+              - titleUk
+              - ctaRoute
+              - evidenceRefs
+            advanceTo: reserved
+            waitForPieces: true
+            whenFinishedMoveTo: ready
+      - key: reserved
+        name: Reserved
+        kind: working
+        position: 400
+        config:
+          requireChildrenTerminal: true
+          autoAdvanceOnChildrenTerminal: ready
+      - { key: consumed, name: Consumed, kind: done, position: 900 }
+      - { key: rejected_duplicate, name: Rejected Duplicate, kind: cancelled, position: 1000 }
+      - { key: needs_owner_direction, name: Needs Owner Direction, kind: review, position: 1100 }
+      - { key: waiting_evidence, name: Waiting Evidence, kind: working, position: 1200 }
+      - { key: expired, name: Expired, kind: cancelled, position: 1300 }
+    transitions:
+      - { from: candidate, to: evidence_ready }
+      - { from: candidate, to: waiting_evidence }
+      - { from: evidence_ready, to: ready }
+      - { from: evidence_ready, to: rejected_duplicate }
+      - { from: evidence_ready, to: needs_owner_direction }
+      - { from: evidence_ready, to: waiting_evidence }
+      - { from: waiting_evidence, to: evidence_ready }
+      - { from: ready, to: reserved }
+      - { from: reserved, to: consumed }
+      - { from: reserved, to: ready, label: lease expired }
+      - { from: reserved, to: rejected_duplicate, label: child proved existing duplicate }
+      - { from: candidate, to: expired }
+      - { from: ready, to: expired }
+      - { from: needs_owner_direction, to: ready, label: approved }
+      - { from: needs_owner_direction, to: rejected_duplicate, label: rejected }
+    stageAutomation:
+      candidate:
+        owner: SEO Blog Content Strategist
+        instructions: |
+          Enrich this topic case from Payload CMS, GSC/GA4, semantic-core, CrawlObserver, active pipeline/issue duplicates, and consumed history. Update typed case fields and transition to evidence_ready, waiting_evidence, or expired. Do not create article work yet.
+      evidence_ready:
+        owner: SEO Blog Content Plan Validator
+        instructions: |
+          Validate demand, intent, business fit, duplicate/cannibalization risk, CTA route and evidence freshness. Transition to ready only with complete safe fields; otherwise use rejected_duplicate, needs_owner_direction, or waiting_evidence with a durable reason.
+      reserved:
+        owner: Chief Marketing Officer
+        instructions: |
+          Verify the single child article case created by native breakdown exists and remains live. If consumingArticleCaseId is empty, derive it from that child and update this topic case. Keep this topic reserved while the article is active, transition to consumed only after article delivery, or return to ready when the lease expires and no live article case exists. Do not create or duplicate the article case.
+      needs_owner_direction:
+        owner: Chief Marketing Officer
+        review:
+          approver: Chief Marketing Officer
+          approveTo: ready
+          rejectTo: rejected_duplicate
+        instructions: |
+          Resolve only a real business/editorial direction decision. Approve to ready with a concrete rationale or reject with durable evidence. Technical evidence gaps belong in waiting_evidence and must not be sent to the owner as a business choice.
+      waiting_evidence:
+        owner: SEO Blog Content Strategist
+        instructions: |
+          Recheck only the missing evidence named on this case. Use a bounded retry or monitor date. Transition back to evidence_ready when complete; otherwise retain one typed technical blocker without creating duplicate topic cases.
+    invariants:
+      - reserve atomically by topicKey and lease
+      - ready topics are dispatched only by the scheduled CMO allocator through native breakdown
+      - a cancelled terminal article returns a still-reserved topic to ready through the children-terminal fallback
+      - refill when ready count is below 3 and target 10
+      - no-safe-topic triggers refill and never completes article cadence by itself
+      - repeated evidence updates the same fingerprint
+
+  - key: astrogen-growth-actions
+    name: Astrogen Growth Actions
+    description: Execution lifecycle for weekly SEO, GEO, conversion, and technical growth findings.
+    enforceTransitions: true
+    caseKey: growth:<findingFingerprint>
+    requiredFields:
+      - findingFingerprint
+      - actionClass
+      - businessOutcome
+      - evidenceRefs
+      - managerId
+      - executorId
+      - blockerClass
+      - nextReviewAt
+      - completionProof
+      - measurementWindow
+    stages:
+      - { key: finding, name: Finding, kind: working, position: 100 }
+      - { key: portfolio_review, name: Portfolio Review, kind: review, position: 200 }
+      - { key: delegated, name: Delegated, kind: working, position: 300 }
+      - { key: executing, name: Executing, kind: working, position: 400 }
+      - { key: verify, name: Verify Outcome, kind: review, position: 500 }
+      - { key: measured, name: Measured, kind: done, position: 900 }
+      - { key: rejected, name: Rejected, kind: cancelled, position: 1000 }
+      - { key: external_wait, name: External Wait, kind: working, position: 1100 }
+    transitions:
+      - { from: finding, to: portfolio_review }
+      - { from: portfolio_review, to: delegated, label: accepted }
+      - { from: portfolio_review, to: finding, label: request changes }
+      - { from: portfolio_review, to: rejected, label: rejected }
+      - { from: delegated, to: executing }
+      - { from: executing, to: verify }
+      - { from: executing, to: external_wait }
+      - { from: external_wait, to: executing }
+      - { from: verify, to: measured, label: verified }
+      - { from: verify, to: executing, label: request changes }
+      - { from: verify, to: rejected, label: rejected }
+      - { from: finding, to: rejected }
+    stageAutomation:
+      finding:
+        owner: SEO Performance Analyst
+        instructions: |
+          Normalize one evidence-backed finding into a stable findingFingerprint, actionClass, business outcome, evidence refs, blocker class, measurement window and proposed executor. Update this same case on repeated evidence and transition to portfolio_review.
+      portfolio_review:
+        owner: Chief Marketing Officer
+        review:
+          approver: Chief Marketing Officer
+          approveTo: delegated
+          requestChangesTo: finding
+          rejectTo: rejected
+        instructions: |
+          Decide continue, stop, recover or accept as a new growth action. Approve only with outcome metric, accountable manager, specialist executor, completion proof and review date. Use the native review decision; do not execute specialist work.
+      delegated:
+        owner: Chief Marketing Officer
+        instructions: |
+          Create or link one bounded specialist execution path for the accepted action, set executorId and nextReviewAt, and transition to executing. A blocked unrelated action must not stop this case or other lanes.
+      executing:
+        owner: Chief Marketing Officer
+        instructions: |
+          Manage the linked specialist execution path without doing the specialist work. Read case-visible work products after every create/link operation before deciding. Durable positive completion evidence transitions to verify. A blocked specialist issue with a durable blocker artifact is classified once: set blockerClass and nextReviewAt, transition to external_wait, and keep other cases moving. Only a missing artifact may create or reuse one bounded evidence-recovery issue through atomic pipelineCaseLink; after linking it, re-read outputs in the same heartbeat. Never create a recovery chain or leave the case in executing when the linked artifact already proves a durable external dependency.
+      verify:
+        owner: SEO Performance Analyst
+        review:
+          approver: SEO Performance Analyst
+          approveTo: measured
+          requestChangesTo: executing
+          rejectTo: rejected
+        instructions: |
+          Verify implementation and the defined outcome evidence. Approve to measured only with completion proof and a valid measurement window; request changes to executing when remediation is incomplete; reject only when the action is obsolete or unsafe.
+      external_wait:
+        owner: Chief Marketing Officer
+        instructions: |
+          Keep the external dependency visible with a named owner and nextReviewAt. Set a bounded monitor on the automation issue. Transition back to executing when evidence changes; do not freeze unrelated growth actions and do not send repetitive owner notifications.
+    invariants:
+      - auto_execute findings require an execution case before weekly cycle completion
+      - owner_decision is the only class routed to the owner
+      - external_dependency has nextReviewAt and does not freeze other actions
+      - duplicate fingerprints update one case instead of creating repeated blockers
+      - executing evidence resolves deterministically to verify, external_wait, or one bounded recovery; a durable blocker artifact never creates another recovery chain

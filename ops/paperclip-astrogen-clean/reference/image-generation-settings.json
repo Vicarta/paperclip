@@ -1,0 +1,33 @@
+{
+  "version": 2,
+  "canonicalFor": "astrogen.seoBlog.coverImage.standard",
+  "provider": "openrouter",
+  "historyTool": "paperclip.openrouter-image-agent-tools:image-visual-history-get",
+  "generationTool": "paperclip.openrouter-image-agent-tools:generate-image",
+  "model": "google/gemini-2.5-flash-image",
+  "defaults": {
+    "aspectRatio": "16:9",
+    "imageSize": "1472x822",
+    "n": 1,
+    "outputFormat": "webp",
+    "returnImageData": true,
+    "visualHistoryLimit": 8,
+    "minimumDistinctVisualAxes": 4
+  },
+  "constraints": {
+    "maxCandidates": 1,
+    "allowedImageSizes": ["1472x822"],
+    "allowedOutputFormats": ["webp", "png", "jpg", "jpeg"],
+    "requireSubjectMode": true,
+    "requireTypedArtDirectionForHumanScene": true,
+    "noUpscale": true,
+    "noAlternateModels": true,
+    "noPaidRetryForSimilarity": true
+  },
+  "runtimeNotes": [
+    "Read recent visual fingerprints before constructing a human-scene prompt.",
+    "Astrogen style is a stable palette, light, and refinement layer; scene, action, emotion, gaze, framing, and props must vary.",
+    "The plugin rejects a human-scene direction that is too similar before the paid provider call.",
+    "The provider output may be accepted at its native size when both dimensions are within the configured 20 percent tolerance and visual QA passes."
+  ]
+}

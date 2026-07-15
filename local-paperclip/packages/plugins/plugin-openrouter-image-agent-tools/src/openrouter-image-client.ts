@@ -1,6 +1,7 @@
 import {
   DEFAULT_OPENROUTER_BASE_URL,
   DEFAULT_OPENROUTER_IMAGE_MODEL,
+  DEFAULT_TARGET_DIMENSION_TOLERANCE_PERCENT,
 } from "./constants.js";
 
 export type OpenRouterImagePluginConfig = {
@@ -11,11 +12,17 @@ export type OpenRouterImagePluginConfig = {
   maxImagesPerRequest?: number;
   defaultImageSize?: string;
   defaultAspectRatio?: string;
+  targetDimensionTolerancePercent?: number;
   defaultOutputDir?: string;
   costAccountingMode?: "provider_reported" | "estimated_per_image" | "disabled";
   estimatedImageCostUsd?: number;
   appName?: string;
   siteUrl?: string;
+  structuredArtDirectionMode?: "optional" | "required_for_human_scene";
+  visualHistoryLimit?: number;
+  minimumDistinctVisualAxes?: number;
+  legacyAvoidVisualPatterns?: string[];
+  requireSubjectMode?: boolean;
 };
 
 export type OpenRouterGenerateImageParams = {
@@ -33,6 +40,8 @@ export type OpenRouterGenerateImageParams = {
   seed?: number;
   metadata?: Record<string, unknown>;
   returnImageData?: boolean;
+  subjectMode?: "human_scene" | "abstract_graphic";
+  artDirection?: Record<string, unknown>;
 };
 
 export type OpenRouterGeneratedImage = {
@@ -42,6 +51,16 @@ export type OpenRouterGeneratedImage = {
   dataUrl?: string;
   bytes: number | null;
   source: string;
+  targetDimensions: ImageDimensions | null;
+  actualDimensions: ImageDimensions | null;
+  dimensionDeviationPercent: ImageDimensions | null;
+  targetDimensionTolerancePercent: number;
+  acceptedWithinTolerance: boolean | null;
+};
+
+export type ImageDimensions = {
+  width: number;
+  height: number;
 };
 
 type OpenRouterResponse = Record<string, unknown>;
@@ -93,12 +112,119 @@ function extensionForMimeType(mimeType: string, outputFormat?: string) {
   return "png";
 }
 
-function bytesFromDataUrl(dataUrl: string) {
+function readPngDimensions(bytes: Buffer): ImageDimensions | null {
+  const signature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  if (
+    bytes.length < 24
+    || !bytes.subarray(0, signature.length).equals(signature)
+    || bytes.toString("ascii", 12, 16) !== "IHDR"
+  ) {
+    return null;
+  }
+  const width = bytes.readUInt32BE(16);
+  const height = bytes.readUInt32BE(20);
+  return width > 0 && height > 0 ? { width, height } : null;
+}
+
+const JPEG_START_OF_FRAME_MARKERS = new Set([
+  0xc0, 0xc1, 0xc2, 0xc3,
+  0xc5, 0xc6, 0xc7,
+  0xc9, 0xca, 0xcb,
+  0xcd, 0xce, 0xcf,
+]);
+
+function readJpegDimensions(bytes: Buffer): ImageDimensions | null {
+  if (bytes.length < 4 || bytes[0] !== 0xff || bytes[1] !== 0xd8) return null;
+
+  let offset = 2;
+  while (offset < bytes.length) {
+    while (offset < bytes.length && bytes[offset] !== 0xff) offset += 1;
+    while (offset < bytes.length && bytes[offset] === 0xff) offset += 1;
+    if (offset >= bytes.length) return null;
+
+    const marker = bytes[offset];
+    offset += 1;
+    if (marker === 0xd8 || marker === 0xd9 || marker === 0x01 || (marker >= 0xd0 && marker <= 0xd7)) {
+      continue;
+    }
+    if (offset + 2 > bytes.length) return null;
+
+    const segmentLength = bytes.readUInt16BE(offset);
+    if (segmentLength < 2 || offset + segmentLength > bytes.length) return null;
+    if (JPEG_START_OF_FRAME_MARKERS.has(marker)) {
+      if (segmentLength < 7) return null;
+      const height = bytes.readUInt16BE(offset + 3);
+      const width = bytes.readUInt16BE(offset + 5);
+      return width > 0 && height > 0 ? { width, height } : null;
+    }
+    offset += segmentLength;
+  }
+  return null;
+}
+
+function readUInt24LE(bytes: Buffer, offset: number) {
+  return bytes[offset] | (bytes[offset + 1] << 8) | (bytes[offset + 2] << 16);
+}
+
+function readWebpDimensions(bytes: Buffer): ImageDimensions | null {
+  if (
+    bytes.length < 30
+    || bytes.toString("ascii", 0, 4) !== "RIFF"
+    || bytes.toString("ascii", 8, 12) !== "WEBP"
+  ) {
+    return null;
+  }
+
+  const chunkType = bytes.toString("ascii", 12, 16);
+  if (chunkType === "VP8X") {
+    return {
+      width: readUInt24LE(bytes, 24) + 1,
+      height: readUInt24LE(bytes, 27) + 1,
+    };
+  }
+  if (chunkType === "VP8L" && bytes[20] === 0x2f) {
+    return {
+      width: 1 + bytes[21] + ((bytes[22] & 0x3f) << 8),
+      height: 1 + ((bytes[22] & 0xc0) >> 6) + (bytes[23] << 2) + ((bytes[24] & 0x0f) << 10),
+    };
+  }
+  if (
+    chunkType === "VP8 "
+    && bytes[23] === 0x9d
+    && bytes[24] === 0x01
+    && bytes[25] === 0x2a
+  ) {
+    return {
+      width: bytes.readUInt16LE(26) & 0x3fff,
+      height: bytes.readUInt16LE(28) & 0x3fff,
+    };
+  }
+  return null;
+}
+
+function readImageDimensions(bytes: Buffer, mimeType: string) {
+  const declaredFormatDimensions = mimeType === "image/png"
+    ? readPngDimensions(bytes)
+    : mimeType === "image/jpeg"
+      ? readJpegDimensions(bytes)
+      : mimeType === "image/webp"
+        ? readWebpDimensions(bytes)
+        : null;
+  return declaredFormatDimensions
+    ?? readPngDimensions(bytes)
+    ?? readJpegDimensions(bytes)
+    ?? readWebpDimensions(bytes);
+}
+
+function inspectDataUrl(dataUrl: string) {
   const match = dataUrl.match(/^data:([^;,]+);base64,([A-Za-z0-9+/=\s]+)$/);
-  if (!match) return { mimeType: "image/png", bytes: null };
+  if (!match) return { mimeType: "image/png", bytes: null, dimensions: null };
+  const decoded = Buffer.from(match[2].replace(/\s+/g, ""), "base64");
+  const mimeType = match[1].toLowerCase();
   return {
-    mimeType: match[1].toLowerCase(),
-    bytes: Buffer.from(match[2].replace(/\s+/g, ""), "base64").length,
+    mimeType,
+    bytes: decoded.length,
+    dimensions: readImageDimensions(decoded, mimeType),
   };
 }
 
@@ -111,6 +237,53 @@ function normalizeOutputFormat(value: unknown) {
 
 function readPositiveInteger(value: unknown) {
   return typeof value === "number" && Number.isInteger(value) && value > 0 ? value : null;
+}
+
+function parsePixelDimensions(value: unknown): ImageDimensions | null {
+  const match = readNonEmptyString(value)?.match(/^(\d{3,5})\s*x\s*(\d{3,5})$/i);
+  if (!match) return null;
+  const width = Number(match[1]);
+  const height = Number(match[2]);
+  return width > 0 && height > 0 ? { width, height } : null;
+}
+
+function resolveTargetDimensions(
+  params: OpenRouterGenerateImageParams,
+  config: OpenRouterImagePluginConfig,
+) {
+  const requestedSize = readNonEmptyString(params.imageSize)
+    ?? readNonEmptyString(params.size)
+    ?? readNonEmptyString(params.resolution)
+    ?? readNonEmptyString(config.defaultImageSize);
+  return parsePixelDimensions(requestedSize);
+}
+
+function resolveTargetDimensionTolerancePercent(config: OpenRouterImagePluginConfig) {
+  const value = config.targetDimensionTolerancePercent;
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 100
+    ? value
+    : DEFAULT_TARGET_DIMENSION_TOLERANCE_PERCENT;
+}
+
+function assessDimensions(input: {
+  targetDimensions: ImageDimensions | null;
+  actualDimensions: ImageDimensions | null;
+  tolerancePercent: number;
+}) {
+  if (!input.targetDimensions || !input.actualDimensions) {
+    return {
+      dimensionDeviationPercent: null,
+      acceptedWithinTolerance: null,
+    };
+  }
+  const width = Math.abs(input.actualDimensions.width - input.targetDimensions.width)
+    / input.targetDimensions.width * 100;
+  const height = Math.abs(input.actualDimensions.height - input.targetDimensions.height)
+    / input.targetDimensions.height * 100;
+  return {
+    dimensionDeviationPercent: { width, height },
+    acceptedWithinTolerance: width <= input.tolerancePercent && height <= input.tolerancePercent,
+  };
 }
 
 function resolveRequestedImageCount(
@@ -321,6 +494,8 @@ export async function generateOpenRouterImage(input: {
 
   const returnImageData = input.params.returnImageData !== false;
   const outputFormat = normalizeOutputFormat(input.params.outputFormat) ?? undefined;
+  const targetDimensions = resolveTargetDimensions(input.params, input.config);
+  const targetDimensionTolerancePercent = resolveTargetDimensionTolerancePercent(input.config);
   const images: OpenRouterGeneratedImage[] = [];
   const responseBodies: OpenRouterResponse[] = [];
   let providerCostUsd: number | null = null;
@@ -364,7 +539,12 @@ export async function generateOpenRouterImage(input: {
 
     for (const [responseImageIndex, dataUrl] of imageDataUrls.entries()) {
       const globalIndex = images.length;
-      const { mimeType, bytes } = bytesFromDataUrl(dataUrl);
+      const { mimeType, bytes, dimensions: actualDimensions } = inspectDataUrl(dataUrl);
+      const dimensionAssessment = assessDimensions({
+        targetDimensions,
+        actualDimensions,
+        tolerancePercent: targetDimensionTolerancePercent,
+      });
       images.push({
         index: globalIndex,
         mimeType,
@@ -374,6 +554,10 @@ export async function generateOpenRouterImage(input: {
         source: dataUrl.includes(";base64,")
           ? `openrouter.requests[${requestIndex}].data[${responseImageIndex}].b64_json`
           : `openrouter.requests[${requestIndex}].data[${responseImageIndex}].url`,
+        targetDimensions,
+        actualDimensions,
+        ...dimensionAssessment,
+        targetDimensionTolerancePercent,
       });
     }
   }
@@ -394,6 +578,11 @@ export async function generateOpenRouterImage(input: {
       endpoint,
       imageCount: images.length,
       images,
+      targetDimensions,
+      targetDimensionTolerancePercent,
+      acceptedWithinTolerance: targetDimensions
+        ? images.some((image) => image.acceptedWithinTolerance === true)
+        : null,
       providerCostUsd,
       response: sanitizeProviderResponse(
         responseBodies.length === 1

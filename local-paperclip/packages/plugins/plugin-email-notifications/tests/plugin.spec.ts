@@ -40,6 +40,7 @@ describe("plugin-email-notifications", () => {
       TOOL_NAMES.sendEmailNotification,
       TOOL_NAMES.sendChangeReport,
       TOOL_NAMES.sendIncidentReport,
+      TOOL_NAMES.sendDeveloperHandoff,
     ]);
   });
 
@@ -185,5 +186,114 @@ describe("plugin-email-notifications", () => {
     expect(result.data.proof.subject).toBe("Astrogen Paperclip: change report");
     expect(fetchMock).not.toHaveBeenCalled();
     expect(harness.costs).toHaveLength(0);
+  });
+
+  it("normalizes an unambiguous structured change-report payload into the canonical report", async () => {
+    const fetchMock = mockResend("resend-structured-report");
+    const harness = createTestHarness({
+      manifest,
+      config: {
+        resendApiKeySecretRef: "secret-resend",
+        fromEmail: "paperclip@aibizmate.com",
+        defaultRecipientEmails: "o.savitsky@gmail.com",
+        allowlistedRecipientEmails: "o.savitsky@gmail.com",
+      },
+    });
+    await plugin.definition.setup(harness.ctx);
+
+    await harness.executeTool(
+      TOOL_NAMES.sendChangeReport,
+      {
+        summary: "CTO applied a verified process change.",
+        changedItems: [{ area: "Pipeline", change: "Added delivery proof recovery." }],
+        backups: ["/home/paperclip/backups/phase47.dump"],
+        verificationEvidence: ["Canary completed without CMS publish."],
+      },
+      runCtx,
+    );
+
+    const request = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    const body = JSON.parse(String(request.body));
+    expect(body.text).toContain("Added delivery proof recovery.");
+    expect(body.text).toContain("/home/paperclip/backups/phase47.dump");
+    expect(body.text).toContain("Canary completed without CMS publish.");
+  });
+
+  it("normalizes escaped paragraph breaks before transport", async () => {
+    const fetchMock = mockResend("resend-normalized");
+    const harness = createTestHarness({
+      manifest,
+      config: {
+        resendApiKeySecretRef: "secret-resend",
+        fromEmail: "paperclip@aibizmate.com",
+        defaultRecipientEmails: "o.savitsky@gmail.com",
+        allowlistedRecipientEmails: "o.savitsky@gmail.com",
+      },
+    });
+    await plugin.definition.setup(harness.ctx);
+
+    await harness.executeTool(
+      TOOL_NAMES.sendEmailNotification,
+      {
+        subject: "Readable paragraphs",
+        text: "Перший абзац.\\n\\nДругий абзац.",
+      },
+      runCtx,
+    );
+
+    const request = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    const body = JSON.parse(String(request.body));
+    expect(body.text).toBe("Перший абзац.\n\nДругий абзац.");
+    expect(body.text).not.toContain("\\n");
+  });
+
+  it("requires exact affected pages and renders an implementer-ready handoff", async () => {
+    const fetchMock = mockResend("resend-handoff");
+    const harness = createTestHarness({
+      manifest,
+      config: {
+        resendApiKeySecretRef: "secret-resend",
+        fromEmail: "paperclip@aibizmate.com",
+        defaultRecipientEmails: "o.savitsky@gmail.com",
+        allowlistedRecipientEmails: "o.savitsky@gmail.com",
+      },
+    });
+    await plugin.definition.setup(harness.ctx);
+
+    await expect(harness.executeTool(
+      TOOL_NAMES.sendDeveloperHandoff,
+      {
+        summary: "Потрібно виправити metadata.",
+        impact: "Сторінки важче розрізняти в пошуку.",
+        affectedPages: [],
+        sharedActions: ["Оновити sitemap."],
+        sourceIssue: "AST-224",
+      },
+      runCtx,
+    )).rejects.toThrow("affectedPages");
+
+    await harness.executeTool(
+      TOOL_NAMES.sendDeveloperHandoff,
+      {
+        summary: "Потрібно виправити metadata.",
+        impact: "Сторінки важче розрізняти в пошуку.",
+        affectedPages: [{
+          url: "https://astrogen.com.ua/children",
+          currentProblem: "Використовується title головної сторінки.",
+          requiredChanges: ["Додати унікальні title і description."],
+          verification: ["Перевірити initial HTML через curl."],
+        }],
+        sharedActions: ["Оновити sitemap."],
+        sourceIssue: "AST-224",
+        sourceIssueUrl: "http://paperclip.test/AST/issues/AST-224",
+      },
+      runCtx,
+    );
+
+    const request = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    const body = JSON.parse(String(request.body));
+    expect(body.text).toContain("Сторінки для виправлення:\n1. https://astrogen.com.ua/children");
+    expect(body.text).toContain("Що виправити:\n- Додати унікальні title і description.");
+    expect(body.text).toContain("Як перевірити:\n- Перевірити initial HTML через curl.");
   });
 });

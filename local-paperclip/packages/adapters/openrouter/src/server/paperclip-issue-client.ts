@@ -16,6 +16,13 @@ type IssueDocumentMetadata = {
   latestRevisionId: string | null;
 };
 
+type PipelineTransitionResult = {
+  caseId: string;
+  fromStageKey: string | null;
+  toStageKey: string;
+  version: number | null;
+};
+
 function trimApiUrl(apiUrl: string) {
   return apiUrl.replace(/\/+$/, "");
 }
@@ -149,4 +156,61 @@ export async function uploadIssueArtifactViaApi(input: UploadIssueArtifactInput)
       `Paperclip issue artifact upload failed (${response.status}): ${summarizeErrorPayload(payload) || responseText || "unknown error"}`,
     );
   }
+}
+
+export async function transitionPipelineCaseViaApi(input: {
+  apiUrl: string;
+  authToken: string;
+  runId: string;
+  caseId: string;
+  toStageKey: string;
+  reason: string | null;
+}): Promise<PipelineTransitionResult> {
+  const headers = buildHeaders(input);
+  const detailResponse = await fetch(
+    `${trimApiUrl(input.apiUrl)}/api/cases/${encodeURIComponent(input.caseId)}`,
+    { method: "GET", headers },
+  );
+  const detailText = await detailResponse.text();
+  const detailPayload = detailText ? parseJson(detailText) : null;
+  if (!detailResponse.ok) {
+    throw new Error(
+      `Pipeline case read failed (${detailResponse.status}): ${summarizeErrorPayload(detailPayload) || detailText || "unknown error"}`,
+    );
+  }
+  const detail = parseObject(detailPayload);
+  const caseRecord = parseObject(detail.case);
+  const expectedVersion = caseRecord.version;
+  if (typeof expectedVersion !== "number" || !Number.isInteger(expectedVersion) || expectedVersion < 1) {
+    throw new Error("Pipeline case read did not return a valid version.");
+  }
+  const stage = parseObject(detail.stage);
+  const transitionResponse = await fetch(
+    `${trimApiUrl(input.apiUrl)}/api/cases/${encodeURIComponent(input.caseId)}/transition`,
+    {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        toStageKey: input.toStageKey,
+        expectedVersion,
+        reason: input.reason,
+      }),
+    },
+  );
+  const transitionText = await transitionResponse.text();
+  const transitionPayload = transitionText ? parseJson(transitionText) : null;
+  if (!transitionResponse.ok) {
+    throw new Error(
+      `Pipeline transition failed (${transitionResponse.status}): ${summarizeErrorPayload(transitionPayload) || transitionText || "unknown error"}`,
+    );
+  }
+  const transitionedCase = parseObject(transitionPayload).case;
+  return {
+    caseId: input.caseId,
+    fromStageKey: typeof stage.key === "string" ? stage.key : null,
+    toStageKey: input.toStageKey,
+    version: typeof parseObject(transitionedCase).version === "number"
+      ? parseObject(transitionedCase).version as number
+      : null,
+  };
 }

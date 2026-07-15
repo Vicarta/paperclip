@@ -1,0 +1,53 @@
+version: 1
+timezone: Europe/Kiev
+
+outcomes:
+  articleDelivery:
+    target: 1
+    period: calendar_day
+    deliveredWhen:
+      - verified CMS draft/admin URL exists
+      - content, cover, CTA, and exactly 3 related-post gates pass
+      - direct Telegram delivery has messageId and proof writeback
+    degradedWhen:
+      - due article has no productive or typed recovery path for 30 minutes
+      - ready topic inventory is below 3 without one active refill case
+
+  weeklyGrowth:
+    period: Wednesday-Tuesday
+    deliveredWhen:
+      - SEO/GEO evidence email has delivery proof
+      - each accepted auto_execute finding has an execution case
+      - CMO portfolio has 3-7 delegated or linked actions, or durable no-safe-action evidence
+      - CEO direction records continuation, reprioritization, or stop decisions with review dates
+
+  continuity:
+    degradedWhen:
+      - productive article WIP is zero while ready topics exist and a slot is due
+      - any nonterminal case lacks continuation owner or nextReviewAt
+      - the same external finding has more than one open fingerprint-equivalent issue/case
+      - manifest verification reports live drift
+
+alerts:
+  telegram:
+    allowed:
+      - completed owner-visible CMS draft with CMS admin URL
+      - clear owner decision request
+    forbidden:
+      - retries, run ids, stage mechanics, plugin errors, raw logs, routine noise
+  email:
+    allowed:
+      - weekly business/SEO report
+      - developer-ready technical handoff
+      - unrecoverable SLO breach or owner decision request
+    developerHandoffGate:
+      tool: paperclip.email-notifications:email-developer-handoff-send
+      requires:
+        - exact affected URL list
+        - current problem for every URL
+        - required changes for every URL
+        - verification steps for every URL
+        - source Paperclip issue
+      forbidden:
+        - generic email-notification-send for developer implementation requests
+        - owner-facing summaries that omit the affected pages

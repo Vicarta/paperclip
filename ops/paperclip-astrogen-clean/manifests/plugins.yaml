@@ -40,6 +40,32 @@ plugins:
       packagePath: /app/packages/plugins/plugin-openrouter-image-agent-tools
       owner: SEO Blog Image Runtime Executor
       verification: provider config resolves image key
+      safety:
+        maxImagesPerRequest: 1
+        targetDimensionTolerancePercent: 20
+        preserveOriginalWithinTolerance: true
+        noRetryForDimensionOrFormatOnly: true
+        requireSubjectMode: true
+        structuredArtDirectionMode: required_for_human_scene
+        visualHistoryLimit: 8
+        minimumDistinctVisualAxes: 4
+    - key: paperclip.serper-agent-tools
+      packagePath: /app/packages/plugins/plugin-serper-agent-tools
+      owner: MKT Competitive Intelligence Analyst
+      verification: bounded Google SERP retrieval for value-gap analysis
+      safety:
+        costAccountingMode: estimated_per_request
+        maxResultsPerQuery: 10
+    - key: paperclip.winning-structure-mcp-agent-tools
+      packagePath: /app/packages/plugins/plugin-winning-structure-mcp-agent-tools
+      owner: MKT Competitive Intelligence Analyst
+      verification: private MCP tools/list includes all five Phase 47 operations and validation smoke passes
+      safety:
+        endpointExposure: private Tailscale only
+        clientKey: astrogen-ukraine
+        tokenStorage: company-scoped Paperclip secret
+        costAccountingMode: provider_reported
+        publicationOutput: forbidden
 
   parked:
     - key: paperclip.collaborator-agent-tools
@@ -51,18 +77,12 @@ plugins:
     - key: paperclip.dataforseo-agent-tools
       packagePath: /app/packages/plugins/plugin-dataforseo-agent-tools
       reason: old live row currently fails worker load; require packaging fix
-    - key: paperclip.serper-agent-tools
-      packagePath: /app/packages/plugins/plugin-serper-agent-tools
-      reason: old live row currently fails worker load; require packaging fix
     - key: paperclip.exa-agent-tools
       packagePath: /app/packages/plugins/plugin-exa-agent-tools
       reason: old live row currently fails worker load; require packaging fix
     - key: paperclip.bright-data-agent-tools
       packagePath: /app/packages/plugins/plugin-bright-data-agent-tools
       reason: explicit crawling budget approval required
-    - key: paperclip.winning-structure-mcp-agent-tools
-      packagePath: /app/packages/plugins/plugin-winning-structure-mcp-agent-tools
-      reason: not required for Phase 40 traffic loop
     - key: paperclip.search-console-mcp-agent-tools
       packagePath: /app/packages/plugins/plugin-search-console-mcp-agent-tools
       reason: superseded by gsc-bing-ga4 plugin

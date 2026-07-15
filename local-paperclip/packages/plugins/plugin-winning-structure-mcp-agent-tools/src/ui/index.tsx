@@ -13,6 +13,7 @@ type PluginConfig = {
   winningStructureMcpUrl?: string;
   allowedClientKeysCsv?: string;
   requestTimeoutMs?: number;
+  costAccountingMode?: "provider_reported" | "disabled";
 };
 
 type CompanySecret = {
@@ -119,6 +120,7 @@ export function WinningStructureMcpSettingsPage({ context }: PluginSettingsPageP
   const [mcpUrl, setMcpUrl] = useState(DEFAULT_WINNING_STRUCTURE_MCP_URL);
   const [allowedClientKeysCsv, setAllowedClientKeysCsv] = useState("");
   const [requestTimeoutMs, setRequestTimeoutMs] = useState("180000");
+  const [costAccountingMode, setCostAccountingMode] = useState<"provider_reported" | "disabled">("provider_reported");
   const [replaceToken, setReplaceToken] = useState(false);
   const [token, setToken] = useState("");
 
@@ -155,6 +157,9 @@ export function WinningStructureMcpSettingsPage({ context }: PluginSettingsPageP
             Number.isFinite(nextConfig.requestTimeoutMs)
             ? String(nextConfig.requestTimeoutMs)
             : "180000",
+        );
+        setCostAccountingMode(
+          nextConfig.costAccountingMode === "disabled" ? "disabled" : "provider_reported",
         );
       } catch (error) {
         if (!cancelled) {
@@ -218,6 +223,7 @@ export function WinningStructureMcpSettingsPage({ context }: PluginSettingsPageP
         winningStructureMcpUrl: mcpUrl.trim(),
         allowedClientKeysCsv: allowedClientKeysCsv.trim(),
         requestTimeoutMs: readPositiveNumber(requestTimeoutMs),
+        costAccountingMode,
       };
 
       await api(`/plugins/${pluginId}/config`, {
@@ -305,6 +311,20 @@ export function WinningStructureMcpSettingsPage({ context }: PluginSettingsPageP
                 setRequestTimeoutMs(event.target.value)
               }
             />
+          </div>
+
+          <div>
+            <label style={labelStyle}>Cost accounting</label>
+            <select
+              style={inputStyle}
+              value={costAccountingMode}
+              onChange={(event: ChangeEvent<HTMLSelectElement>) =>
+                setCostAccountingMode(event.target.value === "disabled" ? "disabled" : "provider_reported")
+              }
+            >
+              <option value="provider_reported">Provider reported</option>
+              <option value="disabled">Disabled</option>
+            </select>
           </div>
 
           <div>

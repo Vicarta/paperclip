@@ -2,11 +2,13 @@ import type { PaperclipPluginManifestV1 } from "@paperclipai/plugin-sdk";
 import {
   DEFAULT_OPENROUTER_BASE_URL,
   DEFAULT_OPENROUTER_IMAGE_MODEL,
+  DEFAULT_TARGET_DIMENSION_TOLERANCE_PERCENT,
   OPENROUTER_COST_BILLING_TYPE,
   PLUGIN_ID,
   PLUGIN_VERSION,
   TOOL_NAMES,
 } from "./constants.js";
+import { HUMAN_ART_DIRECTION_SCHEMA } from "./art-direction.js";
 
 const manifest: PaperclipPluginManifestV1 = {
   id: PLUGIN_ID,
@@ -79,6 +81,50 @@ const manifest: PaperclipPluginManifestV1 = {
         description: "Default image aspect ratio when the tool call omits aspectRatio.",
         default: "",
       },
+      targetDimensionTolerancePercent: {
+        type: "number",
+        title: "Target Dimension Tolerance Percent",
+        description:
+          "Maximum allowed absolute deviation on each image dimension from a requested pixel target.",
+        minimum: 0,
+        maximum: 100,
+        default: DEFAULT_TARGET_DIMENSION_TOLERANCE_PERCENT,
+      },
+      requireSubjectMode: {
+        type: "boolean",
+        title: "Require Subject Mode",
+        description: "Require every generation to declare human_scene or abstract_graphic.",
+        default: false,
+      },
+      structuredArtDirectionMode: {
+        type: "string",
+        title: "Structured Art Direction Mode",
+        enum: ["optional", "required_for_human_scene"],
+        default: "optional",
+      },
+      visualHistoryLimit: {
+        type: "number",
+        title: "Visual History Limit",
+        description: "Number of recent company-scoped human-scene fingerprints retained for diversity checks.",
+        minimum: 1,
+        maximum: 20,
+        default: 8,
+      },
+      minimumDistinctVisualAxes: {
+        type: "number",
+        title: "Minimum Distinct Visual Axes",
+        description: "Minimum differences required against each recent human-scene fingerprint before a paid call.",
+        minimum: 1,
+        maximum: 9,
+        default: 4,
+      },
+      legacyAvoidVisualPatterns: {
+        type: "array",
+        title: "Legacy Visual Patterns To Avoid",
+        description: "Known overused compositions appended to governed human-scene prompts.",
+        items: { type: "string" },
+        default: [],
+      },
       defaultOutputDir: {
         type: "string",
         title: "Default Output Directory",
@@ -116,6 +162,18 @@ const manifest: PaperclipPluginManifestV1 = {
   },
   tools: [
     {
+      name: TOOL_NAMES.getVisualHistory,
+      displayName: "Get Recent Image Visual History",
+      description:
+        "Read recent company-scoped human-scene visual fingerprints before planning a new paid image generation.",
+      parametersSchema: {
+        type: "object",
+        properties: {
+          limit: { type: "number", minimum: 1, maximum: 20 },
+        },
+      },
+    },
+    {
       name: TOOL_NAMES.generateImage,
       displayName: "OpenRouter Generate Image",
       description:
@@ -138,6 +196,8 @@ const manifest: PaperclipPluginManifestV1 = {
           seed: { type: "number" },
           metadata: { type: "object" },
           returnImageData: { type: "boolean" },
+          subjectMode: { type: "string", enum: ["human_scene", "abstract_graphic"] },
+          artDirection: HUMAN_ART_DIRECTION_SCHEMA,
         },
         required: ["prompt"],
       },

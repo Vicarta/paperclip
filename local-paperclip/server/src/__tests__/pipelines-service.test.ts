@@ -456,6 +456,139 @@ describeEmbeddedPostgres("pipelineService", () => {
     expect(moved.case.terminalKind).toBe("done");
   });
 
+  it("rejects a self-transition even when edge enforcement is disabled", async () => {
+    const { company, pipeline } = await seedPipeline({ enforceTransitions: false });
+    const created = await svc.ingestCase({
+      companyId: company.id,
+      pipelineId: pipeline.id,
+      caseKey: "self-transition",
+      title: "Self transition",
+      actor: userActor,
+    });
+
+    await expect(
+      svc.transitionCase({
+        companyId: company.id,
+        caseId: created.case.id,
+        toStageKey: "intake",
+        expectedVersion: created.case.version,
+        actor: userActor,
+      }),
+    ).rejects.toMatchObject({ status: 422, details: { code: "self_transition_not_allowed" } });
+  });
+
+  it("preserves an editorial approval across declared post-review delivery evidence only", async () => {
+    const { company, pipeline, byKey } = await seedPipeline();
+    const delivery = await svc.createStage({
+      companyId: company.id,
+      pipelineId: pipeline.id,
+      key: "delivery",
+      name: "Delivery",
+      kind: "working",
+      position: 400,
+      config: { reviewSafeFieldKeys: ["deliveryProof"] },
+      actor: userActor,
+    });
+    await svc.updateStage({
+      companyId: company.id,
+      pipelineId: pipeline.id,
+      stageId: byKey.get("review")!.id,
+      patch: {
+        config: {
+          ...(byKey.get("review")!.config as Record<string, unknown>),
+          approveToStageKey: "delivery",
+        },
+      },
+      actor: userActor,
+    });
+
+    const safeCase = await svc.ingestCase({
+      companyId: company.id,
+      pipelineId: pipeline.id,
+      caseKey: "review-safe-delivery",
+      title: "Review-safe delivery",
+      actor: userActor,
+    });
+    await svc.transitionCase({
+      companyId: company.id,
+      caseId: safeCase.case.id,
+      toStageKey: "review",
+      expectedVersion: 1,
+      actor: userActor,
+    });
+    const approved = await svc.reviewCase({
+      companyId: company.id,
+      caseId: safeCase.case.id,
+      decision: "approve",
+      expectedVersion: 2,
+      actor: userActor,
+    });
+    expect(approved.case.stageId).toBe(delivery.id);
+    const proofWritten = await svc.patchCaseContent({
+      companyId: company.id,
+      caseId: safeCase.case.id,
+      fields: { deliveryProof: { messageId: "telegram-1" } },
+      expectedVersion: approved.case.version,
+      actor: userActor,
+    });
+    const safeEvents = await svc.listCaseEvents(company.id, safeCase.case.id);
+    const proofEvent = safeEvents.find((event) => event.type === "updated");
+    expect((proofEvent!.payload as Record<string, unknown>).reviewMaterialChanged).toBe(false);
+    // A stricter policy can be deployed after an operational event was already
+    // recorded. Its explicit changed-field allowlist must still unblock recovery.
+    await db.update(pipelineCaseEvents)
+      .set({
+        payload: {
+          ...(proofEvent!.payload as Record<string, unknown>),
+          reviewMaterialChanged: true,
+        },
+      })
+      .where(eq(pipelineCaseEvents.id, proofEvent!.id));
+    await expect(svc.transitionCase({
+      companyId: company.id,
+      caseId: safeCase.case.id,
+      toStageKey: "done",
+      expectedVersion: proofWritten.version,
+      actor: userActor,
+    })).resolves.toMatchObject({ case: { terminalKind: "done" } });
+
+    const unsafeCase = await svc.ingestCase({
+      companyId: company.id,
+      pipelineId: pipeline.id,
+      caseKey: "review-unsafe-delivery",
+      title: "Review-unsafe delivery",
+      actor: userActor,
+    });
+    await svc.transitionCase({
+      companyId: company.id,
+      caseId: unsafeCase.case.id,
+      toStageKey: "review",
+      expectedVersion: 1,
+      actor: userActor,
+    });
+    const unsafeApproval = await svc.reviewCase({
+      companyId: company.id,
+      caseId: unsafeCase.case.id,
+      decision: "approve",
+      expectedVersion: 2,
+      actor: userActor,
+    });
+    const unsafeUpdate = await svc.patchCaseContent({
+      companyId: company.id,
+      caseId: unsafeCase.case.id,
+      fields: { deliveryProof: { messageId: "telegram-2" }, rewrittenBody: "changed after review" },
+      expectedVersion: unsafeApproval.case.version,
+      actor: userActor,
+    });
+    await expect(svc.transitionCase({
+      companyId: company.id,
+      caseId: unsafeCase.case.id,
+      toStageKey: "done",
+      expectedVersion: unsafeUpdate.version,
+      actor: userActor,
+    })).rejects.toMatchObject({ status: 409, details: { code: "review_outdated" } });
+  });
+
   it("blocks transitions while blockers are not done", async () => {
     const { company, pipeline } = await seedPipeline();
     const blocked = await svc.ingestCase({
@@ -1320,6 +1453,9 @@ describeEmbeddedPostgres("pipelineService", () => {
 
     const [issue] = await db.select().from(issues).where(eq(issues.id, ledgers[0]!.executionIssueId!));
     expect(issue!.description).toContain("Pipeline Case Context");
+    expect(issue!.description).toContain("references/pipeline-cases.md");
+    expect(issue!.description).toContain("Do not search OpenAPI");
+    expect(issue!.description).not.toContain("pipeline-case-operations");
     expect(issue!.description).toContain("untrustedContent");
 
     const triggerEvent = await db.insert(pipelineCaseEvents).values({

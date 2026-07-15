@@ -53,6 +53,16 @@ COPY --from=deps /app /app
 COPY . .
 RUN pnpm --filter @paperclipai/ui build
 RUN pnpm --filter @paperclipai/plugin-sdk build
+RUN pnpm install --frozen-lockfile
+RUN pnpm --filter paperclip-plugin-telegram build \
+  && pnpm --filter @paperclipai/plugin-payload-cms-agent-tools build \
+  && pnpm --filter @paperclipai/plugin-gsc-bing-ga4-mcp-agent-tools build \
+  && pnpm --filter @paperclipai/plugin-crawlobserver-agent-tools build \
+  && pnpm --filter @paperclipai/plugin-seo-performance-loop build \
+  && pnpm --filter @paperclipai/plugin-email-notifications build \
+  && pnpm --filter @paperclipai/plugin-openrouter-image-agent-tools build \
+  && pnpm --filter @paperclipai/plugin-serper-agent-tools build \
+  && pnpm --filter @paperclipai/plugin-winning-structure-mcp-agent-tools build
 RUN pnpm --filter @paperclipai/server build
 RUN test -f server/dist/index.js || (echo "ERROR: server build output missing" && exit 1)
 

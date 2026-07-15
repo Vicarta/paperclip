@@ -7,7 +7,7 @@ This directory records the server-side Docker cache policy used by Paperclip dep
 The timer runs:
 
 ```bash
-docker buildx prune --force --keep-storage 10GB --filter until=168h
+docker buildx prune --force --reserved-space 10GB --filter until=168h
 ```
 
 Rationale:

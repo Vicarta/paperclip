@@ -1,8 +1,8 @@
 routines:
   - title: Daily Astrogen deterministic evidence collection
     owner: SEO Performance Analyst
-    status: paused
-    triggerEnabled: false
+    status: active
+    triggerEnabled: true
     cron: "10 6 * * *"
     timezone: Europe/Kiev
     concurrencyPolicy: coalesce_if_active
@@ -25,7 +25,8 @@ routines:
         - request at most 10 rows per source by default
         - never print raw plugin JSON or API payloads
       allowedSideEffects:
-        - create or update compact evidence/action issues
+        - store one compact evidence packet on the routine issue
+        - ingest or update canonical astrogen-growth-actions cases by stable finding fingerprint
         - record explicit no-action evidence
       forbidden:
         - publish CMS content
@@ -36,8 +37,8 @@ routines:
 
   - title: Daily Astrogen due-URL GSC indexing audit
     owner: SEO GSC Indexing Auditor
-    status: paused
-    triggerEnabled: false
+    status: active
+    triggerEnabled: true
     cron: "20 6 * * *"
     timezone: Europe/Kiev
     concurrencyPolicy: coalesce_if_active
@@ -56,7 +57,7 @@ routines:
         - use sitemap discovery only when registry is empty, capped at 20 URLs for registration
         - never print raw inspection/plugin JSON
       allowedSideEffects:
-        - create or update URL-level technical SEO finding issues
+        - ingest or update canonical astrogen-growth-actions cases by stable URL plus root-cause fingerprint
         - record inspected, skipped, no-data, and cooldown decisions
       forbidden:
         - request indexing in bulk
@@ -64,6 +65,36 @@ routines:
         - send Telegram messages
         - spend paid provider budget
       completionGate: every selected URL has finding routed, cooldown/watch recorded, skipped reason, or explicit no due URLs
+
+  - title: Daily Astrogen leadership backlog triage
+    owner: CEO
+    status: active
+    triggerEnabled: true
+    cron: "40 6 * * *"
+    timezone: Europe/Kiev
+    concurrencyPolicy: coalesce_if_active
+    catchUpPolicy: skip_missed
+    workflow: leadership_backlog_triage
+    activationGate: active portfolio continuity control
+    processContract:
+      inputs:
+        - unassigned backlog, todo, blocked, and in-review work
+        - blocked issues older than 24 hours
+        - repeated findings for the same URL or root cause
+        - priority workstreams with no executable non-blocked path
+      routing:
+        - CEO prioritizes, routes, and delegates through native growth pipeline cases; CEO does not execute specialist work
+        - classify blockers as internal recovery, external developer wait, owner decision, obsolete, or superseded
+        - one blocker must never freeze an unrelated workstream
+        - repeated evidence updates one canonical growth case by stable finding fingerprint
+        - existing issue routing uses only the standard assignee plus todo/backlog transition and a concise comment
+        - that route applies only to genuinely unassigned actionable backlog/todo work; assigned or blocked foreign-owned issues become evidence on a canonical native growth case
+        - CEO never cancels or rewrites another agent's issue or blocker graph; terminal and dependency state belongs to the case owner or deterministic pipeline transition
+        - a 403 on foreign issue mutation is a routing error; stop that mutation, use the growth case, and continue other portfolio lanes
+      bounds:
+        - process at most 10 candidates per run
+        - use compact heartbeat context and recent evidence
+      completionGate: no stale unclassified blocker, no old unassigned actionable item, and each current company priority has a canonical native growth case with an executable delegated path or durable typed wait evidence
 
   - title: Astrogen article slot allocator
     owner: Chief Marketing Officer
@@ -76,6 +107,11 @@ routines:
     workflow: article_cadence
     activationGate: controlled clean activation, target 1 CMS draft per day
     processContract:
+      orchestration:
+        - astrogen-topic-inventory and astrogen-article-production native pipelines are the source of truth
+        - only the scheduled allocator dispatches a ready topic; ready-stage automation must not auto-reserve it
+        - the allocator calls native case breakdown once to create or reuse one article case and atomically advance the topic to reserved
+        - pipeline stage automation owns specialist dispatch, typed transitions, recovery, and completion evidence
       activationMode:
         - target 1 new CMS draft per Europe/Kiev day
         - schedule daily at 10:00 Europe/Kiev
@@ -83,22 +119,22 @@ routines:
       bounds:
         - at most one new article slot per routine execution
         - never use broad catch-up outside the article cadence contract
-        - skip if any open article-production issue is active
-        - no-safe-topic is a topic_inventory_refill trigger, not a successful terminal state
+        - use a productive WIP cap of 3 non-blocked article parents; blocked or externally waiting parents do not consume productive WIP capacity
+        - never create a duplicate parent for the same articleParentKey, even when the canonical parent is blocked
+        - when one article is blocked, continue an unrelated ready topic if the productive WIP cap and daily/catch-up quota allow it
+        - no-safe-topic is a canonical native growth-case refill trigger, not a successful terminal state
       topicInventoryRefill:
-        - allocator consumes only topics with status ready_for_brief_creation
-        - if fewer than 3 ready topics exist, create or reuse one topic_inventory_refill child owned by SEO Blog Content Strategist
-        - the refill child must be validated by SEO Blog Content Plan Validator before allocator consumption
+        - allocator consumes only astrogen-topic-inventory cases at stage ready
+        - if fewer than 3 ready topics exist, ingest or update one astrogen-growth-actions case with fingerprint topic-inventory-refill:{ISO-week}
+        - never create a legacy refill issue tree from the allocator
         - refill uses Payload CMS, GSC/GA4, semantic-core inventory/review, CrawlObserver, active issue duplicate checks, and consumed topic history
-        - if refill returns any ready_for_brief_creation topic, reserve exactly one top safe topic and continue one normal article pipeline lane
-        - if refill returns zero ready topics, check whether a bounded serp_value_gap_content_refresh candidate exists before treating the cadence as no-slot
-        - content refresh candidates must point to an existing article and include SERP/value-gap evidence; do not create generic editorial insert, FAQ, CTA, relatedPosts, or metadata-only improvement tasks from article cadence
-        - if tools are unavailable, link a CTO-owned technical blocker and keep allocator blocked instead of asking the owner for topics
-      canonicalParentIdempotency:
-        - derive normalized articleParentKey from the exact article title before creating a top-level article parent
-        - search open top-level article parents for the same articleParentKey and reuse the existing canonical parent when found
-        - recovery never creates a second top-level parent for the same article title; retry only the failed stage as a bounded child
-        - duplicate parent creation errors from the clean DB mean reuse the canonical issue named in the error
+        - weekly CMO planning ingests 3-10 stable candidate topic cases; candidate and evidence-ready automations validate them
+        - if tools are unavailable, attach one typed blocker to the refill growth case instead of asking the owner for topics or stopping unrelated work
+      atomicDispatch:
+        - call POST /api/cases/{topicCaseId}/breakdown with one item keyed by topicKey
+        - ready-stage breakdown targets astrogen-article-production opportunity and advances the topic to reserved
+        - record the returned child article case id as consumingArticleCaseId and set a bounded reservation expiry
+        - native requestKey and caseKey provide idempotency; do not create article, brief, writer, or recovery issue trees
       writerRecovery:
         - primary writer is SEO Blog Article Writer (Claude)
         - ChatGPT fallback only after recorded Claude/OpenRouter blocker, missing canonical artifact, repeated same-class failure, or explicit CMO recovery
@@ -106,43 +142,36 @@ routines:
       imageGate:
         - normal new articles require accepted cover image unless owner explicitly waives image generation
         - use human_scene for human experience, decisions, relationships, family, children, career, money, emotions, consultation, or personal context
-        - normal cover generation uses one provider call for one image; human-scene prompts may use natural camera/viewer gaze when useful, but do not create three-candidate sets by default
+        - normal cover generation uses exactly one provider call for one image; human-scene prompts may use natural camera/viewer gaze when useful, but do not create three-candidate sets by default
+        - image generation is visually sensitive and non-deterministic, so preserve a good result instead of degrading it through mechanical resizing or repeated generation
+        - request the preferred CMS target 1472x822, then accept the original provider image when visual QA passes and actual width and height each differ from the target by no more than 20 percent
+        - do not upscale, stretch, crop, or call the provider again solely because dimensions or output format differ within tolerance; preserve the accepted original asset
+        - a dimension miss beyond 20 percent is a runtime contract blocker for CTO, not authorization for an automatic second generation
         - use abstract_graphic for abstract concepts, definitions, zodiac-sign profiles, generic horoscope topics, frameworks, lists, comparisons, metrics, or non-personal explanations
         - abstract_graphic covers must not contain people, faces, hands, bodies, silhouettes, or model-like figures
       parentCompletionGate:
         - canonical article parent remains open until accepted cover image or explicit waiver, authenticated CMS draft/admin URL, verified CTA/editorial/relatedPosts gates, and CMO Telegram article-link proof exist
+        - notification-contract is message content only; CMO must directly execute the discovered telegram_send_message agent tool with the parent issueId
+        - Telegram completion proof requires ok=true, a non-empty messageId, and plugin delivery-proof writeback; an intended message or done event is not proof
+        - notification transport recovery affects only delivery for that article and never consumes productive article WIP or freezes unrelated SEO/content lanes
+        - CMS specialists write delivery and before-after evidence on their own child issue; CMO aggregates verified child evidence into the parent it owns
         - ready_for_image_handoff, layout-ready, CMS-ready, or all-current-children-done is progress evidence, not parent completion
         - if no active child exists and delivery proof is missing, resume the same parent and route the next missing stage instead of creating a duplicate article parent
       allowedSideEffects:
-        - create one bounded article pipeline parent/child set when gates pass
-        - create one bounded topic_inventory_refill child when no safe approved ready topic exists yet
-        - when the current cadence scope allows refresh recovery and no safe new topic exists, route one bounded serp_value_gap_content_refresh issue instead of forcing a duplicate article
-        - if refill returns a ready_for_brief_creation topic, create the brief/writer pipeline slot for the top safe topic before closing the cadence path
-        - record no-slot/no-action evidence only after refill completes with zero ready topics or a concrete blocker is linked
+        - dispatch one ready native topic through breakdown when gates pass
+        - ingest or update one canonical native refill growth case when inventory is below the low-water mark
       forbidden:
         - generate images in the allocator
         - publish CMS content
         - send owner-facing Telegram from the allocator
         - create broad semantic-core or competitor-research batches
-      completionGate: one article slot created, refill completed with no ready topic and durable evidence, or concrete refill/runtime blocker linked
-    variables:
-      - key: missedSlotCatchUp
-        value: enabled
-      - key: missedSlotCatchUpPolicy
-        value: bounded_enqueue_missed_with_cap
-      - key: maxCatchUpSlotsPerRun
-        value: "3"
-      - key: topicInventoryRefill
-        value: enabled
-      - key: minReadyTopicsBeforeRefill
-        value: "3"
-      - key: maxRefillCandidatesPerRun
-        value: "10"
+      completionGate: one native article case is live from breakdown, quota is satisfied, productive WIP is full, or one canonical refill growth case is live for low or empty inventory
+    variables: []
 
   - title: Weekly Astrogen SEO/GEO action cycle
     owner: SEO Performance Analyst
-    status: paused
-    triggerEnabled: false
+    status: active
+    triggerEnabled: true
     cron: "0 9 * * 3"
     timezone: Europe/Kiev
     concurrencyPolicy: coalesce_if_active
@@ -167,10 +196,12 @@ routines:
         - produce concise internal weekly report evidence
         - send the detailed weekly SEO report by email when the SEO Performance Loop delivery plan says email is configured
       contentRefreshContract:
-        - content_refresh means improving an existing article's body/content after relevant keyphrase and SERP value-gap analysis
-        - required evidence is a compact SERP value-gap artifact with queries checked, top competitors, competitor coverage patterns, missing user questions, Astrogen information-gain angle, and exact article sections that need substantive improvement
+        - content_refresh means improving an existing article's body/content through the native article pipeline after one durable Winning Structure run for the refresh revision
+        - required evidence is an imported Winning Structure result with ownership/cannibalization boundaries, reader-value evidence or fulfilled commitment, accepted sections, content quality requirements, publication requirements, and exact sections that need substantive improvement
+        - supporting Serper evidence may be included in strategy_input but never completes or bypasses the Winning Structure gate
         - do not route content_refresh as generic insertion of Коротко, FAQ, CTA, comparison block, internal links, relatedPosts, or metadata-only edits
-        - FAQ, comparison, CTA, relatedPosts, or structured blocks are allowed only when the SERP/user-value gap explicitly justifies them
+        - FAQ, comparison, CTA, relatedPosts, or structured blocks are allowed only when the accepted reader-value contribution explicitly justifies them
+        - refresh preserves accepted existing cover/media unless the issue explicitly scopes an image defect
         - editorial/layout defects stay in the editorial_backfill/layout repair lane; metadata, internal-link-only, and relatedPosts-only fixes stay in deterministic CMS/SEO fixer lanes
       emailDeliveryContract:
         - call paperclip.seo-performance-loop:seo-weekly-report-plan-get before finalizing the report
@@ -186,10 +217,138 @@ routines:
         - close done with only an internal comment when email delivery is configured
       completionGate: action issues, Hermes/CMO owner-brief decisions, watch/cooldown decisions, or explicit no-action evidence recorded, plus detailed weekly SEO email delivery proof or a linked CTO-owned email transport blocker
 
+  - title: Weekly Astrogen CMO growth portfolio plan
+    owner: Chief Marketing Officer
+    status: active
+    triggerEnabled: true
+    cron: "15 10 * * 3"
+    timezone: Europe/Kiev
+    concurrencyPolicy: coalesce_if_active
+    catchUpPolicy: skip_missed
+    workflow: growth_portfolio_control
+    activationGate: active after weekly SEO/GEO action cycle
+    processContract:
+      requiredLanes:
+        - content supply and Winning Structure-driven refresh
+        - technical SEO and indexing
+        - GEO and entity visibility
+        - conversion, revenue, and measurement learning
+      managementBoundary:
+        - CMO chooses priorities, outcome targets, owners, sequence, and WIP
+        - CMO delegates execution and does not perform specialist work
+      continuity:
+        - one blocker affects only its own case or dependency chain
+        - blocked and external-wait items do not consume productive WIP
+        - unrelated safe work continues
+        - repeated findings update one canonical remediation issue
+      output:
+        - weekly-growth-plan document with 3-7 evidence-backed actions when safe actions exist
+        - ingest or update 3-10 evidence-backed astrogen-topic-inventory cases at candidate with stable topic keys
+        - keep ready inventory target 10 and low-water mark 3; a Markdown-only content plan is incomplete
+        - every accepted action is delegated or linked to an executable existing issue or pipeline case
+        - record ready-topic inventory, productive and blocked article WIP, CMS drafts delivered, and SEO actions completed
+      completionGate: accepted actions delegated or linked, blockers classified, and unrelated lanes continue; otherwise durable no-safe-action evidence
+
+  - title: Monthly Astrogen trend discovery
+    owner: Chief Marketing Officer
+    status: active
+    triggerEnabled: true
+    cron: "0 8 1 * *"
+    timezone: Europe/Kiev
+    concurrencyPolicy: coalesce_if_active
+    catchUpPolicy: skip_missed
+    workflow: monthly_trend_discovery
+    activationGate: current GSC/GA4, semantic-core, product, and approved external-signal evidence available
+    processContract:
+      purpose:
+        - identify evidence-backed durable shifts, emerging demand, seasonal recurrences, and plausible early signals
+        - feed typed hypotheses into CMO portfolio review without creating article work
+      inputs:
+        - completed-period GSC/GA4 and site-search changes
+        - semantic-core evidence and current topic inventory
+        - verified Astrogen product, expert, service, and audience changes
+        - approved SERP/competitor and public/community signals with source timestamps
+        - active growth cases and consumed topic history
+      bounds:
+        - inspect at most 20 compact candidate signals
+        - retain at most 8 typed hypotheses per run
+        - require at least two independent signals or one first-party signal plus a concrete validation plan
+        - every hypothesis has a falsifier, expiry, and stable fingerprint
+      allowedSideEffects:
+        - store one monthly hypothesis document
+        - update the CMO portfolio evidence packet by stable hypothesis fingerprint
+        - route a bounded evidence-validation growth case when the next step is concrete
+      forbidden:
+        - create astrogen-topic-inventory or astrogen-article-production cases directly
+        - treat a hypothesis as an approved topic or fact
+        - use model memory as current trend evidence
+        - mutate or publish CMS content
+        - generate images or send Telegram messages
+      completionGate: typed observe/validate/reject/expired hypotheses or explicit no-supported-trend evidence; never an article task
+
+  - title: Monthly Astrogen scaled-content audit
+    owner: SEO Performance Analyst
+    status: active
+    triggerEnabled: true
+    cron: "30 8 2 * *"
+    timezone: Europe/Kiev
+    concurrencyPolicy: coalesce_if_active
+    catchUpPolicy: skip_missed
+    workflow: monthly_scaled_content_audit
+    activationGate: deterministic similarity candidate packet available from current CMS inventory
+    processContract:
+      purpose:
+        - find repeated-template or near-duplicate article clusters with weak independent reader value
+        - protect the portfolio without inferring a sitewide verdict from one page or one Winning Structure run
+      deterministicPreselection:
+        - compare normalized titles, heading trees, main-content semantics, section-purpose sequences, value generators, and entity-substitution patterns
+        - remove shared navigation, footer, legal/safety text, Коротко, CTA, relatedPosts, CMS chrome, metadata, and decorative media before substantive comparison
+        - send only bounded candidate clusters and compact evidence to LLM review
+      bounds:
+        - inspect at most 5 candidate clusters or 50 URLs per run
+        - do not audit unrelated pages when deterministic selection found no candidate cluster
+        - one blocked cluster does not stop remaining clusters
+      allowedSideEffects:
+        - store one monthly cluster audit document
+        - ingest or update astrogen-growth-actions cases for keep, differentiate, consolidate, refresh, or park recommendations using stable fingerprints
+        - record explicit no-risk or insufficient-evidence outcomes
+      forbidden:
+        - mutate CMS content or publish
+        - create article-production tasks directly
+        - call shared layout components substantive duplication evidence
+        - label generation itself as spam without observed low-value or derivative output
+        - send Telegram messages
+      completionGate: every selected cluster has a typed recommendation routed by stable fingerprint, or explicit no-candidate/insufficient-evidence proof
+
+  - title: Weekly Astrogen CEO business direction review
+    owner: CEO
+    status: active
+    triggerEnabled: true
+    cron: "0 11 * * 3"
+    timezone: Europe/Kiev
+    concurrencyPolicy: coalesce_if_active
+    catchUpPolicy: skip_missed
+    workflow: executive_direction_review
+    activationGate: active after CMO growth portfolio plan
+    processContract:
+      scope:
+        - revenue and product readiness
+        - customer value and delivery capacity
+        - marketing growth and measurement quality
+        - platform risk and missing future capabilities
+      managementBoundary:
+        - CEO delegates growth to CMO and platform or integration work to CTO
+        - CEO does not execute specialist work
+      requiredDecision:
+        - confirm, reorder, narrow, or stop current company bets
+        - ensure every selected bet has an outcome metric, accountable manager, executable path, and review date
+        - ensure no isolated blocker freezes unrelated company work
+      completionGate: concrete delegations, explicit continuation of existing bets, or durable evidence-backed no-change decision
+
   - title: Weekly Paperclip clean release check
     owner: Chief Technical Officer
-    status: paused
-    triggerEnabled: false
+    status: active
+    triggerEnabled: true
     cron: "0 6 * * 2"
     timezone: Europe/Kiev
     concurrencyPolicy: coalesce_if_active
@@ -255,5 +414,5 @@ routines:
 
 policy:
   noAlwaysEnqueue: true
-  noMissedCatchup: true
+  noMissedCatchupExceptBoundedArticleCadence: true
   activation: manual after smoke only

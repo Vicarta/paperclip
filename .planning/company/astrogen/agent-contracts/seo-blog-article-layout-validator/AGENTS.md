@@ -131,9 +131,12 @@ If the layout package is missing, return `blocked` with blocker class `missing_l
   - require the image handoff to name a subject mode: `human_scene`, `abstract_graphic`, or a justified exception;
   - require `human_scene` only for concrete human situations: relationship tension, family/child choice, career or money decision, personal confirmation, expert consultation, emotional state, or a reader deciding what to do next;
   - require `abstract_graphic` for abstract concepts, definitions, zodiac-sign profiles, generic horoscope topics, frameworks, lists, comparisons, metrics, and other non-personal explanations. Reject `abstract_graphic` covers that contain people, faces, hands, bodies, silhouettes, or model-like figures;
-  - for `human_scene`, require a gaze plan for the single planned generation: either natural viewer-facing or off-camera/interaction, with the choice justified by article meaning. Direct gaze is acceptable only as a living editorial moment, not as a stock headshot;
+  - for `human_scene`, require one gaze plan for the single planned generation: `viewer_facing_moment` only when it strengthens the lived emotional event, otherwise `at_another_person`, `at_meaningful_object`, or `off_camera_action` may better explain the topic. Do not require a viewer-facing candidate, variant, or final image; direct gaze is acceptable only as a living editorial moment, not as a stock headshot;
   - reject human covers that feel posed instead of lived: stock headshots, generic smiles, glossy stock-photo perfection, lifeless laptop/coffee scenes, or people with no visible action, decision, conversation, preparation, or emotional context;
   - accept human covers only when the image shows a concrete lived moment and natural micro-emotion, with enough context to understand the article topic without text;
+  - require the handoff to contain the complete typed human-scene `artDirection` and a recent visual-history comparison. Reject a missing emotional beat, fewer than two visible emotion cues, or fewer than 4 distinct visual axes against any recent fingerprint before provider spend;
+  - `calm`, `thoughtful`, `focused`, and `reflective` are not sufficient evidence by themselves. After generation, verify that the stated emotion is actually readable in face, gaze, posture, hands, movement, or interaction at cover-card size; do not accept a QA note that merely claims `natural micro-emotion` while the person looks neutral;
+  - reject the overused Astrogen formula of a seated person/couple at a table with laptop, notebook, cup, bright window, and neutral expression. Brand colors must be accents, not repeated wardrobe or room templates;
   - reject covers that feel like cheap stock imagery, generic wellness consultation, neon-purple astrology, mystical clutter, stereotyped cultural decoration, random zodiac-wheel decoration, or a scene that could fit almost any Astrogen article;
   - reject covers that are near-duplicates of nearby Astrogen blog covers in the
     same category/product lane or of recently generated covers. This applies even
@@ -144,6 +147,7 @@ If the layout package is missing, return `blocked` with blocker class `missing_l
   - adjacent blog cards must be clearly distinguishable by scene concept, action,
     crop, subject arrangement, and emotional moment. Brand consistency is
     required, but template repetition is a validation defect;
+  - viewer-facing gaze is occasional, not mandatory. Across the latest six human-scene covers, prefer one or two semantically justified viewer-facing moments and otherwise rotate interaction/off-camera/action gaze;
   - reject covers with malformed hands/faces, uncanny faces, warped astrology symbols, fake glyphs, muddy edges, inconsistent lighting, or low-resolution/compression artifacts;
   - require the handoff to name two or three topic-specific semantic anchors and explain why the image communicates the article within two seconds;
   - require Astrogen visual fit: calm modern expertise, soft neutral base, deep burgundy/wine accents, warm gold detail, and restrained esoteric signal;

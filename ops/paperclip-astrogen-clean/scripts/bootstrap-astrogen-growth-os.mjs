@@ -8,6 +8,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   createCipheriv,
   createDecipheriv,
@@ -43,6 +44,7 @@ const secretDefs = [
   ["dataforseo-api-login", "parked"],
   ["dataforseo-api-password", "parked"],
   ["serper-api-key", "required"],
+  ["winning-structure-mcp-token", "required"],
   ["exa-api-key", "parked"],
   ["collaborator-api-key", "parked"],
   ["bright-data-api-token", "parked"],
@@ -149,9 +151,8 @@ const pluginDefs = [
     key: "paperclip.winning-structure-mcp-agent-tools",
     packageName: "@paperclipai/plugin-winning-structure-mcp-agent-tools",
     packagePath: "/app/packages/plugins/plugin-winning-structure-mcp-agent-tools",
-    active: false,
+    active: true,
     installOrder: 130,
-    disabledReason: "Not needed for Phase 40.",
   },
   {
     key: "paperclip.search-console-mcp-agent-tools",
@@ -179,7 +180,7 @@ const pluginDefs = [
   },
 ];
 
-const agentDefs = [
+export const agentDefs = [
   role("CEO", "ceo", "Chief Executive Officer", null, "crown", false, true, "Owns company strategy, approvals, hiring boundaries, and final tradeoffs."),
   role("Chief Marketing Officer", "cmo", "Chief Marketing Officer", "CEO", "crown", true, false, "Owns Astrogen traffic growth, SEO/GEO priorities, content cadence, and owner-facing marketing decisions."),
   role("Chief Technical Officer", "cto", "Chief Technical Officer", "CEO", "shield", false, true, "Owns Paperclip runtime, integrations, plugin packaging, CMS/API reliability, and deployment safety."),
@@ -205,7 +206,7 @@ const agentDefs = [
   role("MKT Competitive Intelligence Analyst", "researcher", "Competitive Intelligence Analyst", "MKT Growth Strategy Architect", "search", true, false, "Analyzes competitors and SERP patterns in bounded batches."),
 ];
 
-const routineContracts = {
+export const routineContracts = {
   dailyEvidence: `Purpose: create one bounded Astrogen SEO/GEO evidence packet from deterministic sources before any strategy reasoning.
 
 Canonical target:
@@ -230,7 +231,8 @@ Bounds:
 - Request at most 10 rows per source by default and never print raw plugin JSON/tool output. Summarize only the fields needed for the action/no-action gate.
 
 Allowed side effects:
-- Create or update compact Paperclip evidence/action issues.
+- Store one compact evidence packet on the routine issue.
+- Ingest or update one canonical \`astrogen-growth-actions\` case per actionable finding using a stable findingFingerprint. Repeated evidence updates the same case.
 - Record explicit no-action evidence when nothing actionable is found.
 - Update registry/cooldown records only when the plugin contract supports it.
 
@@ -265,7 +267,7 @@ Bounds:
 - Do not print raw inspection/plugin JSON. Summarize URL, verdict, timestamp, and action only.
 
 Allowed side effects:
-- Create/update technical SEO finding issues with URL-level evidence.
+- Ingest or update canonical \`astrogen-growth-actions\` cases with URL-level evidence and a stable URL plus root-cause fingerprint.
 - Record inspected, skipped, no-data, and cooldown decisions.
 
 Forbidden:
@@ -277,7 +279,7 @@ Forbidden:
 Completion gate:
 - Close done only after every selected URL has one of: finding routed, cooldown/watch recorded, skipped with reason, or explicit no due URLs.`,
 
-  leadershipBacklogTriage: `Purpose: make sure Astrogen backlog and unassigned work cannot silently accumulate without executive ownership.
+  leadershipBacklogTriage: `Purpose: keep Astrogen's active portfolio moving when individual tasks fail, block, duplicate, or lose an execution path.
 
 Timing:
 - Runs daily at 06:40 Europe/Kiev, after deterministic evidence collection and GSC indexing audit.
@@ -286,6 +288,7 @@ Timing:
 Inputs:
 - Open Astrogen issues with status backlog, todo, blocked, or in_review where assigneeAgentId is empty.
 - Open backlog issues older than 24 hours, even if they look parked.
+- Blocked issues older than 24 hours, repeated findings for the same URL/root cause, and workstreams with no executable non-blocked item.
 - Recent routine outputs from evidence, GSC, SEO/GEO, article cadence, and release checks.
 
 Leadership routing rules:
@@ -294,10 +297,17 @@ Leadership routing rules:
 - Human-decision, Telegram writeback, or owner-input gaps: route to OPS Human Interaction Agent, CEO, or CTO without enabling Telegram proactive watches.
 - Parked items may remain backlog only when they have an assignee, a written parked reason, and the next review condition/date.
 - Do not leave actionable work in backlog/unassigned.
+- Collapse repeated findings into one canonical \`astrogen-growth-actions\` pipeline case using a stable finding fingerprint and attach new evidence there instead of creating another blocked branch.
+- When a native case needs a new specialist issue, create it through the issue API with \`pipelineCaseLink.caseId\` and a stable purpose-based \`pipelineCaseLink.requestKey\`. This atomically creates the issue and its work link. Never create first and link second; use the standalone issue-link route only for pre-existing or migrated work.
+- Classify every reviewed blocker as internal recovery, external/developer wait, owner decision, obsolete, or superseded. A blocked item never freezes an unrelated workstream.
+- Ensure the current company priorities still have executable delegated work. When a priority has only blocked items, route one safe alternative action to the correct manager or specialist without performing that work yourself.
 
 Execution boundary:
 - CEO is the routing owner, not the domain executor.
-- CEO may prioritize, assign, create bounded child issues, set blockers, and record routing decisions.
+- CEO may prioritize and route an existing issue with only the standard assignee plus todo/backlog mutation and a concise routing comment.
+- That existing-issue route is only for genuinely unassigned actionable backlog/todo work. For an already assigned, blocked, in-progress, or foreign-owned issue, CEO must not patch it; CEO creates or updates the canonical native growth case and links the issue as evidence.
+- CEO may manage \`astrogen-growth-actions\` cases through native pipeline transitions. CEO must not cancel, close, or rewrite another agent's issue or blocker graph; terminal and dependency state belongs to the owning agent or deterministic pipeline transition.
+- A 403 while attempting to mutate a foreign issue is a routing error, not a company blocker: stop that mutation, use the canonical growth case, and continue the remaining portfolio.
 - CEO must not personally perform SEO analysis, CMS edits/publishing, Telegram operations, plugin/provider calls, paid provider calls, or other specialist execution.
 - When specialist execution is needed, CEO routes it to CMO, CTO, HIA, or the correct specialist agent.
 - Roger (Hermes Agent) config and proactive Telegram watches remain outside this routine.
@@ -308,8 +318,8 @@ Bounds:
 - Do not replay full histories; use heartbeat context, compact comments, and issue metadata.
 
 Allowed side effects:
-- Assign issues, move actionable work to todo, create bounded child issues, set blockers, and record concise routing comments.
-- Close duplicate/no-longer-needed issues only with explicit evidence.
+- Assign existing issues, move actionable work to todo, record concise routing comments, and ingest or update canonical native growth cases by stable fingerprint.
+- Record duplicate or obsolete evidence on the canonical growth case. The owning agent or deterministic pipeline transition performs terminal issue state changes.
 
 Forbidden:
 - Do not execute the routed domain work inside the CEO triage run.
@@ -318,150 +328,41 @@ Forbidden:
 
 Completion gate:
 - Close the routine execution only after reporting routed, parked, blocked, and skipped counts.
-- Healthy exit requires no open unassigned backlog/todo item older than 24 hours without a written reason, or an explicit blocker explaining why routing was impossible.`,
+- Healthy exit requires no open unassigned backlog/todo item older than 24 hours without a written reason, no unclassified stale blocker, and at least one executable delegated path for each current company priority unless durable no-safe-action evidence exists.`,
 
-  articleSlotAllocator: `Purpose: allocate at most one Astrogen article-production slot per active cadence day when backlog, budget, readiness, and recovery gates pass.
+  articleSlotAllocator: `Purpose: allocate article capacity from validated native topic inventory without creating a parallel issue-tree workflow.
 
-Activation mode:
-- Controlled clean activation: target 1 new CMS draft per Europe/Kiev day.
-- Schedule: daily 10:00 Europe/Kiev.
-- Missed schedules use bounded article-only catch-up when routine variables set
-  \`missedSlotCatchUp=enabled\`; never use broad catch-up for
-  other expensive routines.
-- If any open article-production issue is active, skip rather than queueing more work.
+Source of truth:
+- Use only the native \`astrogen-topic-inventory\`, \`astrogen-article-production\`, and \`astrogen-growth-actions\` pipelines.
+- The scheduled allocator is the only normal dispatcher for a topic in stage \`ready\`. A ready-stage automation must not auto-reserve topics.
+- Native article stage automations own SERP check, brief, Claude draft, validation, humanizing, layout, one-call image generation, CMS draft, and CMO delivery.
 
-Allowed inputs:
-- Approved article opportunities, Hermes/owner SEO direction, weekly SEO/GEO action outputs, human priorities, content-wave backlog, and current open article pipeline issues.
-- The allocator consumes only topic records with status \`ready_for_brief_creation\`.
-- If fewer than 3 ready topics are available, or a bounded expansion returns
-  \`no-safe-topic\`, create or reuse one \`topic_inventory_refill\` child owned
-  by SEO Blog Content Strategist and validated by SEO Blog Content Plan
-  Validator. The allocator must be blocked by that refill child or kept in an
-  explicit resumable continuation; \`no-safe-topic\` is not a successful
-  terminal state.
-- Topic refill uses existing accepted semantic-core inventory/review, GSC/GA4,
-  Payload CMS inventory, CrawlObserver/internal-link evidence, active issue
-  duplicate checks, and the consumed topic ledger. Do not run a broad
-  semantic-core rebuild from this allocator.
-- Topic refill should include Phase 14 article-opportunity fields when evidence
-  is available: content role, demand class, human priority state, SERP grouping
-  status, and whether a separate SERP value-gap check is still required before
-  brief creation.
-- If the refill child completes with zero ready topics, check whether one
-  existing article can be improved through a bounded
-  \`serp_value_gap_content_refresh\` lane before closing the cadence as no-slot.
-  This lane requires relevant keyphrases, SERP competitor evidence, a missing
-  user-value diagnosis, and a clear Astrogen information-gain angle.
-- Do not create a content-refresh issue that only asks for generic editorial
-  inserts such as \`Коротко\`, FAQ, CTA, comparison blocks, internal links,
-  relatedPosts, or metadata edits. Those are separate layout/CMS/SEO fixer
-  lanes unless the SERP value-gap artifact proves the element is needed to add
-  substantive user value.
-- If the refill child returns any \`ready_for_brief_creation\` topic, continue
-  the same cadence path by reserving exactly one top safe topic and creating one
-  brief/writer pipeline slot. Leave remaining ready topics for later cadence.
-- If evidence tools are unavailable, route one CTO-owned technical blocker and
-  keep the allocator blocked by refill/blocker evidence. Do not ask the owner to
-  choose topics from incomplete evidence.
-- Child discovery/validation results that a manager must act on must be visible
-  in the parent issue thread or parent heartbeat context. If a child-only
-  comment is not readable from the parent run, copy a compact parent-visible
-  handoff before expecting the manager to route the next stage.
-- A bounded content-expansion issue created from the allocator is a real
-  dependency, not a side task. It must be created with the allocator issue as
-  parentId and the allocator issue must either be blocked by that child through
-  blockedByIssueIds or kept in an explicit resumable in_progress posture with a
-  queued/wakeable continuation. Do not leave the allocator blocked only by
-  prose such as "dependency result missing"; parentId, blockedByIssueIds, or a
-  parent-visible handoff are required before ending the heartbeat.
-- When that expansion child reaches done with any ready topic, the allocator
-  owner must clear the dependency and route exactly one normal article pipeline
-  slot for the top safe topic in the same cadence path. Recovery ownership is
-  only valid for a true runtime/permission failure, not for a child result that
-  already exists.
+Capacity and selection:
+- Target one new CMS draft per Europe/Kiev day. Explicit article-only catch-up is bounded to 3 slots per run.
+- Productive WIP cap is 3 article cases without an unresolved blocker. Blocked or external-wait cases do not consume productive WIP and never freeze a different topic.
+- Read ready topic cases, choose at most one deterministically by human priority, demand evidence, freshness, and oldest ready timestamp. Never invent a topic inside this routine.
 
-Pipeline contract:
-- Normal article path: opportunity -> SERP value-gap check -> brief -> draft -> validation -> humanizer -> layout -> image -> CMS draft -> CMO Telegram article-link notification.
-- One allocator run creates at most one new article pipeline parent. A bounded opportunity-expansion child is discovery work, not terminal success, when it returns a ready topic.
-- Child issues must name workflow state, required artifact, completion evidence, blocker classes, next owner, and parent/goal links.
-- Before creating a brief child, the article parent must have a completed
-  \`serp_value_gap_check\` child assigned to MKT Competitive Intelligence
-  Analyst, unless the accepted topic record already contains fresh SERP
-  value-gap evidence. The required artifact is a compact top-result/value-gap
-  packet: query, geo/language, top competing URLs/titles/snippets, competitor
-  pattern summary, unsafe/overpromising claims to avoid, missing user questions,
-  Astrogen information-gain angle, outline constraints, and
-  \`serpGroupingStatus\`. If the Serper/SERP tool is unavailable, create a
-  CTO-owned technical blocker and do not silently skip to brief.
-- The canonical article parent stays open until the full delivery chain reaches terminal evidence: accepted cover image or explicit waiver, authenticated Payload CMS draft refetch, exactly 3 relatedPosts when suitable published/indexable posts exist, and CMO Telegram article-link notification proof. A layout package with \`ready_for_image_handoff\` is progress, not completion.
+Atomic dispatch:
+- Call \`POST /api/cases/{topicCaseId}/breakdown\` once with one item. The ready stage configuration must target \`astrogen-article-production\` stage \`opportunity\`, use piece noun \`article\`, and advance the topic to \`reserved\`.
+- The item key is the topicKey. Its fields include operation=create, targetQueryCluster from queryCluster, blockerClass=null, nextReviewAt=null, attemptCount=0, cmsDraftId=null, cmsAdminUrl=null, and telegramMessageId=null. Inherited topic fields provide topicKey, titleUk, ctaRoute, and evidenceRefs.
+- Treat the breakdown response as the reservation proof. Record the returned child article case id as consumingArticleCaseId and set a bounded reservationExpiresAt if the reserved-stage automation has not already done so.
+- Breakdown request keys and native case keys are the idempotency boundary. Never create a legacy article parent, brief child, writer child, refill child, or recovery issue from the allocator.
 
-Canonical parent idempotency:
-- Before creating a top-level article parent, derive normalized articleParentKey from the exact article title.
-- Search open top-level article parents for the same articleParentKey. If one exists, reuse that issue as canonical and create only bounded child/recovery tasks under it.
-- Never create a second top-level parent for the same article title because a writer, validator, image, layout, or recovery stage failed. Retry only the failed stage as a child.
-- Duplicate parent creation errors from the clean DB mean: use the canonical issue named in the error and continue there.
+Inventory refill:
+- When ready inventory is below 3, ingest or update one canonical \`astrogen-growth-actions\` case with fingerprint \`topic-inventory-refill:{ISO-week}\`; do not create a blocked issue chain.
+- The growth case delegates evidence-backed candidate generation to CMO and content specialists. Weekly CMO portfolio planning must ingest 3-10 candidate topic cases into \`astrogen-topic-inventory\`; candidate/evidence_ready stage automations validate them.
+- If zero ready topics exist, the allocator still creates or updates that refill growth case and exits with the native case as a live continuation. \`no-safe-topic\` is never terminal success by itself.
+- Missing Payload, GSC/GA4, semantic-core, CrawlObserver, or pipeline access becomes a typed blocker on the refill growth case. It does not stop other growth or article cases and is not sent to the owner as a topic-choice request.
 
-Writer recovery:
-- Primary writer is SEO Blog Article Writer (Claude).
-- Use SEO Blog Article Writer (ChatGPT) only after a recorded Claude/OpenRouter runtime/provider blocker, missing canonical draft artifact, repeated same-class Claude protocol/validation failure, or explicit CMO recovery decision.
-- A writer slot is incomplete without a canonical draft artifact or explicit no-draft blocker.
-- One normal correction pass may return to the same writer with a narrow checklist; repeated same-class failure routes to fallback or CMO diagnosis.
-- If fallback fails with the same blocker class, stop writer retries and diagnose brief/validator/contract mismatch.
-
-Image gate:
-- A normal new article is not ready for CMS draft delivery or owner notification until a cover image exists and passes QA, unless the owner explicitly waives image generation for that article.
-- Cover subject mode must be intentional: human_scene, abstract_graphic, or justified exception.
-- Use human_scene for human experience, decisions, relationships, family/children, career/money, emotions, consultation, or personal life context. Human-scene prompts may choose natural viewer/camera gaze when it makes the article more compelling, but normal cover generation is one image, not a three-candidate set.
-- Use abstract_graphic for abstract concepts, definitions, zodiac-sign profiles, generic horoscope topics, frameworks, lists, comparisons, metrics, or non-personal explanations. Abstract covers must not contain people, faces, hands, bodies, silhouettes, or model-like figures.
-- If image generation fails, route a bounded recovery issue to SEO Blog Image Runtime Executor; if the OpenRouter image plugin/secret/model path is broken, route the exact blocker to CTO.
-
-Bounds:
-- Default target is one new article slot per routine execution.
-- When bounded catch-up is enabled, the allocator may open additional missed
-  article slots up to \`maxCatchUpSlotsPerRun\`, using the same duplicate,
-  readiness, budget, and active-lane gates as the normal slot.
-- In an explicit catch-up run, \`maxCatchUpSlotsPerRun\` is a delivered-slot
-  target ceiling, not a one-shot create limit. The allocator/CMO must continue
-  sequentially after each completed CMS draft until the run has delivered the
-  requested count, reaches the cap, or records durable no-safe-topic/blocker
-  evidence. Do not close the catch-up allocator after the first successful
-  draft when remaining catch-up slots are still in scope and no active article
-  lane exists.
-- \`no-safe-topic\` evidence is durable only after \`topic_inventory_refill\`
-  has completed and still returned zero \`ready_for_brief_creation\` records
-  with compact evidence. Otherwise it is a refill trigger, not a close reason.
-- If any open article-production issue is active, skip rather than queueing more work.
-
-Allowed side effects:
-- Create one bounded article pipeline parent/child set only when opportunity, budget, and gates pass.
-- Create one bounded \`topic_inventory_refill\` child when safe ready topics are
-  exhausted or below the configured minimum.
-- If zero ready topics remain and the current cadence scope allows recovery,
-  route at most one bounded \`serp_value_gap_content_refresh\` issue for an
-  existing article instead of forcing a duplicate article or silently stopping.
-- If refill returns a ready topic, create one brief/writer pipeline slot for the
-  top safe topic before closing the cadence path.
-- Record no-slot/no-action evidence only when refill completed and still
-  returned zero ready topics, or when a concrete blocker is linked.
-- If validation blocks on correctable draft metadata or wording, route one
-  bounded correction pass to the writer against the same canonical artifact,
-  then return to validation. Do not leave the article parent waiting forever on
-  a blocked validation child.
-
-Forbidden:
-- Do not generate images in this allocator.
-- Do not publish CMS content.
-- Do not send owner-facing Telegram from the allocator. CMO sends only the final article title and CMS/public URL through the Telegram plugin/adapter after validated CMS delivery.
-- Do not create broad semantic-core rebuilds, competitor-research, paid ads, or social batches from this routine.
-- Do not mark article delivery complete without CMS draft URL, accepted cover image or explicit waiver, and Telegram article-link delivery path.
+Article delivery invariants:
+- Claude is the primary writer; ChatGPT is fallback only after a durable Claude/provider/protocol blocker or explicit CMO recovery decision.
+- Image stage makes exactly one provider call, requests 1472x822, and preserves a visually accepted original when each axis differs by at most 20 percent. No retry, upscale, crop, or conversion solely for a within-tolerance mismatch.
+- Delivered requires accepted cover or explicit waiver, authenticated CMS draft/admin URL, verified articleContent with Коротко, CTA and exactly three suitable relatedPosts, and one gender-neutral Telegram message containing only title and CMS admin edit URL with delivery proof.
+- CMS remains draft-only. Generic technical Telegram notifications and proactive watches remain off.
 
 Completion gate:
-- Close the allocator run only after one of these is true: one article slot is
-  created with clear next assignee/blockers; topic refill completed with no
-  ready topic and durable evidence; or a concrete refill/runtime blocker is
-  linked and visible from the parent.
-- Do not close the canonical article parent merely because a writer, validator, humanizer, or layout child is done. Parent completion requires accepted cover image or explicit waiver, CMS draft/admin URL after authenticated refetch, verified CTA/editorial/relatedPosts gates, and Telegram article-link delivery proof.
-- A generic report, stdout-only result, or issue close with no meaningful side effect is invalid.`,
+- Done only when one native article case is live from a successful breakdown, the current daily/catch-up quota is already satisfied, productive WIP is full, or one canonical refill growth case is live for an empty/low inventory.
+- A comment, legacy child issue, narrative no-slot report, or raw tool output is not completion evidence.`,
 
   weeklySeoGeo: `Purpose: turn compact daily evidence into a weekly Astrogen SEO/GEO action cycle.
 
@@ -523,6 +424,61 @@ Completion gate:
 - Close done only after action issues, Hermes/CMO owner-brief decisions, watch/cooldown decisions, or explicit no-action evidence are recorded.
 - Close done only after the detailed weekly SEO email has delivery proof, or a concrete CTO-owned email transport blocker is linked and visible from the weekly issue.
 - A report without routed decisions and the required email delivery/blocker evidence is incomplete.`,
+
+  weeklyGrowthPortfolio: `Purpose: turn the completed Wednesday-Tuesday SEO/GEO evidence and content inventory into an executable Astrogen growth portfolio owned by CMO.
+
+Timing:
+- Runs Wednesday at 10:15 Europe/Kiev after the 09:00 SEO/GEO action cycle and before the 11:00 CEO direction review.
+
+Management boundary:
+- CMO chooses priorities, outcome targets, owners, sequence, and WIP. CMO does not perform SERP research, write articles, create images, mutate CMS, or repair runtime integrations.
+- Use specialist outputs and durable evidence. Delegate execution through issues or native pipeline cases.
+
+Required portfolio lanes:
+- content supply: validated ready topics, article delivery, and SERP-driven refreshes;
+- technical SEO/indexing: canonical deduped remediations and developer handoffs;
+- GEO/entity visibility: evidence-backed entity/content/schema opportunities;
+- conversion/revenue learning: landing-page, CTA, funnel, and measurement opportunities supported by current data.
+
+Continuity rules:
+- A blocker affects only its own case and dependency chain. It must never stop unrelated work in the same or another lane.
+- Maintain at most 3 productive article parents and a bounded total action portfolio. Blocked/external-wait items remain visible but do not consume productive WIP.
+- Reuse canonical issues for repeated findings. Do not create a new issue solely to make the board look active.
+- If one lane has no safe executable action, record why and continue the other lanes.
+
+Output contract:
+- Create/update a compact weekly-growth-plan issue document with 3-7 prioritized actions when evidence supports them.
+- Ingest or update 3-10 evidence-backed \`astrogen-topic-inventory\` cases at stage \`candidate\` using stable topic keys. A Markdown content plan without native topic cases is incomplete.
+- Maintain a target of 10 validated ready topics and a low-water mark of 3. Candidate and evidence-ready stage automations own enrichment and duplicate/cannibalization validation; CMO does not mark a candidate ready by narrative assertion.
+- Each action names the business/search outcome, evidence, accountable manager, specialist executor, completion proof, and review window.
+- Delegate accepted actions immediately or link the existing canonical execution issue/case.
+- Record ready-topic inventory level, productive article WIP, blocked article count, CMS drafts delivered in the completed week, and SEO actions completed.
+
+Completion gate:
+- A report alone is not completion. Every accepted action is delegated or linked to an executable existing path; blocked items have an owner and recovery/external-wait class; unrelated lanes continue.
+- Content-supply completion requires native topic case ids for every accepted new topic, not only a list in comments or an issue document.
+- If fewer than 3 safe actions exist, include durable no-safe-action evidence rather than inventing work.`,
+
+  weeklyCeoDirection: `Purpose: make one broad company-level direction decision for Astrogen after the weekly SEO/GEO and CMO growth portfolio cycles.
+
+Timing:
+- Runs Wednesday at 11:00 Europe/Kiev.
+- Reviews the completed Wednesday-Tuesday operating week and the current CMO weekly-growth-plan.
+
+Executive boundary:
+- CEO thinks beyond marketing: revenue, product readiness, customer value, delivery capacity, platform risk, measurement quality, and future company functions.
+- The current company has only a staffed marketing/growth organization, so CEO delegates growth execution to CMO and platform/integration work to CTO. CEO does not execute specialist tasks.
+
+Required decisions:
+- confirm, reorder, narrow, or stop current company bets;
+- ensure each selected bet has an outcome metric, accountable manager, executable path, and review date;
+- resolve cross-functional priority conflicts and capacity limits;
+- ensure one blocked task has not frozen unrelated company work;
+- identify missing future capabilities without pretending unstaffed departments already exist.
+
+Completion gate:
+- Record the executive direction and delegate every resulting action to CMO, CTO, HIA, or the correct manager.
+- Do not close with a narrative-only review. At least one concrete delegation, explicit continuation of existing bets, or durable no-change decision with evidence is required.`,
 
   releaseCheck: `Purpose: verify clean Paperclip runtime provenance and compare against upstream release state without deploying.
 
@@ -598,11 +554,51 @@ Owner email:
 
 Completion gate:
 - Close done only after recording the improvement report, routing follow-ups, and, when changes were applied, confirming backup, verification, and owner email delivery.`,
+
+  monthlyTrendDiscovery: `Purpose: produce evidence-backed Astrogen demand and market hypotheses for CMO portfolio review without creating article work directly.
+
+Inputs and bounds:
+- Use completed-period GSC/GA4 and site-search changes, semantic-core evidence, current topic inventory, verified Astrogen product/service changes, approved SERP/competitor evidence, and time-stamped public or community signals.
+- Inspect at most 20 compact candidate signals and retain at most 8 hypotheses.
+- Require two independent signals, or one first-party signal with a concrete validation plan.
+- Every hypothesis has a stable fingerprint, audience problem, evidence refs, first-observed date, expected horizon, business fit, confidence band, alternative explanation, falsifier, next validation step, expiry, and observe/validate/reject/expired status.
+
+Execution boundary:
+- CMO manages hypotheses and delegates validation; CMO does not perform specialist research or create article tasks here.
+- A hypothesis cannot enter topic inventory until normal evidence and ownership validation pass.
+- Do not use model memory as current trend evidence, mutate CMS, publish, generate images, or send Telegram.
+
+Completion gate:
+- Store a typed monthly hypothesis document and route only concrete bounded validation work, or record explicit no-supported-trend evidence. Never close with an article task created from an unvalidated hypothesis.`,
+
+  monthlyScaledContentAudit: `Purpose: detect bounded Astrogen near-duplicate or repeated-template article clusters that lack independent reader value.
+
+Deterministic preselection:
+- Compare normalized titles, heading trees, main-content semantics, section-purpose sequences, selected value generators, and entity-substitution patterns.
+- Exclude navigation, footer, legal/safety text, Коротко, CTA, related posts, CMS chrome, metadata, and decorative media before comparison.
+- Send only deterministic candidate clusters and compact evidence to LLM review; inspect at most 5 clusters or 50 URLs.
+
+Execution boundary:
+- Assess independent purpose, substantive overlap, derivative rewriting, thin or padded content, evidence, effort, and sibling differentiation.
+- Route keep/differentiate/consolidate/refresh/park recommendations into one canonical growth case per stable cluster fingerprint.
+- Consolidation and ownership changes require portfolio authority. Findings do not mutate CMS or create article-production tasks directly.
+- One blocked cluster does not stop the rest. Do not call shared layout components substantive duplication and do not label generation itself as spam.
+
+Completion gate:
+- Every selected cluster has a typed recommendation and evidence route, or the run records explicit no-candidate or insufficient-evidence proof.`,
 };
 
-const routineDefs = [
-  routine("Daily Astrogen deterministic evidence collection", "SEO Performance Analyst", "10 6 * * *", routineContracts.dailyEvidence, "coalesce_if_active", "seo_performance_loop"),
-  routine("Daily Astrogen due-URL GSC indexing audit", "SEO GSC Indexing Auditor", "20 6 * * *", routineContracts.gscIndexingAudit, "coalesce_if_active", "technical_seo_finding"),
+export const routineDefs = [
+  routine("Daily Astrogen deterministic evidence collection", "SEO Performance Analyst", "10 6 * * *", routineContracts.dailyEvidence, "coalesce_if_active", "seo_performance_loop", {
+    status: "active",
+    triggerEnabled: true,
+    activation: "active_evidence_collection",
+  }),
+  routine("Daily Astrogen due-URL GSC indexing audit", "SEO GSC Indexing Auditor", "20 6 * * *", routineContracts.gscIndexingAudit, "coalesce_if_active", "technical_seo_finding", {
+    status: "active",
+    triggerEnabled: true,
+    activation: "active_due_url_audit",
+  }),
   routine("Daily Astrogen leadership backlog triage", "CEO", "40 6 * * *", routineContracts.leadershipBacklogTriage, "coalesce_if_active", "leadership_backlog_triage", {
     status: "active",
     triggerEnabled: true,
@@ -613,18 +609,41 @@ const routineDefs = [
     triggerEnabled: true,
     activation: "controlled_target_1_after_phase41",
     catchUpPolicy: "enqueue_missed_with_cap",
-    extraVariables: [
-      { key: "missedSlotCatchUp", value: "enabled" },
-      { key: "missedSlotCatchUpPolicy", value: "bounded_enqueue_missed_with_cap" },
-      { key: "maxCatchUpSlotsPerRun", value: "3" },
-    ],
   }),
-  routine("Weekly Astrogen SEO/GEO action cycle", "SEO Performance Analyst", "0 9 * * 3", routineContracts.weeklySeoGeo, "coalesce_if_active", "seo_performance_loop"),
-  routine("Weekly Paperclip clean release check", "Chief Technical Officer", "0 6 * * 2", routineContracts.releaseCheck, "coalesce_if_active", "paperclip_release_check"),
+  routine("Weekly Astrogen SEO/GEO action cycle", "SEO Performance Analyst", "0 9 * * 3", routineContracts.weeklySeoGeo, "coalesce_if_active", "seo_performance_loop", {
+    status: "active",
+    triggerEnabled: true,
+    activation: "active_weekly_action_cycle",
+  }),
+  routine("Weekly Astrogen CMO growth portfolio plan", "Chief Marketing Officer", "15 10 * * 3", routineContracts.weeklyGrowthPortfolio, "coalesce_if_active", "growth_portfolio_control", {
+    status: "active",
+    triggerEnabled: true,
+    activation: "active_after_weekly_seo",
+  }),
+  routine("Weekly Astrogen CEO business direction review", "CEO", "0 11 * * 3", routineContracts.weeklyCeoDirection, "coalesce_if_active", "executive_direction_review", {
+    status: "active",
+    triggerEnabled: true,
+    activation: "active_after_cmo_portfolio",
+  }),
+  routine("Weekly Paperclip clean release check", "Chief Technical Officer", "0 6 * * 2", routineContracts.releaseCheck, "coalesce_if_active", "paperclip_release_check", {
+    status: "active",
+    triggerEnabled: true,
+    activation: "active_release_observation",
+  }),
   routine("Weekly Astrogen Paperclip operating improvement review", "Chief Technical Officer", "30 12 * * 3", routineContracts.operatingSelfImprovement, "coalesce_if_active", "paperclip_operating_self_improvement", {
     status: "active",
     triggerEnabled: true,
     activation: "active_backup_email_gated",
+  }),
+  routine("Monthly Astrogen trend discovery", "Chief Marketing Officer", "0 8 1 * *", routineContracts.monthlyTrendDiscovery, "coalesce_if_active", "monthly_trend_discovery", {
+    status: "active",
+    triggerEnabled: true,
+    activation: "active_current_evidence_only",
+  }),
+  routine("Monthly Astrogen scaled-content audit", "SEO Performance Analyst", "30 8 2 * *", routineContracts.monthlyScaledContentAudit, "coalesce_if_active", "monthly_scaled_content_audit", {
+    status: "active",
+    triggerEnabled: true,
+    activation: "active_deterministic_candidates_first",
   }),
 ];
 
@@ -903,6 +922,17 @@ function migrateSecrets() {
     `,
   );
   const byKey = new Map(oldRows.map((row) => [row.key, row]));
+  const cleanExistingRows = psqlJson(
+    CLEAN_DB,
+    `
+      select id, key, status
+      from company_secrets
+      where company_id='${CLEAN_COMPANY_ID}'
+        and key in (${secretDefs.map((item) => q(item.key)).join(",")})
+        and deleted_at is null
+    `,
+  );
+  const cleanExistingByKey = new Map(cleanExistingRows.map((row) => [row.key, row]));
   const oldKey = readMasterKey(OLD_APP);
   ensureCleanMasterKey();
   const cleanKey = readMasterKey(CLEAN_APP);
@@ -913,6 +943,11 @@ function migrateSecrets() {
   for (const def of secretDefs) {
     const old = byKey.get(def.key);
     if (!old || old.status !== "active") {
+      const existing = cleanExistingByKey.get(def.key);
+      if (existing?.status === "active") {
+        secretIds[def.key] = existing.id;
+        continue;
+      }
       missing.push(def.key);
       continue;
     }
@@ -1072,7 +1107,17 @@ function buildActivePluginConfig(pluginKey, oldConfig, secretIds) {
     config.allowModelOverride = false;
     config.maxImagesPerRequest = 1;
     config.defaultImageSize = "1472x822";
+    config.targetDimensionTolerancePercent = 20;
     config.defaultAspectRatio = "16:9";
+    config.requireSubjectMode = true;
+    config.structuredArtDirectionMode = "required_for_human_scene";
+    config.visualHistoryLimit = 8;
+    config.minimumDistinctVisualAxes = 4;
+    config.legacyAvoidVisualPatterns = [
+      "seated person or couple at a table with laptop, notebook, cup, and neutral catalogue expression",
+      "burgundy sweater used as the main brand signal",
+      "generic bright home office with window, plant, wooden desk, and no visible emotional event",
+    ];
     config.costAccountingMode = "provider_reported";
     config.estimatedImageCostUsd = 0.04;
     config.appName = "Paperclip Astrogen Image Generation";
@@ -1084,6 +1129,13 @@ function buildActivePluginConfig(pluginKey, oldConfig, secretIds) {
     config.costAccountingMode = "estimated_per_request";
     config.estimatedSearchCostUsd = 0.001;
     config.estimatedNewsCostUsd = 0.001;
+  }
+  if (pluginKey === "paperclip.winning-structure-mcp-agent-tools") {
+    config.winningStructureMcpTokenSecretRef = secretIds["winning-structure-mcp-token"];
+    config.winningStructureMcpUrl = "http://100.98.5.50:8000/mcp";
+    config.allowedClientKeysCsv = "astrogen-ukraine";
+    config.requestTimeoutMs = 180000;
+    config.costAccountingMode = "provider_reported";
   }
   return config;
 }
@@ -1167,7 +1219,7 @@ function upsertPlugins(secretIds) {
   return { pluginIds, ready, disabled };
 }
 
-function instructionText(agent) {
+export function instructionText(agent) {
   return `# ${agent.name}
 
 You are ${agent.title} for Astrogen in the clean Paperclip instance.
@@ -1198,6 +1250,7 @@ ${agentSpecificInstructions(agent)}
 
 - Routine work must flow through Paperclip scheduler -> routine run -> execution issue -> assignment wakeup -> heartbeat.
 - For plugin data, use the agent tool dispatcher routes with the current run token when no native tool wrapper is present: GET /api/agents/me/plugin-tools and POST /api/agents/me/plugin-tools/execute.
+- For linked specialist evidence, use the case output fetch hint. Read full documents only through GET /api/cases/{caseId}/outputs/documents/{documentId}; do not request broad access to a foreign issue, its comments, or heartbeat context.
 - Plugin tool execution must use the canonical request body only: { "tool": "plugin.key:tool_name", "parameters": { ... }, "runContext": { "agentId": "$PAPERCLIP_AGENT_ID", "runId": "$PAPERCLIP_RUN_ID", "companyId": "$PAPERCLIP_COMPANY_ID", "projectId": "$PAPERCLIP_PROJECT_ID", "issueId": "$PAPERCLIP_TASK_ID" } }. Do not use legacy toolName/input/arguments payloads and never omit projectId.
 - Do not use board-only plugin/admin routes from an agent heartbeat. If a plugin tool is unavailable, record the exact route/tool failure and route a CTO configuration issue instead of substituting unrelated public-web evidence.
 
@@ -1222,47 +1275,36 @@ function agentSpecificInstructions(agent) {
   if (agent.name === "CEO") {
     return `
 
-## Article Parent Recovery Rule
+## Native Portfolio Routing Rule
 
-- CEO is a routing/recovery owner, not an article executor.
-- When recovering or reviewing an Astrogen article parent, do not close it only because all currently visible children are done. First verify the full delivery chain: draft, validation, humanizer, layout, accepted cover image or explicit waiver, Payload CMS draft/admin URL after authenticated refetch, verified CTA/editorial/relatedPosts gates, and CMO Telegram article-link notification proof.
-- If the chain stops at \`ready_for_image_handoff\`, layout-ready, CMS-ready, or another intermediate state, keep or return the parent to \`in_progress\` and route the next bounded child to the correct specialist. For normal articles the next child after layout is \`SEO Blog Image Runtime Executor\`; after accepted image, route draft-only CMS delivery to a CMS-capable lane; after CMS refetch, CMO sends the concise Telegram link notification.
-- Do not perform image generation, CMS mutation, or Telegram delivery yourself.
+- CEO is a portfolio routing owner, not a domain executor and not an article recovery worker.
+- Route genuinely unassigned actionable backlog/todo work with only assignee plus todo/backlog and a concise comment.
+- Never patch, close, cancel, reassign, or rewrite the blocker graph of an already assigned, blocked, in-progress, or foreign-owned issue. Treat it as evidence and create or update one \`astrogen-growth-actions\` case by stable finding fingerprint.
+- A 403 on foreign issue mutation means the route was wrong. Stop that mutation, use the native growth case, and continue unrelated priorities; do not block the leadership cycle.
+- Repeated findings for one URL and root cause update the same growth case. External dependencies use \`external_wait\` plus nextReviewAt and never freeze unrelated work.
+- Article lifecycle belongs to CMO and the \`astrogen-article-production\` pipeline. Do not create article stage/recovery issue trees or perform image generation, CMS mutation, Telegram delivery, SEO analysis, or provider calls.
 `;
   }
 
   if (agent.name === "Chief Marketing Officer") {
     return `
 
-## Article Parent Completion Gate
+## Native Article And Topic Pipeline Control
 
-- CMO owns the Astrogen article parent until the complete delivery chain finishes: opportunity or brief, draft, validation, humanizer, layout, accepted cover image or explicit image waiver, Payload CMS draft/admin URL after authenticated refetch, verified CTA/editorial/relatedPosts gates, and CMO Telegram article-link notification proof.
-- A child closeout that says \`ready_for_image_handoff\`, layout-ready, CMS-ready, or "next owner is image/CMS/Telegram" is not a parent completion signal. It is the instruction to create or reuse the next bounded child task.
-- If a parent has no active child but has not reached CMS draft plus Telegram proof, resume the existing parent and route the missing next stage. Do not create a duplicate article parent for the same title.
-- Normal downstream route is: SERP value-gap check -> MKT Blog Brief Strategist -> SEO Blog Article Writer (Claude) -> validator/humanizer/layout -> SEO Blog Image Runtime Executor -> CMS-capable draft delivery lane -> CMO Telegram article-link notification. CMS delivery is draft-only; do not publish.
-- Do not create a brief child until a completed SERP value-gap artifact exists
-  for this article parent, unless the accepted topic record already has fresh
-  top-result/value-gap evidence. If Serper/SERP tooling is unavailable, route
-  one CTO blocker and keep the parent blocked/resumable; do not silently skip
-  the competitive check.
-
-## Topic Inventory Refill Control
-
-- CMO controls article cadence, but does not personally generate topics,
-  write drafts, create images, or mutate CMS content.
-- If the allocator reports fewer than 3 safe ready topics or
-  \`no-safe-topic\`, route one bounded \`topic_inventory_refill\` child to SEO
-  Blog Content Strategist, with SEO Blog Content Plan Validator as the gate.
-- A refill packet must contain 3-10 candidates and 1-3
-  \`ready_for_brief_creation\` topics when evidence supports them. It must use
-  Payload CMS, GSC/GA4, semantic-core inventory/review, CrawlObserver, active
-  Paperclip issue duplicate checks, and consumed topic history.
-- Do not close the allocator as done just because the current inventory is
-  empty. Empty inventory is a refill trigger; it becomes no-action only after
-  refill completes with zero ready topics and durable evidence.
-- If evidence tooling is unavailable, route a CTO blocker with the exact
-  missing plugin/binding/API path. Owner emails must explain what developers
-  need to fix in plain Ukrainian, not ask the owner to choose a technical path.
+- CMO controls portfolio choice and delivery gates but does not perform SERP research, writing, image generation, CMS mutation, or runtime repair.
+- Create every new specialist issue for a native case with \`pipelineCaseLink.caseId\` and a stable purpose-based \`pipelineCaseLink.requestKey\` on the issue-create request. This atomically creates the issue and its typed work link. The standalone issue-link route is only for pre-existing or migrated work.
+- After creating or linking work, re-read case-visible work products before deciding the stage. Positive completion proof routes to verify; a durable blocker artifact routes to external_wait with blockerClass and nextReviewAt; only a missing artifact may create or reuse one bounded evidence-recovery issue. Never build a recovery chain or leave a case in executing after a durable blocker is visible.
+- \`astrogen-topic-inventory\` and \`astrogen-article-production\` cases are the source of truth. Do not create article parent/stage/recovery issue trees for recurring cadence.
+- The scheduled allocator selects at most one topic at \`ready\` and calls \`POST /api/cases/{topicCaseId}/breakdown\` with one item. Native breakdown creates/reuses the article child at \`opportunity\` and advances the topic to \`reserved\`.
+- The ready stage has no on-enter automation. Never reserve a topic merely because validation moved it to ready; only the scheduled allocator dispatches capacity.
+- Native article stage automations own SERP check, brief, Claude draft, validation, humanizing, layout, one-call image generation, CMS draft, and CMO delivery. Recovery resumes the same case and stage.
+- Phase 47 replaces the standalone SERP gate with the native \`strategy_input -> winning_structure -> structure_decision | structure_review\` path. CMO manages authority and portfolio continuity but never performs MCP research or writes the article.
+- A paused Winning Structure run blocks only its article case and does not consume productive WIP. Low-risk decisions may be submitted only when the option is explicitly authorized by the pipeline contract. Accepting cannibalization risk, merging/consolidating, reassigning ownership, cancelling a run, removing the primary keyword, or changing the canonical owner requires an explicit human decision.
+- For an added-value pause, CMO may authorize only a concrete reader-facing asset from /companies/astrogen/reference/article-value-system.yaml with an assigned producing role, validation method, observable acceptance criteria, and due_before_publication=true. Semantic-core/ownership/tool access, generic research, more text, keywords, or a table/FAQ/checklist/CTA by itself is not reader value.
+- Delivery is terminal only at article stage \`delivered\` with accepted cover or waiver, authenticated CMS admin URL, verified content gates, and gender-neutral Telegram delivery proof. CMS remains draft-only.
+- When ready inventory is below 3, create or update one \`astrogen-growth-actions\` case with fingerprint \`topic-inventory-refill:{ISO-week}\`. Do not create a refill issue chain.
+- Weekly portfolio planning ingests 3-10 evidence-backed topic cases at \`candidate\` with stable topic keys. A content-plan document without native topic case ids is incomplete.
+- Missing evidence tooling becomes one typed blocker on the refill growth case. Empty inventory never freezes unrelated lanes and is never sent to the owner as a technical choice.
 
 ## SERP Value-Gap Content Refresh Control
 
@@ -1272,6 +1314,18 @@ function agentSpecificInstructions(agent) {
   \`serp_value_gap_content_refresh\` issue for an existing article only when
   the issue identifies the current article, target keyphrase cluster, SERP
   competitors, missing user value, and why refresh is safer than a new article.
+- If \`serpValueGapRequired=true\`, or if the refresh parent has no accepted
+  parent-visible value-gap artifact, create or reuse exactly one
+  \`serp_value_gap_check\` child assigned to \`MKT Competitive Intelligence
+  Analyst\` before any refresh brief, writer, layout, or CMS update task.
+  Block the refresh parent on that child until it returns queries checked, top
+  competitors, coverage patterns, missing user questions, Astrogen
+  information-gain angle, and exact sections to improve.
+- Do not treat \`serpValueGapRequired=true\` as evidence. It is only a routing
+  trigger. The executable sequence is: refresh parent -> SERP value-gap check
+  -> validated refresh brief -> article body refresh -> validation -> CMS draft
+  update. Preserve existing images/media unless the issue explicitly names an
+  image defect.
 - Do not delegate a refresh as "add \`Коротко\`", "add FAQ", "add CTA",
   "add related posts", "add internal links", "add comparison block", or
   "update metadata" unless the SERP value-gap artifact explains why that exact
@@ -1282,20 +1336,29 @@ function agentSpecificInstructions(agent) {
 `;
   }
 
+  if (agent.name === "Chief Technical Officer") {
+    return `
+
+## Developer Handoff Email Contract
+
+- When implementation requires a site developer, produce a concrete technical package first and send it only through \`paperclip.email-notifications:email-developer-handoff-send\`.
+- Include every exact affected public URL. For each URL provide the current problem, required code/configuration changes, and post-deploy verification steps.
+- Include shared repository/deploy/sitemap actions and the source Paperclip issue. A link to an issue or attachment does not replace the URL list in the email.
+- Do not use \`email-notification-send\` or a generic incident summary for developer implementation requests.
+- If the exact affected scope is not known, continue deterministic evidence collection or keep the case in technical investigation. Do not send an incomplete handoff to the owner.
+`;
+  }
+
   if (agent.name === "SEO Blog Content Strategist") {
     return `
 
 ## Topic Inventory Refill Contract
 
-- Own the \`topic_inventory_refill\` research packet for Astrogen blog cadence.
+- Own candidate enrichment for \`astrogen-topic-inventory\` and the execution work delegated from the canonical \`topic-inventory-refill\` growth case.
 - Use compact evidence from Payload CMS, GSC/GA4, semantic-core
   inventory/review, CrawlObserver/internal-link data, active Paperclip issues,
   and consumed topic history.
-- Return 3-10 topic records total. Mark 1-3 as
-  \`ready_for_brief_creation\` only when duplicate and cannibalization checks
-  pass. Otherwise use \`candidate\`, \`parked_insufficient_evidence\`,
-  \`needs_owner_direction\`, \`reject_duplicate\`, or
-  \`reject_cannibalization\`.
+- Ingest or update 3-10 native topic cases at \`candidate\` using stable topic keys. Enrich each assigned candidate and transition it to \`evidence_ready\`, \`waiting_evidence\`, or \`expired\`; the validator alone moves evidence-ready cases to \`ready\`, \`needs_owner_direction\`, or \`rejected_duplicate\`.
 - Every ready topic must include topicKey, Ukrainian working title, primary
   query, supporting queries, intent, funnel role, audience segment, target
   service/route relationship, evidence references, CMS duplicate check, active
@@ -1305,8 +1368,15 @@ function agentSpecificInstructions(agent) {
 - If SERP evidence is not checked during refill, set
   \`serpGroupingStatus=not_checked\` and \`serpValueGapRequired=true\` instead
   of pretending the topic is fully brief-ready.
-- Do not invent broad topics when evidence tools are unavailable. Route the
-  exact runtime/plugin blocker to CTO and keep the refill issue blocked.
+- Do not invent broad topics when evidence tools are unavailable. Attach the exact typed runtime/plugin blocker to the affected native topic/refill case; unrelated topic and growth cases continue.
+
+## Winning Structure Strategy Input Contract
+
+- Store one \`winning-structure-input\` case document as plain JSON that is directly valid for both \`validate_task_input\` and \`start_winning_structure_run\`. Do not wrap it in Markdown and do not create a separate internal shape.
+- Required top-level objects are \`task\` and \`market\`. Never use \`task_input\`, a string market, a nested \`namespace\`, \`run_id\`, \`decisions\`, or local heartbeat/session/issue identifiers in the payload.
+- The top level carries \`company_id\`, \`project_id\`, \`client_key=astrogen-ukraine\`, the stable \`idempotency_key\`, \`task\`, \`market\`, \`cache_policy\`, \`editorial_constraints\` and optional page, business, ownership and reader-value context.
+- Merge evidence, commitments and product bridge targets into one \`business_context\`. A concrete future asset belongs in \`manual_value_commitments\`; an existing verified source belongs in \`reader_value_evidence\`.
+- Persist \`winningStructureInputDocumentId=winning-structure-input\` and leave all MCP-owned runtime fields null. Only a plugin response can populate run ID, hashes, status, decisions, retention and result document fields.
 
 ## SERP Value-Gap Refresh Candidate Rule
 
@@ -1356,6 +1426,22 @@ function agentSpecificInstructions(agent) {
   if (agent.name === "MKT Competitive Intelligence Analyst") {
     return `
 
+## Winning Structure MCP Contract
+
+- For native article stages \`strategy_input\` and \`winning_structure\`, use Winning Structure MCP as the ownership, SERP and reader-value source of truth. Serper may supply caller evidence but never substitutes for a completed Winning Structure result.
+- Read the \`winning-structure-input\` case document, parse its plain JSON body and pass the exact object unchanged to both validation and start. Never reconstruct the payload or rename \`task\` to \`task_input\`.
+- Require the stable top-level namespace \`company_id\`, \`project_id\`, \`client_key=astrogen-ukraine\` and idempotency key \`winning-structure:{articleCaseId}:{revision}\`, plus object-valued \`task\` and \`market\`.
+- Strategy Input owns the payload, namespace and idempotency key only. It must leave MCP run ID, status, hashes, decision version, retention and result fields null; never place a heartbeat, session or issue ID in an MCP field. Only Winning Structure may populate those fields from plugin responses.
+- For every plugin operation, pass \`company_id\`, \`project_id\`, \`client_key\`, \`run_id\`, and \`decisions\` as top-level parameters exactly as declared by the tool schema. Never send a nested \`namespace\` object.
+- Include a trustworthy current-page snapshot for refreshes, CMS ownership candidates, GSC query-to-URL evidence, forbidden topics, CTA/product bridge targets, claim constraints and non-SERP reader-value evidence or a concrete deliverable commitment.
+- Call validate before start. Store the returned input hash, start only once, preserve run ID, poll the same run with bounded backoff and stop on paused or terminal status.
+- If validation rejects the stored schema before any remote run exists, persist the typed errors and return the case to \`strategy_input\` for payload repair. Never use this transition after a plugin-returned run ID or input hash exists.
+- When paused, copy the exact decision request, version, options and evidence to the case and transition to \`structure_decision\`. Never manufacture a decision or restart the run.
+- On completion, import the structured result, Markdown reference, effective hash, decision version, structure sections, quality requirements, publication requirements, cost/provenance and retention deadline into durable case documents before artifact expiry.
+- Keep imported MCP artifacts immutable. A selected value unit is valid strategy input only with 1-4 canonical \`targetIntentCovered\` values from the Astrogen article-value system; never use future remote \`targetSectionIds\` at strategy-input time. Approved Astrogen selected value units are durable strategy input: map them to generated sections through their canonical \`targetIntentCovered\` values and each section's \`intent_covered\`; persist \`mappedSectionIds\`. The remote MCP may add value plans but does not erase approved local units. If no generated section maps an approved unit, create a separate typed \`winning-structure-local-overlay\` from that selected unit instead of opening a CTO task. Each selected-unit overlay entry must name \`sourceKind=selected_value_unit\`, \`sourceValueUnitId\`, mapped support IDs, insertion point, evidence/commitment refs, purpose, writer instruction, examples to avoid, claim boundaries, and \`provenance=paperclip_normalization_from_selected_value_unit\`. An accepted remote plan may use \`sourcePlanId\` and \`provenance=paperclip_normalization_from_accepted_plan\`.
+- The overlay may not introduce new evidence, claims, scope, keyword ownership, CTA routes or product capabilities. Set \`structureMappingStatus=normalized_with_overlay\` and persist its document ID; use \`raw_complete\` when every unit maps to a raw section. Anything requiring a new claim, scope, ownership, evidence, or plan interpretation is a manager-review blocker, not a technical task.
+- Never concatenate writer instructions into article prose and never expose raw MCP payloads, tokens or debug artifacts in issue comments.
+
 ## SERP Value-Gap Contract
 
 - Own bounded \`serp_value_gap_check\` issues for Astrogen article parents.
@@ -1368,7 +1454,9 @@ function agentSpecificInstructions(agent) {
   competing URLs/titles/snippets, competitor page-type pattern, SERP intent,
   common headings/claims inferred from snippets, unsafe or overpromising claims
   Astrogen must avoid, missing user questions, Astrogen information-gain angle,
-  outline constraints for the brief, internal-link/CTA implication, and
+  whether a short historical/context note would clarify a \`Що таке\` /
+  \`Що це означає\` section without becoming filler, outline constraints for
+  the brief, internal-link/CTA implication, and
   \`serpGroupingStatus\` = \`checked_same_intent\`,
   \`checked_split_required\`, or \`needs_recheck\`.
 - Do not copy competitor text. Summarize patterns only.
@@ -1384,6 +1472,9 @@ function agentSpecificInstructions(agent) {
 - The artifact must state which existing article is being refreshed, what
   competitors cover better or differently, what user questions are missing, and
   the precise Astrogen information-gain angle.
+- If a brief historical/context note would help the reader understand a term,
+  practice, or misconception, state where it belongs and why. If it would be
+  decorative, say \`historical_note_not_needed\`.
 - Name exact body sections or paragraphs that need substantive improvement.
   Do not recommend FAQ, CTA, comparison, relatedPosts, internal links, or
   metadata changes unless the SERP/user-value gap directly justifies them.
@@ -1392,6 +1483,13 @@ function agentSpecificInstructions(agent) {
 
   if (agent.name === "MKT Blog Brief Strategist") {
     return `
+
+## Winning Structure Brief Contract
+
+- Create a brief only from an imported and accepted Winning Structure result. Preserve section IDs, hierarchy, purpose, writer instruction, evidence references, claim boundaries, examples to avoid, review flags and publication requirements as structured fields.
+- Use the accepted Astrogen article type and two to four approved reader-value units. A table, FAQ, checklist, comparison or historical note is only presentation; it is not value unless it delivers the accepted evidence-backed contribution.
+- Do not add a universal block set. Prove that selected value units fit this reader problem and do not repeat the substantive role of recent sibling articles.
+- A committed but undelivered asset remains a publication blocker and must be visible in the brief. Do not let the writer simulate it.
 
 ## Phase 14 Brief Contract
 
@@ -1402,6 +1500,10 @@ function agentSpecificInstructions(agent) {
   links, duplicate/cannibalization notes, and the SERP value-gap artifact link.
 - Add a dedicated \`Information gain\` section with 3-5 concrete bullets naming
   what Astrogen will add beyond current competing pages.
+- Include a \`Historical/context note\` instruction only when the SERP/value-gap
+  artifact says it helps explain a concept or remove a myth. It should be 2-4
+  sentences inside a \`Що таке\` / \`Що це означає\` style section, not a
+  standalone history block.
 - Add \`Avoid from SERP\` constraints for unsafe, overpromising, generic, or
   competitor-like claims found in the value-gap artifact.
 - If the value-gap artifact is missing, stale, or says \`needs_recheck\`, return
@@ -1414,6 +1516,9 @@ function agentSpecificInstructions(agent) {
 - The brief must include a before/after change plan tied to the artifact:
   target keyphrases, missing user questions, information-gain angle, exact
   sections to improve, claims to avoid, and what must remain unchanged.
+- If a short historical/context note is useful, name the exact section where it
+  should be inserted and the misconception or context it clarifies. Do not add
+  it as a generic enrichment requirement.
 - Do not request generic addition of \`Коротко\`, FAQ, CTA, comparison blocks,
   internal links, relatedPosts, or metadata. Include those only when the
   artifact proves that specific element is the best way to close the value gap.
@@ -1423,12 +1528,25 @@ function agentSpecificInstructions(agent) {
   if (agent.name === "SEO Blog Article Writer (Claude)" || agent.name === "SEO Blog Article Writer (ChatGPT)") {
     return `
 
+## Evidence-Backed Draft Contract
+
+- This is the shared writer-workspace contract. Claude is the primary writer. ChatGPT may execute only after the case records a Claude/provider/protocol blocker or an explicit CMO fallback decision; ChatGPT must never self-trigger or replace a healthy Claude path.
+- The Claude writer runs through the OpenRouter prompt adapter. It has no callable shell, browser, or Paperclip API tools: never emit \`<tool_call>\`, shell commands, or raw API instructions. Return the adapter's single JSON protocol response with the complete attachment artifact and, on completion, the typed \`pipelineTransition\` to the allowed next stage. Paperclip validates and performs that transition before it can close the stage task.
+- Treat the accepted Winning Structure and brief as requirements, not prose. Write original Ukrainian copy without copying competitor wording or concatenating section instructions.
+- Deliver the selected type-specific value units and cite or bound their evidence internally. Never invent expert observations, consultation cases, statistics, historical facts, tests, screenshots, product capabilities or personal experience.
+- Astrology, tarot, numerology, Human Design and related systems must be framed as interpretive practices, not scientific proof or guaranteed prediction. Do not make medical, legal, financial, diagnostic, deterministic or fatalistic claims.
+- If an evidence-backed unit or committed asset is unavailable, record the exact requirement as blocked instead of replacing it with generic filler.
+
 ## Phase 14 Article Draft Contract
 
 - Write only from an approved brief that contains SERP value-gap evidence or an
   explicit CMO waiver.
 - The draft must visibly satisfy the brief's \`Information gain\` bullets
   without copying competitor text or expanding into unsupported claims.
+- When the approved brief requests a historical/context note, write it as 2-4
+  practical sentences inside the relevant \`Що таке\` / \`Що це означає\`
+  section. Use it to clarify the origin, evolution, or common misconception of
+  the concept; do not turn it into a decorative history lesson.
 - Do not pull extra semantic-core keywords directly into the article. If the
   brief/value-gap evidence is insufficient, record \`brief_value_gap_missing\`
   instead of inventing a generic article.
@@ -1444,11 +1562,35 @@ function agentSpecificInstructions(agent) {
   merely adding \`Коротко\`, FAQ, CTA, comparison blocks, internal links,
   relatedPosts, or layout blocks unless the brief ties that element to the SERP
   value gap.
+- A short historical/context note is allowed only when the refresh brief asks
+  for it and ties it to a reader-value gap. Keep it inside the relevant
+  definitional/explanatory section; do not add a separate generic history
+  section.
+- Comments are not durable body artifacts. For refresh work, create or update
+  the issue document \`canonical-refresh-draft\` with
+  \`PUT /api/issues/$PAPERCLIP_TASK_ID/documents/canonical-refresh-draft\`
+  before marking the issue done. The document body must contain the
+  ready-to-apply Ukrainian section text, insertion/replacement map, target CMS
+  id/admin URL, media/publish guardrails, and validation checklist.
+- After writing the document, refetch it with
+  \`GET /api/issues/$PAPERCLIP_TASK_ID/documents/canonical-refresh-draft\` and
+  mention \`/AST/issues/<identifier>#document-canonical-refresh-draft\` in the
+  completion comment. If the document cannot be written or refetched, block as
+  \`writer_artifact_write_failed\`; do not claim an artifact exists in a
+  comment alone.
 `;
   }
 
   if (agent.name === "SEO Blog Article Validator") {
     return `
+
+## Final Main-Content Quality Gate
+
+- At native stage \`mc_quality\`, audit the post-humanizer draft independently against the imported Winning Structure, brief, evidence, commitments and relevant competitor baseline.
+- Return one typed outcome: \`pass\`, \`revise_surface\`, \`revise_substantive\`, or \`reject_unsafe\`. Route surface-only naturalness defects to humanize and substantive value/evidence defects to draft.
+- Passing requires reader-task completion, visible original contribution, specificity, useful depth, acceptable information density, fulfilled publication requirements, claim safety, sibling differentiation and no process residue.
+- Structure, length, FAQ, tables, CTA, \`Коротко\` and related posts do not prove quality by themselves. Reject padding, derivative coverage, unsupported claims and cosmetic value blocks.
+- When \`geoRetrievabilityRequired=true\`, additionally check answer-first passages, entity clarity, self-contained fragments and factual specificity. Never use estimated LSI similarity, keyword repetition or invented numeric precision as a gate.
 
 ## Phase 14 Validation Gate
 
@@ -1458,6 +1600,9 @@ function agentSpecificInstructions(agent) {
   bullets, avoids competitor-like unsafe/overpromising claims, preserves the
   intended SERP intent/page type, and does not cannibalize the target service
   route or recent Astrogen content.
+- If the brief requested a historical/context note, approve it only when it is
+  short, relevant to a \`Що таке\` / \`Що це означає\` section, and clarifies a
+  concept or misconception. Reject decorative or unsupported history.
 - If the draft is merely generic coverage of the keyword, return
   \`changes_required\` with a narrow checklist tied to the missing value-gap
   bullets.
@@ -1468,9 +1613,24 @@ function agentSpecificInstructions(agent) {
   the refresh brief and SERP value-gap artifact.
 - Approve only when the article adds the missing user value named in the
   artifact and stays distinct from existing Astrogen pages.
+- A historical/context note can count as information gain only when the
+  artifact or brief ties it to a real reader question, term confusion, or
+  misconception.
 - Reject updates that are mostly mechanical insertion of \`Коротко\`, FAQ, CTA,
   comparison blocks, internal links, relatedPosts, metadata, or layout blocks
   without substantive information gain.
+`;
+  }
+
+  if (agent.name === "SEO Blog Humanizer") {
+    return `
+
+## Bounded Editorial Naturalness Contract
+
+- Perform one minimal pass after factual/structural validation. Preserve every fact, evidence boundary, Winning Structure section purpose, SEO lock, CTA route and publication requirement.
+- Correct only observable editorial patterns: canned openings/closings, repeated sentence starts, uniform paragraph rhythm, generic transitions, abstract wording, unnecessary explanation and mechanical triads.
+- Do not produce an AI probability, name a supposed model family, optimize for detector evasion, invent first-person experience, add conversational filler or recursively rewrite the article.
+- Store the changed artifact and a compact change list. The independent MC quality stage decides whether the final text passes.
 `;
   }
 
@@ -1479,9 +1639,19 @@ function agentSpecificInstructions(agent) {
 
 ## Cover Image Recovery Contract
 
-- Normal Astrogen blog cover generation uses one provider call for one image. Use the configured default model, candidateCount=1/n=1, aspectRatio=16:9, and CMS target 1472x822. Do not request three candidates, 2K/4K, or a premium model unless the issue contains an explicit owner/CMO recovery authorization with the reason.
+- Before a paid generation, call \`paperclip.openrouter-image-agent-tools:image-visual-history-get\` and read the latest 6-8 company-scoped human-scene fingerprints.
+- Every generation must declare \`subjectMode\`. For \`human_scene\`, provide the plugin's complete typed \`artDirection\`: narrative moment, scene archetype, setting, subject arrangement, action type and description, specific emotional beat, at least two visible emotion cues, shot distance, camera angle, gaze plan, dominant props, brand anchors, and avoid patterns.
+- A new human scene must differ from every recent fingerprint on at least 4 of 9 axes. If the plugin rejects similarity, revise the concept once before provider spend; do not turn preflight into a loop.
+- Astrogen style is stable lighting, refined editorial realism, soft neutral base, restrained burgundy/wine and warm-gold accents, and subtle esoteric detail. It is not a mandatory burgundy sweater, neutral home office, wooden table, laptop, notebook, plant, or cup.
+- \`calm\`, \`thoughtful\`, \`focused\`, and \`reflective\` are tone modifiers, not sufficient emotional beats. QA must identify a topic-specific emotion such as uncertainty, recognition, relief, resolve, trust, tenderness, discovery, reassurance, curiosity, or anticipation and at least two visible cues in face, gaze, posture, hands, movement, or interaction.
+- Reject a blank catalogue expression, posed stock smile, or another seated-at-table device scene even when the image is technically clean. Viewer-facing gaze is occasional and semantic, not required on every image; aim for 1-2 of the latest 6 human-scene covers.
+- Normal Astrogen blog cover generation uses exactly one provider call for one image. Use the configured default model, candidateCount=1/n=1, aspectRatio=16:9, and request the preferred CMS target 1472x822.
+- Treat image generation as a visually sensitive, non-deterministic process: preserve a good result instead of degrading it through mechanical resizing or repeated generation.
+- After generation, calculate absolute width and height deviation separately against 1472x822. If both are at most 20 percent and visual QA passes, accept and preserve the original provider file. Do not upscale, stretch, destructively crop, convert only to satisfy a preferred format, or call the provider again solely for a within-tolerance dimension/format mismatch.
+- If either dimension differs by more than 20 percent, record a runtime contract blocker for CTO. That mismatch does not authorize an automatic second generation. A new provider call requires an actual visual-quality failure plus explicit CMO recovery authorization.
+- Do not request three candidates, 2K/4K, or a premium model unless the issue contains an explicit owner/CMO recovery authorization with the reason.
 - The configured default model for normal article covers is google/gemini-2.5-flash-image. Do not override it to google/gemini-3.1-flash-image, Nano Banana 2, Pro, or another premium model during normal cadence work.
-- A corrected retry authorized after an \`image_quality_blocked\` comment is a new generation pass, not a re-review of the same rejected files.
+- A corrected retry authorized after an \`image_quality_blocked\` comment is a new generation pass, not a re-review of the same rejected files. Dimension or output-format mismatch within the 20 percent tolerance is never \`image_quality_blocked\` and must not create a retry.
 - Before closing a retry as blocked, compare the latest operator/owner retry authorization timestamp with candidate file/work-product timestamps. If all candidates predate the authorization, generate fresh candidates with unique filenames.
 - Do not satisfy a retry by re-QAing previously rejected candidates unless the issue explicitly asks for a waiver or re-review.
 - Completion requires at least one accepted durable work product via \`POST /api/issues/$PAPERCLIP_TASK_ID/work-products/register-workspace-artifact\` when the accepted image is already in the execution workspace. Send \`relativePath\`, \`title\`, optional \`summary\`, \`contentType\`, \`status=ready_for_review\`, \`reviewState=approved\`, and \`isPrimary=true\`. Do not create raw \`provider=paperclip\` artifact JSON by hand for workspace files.
@@ -1502,7 +1672,7 @@ function agentSpecificInstructions(agent) {
 - For CMS delivery, required inputs are: canonical draft artifact, validator evidence, layout package or articleContent JSON, accepted cover work product or waiver, CTA route decision, and exactly 3 relatedPosts when suitable published/indexable posts exist.
 - Produce CMS body only as canonical \`articleContent.v1\`: top-level \`schemaVersion="articleContent.v1"\` plus \`blocks\`. Do not use legacy aliases such as \`content\`, \`columns\`, \`body/linkText\` for CTA, or free-form icon objects.
 - Required articleContent block types are exactly: \`paragraph\`, \`heading\`, \`list\`, \`editorialCallout\`, \`iconList\`, \`twoColumnText\`, and \`quietCta\`. Use the Payload CMS tool schema as the source of truth before handoff.
-- CMS delivery is draft-only. Do not publish. After creating/updating the CMS draft, refetch it and verify status, workflowStatus, cover/ogImage, CTA, editorial inserts, and relatedPosts before marking the issue done.
+- CMS delivery is draft-only. Do not publish. After creating/updating the CMS draft, refetch it and verify status, workflowStatus, cover/ogImage, CTA, editorial inserts, and relatedPosts before marking the issue done. For CMS update/refresh of an existing article, create and verify \`before-after-diff\` on your own assigned CMS issue before closeout; the CMO aggregates it into the parent.
 - Do not guess Paperclip or CMS schemas by trying multiple malformed payloads. If the exact schema is unclear, inspect the relevant local schema once, perform one corrected attempt, and otherwise record a blocker with the exact missing contract.
 - When a dependency is already resolved, clear the blocker in the issue state and continue the current issue; do not create duplicate article parents or child tasks for the same title.
 `;
@@ -1519,6 +1689,8 @@ function agentSpecificInstructions(agent) {
 - Before a create/update call, verify the payload has: early \`editorialCallout\` titled \`Коротко\`, CTA as \`quietCta.title/text/linkLabel/linkUrl\`, exactly 3 \`relatedPosts\` when suitable published/indexable posts exist, accepted cover/OG image or explicit waiver, and draft workflow status.
 - Do not trial-and-error Payload writes. If a schema validation or Payload response fails, capture the exact error, route it to the producing stage, and stop after one corrected attempt.
 - After create/update, refetch the CMS draft and verify status, workflowStatus, cover/ogImage, CTA, editorial inserts, relatedPosts, and CMS admin edit URL before reporting completion.
+- For CMS draft updates or refreshes of an existing article, create or update issue document key \`before-after-diff\` on \`$PAPERCLIP_TASK_ID\` with title \`Before/After Diff\`, format \`markdown\`, and a compact comparison of source CMS/admin URL, after/draft revision evidence, sections added/changed/unchanged, preserved fields, CMS admin review URL, and publish status. Verify it on your own issue. Mark the CMS child done when CMS and child-document gates pass. Never mutate another agent's parent issue and never block completed CMS delivery solely because parent mutation is unauthorized; CMO owns parent aggregation.
+- For a draft-only update to an already published article, Payload may return the latest edited document as \`_status="draft"\` / \`workflowStatus="draft"\` while the public live article remains published. Treat this as a valid draft revision, not a blocker, when authenticated refetch proves the edited draft, the public live URL still resolves, cover/OG media, slug, metadata, canonical, noindex, relatedPosts, and unrelated fields are preserved, and the completion comment says \`draft revision created; live publish not performed\`.
 `;
   }
 
@@ -1689,6 +1861,93 @@ function upsertResendEmailSecretBindings(secretIds, pluginIds, agentIds) {
   );
 }
 
+function upsertSerperAgentToolsSecretBindings(secretIds, pluginIds, agentIds) {
+  const serperSecretId = secretIds["serper-api-key"];
+  const serperPluginId = pluginIds["paperclip.serper-agent-tools"];
+  if (!serperSecretId || !serperPluginId) return;
+
+  const pluginConfigPath = "serperApiKeySecretRef";
+  psql(
+    CLEAN_DB,
+    `
+      insert into company_secret_bindings (
+        company_id, secret_id, target_type, target_id, config_path,
+        version_selector, required, label, created_at, updated_at
+      ) values (
+        ${qUuid(CLEAN_COMPANY_ID)}, ${qUuid(serperSecretId)}, 'plugin',
+        ${q(serperPluginId)}, ${q(pluginConfigPath)}, 'latest', true,
+        'Serper API key for paperclip.serper-agent-tools plugin config',
+        now(), now()
+      )
+      on conflict (company_id, target_type, target_id, config_path) do update set
+        secret_id=excluded.secret_id,
+        version_selector=excluded.version_selector,
+        required=excluded.required,
+        label=excluded.label,
+        updated_at=now();
+    `,
+  );
+
+  const serperAgentNames = [
+    "SEO Performance Analyst",
+    "SEO Blog Content Strategist",
+    "SEO Blog Content Plan Validator",
+    "MKT Growth Strategy Architect",
+    "MKT Competitive Intelligence Analyst",
+  ];
+  for (const agentName of serperAgentNames) {
+    const agentId = agentIds[agentName];
+    if (!agentId) continue;
+    psql(
+      CLEAN_DB,
+      `
+        insert into company_secret_bindings (
+          company_id, secret_id, target_type, target_id, config_path,
+          version_selector, required, label, created_at, updated_at
+        ) values (
+          ${qUuid(CLEAN_COMPANY_ID)}, ${qUuid(serperSecretId)}, 'agent',
+          ${q(agentId)}, ${q(pluginConfigPath)}, 'latest', true,
+          ${q(`${agentName}: Serper API key for bounded SERP evidence tools`)},
+          now(), now()
+        )
+        on conflict (company_id, target_type, target_id, config_path) do update set
+          secret_id=excluded.secret_id,
+          version_selector=excluded.version_selector,
+          required=excluded.required,
+          label=excluded.label,
+          updated_at=now();
+      `,
+    );
+  }
+}
+
+function upsertWinningStructureSecretBinding(secretIds, pluginIds) {
+  const secretId = secretIds["winning-structure-mcp-token"];
+  const pluginId = pluginIds["paperclip.winning-structure-mcp-agent-tools"];
+  if (!secretId || !pluginId) return;
+
+  psql(
+    CLEAN_DB,
+    `
+      insert into company_secret_bindings (
+        company_id, secret_id, target_type, target_id, config_path,
+        version_selector, required, label, created_at, updated_at
+      ) values (
+        ${qUuid(CLEAN_COMPANY_ID)}, ${qUuid(secretId)}, 'plugin',
+        ${q(pluginId)}, 'winningStructureMcpTokenSecretRef', 'latest', true,
+        'Winning Structure MCP bearer token for private Astrogen article analysis',
+        now(), now()
+      )
+      on conflict (company_id, target_type, target_id, config_path) do update set
+        secret_id=excluded.secret_id,
+        version_selector=excluded.version_selector,
+        required=excluded.required,
+        label=excluded.label,
+        updated_at=now();
+    `,
+  );
+}
+
 function ensureGoalAndProject(agentIds) {
   let goalId = psql(
     CLEAN_DB,
@@ -1746,18 +2005,12 @@ function ensureGoalAndProject(agentIds) {
 function upsertRoutines(agentIds, projectId, goalId) {
   const created = [];
   for (const item of routineDefs) {
-    const routineVariables = [
-      { key: "workflowKey", value: item.workflowKey },
-      { key: "cycleSafety", value: item.status === "active" ? "controlled-active" : "paused-first" },
-      { key: "activationContractVersion", value: "phase41" },
-      ...item.extraVariables,
-    ];
-    const routineEnv = {
-      workflowKey: item.workflowKey,
-      activation: item.activation,
-      activationContractVersion: "phase41",
-      ...item.extraEnv,
-    };
+    // Routine variables are user-supplied template inputs, not a policy/config
+    // store. Operational limits belong in the typed contract and dedicated
+    // state, otherwise Paperclip correctly strips unused definitions or rejects
+    // them as invalid environment bindings.
+    const routineVariables = [];
+    const routineEnv = null;
     let routineId = psql(
       CLEAN_DB,
       `select id from routines where company_id='${CLEAN_COMPANY_ID}' and title=${q(item.title)} order by created_at limit 1;`,
@@ -1814,11 +2067,6 @@ function upsertRoutines(agentIds, projectId, goalId) {
       `,
     );
 
-    let revisionId = psql(
-      CLEAN_DB,
-      `select id from routine_revisions where company_id='${CLEAN_COMPANY_ID}' and routine_id=${qUuid(routineId)} and revision_number=1 limit 1;`,
-    ).trim();
-    if (!revisionId) revisionId = randomUUID();
     const snapshot = {
       version: 1,
       routine: {
@@ -1826,15 +2074,16 @@ function upsertRoutines(agentIds, projectId, goalId) {
         companyId: CLEAN_COMPANY_ID,
         projectId,
         goalId,
+        parentIssueId: null,
         title: item.title,
         description: item.description,
         assigneeAgentId: agentIds[item.owner],
         priority: "medium",
         status: item.status,
         concurrencyPolicy: item.concurrencyPolicy,
-        catchUpPolicy: "skip_missed",
-        variables: [{ key: "workflowKey", value: item.workflowKey }],
-        env: { workflowKey: item.workflowKey, activation: item.activation, activationContractVersion: "phase41" },
+        catchUpPolicy: item.catchUpPolicy,
+        variables: routineVariables,
+        env: routineEnv,
       },
       triggers: [
         {
@@ -1844,31 +2093,45 @@ function upsertRoutines(agentIds, projectId, goalId) {
           enabled: item.triggerEnabled,
           cronExpression: item.cron,
           timezone: item.timezone,
+          publicId: null,
+          signingMode: null,
+          replayWindowSec: null,
         },
       ],
     };
-    psql(
+    const latestMatches = psql(
       CLEAN_DB,
-      `
+      `select coalesce((
+        select rr.snapshot = ${qJson(snapshot)}
+        from routine_revisions rr
+        join routines r on r.latest_revision_id=rr.id
+        where r.id=${qUuid(routineId)}
+      ), false);`,
+    ).trim() === "t";
+    if (!latestMatches) {
+      const revisionId = randomUUID();
+      const revisionNumber = Number(psql(
+        CLEAN_DB,
+        `select coalesce(max(revision_number), 0) + 1 from routine_revisions where routine_id=${qUuid(routineId)};`,
+      ).trim());
+      psql(
+        CLEAN_DB,
+        `
         insert into routine_revisions (
           id, company_id, routine_id, revision_number, title, description,
           snapshot, change_summary, created_at
         ) values (
-          ${qUuid(revisionId)}, ${qUuid(CLEAN_COMPANY_ID)}, ${qUuid(routineId)}, 1,
+          ${qUuid(revisionId)}, ${qUuid(CLEAN_COMPANY_ID)}, ${qUuid(routineId)}, ${revisionNumber},
           ${q(item.title)}, ${q(item.description)}, ${qJson(snapshot)},
-          'Phase 40 paused bootstrap revision', now()
-        )
-        on conflict (routine_id, revision_number) do update set
-          title=excluded.title,
-          description=excluded.description,
-          snapshot=excluded.snapshot,
-          change_summary=excluded.change_summary;
+          'Manifest reconciliation via Phase 46 canonical contract', now()
+        );
 
         update routines
-        set latest_revision_id=${qUuid(revisionId)}, latest_revision_number=1, updated_at=now()
+        set latest_revision_id=${qUuid(revisionId)}, latest_revision_number=${revisionNumber}, updated_at=now()
         where id=${qUuid(routineId)};
       `,
-    );
+      );
+    }
     created.push(item.title);
   }
   return created;
@@ -2140,6 +2403,8 @@ function main() {
   const plugins = upsertPlugins(secrets.secretIds);
   const agentIds = upsertAgents(secrets.secretIds);
   upsertResendEmailSecretBindings(secrets.secretIds, plugins.pluginIds, agentIds);
+  upsertSerperAgentToolsSecretBindings(secrets.secretIds, plugins.pluginIds, agentIds);
+  upsertWinningStructureSecretBinding(secrets.secretIds, plugins.pluginIds);
   const { goalId, projectId } = ensureGoalAndProject(agentIds);
   const routines = upsertRoutines(agentIds, projectId, goalId);
   const transition = upsertTransitionPack(agentIds, projectId, goalId);
@@ -2164,9 +2429,15 @@ function main() {
   }, null, 2));
 }
 
-try {
-  main();
-} catch (err) {
-  console.error(err instanceof Error ? err.message : String(err));
-  process.exit(1);
+const isDirectExecution = process.argv[1]
+  ? path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+  : false;
+
+if (isDirectExecution) {
+  try {
+    main();
+  } catch (err) {
+    console.error(err instanceof Error ? err.message : String(err));
+    process.exit(1);
+  }
 }

@@ -20,6 +20,13 @@ If it omits `recipientEmails`, the plugin sends to the configured defaults.
 - `email-notification-send` - concise arbitrary notification.
 - `email-change-report-send` - structured backup/change/verification report.
 - `email-incident-report-send` - structured incident or blocker report.
+- `email-developer-handoff-send` - implementer-ready handoff that requires exact
+  affected URLs, per-page changes, and verification steps.
+
+Human prose that arrives with escaped paragraph separators (`\\n\\n`) is
+normalized at the transport boundary so recipients see real paragraphs.
+Developer handoffs must use the typed handoff tool; a generic notification is
+not sufficient for work that needs to be passed to site developers.
 
 Every successful non-dry-run send writes:
 

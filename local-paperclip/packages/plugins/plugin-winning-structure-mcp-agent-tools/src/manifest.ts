@@ -7,11 +7,7 @@ import {
   SLOT_IDS,
   TOOL_NAMES,
 } from "./constants.js";
-
-const looseObjectSchema = {
-  type: "object",
-  additionalProperties: true,
-} as const;
+import { TOOL_PARAMETER_SCHEMAS } from "./tool-schemas.js";
 
 const manifest: PaperclipPluginManifestV1 = {
   id: PLUGIN_ID,
@@ -19,7 +15,7 @@ const manifest: PaperclipPluginManifestV1 = {
   version: PLUGIN_VERSION,
   displayName: "Winning Structure MCP Agent Tools",
   description:
-    "Thin server-side adapter for a Winning Structure MCP endpoint. Agents can validate SEO page structure tasks, start async runs, poll status, and retrieve recommendation artifacts without receiving endpoint credentials.",
+    "Server-side adapter for the five-operation Winning Structure MCP lifecycle, including paused-run decisions, contract verification, and provider-reported cost accounting without exposing endpoint credentials.",
   author: "Paperclip",
   categories: ["connector", "automation"],
   capabilities: [
@@ -27,6 +23,9 @@ const manifest: PaperclipPluginManifestV1 = {
     "secrets.read-ref",
     "agent.tools.register",
     "instance.settings.register",
+    "plugin.state.read",
+    "plugin.state.write",
+    "costs.write",
   ],
   entrypoints: {
     worker: "./dist/worker.js",
@@ -62,6 +61,13 @@ const manifest: PaperclipPluginManifestV1 = {
         description: "Timeout for one MCP connection/call.",
         default: 180000,
       },
+      costAccountingMode: {
+        type: "string",
+        title: "Cost Accounting Mode",
+        description: "Write the provider-reported completed-run cost to the Paperclip cost ledger.",
+        enum: ["provider_reported", "disabled"],
+        default: "provider_reported",
+      },
     },
   },
   ui: {
@@ -79,25 +85,31 @@ const manifest: PaperclipPluginManifestV1 = {
       name: TOOL_NAMES.validateTaskInput,
       displayName: "Winning Structure Validate Task Input",
       description: "Call Winning Structure MCP `validate_task_input`.",
-      parametersSchema: looseObjectSchema,
+      parametersSchema: TOOL_PARAMETER_SCHEMAS.validateTaskInput,
     },
     {
       name: TOOL_NAMES.startRun,
       displayName: "Winning Structure Start Run",
       description: "Call Winning Structure MCP `start_winning_structure_run`.",
-      parametersSchema: looseObjectSchema,
+      parametersSchema: TOOL_PARAMETER_SCHEMAS.startRun,
     },
     {
       name: TOOL_NAMES.getRunStatus,
       displayName: "Winning Structure Get Run Status",
       description: "Call Winning Structure MCP `get_run_status`.",
-      parametersSchema: looseObjectSchema,
+      parametersSchema: TOOL_PARAMETER_SCHEMAS.getRunStatus,
+    },
+    {
+      name: TOOL_NAMES.submitRunDecisions,
+      displayName: "Winning Structure Submit Run Decisions",
+      description: "Call Winning Structure MCP `submit_run_decisions` for one pending decision.",
+      parametersSchema: TOOL_PARAMETER_SCHEMAS.submitRunDecisions,
     },
     {
       name: TOOL_NAMES.getRunResult,
       displayName: "Winning Structure Get Run Result",
       description: "Call Winning Structure MCP `get_run_result`.",
-      parametersSchema: looseObjectSchema,
+      parametersSchema: TOOL_PARAMETER_SCHEMAS.getRunResult,
     },
   ],
 };

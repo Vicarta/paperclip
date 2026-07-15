@@ -64,6 +64,22 @@ describe("paperclip skill utils", () => {
     await expect(fs.access(path.resolve("scripts/paperclip-upload-artifact.sh"))).rejects.toThrow();
   });
 
+  it("documents native pipeline case operations in the installed Paperclip skill", async () => {
+    const skillBody = await fs.readFile(path.resolve("skills/paperclip/SKILL.md"), "utf8");
+    const referenceBody = await fs.readFile(
+      path.resolve("skills/paperclip/references/pipeline-cases.md"),
+      "utf8",
+    );
+
+    expect(skillBody).toContain("Native Pipeline Cases");
+    expect(skillBody).toContain("references/pipeline-cases.md");
+    expect(referenceBody).toContain("GET /cases/{caseId}");
+    expect(referenceBody).toContain("PATCH /cases/{caseId}");
+    expect(referenceBody).toContain("POST /cases/{caseId}/transition");
+    expect(referenceBody).toContain("fields` replaces the complete fields object");
+    expect(referenceBody).toContain("Do not search OpenAPI");
+  });
+
   it("keeps the create-issue-interaction-ui guide as a maintainer-only skill", async () => {
     const skillPath = path.resolve(".agents/skills/create-issue-interaction-ui/SKILL.md");
     const skillBody = await fs.readFile(skillPath, "utf8");

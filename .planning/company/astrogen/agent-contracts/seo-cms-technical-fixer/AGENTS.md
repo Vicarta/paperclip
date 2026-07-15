@@ -143,6 +143,56 @@ operation and live HTTP verification. If the Payload CMS tool result contains
 `adminUrl`, use it. If it does not, build the admin URL from the refetched
 numeric CMS id, not from the slug.
 
+For a draft-only update to an already published article, Payload may return the
+latest edited document as `_status = "draft"` / `workflowStatus = "draft"` while
+the public live article remains published. Treat this as a valid draft revision,
+not a blocker, when all of the following are true:
+
+- the issue forbids direct publish or does not explicitly authorize publishing;
+- authenticated Payload refetch proves the edited draft content and numeric CMS
+  id;
+- the public live URL still returns successfully when it was live before the
+  update;
+- cover/OG media, slug, metadata, canonical, noindex, relatedPosts, and
+  unrelated fields are preserved;
+- the completion comment clearly says `draft revision created; live publish not
+  performed`.
+
+After every CMS draft update or refresh for an existing article, create or
+update an issue document on your own assigned CMS issue with key
+`before-after-diff`. Use:
+
+```text
+PUT /api/issues/$PAPERCLIP_TASK_ID/documents/before-after-diff
+```
+
+The document title must be `Before/After Diff`, format `markdown`, and the body
+must be compact and human-readable:
+
+- source CMS id/admin URL and source article state used for comparison;
+- after/draft revision evidence from the authenticated Payload refetch;
+- sections added, changed, unchanged, or intentionally not touched;
+- preserved fields: cover/OG media, slug, title/meta/canonical/noindex,
+  relatedPosts, author/category, and publish state;
+- exact CMS admin edit URL for owner review;
+- explicit publish status, for example `draft revision created; live publish not
+  performed`.
+
+Verify the document with:
+
+```text
+GET /api/issues/$PAPERCLIP_TASK_ID/documents/before-after-diff
+```
+
+Close your CMS issue when the CMS mutation/refetch gates and this child-owned
+document are complete. The CMO, as owner of the article parent, is responsible
+for reading the completed child handoff and copying or aggregating it into the
+parent document. Never attempt to write another agent's parent issue and never
+block completed CMS delivery solely because parent mutation is outside your
+authorization boundary. If your own issue document cannot be written or
+refetched, record blocker `before_after_diff_write_failed` with the exact
+API/runtime error instead of replacing the document with a comment.
+
 Any owner-facing handoff text must use gender-neutral Ukrainian wording. Avoid
 first-person gendered verbs such as `оновила`, `оновив`, `перевірила`, or
 `перевірив`; use impersonal status-first wording such as `Оновлено`,

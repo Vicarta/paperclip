@@ -29,6 +29,10 @@ import {
   issueThreadInteractions,
   issues,
   labels,
+  pipelineCaseEvents,
+  pipelineCaseIssueLinks,
+  pipelineCases,
+  pipelineAutomationExecutions,
   projectWorkspaces,
   projects,
   workspaceOperations,
@@ -92,6 +96,85 @@ import {
   RECOVERY_ORIGIN_KINDS,
 } from "./recovery/origins.js";
 import { classifyIssueGraphLiveness, type IssueLivenessFinding } from "./recovery/issue-graph-liveness.js";
+
+async function assertPipelineAutomationCompletionProof(
+  dbOrTx: any,
+  issue: typeof issues.$inferSelect,
+) {
+  const linked = await dbOrTx
+    .select({
+      caseId: pipelineCaseIssueLinks.caseId,
+      automationAttemptId: pipelineCaseIssueLinks.automationAttemptId,
+      currentStageId: pipelineCases.stageId,
+      terminalKind: pipelineCases.terminalKind,
+    })
+    .from(pipelineCaseIssueLinks)
+    .innerJoin(pipelineCases, eq(pipelineCaseIssueLinks.caseId, pipelineCases.id))
+    .where(and(
+      eq(pipelineCaseIssueLinks.companyId, issue.companyId),
+      eq(pipelineCaseIssueLinks.issueId, issue.id),
+      eq(pipelineCaseIssueLinks.role, "automation"),
+      isNull(pipelineCaseIssueLinks.retiredAt),
+    ))
+    .then((rows: Array<{
+      caseId: string;
+      automationAttemptId: string | null;
+      currentStageId: string;
+      terminalKind: string | null;
+    }>) => rows[0] ?? null);
+  if (!linked?.automationAttemptId || linked.terminalKind) return;
+
+  const attempt = await dbOrTx
+    .select({ triggeringEventId: pipelineAutomationExecutions.triggeringEventId })
+    .from(pipelineAutomationExecutions)
+    .where(and(
+      eq(pipelineAutomationExecutions.id, linked.automationAttemptId),
+      eq(pipelineAutomationExecutions.companyId, issue.companyId),
+      eq(pipelineAutomationExecutions.caseId, linked.caseId),
+    ))
+    .then((rows: Array<{ triggeringEventId: string }>) => rows[0] ?? null);
+  if (!attempt) return;
+
+  const entryEvent = await dbOrTx
+    .select({
+      toStageId: pipelineCaseEvents.toStageId,
+      createdAt: pipelineCaseEvents.createdAt,
+    })
+    .from(pipelineCaseEvents)
+    .where(and(
+      eq(pipelineCaseEvents.id, attempt.triggeringEventId),
+      eq(pipelineCaseEvents.companyId, issue.companyId),
+      eq(pipelineCaseEvents.caseId, linked.caseId),
+    ))
+    .then((rows: Array<{ toStageId: string | null; createdAt: Date }>) => rows[0] ?? null);
+  if (!entryEvent?.toStageId) return;
+
+  const exitedStage = await dbOrTx
+    .select({ id: pipelineCaseEvents.id })
+    .from(pipelineCaseEvents)
+    .where(and(
+      eq(pipelineCaseEvents.companyId, issue.companyId),
+      eq(pipelineCaseEvents.caseId, linked.caseId),
+      eq(pipelineCaseEvents.type, "transitioned"),
+      eq(pipelineCaseEvents.fromStageId, entryEvent.toStageId),
+      ne(pipelineCaseEvents.toStageId, entryEvent.toStageId),
+      gt(pipelineCaseEvents.createdAt, entryEvent.createdAt),
+    ))
+    .limit(1)
+    .then((rows: Array<{ id: string }>) => rows[0] ?? null);
+  if (exitedStage) return;
+
+  throw unprocessable(
+    "Pipeline automation cannot complete before its case leaves the assigned stage",
+    {
+      code: "pipeline_stage_transition_required",
+      caseId: linked.caseId,
+      stageId: entryEvent.toStageId,
+      currentStageId: linked.currentStageId,
+      automationAttemptId: linked.automationAttemptId,
+    },
+  );
+}
 
 const ALL_ISSUE_STATUSES = ["backlog", "todo", "in_progress", "in_review", "blocked", "done", "cancelled"];
 const MAX_ISSUE_COMMENT_PAGE_LIMIT = 500;
@@ -366,6 +449,11 @@ type IssueCreateInput = Omit<typeof issues.$inferInsert, "companyId"> & {
   inheritExecutionWorkspaceFromIssueId?: string | null;
   watchdog?: { agentId: string; instructions?: string | null } | null;
   watchdogActorRunId?: string | null;
+  pipelineCaseLink?: {
+    caseId: string;
+    requestKey: string;
+    createdByRunId?: string | null;
+  };
 };
 type IssueChildCreateInput = IssueCreateInput & {
   acceptanceCriteria?: string[];
@@ -5096,6 +5184,7 @@ export function issueService(db: Db) {
         inheritExecutionWorkspaceFromIssueId,
         watchdog,
         watchdogActorRunId,
+        pipelineCaseLink,
         ...issueData
       } = data;
       const isolatedWorkspacesEnabled = (await instanceSettings.getExperimental()).enableIsolatedWorkspaces;
@@ -5117,6 +5206,21 @@ export function issueService(db: Db) {
         throw unprocessable("in_progress issues require an assignee");
       }
       return db.transaction(async (tx) => {
+        if (pipelineCaseLink) {
+          const linkedCase = await tx
+            .select({ id: pipelineCases.id })
+            .from(pipelineCases)
+            .where(and(
+              eq(pipelineCases.id, pipelineCaseLink.caseId),
+              eq(pipelineCases.companyId, companyId),
+            ))
+            .limit(1)
+            .then((rows) => rows[0] ?? null);
+          if (!linkedCase) throw notFound("Pipeline case not found");
+          issueData.originKind = "pipeline_case_delegation";
+          issueData.originId = pipelineCaseLink.caseId;
+          issueData.originFingerprint = pipelineCaseLink.requestKey;
+        }
         const defaultCompanyGoal = await getDefaultCompanyGoal(tx, companyId);
         let projectWorkspaceId = issueData.projectWorkspaceId ?? null;
         let executionWorkspaceId = issueData.executionWorkspaceId ?? null;
@@ -5280,6 +5384,30 @@ export function issueService(db: Db) {
         );
 
         const [issue] = await tx.insert(issues).values(values).returning();
+        if (pipelineCaseLink) {
+          await tx.insert(pipelineCaseIssueLinks).values({
+            companyId,
+            caseId: pipelineCaseLink.caseId,
+            issueId: issue.id,
+            role: "work",
+            createdByRunId: pipelineCaseLink.createdByRunId ?? null,
+          });
+          await tx.insert(pipelineCaseEvents).values({
+            companyId,
+            caseId: pipelineCaseLink.caseId,
+            type: "issue_linked",
+            actorType: issueData.createdByAgentId ? "agent" : issueData.createdByUserId ? "user" : "system",
+            actorAgentId: issueData.createdByAgentId ?? null,
+            actorUserId: issueData.createdByUserId ?? null,
+            runId: pipelineCaseLink.createdByRunId ?? null,
+            payload: {
+              issueId: issue.id,
+              role: "work",
+              source: "pipeline_case_delegation",
+              requestKey: pipelineCaseLink.requestKey,
+            },
+          });
+        }
         if (watchdog) {
           await upsertIssueWatchdogForIssue(tx, companyId, issue.id, {
             agentId: watchdog.agentId,
@@ -5344,6 +5472,9 @@ export function issueService(db: Db) {
 
       if (issueData.status) {
         assertTransition(existing.status, issueData.status);
+      }
+      if (issueData.status === "done" && existing.status !== "done") {
+        await assertPipelineAutomationCompletionProof(dbOrTx, existing);
       }
 
       const patch: Partial<typeof issues.$inferInsert> = {

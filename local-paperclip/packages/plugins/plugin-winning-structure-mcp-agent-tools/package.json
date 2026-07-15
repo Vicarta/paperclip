@@ -1,6 +1,6 @@
 {
   "name": "@paperclipai/plugin-winning-structure-mcp-agent-tools",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "private": true,
   "description": "Paperclip agent tools backed by a Winning Structure MCP server",

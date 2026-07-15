@@ -23,9 +23,14 @@ import {
 import { loadOpenRouterPromptSkills } from "./skills.js";
 import {
   buildOpenRouterIssueProtocolInstruction,
+  extractNativePipelineCaseId,
   parseOpenRouterIssueProtocolIntent,
 } from "./paperclip-protocol.js";
-import { uploadIssueArtifactViaApi, upsertIssueDocumentViaApi } from "./paperclip-issue-client.js";
+import {
+  transitionPipelineCaseViaApi,
+  uploadIssueArtifactViaApi,
+  upsertIssueDocumentViaApi,
+} from "./paperclip-issue-client.js";
 import { persistIssueArtifactToWorkspace } from "./paperclip-workspace-artifact.js";
 
 type OpenRouterResponse = {
@@ -247,6 +252,7 @@ export async function execute(
   );
   const sessionHandoffNote = renderTextSection(context.paperclipSessionHandoffMarkdown);
   const requireArtifactOnDone = asBoolean(configRecord.requireArtifactOnDone, false);
+  const nativePipelineCaseId = extractNativePipelineCaseId(currentIssueContext);
   const systemPrompt = joinPromptSections([
     instructionsPrefix,
     skillContext.text,
@@ -258,6 +264,7 @@ export async function execute(
           issueIdentifier: currentIssueIdentifier,
           issueId: currentIssueId,
           requireArtifactOnDone,
+          nativePipelineCaseId,
         })
       : "";
   const userPrompt =
@@ -449,6 +456,90 @@ export async function execute(
         };
       }
 
+      if (intent.pipelineTransition && intent.status !== "done") {
+        await patchIssueViaApi({
+          apiUrl,
+          authToken,
+          runId,
+          issueId: currentIssueId,
+          status: "blocked",
+          comment: buildProtocolBlockedComment({
+            reason: "A pipeline transition is allowed only with a completed done response.",
+          }),
+        });
+        return {
+          exitCode: 1,
+          signal: null,
+          timedOut: false,
+          errorCode: "pipeline_transition_status_invalid",
+          errorMessage: "OpenRouter pipeline transition requires done status.",
+          usage: readUsage(payload.usage),
+          provider: "openrouter",
+          model: asString(payload.model, model),
+          billingType: "api",
+          costUsd: extractCostUsd(payload),
+          resultJson: { provider: "openrouter", protocol: { applied: false, error: "pipeline_transition_status_invalid" } },
+          summary: `OpenRouter ${model}`,
+          clearSession: true,
+        };
+      }
+
+      if (intent.pipelineTransition && !nativePipelineCaseId) {
+        await patchIssueViaApi({
+          apiUrl,
+          authToken,
+          runId,
+          issueId: currentIssueId,
+          status: "blocked",
+          comment: buildProtocolBlockedComment({
+            reason: "The run declared a pipeline transition, but its issue context has no valid native pipeline case_id.",
+          }),
+        });
+        return {
+          exitCode: 1,
+          signal: null,
+          timedOut: false,
+          errorCode: "pipeline_case_missing",
+          errorMessage: "OpenRouter pipeline transition requires a native pipeline case_id.",
+          usage: readUsage(payload.usage),
+          provider: "openrouter",
+          model: asString(payload.model, model),
+          billingType: "api",
+          costUsd: extractCostUsd(payload),
+          resultJson: { provider: "openrouter", protocol: { applied: false, error: "pipeline_case_missing" } },
+          summary: `OpenRouter ${model}`,
+          clearSession: true,
+        };
+      }
+
+      if (nativePipelineCaseId && intent.status === "done" && !intent.pipelineTransition) {
+        await patchIssueViaApi({
+          apiUrl,
+          authToken,
+          runId,
+          issueId: currentIssueId,
+          status: "blocked",
+          comment: buildProtocolBlockedComment({
+            reason: "A completed native pipeline stage must declare its typed pipelineTransition.",
+          }),
+        });
+        return {
+          exitCode: 1,
+          signal: null,
+          timedOut: false,
+          errorCode: "pipeline_transition_required",
+          errorMessage: "OpenRouter native pipeline stage requires a typed transition.",
+          usage: readUsage(payload.usage),
+          provider: "openrouter",
+          model: asString(payload.model, model),
+          billingType: "api",
+          costUsd: extractCostUsd(payload),
+          resultJson: { provider: "openrouter", protocol: { applied: false, error: "pipeline_transition_required" } },
+          summary: `OpenRouter ${model}`,
+          clearSession: true,
+        };
+      }
+
       if (intent.document) {
         await upsertIssueDocumentViaApi({
           apiUrl,
@@ -479,6 +570,17 @@ export async function execute(
           body: intent.artifact.body,
         });
       }
+
+      const pipelineTransition = intent.pipelineTransition
+        ? await transitionPipelineCaseViaApi({
+            apiUrl,
+            authToken,
+            runId,
+            caseId: nativePipelineCaseId ?? "",
+            toStageKey: intent.pipelineTransition.toStageKey,
+            reason: intent.pipelineTransition.reason,
+          })
+        : null;
 
       if (intent.status || intent.comment) {
         await patchIssueViaApi({
@@ -512,12 +614,13 @@ export async function execute(
               bodyChars: intent.document.body.length,
             }
           : null,
-        artifact: intent.artifact
+          artifact: intent.artifact
           ? {
               relativePath: intent.artifact.relativePath,
               bodyChars: intent.artifact.body.length,
             }
           : null,
+        pipelineTransition,
       };
     }
 

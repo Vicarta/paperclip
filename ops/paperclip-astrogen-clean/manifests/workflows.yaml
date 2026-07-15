@@ -3,16 +3,20 @@ cycleSafetyInvariants:
   - LLM agents receive compact evidence packets, not whole history replay
   - unassigned backlog must be routed by a scheduled leadership triage routine
   - no expensive LLM routine uses always_enqueue
-  - no expensive LLM routine uses enqueue_missed_with_cap
-  - missed routine schedules use skip_missed
+  - enqueue_missed_with_cap is allowed only for bounded article cadence with an explicit cap
+  - all other missed routine schedules use skip_missed
   - Telegram is owner-facing only
+  - technical stage status, MCP state, and blocker detail never go to Telegram
+  - source prompt text is condensed into typed contracts and never copied into work products
 
 workflows:
   leadership_backlog_triage:
     states:
       - scheduled
       - collect_unassigned_backlog
+      - collect_stale_blockers_and_zero-executable-path_workstreams
       - classify_owner_lane
+      - dedupe_repeated_findings_into_canonical_remediation
       - route_to_ceo_cmo_cto_or_specialist
       - park_with_owner_and_reason_if_not_actionable
       - verify_no_unassigned_ready_work
@@ -36,13 +40,190 @@ workflows:
       - company/platform/process/runtime issues go to CEO or CTO with a concrete completion gate
       - human-decision and Telegram writeback gaps go to HIA, CEO, or CTO without enabling Telegram proactive watches
       - parked items may remain backlog only with an assignee, written parked reason, and review condition/date
+      - classify each stale blocker as internal recovery, external developer wait, owner decision, obsolete, or superseded
+      - a blocked item affects only its own dependency chain and never freezes unrelated company work
+      - repeated findings for the same URL and root cause update one canonical astrogen-growth-actions case by stable finding fingerprint
+      - assigned or blocked foreign-owned issues are evidence inputs, not mutation targets for CEO
+      - a foreign-issue 403 redirects routing into the canonical growth case and never blocks the whole triage cycle
     executionBoundary:
       - CEO is the routing owner, not the domain executor
-      - CEO may prioritize, assign, create bounded child issues, set blockers, and record routing decisions
+      - CEO may prioritize and route existing issues through the standard assignee plus todo/backlog mutation, and may manage only astrogen-growth-actions pipeline cases
+      - CEO does not cancel, close, or rewrite another agent's issue or blocker graph; the owning agent or deterministic pipeline transition owns those state changes
       - CEO must not personally perform SEO analysis, CMS edits/publishing, Telegram operations, plugin/provider calls, or other specialist execution
       - when specialist execution is needed, CEO routes it to CMO, CTO, HIA, or the correct specialist agent
       - Roger/Hermes Agent config and proactive Telegram watches remain outside this routine
-    completionGate: no open unassigned backlog/todo item older than 24h without written reason
+    completionGate: no old unassigned actionable item, no stale unclassified blocker, and every current company priority has a canonical growth case with an executable delegated path or durable typed wait evidence
+
+  growth_portfolio_control:
+    owner: Chief Marketing Officer
+    states:
+      - scheduled
+      - read_weekly_seo_and_business_evidence
+      - inspect_current_workstream_outcomes_and_wip
+      - classify_continue_stop_recover_or_new_bet
+      - write_weekly_growth_plan
+      - delegate_or_link_executable_actions
+      - verify_blocker_isolation
+      - handoff_to_ceo_direction_review
+    cadence:
+      cron: "15 10 * * 3"
+      timezone: Europe/Kiev
+      assignee: Chief Marketing Officer
+      concurrencyPolicy: coalesce_if_active
+      catchUpPolicy: skip_missed
+    requiredLanes:
+      - content supply and Winning Structure-driven refresh
+      - technical SEO and indexing
+      - GEO and entity visibility
+      - conversion, revenue, and measurement learning
+    ownership:
+      - CMO owns priorities, outcome targets, sequence, delegation, and WIP
+      - specialists own research, writing, CMS, images, and technical execution
+    continuity:
+      - blocked and external-wait items remain visible but do not consume productive WIP
+      - one blocker never freezes an unrelated lane
+      - repeated findings reuse canonical remediation issues
+    outputContract:
+      - weekly-growth-plan document with 3-7 evidence-backed actions when safe actions exist
+      - every accepted action has outcome, evidence, manager, specialist executor, completion proof, and review window
+      - every accepted action is delegated or linked to an executable existing issue or native pipeline case
+      - new native-case specialist delegation uses atomic issue create with pipelineCaseLink and a stable requestKey; the standalone issue-link route is only for existing or migrated work
+      - record ready-topic inventory, productive and blocked article WIP, weekly CMS drafts, and completed SEO actions
+    completionGate: accepted actions delegated or linked and blocker isolation verified; otherwise durable no-safe-action evidence
+
+  monthly_trend_discovery:
+    owner: Chief Marketing Officer
+    states:
+      - scheduled
+      - collect_current_signals
+      - normalize_and_dedupe_signals
+      - distinguish_shift_emergence_seasonality_and_noise
+      - draft_typed_hypotheses
+      - challenge_with_alternatives_and_falsifiers
+      - write_monthly_hypothesis_document
+      - route_bounded_validation_or_observe
+      - feed_cmo_portfolio_evidence
+    cadence:
+      cron: "0 8 1 * *"
+      timezone: Europe/Kiev
+      assignee: Chief Marketing Officer
+      concurrencyPolicy: coalesce_if_active
+      catchUpPolicy: skip_missed
+    sourceContract: /companies/astrogen/reference/content-quality-contract.yaml#trendDiscoveryContract
+    evidenceRules:
+      - use current, time-stamped first-party and approved external signals
+      - one source or one traffic spike is not sufficient by itself
+      - separate observed signal, inference, alternative explanation, and validation step
+      - dedupe by stable hypothesisFingerprint and expire stale hypotheses
+    outputContract:
+      document: monthly-trend-hypotheses
+      allowedStatuses:
+        - observe
+        - validate
+        - reject
+        - expired
+      requiredFields:
+        - hypothesisFingerprint
+        - signalType
+        - audienceAndReaderProblem
+        - affectedEntitiesOrQueries
+        - evidenceRefs
+        - firstObservedAt
+        - expectedHorizon
+        - businessFit
+        - confidenceBand
+        - alternativeExplanation
+        - falsifier
+        - validationNextStep
+        - expiresAt
+        - status
+    portfolioBoundary:
+      - hypotheses are CMO portfolio evidence, not approved topics
+      - a concrete validation step may update one native growth case by stable fingerprint
+      - normal topic evidence, ownership, and Winning Structure gates remain mandatory before article work
+      - no hypothesis directly creates a topic or article case
+      - no CMS mutation, publication, image generation, or Telegram delivery
+    completionGate: bounded typed hypotheses or explicit no-supported-trend evidence are durable and available to CMO portfolio control
+
+  monthly_scaled_content_audit:
+    owner: SEO Performance Analyst
+    states:
+      - scheduled
+      - load_current_cms_inventory
+      - remove_shared_layout_and_boilerplate
+      - deterministic_similarity_candidates_selected
+      - bounded_cluster_evidence_packets_created
+      - main_content_value_and_differentiation_audited
+      - recommendations_classified
+      - native_growth_cases_upserted
+      - no_candidate_or_insufficient_evidence_recorded
+    cadence:
+      cron: "30 8 2 * *"
+      timezone: Europe/Kiev
+      assignee: SEO Performance Analyst
+      concurrencyPolicy: coalesce_if_active
+      catchUpPolicy: skip_missed
+    sourceContract: /companies/astrogen/reference/content-quality-contract.yaml#scaledContentAuditContract
+    deterministicCandidateGate:
+      requiredBeforeLlmReview: true
+      signals:
+        - normalized title and heading-tree similarity
+        - main-content semantic similarity
+        - repeated section-purpose sequence
+        - repeated value generators and acceptance criteria
+        - entity or keyword substitution pattern
+      excludedAsSubstantiveEvidence:
+        - global navigation and footer
+        - standard legal and safety notices
+        - CMS chrome and metadata
+        - Коротко, CTA, relatedPosts, and other shared layout components
+        - cover or decorative media treatment
+      noCandidatesOutcome: explicit_no_candidate_clusters
+    reviewContract:
+      - audit independent reader purpose, evidence, effort, main-content value, and sibling differentiation
+      - distinguish local weakness, repeated template, section-level pattern, and supported sitewide pattern
+      - generation method alone is not a spam verdict
+      - lack of evidence records insufficient_evidence instead of an accusation
+    recommendations:
+      - keep
+      - differentiate
+      - consolidate
+      - refresh
+      - park
+    routing:
+      targetPipeline: astrogen-growth-actions
+      findingFingerprint: scaled-content:{clusterFingerprint}:{recommendation}:{evidenceRevision}
+      updateExistingOnRepeat: true
+      directCmsMutation: false
+      directArticleTaskCreation: false
+      ownershipChangingRecommendationsRequirePortfolioReview: true
+    continuity:
+      - each cluster is isolated work
+      - a blocker on one cluster sets nextReviewAt and does not stop other clusters or growth lanes
+      - blocked audit cases do not consume unrelated productive WIP
+    completionGate: every deterministic candidate cluster has durable evidence and a typed routed recommendation, or no-candidate/insufficient-evidence proof exists
+
+  executive_direction_review:
+    owner: CEO
+    states:
+      - scheduled
+      - read_business_and_growth_portfolio
+      - inspect_revenue_product_customer_capacity_and_platform_risk
+      - decide_continue_reorder_narrow_stop_or_staff_gap
+      - delegate_to_cmo_cto_hia_or_manager
+      - set_outcome_metric_and_review_date
+      - verify_company_continuity
+    cadence:
+      cron: "0 11 * * 3"
+      timezone: Europe/Kiev
+      assignee: CEO
+      concurrencyPolicy: coalesce_if_active
+      catchUpPolicy: skip_missed
+    boundary:
+      - CEO thinks beyond marketing but does not pretend unstaffed departments exist
+      - CEO delegates growth to CMO and platform or integration work to CTO
+      - CEO never performs specialist execution
+    completionGate: concrete delegations, explicit continuation of current bets, or durable evidence-backed no-change decision; every selected bet has outcome metric, accountable manager, executable path, and review date
 
   paperclip_operating_self_improvement:
     states:
@@ -172,45 +353,88 @@ workflows:
       - allocator remains blocked by refill/blocker and does not close as done
       - owner communication is required only for business/product decisions, not tool failures
 
-  serp_value_gap_content_refresh:
+  winning_structure_content_refresh:
     owner: Chief Marketing Officer
-    analysisOwner: MKT Competitive Intelligence Analyst
-    strategyOwner: SEO Blog Content Strategist
+    inputOwner: SEO Blog Content Strategist
+    runOwner: MKT Competitive Intelligence Analyst
     validationOwner: SEO Blog Content Plan Validator
+    states:
+      - refresh_case_created_or_reused
+      - current_article_snapshot_collected
+      - strategy_input_durable
+      - winning_structure_input_validated
+      - winning_structure_run_started_or_reused
+      - same_run_polled
+      - exact_decision_reviewed_and_submitted_if_authorized
+      - completed_result_imported_before_expiry
+      - structure_reviewed
+      - refresh_brief_created
+      - article_body_refreshed
+      - content_validated
+      - naturalness_pass_completed
+      - mc_quality_passed
+      - cms_draft_updated_with_existing_media
+      - owner_article_link_notification_recorded
     triggerConditions:
-      - topic_inventory_refill returns zero ready topics but finds an existing article that can absorb a missing user intent safely
-      - weekly SEO/GEO cycle identifies a page/query opportunity where refreshing an existing article is safer than creating a new one
-      - a candidate topic is rejected for duplication or cannibalization, but SERP evidence points to a distinct improvement for one existing article
+      - topic inventory finds an existing article that can absorb a missing intent more safely than a new page
+      - weekly SEO/GEO cycle identifies an evidence-backed page/query opportunity for a refresh
+      - a candidate topic is rejected for duplication or cannibalization and ownership evidence points to one existing primary page
+      - monthly scaled-content audit recommends refresh for a bounded cluster member
+      - a manual operator test names an existing CMS article and explicitly requests a draft-only refresh
     refreshMeaning:
-      - content_refresh means SERP/value-gap body improvement for relevant keyphrases
-      - content_refresh is not generic editorial block insertion
-      - content_refresh is not metadata-only, relatedPosts-only, CTA-only, or internal-link-only cleanup
-    requiredInputs:
-      - current CMS article id, title, slug, and publication/draft state
-      - target keyphrase cluster with primary and supporting phrases
-      - current GSC/GA4 evidence when available
-      - current CMS/public article snapshot or refetch evidence
-      - top SERP competitors for the relevant keyphrases
-      - duplicate and cannibalization check across Astrogen articles and service pages
-      - reason why refreshing the existing article is better than creating a new article
-    requiredValueGapArtifact:
-      - queries checked, geo/language, date, and provider/tool
-      - top competing URLs/titles/snippets or safe summaries
-      - competitor coverage patterns
-      - missing user questions or decision criteria
-      - claims/framing/promises to avoid
-      - Astrogen information-gain angle
-      - exact article sections or paragraphs that need substantive improvement
-      - whether FAQ, comparison, CTA, relatedPosts, or structured blocks are justified by the value gap
+      - operation=refresh uses the same native astrogen-article-production stages as a new article
+      - a refresh is a substantive main-content improvement backed by ownership evidence and reader value
+      - a refresh is not generic block insertion, metadata-only, relatedPosts-only, CTA-only, or internal-link-only cleanup
+    requiredStrategyInput:
+      - current CMS article id, URL, title, slug, draft/public state, matching content snapshot, and current media IDs
+      - stable taskRevision, Winning Structure namespace, and one idempotency key for this refresh revision
+      - target primary and auxiliary queries with independent search and output languages and primary device
+      - semantic-core, GSC/GA4, ownership inventory, duplicate/cannibalization, CTA route, and product bridge evidence
+      - one of eight article types and 2-4 candidate value units selected by reader problem, evidence, and sibling differentiation
+      - verified first-party evidence or concrete due-before-publication commitments
+      - explicit geoRetrievabilityRequired flag
+    winningStructureLifecycle:
+      requiredOperations:
+        - validate_task_input
+        - start_winning_structure_run
+        - get_run_status
+        - submit_run_decisions
+        - get_run_result
+      rules:
+        - validate the complete payload before starting
+        - start once and persist run_id, original input hash, status, and reused-existing-run result
+        - poll the stored run_id with bounded backoff and stop automatically on paused or terminal status
+        - submit one exact versioned pending decision only with recorded authority, then resume the same run_id
+        - high-risk ownership, consolidation, cancellation, or accepted-risk choices park only this refresh case for human review
+        - import result, effective hash, decision set version, retention, sections, added-value plans, content quality requirements, publication requirements, and artifacts before expiry
+        - old Serper may provide supporting evidence but cannot complete or bypass this lifecycle
+    reviewAndWriting:
+      - structure review verifies imported evidence, authority, section fields, 2-4 accepted value units, quality flags, and publication requirements
+      - the brief preserves section IDs, hierarchy, writer instructions, evidence, claim boundaries, examples to avoid, and review flags as typed fields
+      - writer and validator refuse work when the imported result or publication requirements are missing
+      - one bounded naturalness pass runs after draft validation without scores, model attribution, invented persona, or recursive rewriting
+      - final MC audit returns pass, revise_surface, revise_substantive, or reject_unsafe before layout
+      - selective GEO checks run only when geoRetrievabilityRequired=true; they never enforce keyword density
     outputContract:
-      - before/after change plan tied to the SERP value-gap artifact
-      - updated article body/content package or precise CMS update handoff
-      - evidence that the change adds search/user value beyond competitors
-      - validator decision that the result is not generic editorial padding
+      - durable imported Winning Structure result and retention evidence
+      - before/after change plan tied to accepted sections and value units
+      - updated article main-content package with evidence-backed reader value
+      - MC quality decision with section-linked findings
+      - authenticated Payload CMS draft refetch and child-owned before-after-diff
+      - existing cover/media IDs preserved unless an image defect was explicitly authorized
+    completionGate:
+      - one refresh revision maps to one Winning Structure run and both hashes are durable
+      - all publication requirements and accepted commitments are verified
+      - MC quality outcome is pass after humanization and before layout
+      - CMS draft update is verified by authenticated refetch
+      - existing cover/media IDs remain unchanged unless the issue explicitly authorized media work
+      - no public publish action is performed
     failureContract:
-      - unavailable SERP/evidence tooling creates or reuses one CTO-owned technical blocker
-      - ambiguous business positioning becomes a Hermes/CMO owner-direction brief
-      - no refresh task is launched when only mechanical editorial/CMS cleanup is available
+      - paused, failed, expired, or tool-blocked state parks only this refresh case with blockerClass and nextReviewAt
+      - stale decisions fetch current status and never overwrite history or create a new run
+      - expired artifacts use the already imported result or an explicitly new revision
+      - technical blockers do not trigger Telegram or freeze unrelated article, topic, audit, or growth cases
+      - no refresh is launched when only mechanical editorial/CMS cleanup is available
 
   seo_performance_loop:
     states:
@@ -229,28 +453,39 @@ workflows:
     states:
       - slot_due
       - quota_budget_checked
-      - opportunity_selected
-      - brief_created
-      - brief_validated
-      - article_written
-      - article_validated
-      - humanized
-      - layout_created
-      - layout_validated
-      - image_created
-      - cms_draft_created
-      - owner_notified
-      - monitoring_enrolled
+      - native_ready_topic_selected
+      - native_breakdown_dispatched
+      - topic_reserved
+      - article_pipeline_live
     cyclePolicy:
       concurrencyPolicy: skip_if_active
-      catchUpPolicy: skip_missed
-      automaticBackfill: false
-    parentIdempotency:
-      key: articleParentKey
-      deriveFrom: exact article title, lowercased and whitespace-normalized
-      rule: one open top-level article parent per articleParentKey
-      retryBehavior: writer, validator, image, layout, CMS, and recovery failures create bounded child issues under the canonical parent
-      duplicateParentBehavior: cancel duplicate branch when already created; otherwise reuse the canonical parent named by the DB guard
+      catchUpPolicy: enqueue_missed_with_cap
+      automaticBackfill: true
+      maxCatchUpSlotsPerRun: 3
+    nativeDispatch:
+      sourcePipeline: astrogen-topic-inventory
+      sourceStage: ready
+      operation: POST /api/cases/{topicCaseId}/breakdown
+      targetPipeline: astrogen-article-production
+      targetStage: opportunity
+      advanceSourceTo: reserved
+      maxItemsPerDispatch: 1
+      legacyIssueTreeAllowed: false
+    emptyInventory:
+      pipeline: astrogen-growth-actions
+      caseFingerprint: topic-inventory-refill:{ISO-week}
+      terminalNoSafeTopicAllowed: false
+    portfolioWipPolicy:
+      productiveWipCap: 3
+      productiveCases: nonterminal astrogen-article-production cases without unresolved blockers
+      excludedFromProductiveWip: blocked or external-wait native cases
+      rules:
+        - at most one ready topic is dispatched per normal routine execution
+        - a blocked article never freezes unrelated ready topics
+        - topic caseKey plus breakdown requestKey plus article caseKey enforce idempotency across every stage
+        - recovery resumes the same article case and stage; it never creates a duplicate parent
+        - delivered requires direct Telegram tool delivery with messageId and delivery-proof writeback; notification-contract alone is not terminal
+        - Telegram transport failure parks only the notification stage and leaves unrelated productive capacity available
     writerRecovery:
       primary: SEO Blog Article Writer (Claude)
       fallback: SEO Blog Article Writer (ChatGPT)
@@ -282,9 +517,17 @@ workflows:
             - personal life context
           rules:
             - real-looking people in a specific lived moment
-            - concrete action/context and natural micro-emotion
+            - concrete action/context and a visibly readable natural micro-emotion tied to the article meaning
             - normal generation is one image, not a three-candidate set
             - viewer/camera gaze is optional and should be used only when it fits the article
+            - call image-visual-history-get before prompt construction and compare against the latest 6-8 company-scoped fingerprints
+            - submit subjectMode=human_scene and a complete typed artDirection with narrative moment, scene archetype, setting, subject arrangement, action, emotion, visible cues, shot distance, camera angle, gaze plan, props, brand anchors, and avoid patterns
+            - calm, thoughtful, focused, or reflective alone are not emotional beats and do not pass QA without visible facial, posture, gesture, or interaction evidence
+            - preserve Astrogen style through light, restrained burgundy/wine and warm-gold accents, refined detail, and subtle esoteric signal; never require a burgundy sweater, neutral room, wooden table, laptop, notebook, or cup
+            - each concept must differ from every recent human-scene fingerprint on at least 4 of 9 axes: scene, setting, subject arrangement, action, emotion, gaze, shot distance, camera angle, and props
+            - avoid repeating the seated-at-table plus laptop/notebook/cup formula that dominates the current cover history
+            - rotate emotional beats such as uncertainty, recognition, relief, resolve, trust, tenderness, discovery, reassurance, curiosity, or anticipation according to the article; do not turn every emotion into a smile
+            - viewer-facing moments should remain occasional, approximately 1-2 of the latest 6 human-scene covers when semantically justified
         abstract_graphic:
           useFor:
             - abstract concepts
@@ -301,7 +544,15 @@ workflows:
             - refined symbolic/editorial/diagram-like composition
       imageRecovery:
         runtimeFailure: route precise plugin/provider/secret/model blocker to SEO Blog Image Runtime Executor or CTO
-        qualityFailure: regenerate with corrected art direction before CMS delivery
+        dimensionAcceptance:
+          preferredTarget: 1472x822
+          maxWidthDeviationPercent: 20
+          maxHeightDeviationPercent: 20
+          preserveOriginal: true
+          noUpscale: true
+          rule: accept after visual QA when both per-axis deviations are within tolerance; never regenerate solely for dimensions or output format
+        qualityFailure: stop after the single normal provider call and require explicit CMO recovery authorization before any new generation
+        diversityPreflight: reject a similar typed art direction before the provider call; allow one no-cost concept correction, never a paid retry loop
         cmsDeliveryGate: no CMS draft or owner notification without accepted cover image or explicit waiver
 
   article_delivery_pipeline:
@@ -312,6 +563,8 @@ workflows:
         - layout/CMS prep consumes accepted cover work product or explicit image waiver; it does not generate images
         - one corrected attempt per unclear integration contract, then precise blocker instead of schema guessing loops
         - dependency resolution clears the blocker and resumes the current child task, not duplicate parent or child tasks
+        - preferred cover target is 1472x822, but an original provider asset is accepted when visual QA passes and width and height deviations are each at most 20 percent
+        - image size or format within tolerance never triggers a second provider call, upscale, stretch, or destructive crop
     requiredArtifacts:
       - accepted brief
       - canonical draft artifact
@@ -326,6 +579,8 @@ workflows:
         - accepted cover image work product or explicit image waiver
         - authenticated Payload CMS draft/admin URL and numeric blogPosts id
         - CMS refetch proof for draft status, cover/ogImage, CTA, editorial inserts, and exactly 3 relatedPosts where suitable posts exist
+        - child-owned CMS delivery evidence and child `before-after-diff` for every CMS draft update or refresh
+        - CMO-owned parent issue document key `before-after-diff`, aggregated from the verified child handoff
         - CMO Telegram article-link notification proof
       nonTerminalEvidence:
         - ready_for_image_handoff
@@ -333,8 +588,22 @@ workflows:
         - all currently visible children are done
         - generic issue-done notification
       recoveryRule: if terminal evidence is missing, keep or return the canonical article parent to in_progress and create or reuse the next bounded child for the missing stage
+      ownershipRule:
+        - each specialist writes documents and work products only on its own assigned child/case
+        - the parent owner reads completed child outputs and writes aggregate parent documents
+        - cross-owner parent mutation is never a child completion requirement
     cmsRefetchGate:
       required: true
+      draftUpdateForPublishedArticles:
+        acceptableWhen:
+          - the task forbids direct publish and the update is a draft revision over an existing published article
+          - authenticated Payload refetch shows the edited draft content and CMS admin edit URL
+          - public live URL remains reachable when it was reachable before the update
+          - cover, ogImage, slug, metadata, canonical, noindex, relatedPosts, and unrelated fields are preserved
+          - the completion evidence explicitly says this is a draft revision, not a published live update
+          - the CMS child has its own verified `before-after-diff` document and CMO can aggregate it into the parent it owns
+        notABlocker:
+          - latest Payload refetch has _status=draft/workflowStatus=draft for the edited document when the issue asked for draft-only update
       evidence:
         - _status=draft
         - workflowStatus=draft
@@ -345,6 +614,7 @@ workflows:
         - quietCtaCount >= 1 when a CTA route exists
         - editorialInsertCount >= 1 unless explicit no-insert rationale exists
         - exactly 3 top-level relatedPosts with existing published/approved posts
+        - child-owned before-after-diff issue document exists for CMS update/refresh tasks
     failureGates:
       - writer fallback cannot proceed without blocker class and full approved brief
       - image runtime failure blocks CMS delivery until recovered or waived
@@ -353,6 +623,8 @@ workflows:
       - supported articleContent.v1 blocks must not be normalized away into plain paragraphs/lists
       - Telegram article-link notification is blocked until CMS refetch gate passes
       - Telegram article-link notification is separate from generic issue-done notification
+      - CMS update/refresh child completion is blocked only when its own before-after-diff document cannot be created or verified
+      - parent before-after aggregation is a CMO completion gate and must never be delegated back to a child that cannot mutate the parent
 
   technical_seo_finding:
     states:

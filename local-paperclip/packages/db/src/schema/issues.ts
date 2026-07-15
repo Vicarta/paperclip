@@ -101,6 +101,13 @@ export const issues = pgTable(
           and ${table.executionRunId} is not null
           and ${table.status} in ('backlog', 'todo', 'in_progress', 'in_review', 'blocked')`,
       ),
+    pipelineCaseDelegationIdx: uniqueIndex("issues_pipeline_case_delegation_uq")
+      .on(table.companyId, table.originKind, table.originId, table.originFingerprint)
+      .where(
+        sql`${table.originKind} = 'pipeline_case_delegation'
+          and ${table.originId} is not null
+          and ${table.originFingerprint} <> 'default'`,
+      ),
     activeLivenessRecoveryIncidentIdx: uniqueIndex("issues_active_liveness_recovery_incident_uq")
       .on(table.companyId, table.originKind, table.originId)
       .where(

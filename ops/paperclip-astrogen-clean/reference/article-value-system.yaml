@@ -1,0 +1,362 @@
+version: 1
+contract: astrogen-article-value
+appliesTo: astrogen-article-production
+
+selectionPolicy:
+  classifierOutput: exactly one articleType
+  selectedUnits:
+    minimum: 2
+    maximum: 4
+  chooseBy:
+    - reader problem addressed
+    - available verified evidence or concrete pre-publication commitment
+    - substantive differentiation from sibling Astrogen pages
+    - fit with the accepted Winning Structure section purpose
+  neverChooseBy:
+    - desired layout component
+    - word-count expansion
+    - keyword coverage alone
+    - availability of a universal template
+  candidateStatus: approved_strategy_input_pending_structure_mapping
+  presentationRule: A table, FAQ, checklist, quiz, tree, matrix, or callout is presentation only; the underlying evidence-backed contribution is the value unit.
+  noUniversalBlocks: true
+
+valueUnitSchema:
+  required:
+    - valueUnitId
+    - articleType
+    - generator
+    - readerProblem
+    - contribution
+    - targetIntentCovered
+    - evidenceRefsOrCommitmentRefs
+    - claimBoundaries
+    - siblingDifferentiationFingerprint
+    - acceptanceCriteria
+  constraints:
+    - valueUnitId is stable within one task revision
+    - targetIntentCovered uses the canonical Winning Structure intent vocabulary, not future section IDs
+    - after the remote result is imported, Paperclip deterministically records mappedSectionIds from matching intent_covered values
+    - when no generated section covers an approved value unit, a typed local overlay may be created from that unit only; it cannot add evidence, claims, ownership, CTA routes, or capabilities
+    - at least one verified evidence ref or due-before-publication commitment ref is required
+    - a sibling differentiation fingerprint names the compared pages and substantive difference
+    - missing evidence cannot be replaced by LLM inference
+  targetIntentVocabulary:
+    - short_answer
+    - selection_criteria_summary
+    - selection_fit
+    - expectations
+    - who_it_is_for
+    - credentials_signals
+    - experience_signals
+    - communication_style
+    - service_scope
+    - comparison_table
+    - question_formulation
+    - bounded_questions
+    - scope_limits
+    - red_flags
+    - overpromising_claims
+    - risk_management
+    - next_step
+    - profile_browsing
+    - conversion_bridge
+  mappingPolicy:
+    - map a selected value unit only to a remote section whose intent_covered intersects targetIntentCovered
+    - if several sections match, map all matching sections only when the same contribution is needed in each; otherwise choose the earliest substantive section
+    - no semantic guess from title wording alone
+    - a no-match unit requires the bounded selected-value-unit overlay or a manager-review blocker
+
+articleTypes:
+  zodiac_profile:
+    purpose: Explain variation inside a sign, date, element, modality, or trait without deterministic identity claims.
+    allowedGenerators:
+      - trait_expression_spectrum
+      - stereotype_context_boundary
+      - contextual_contrast_set
+      - anti_example_set
+      - sign_element_modality_ruler_map
+      - adjacent_profile_comparison
+      - additional_context_needed_guide
+      - bounded_self_reflection_check
+    preferredEvidence:
+      - official_documentation
+      - expert_observation
+      - anonymized_case
+    forbiddenClaims:
+      - a sign or birth date determines personality, compatibility, health, fate, or behavior
+      - an interpretive profile is scientific proof or diagnosis
+      - a generic profile is personalized certainty
+    antiRepetition:
+      - do not reuse the same stereotype-correction arc across sibling sign pages
+      - contrast examples must change the reasoning, not only the sign or planet name
+
+  product_education:
+    purpose: Help a reader decide whether an Astrogen product fits a concrete question and understand its limits.
+    allowedGenerators:
+      - situation_capability_limit_router
+      - realistic_use_scenarios
+      - approved_result_structure_preview
+      - request_to_use_journey
+      - input_quality_to_output_scope_map
+      - unknown_birth_time_action_tree
+      - product_comparison_by_reader_need
+      - question_builder
+      - unsuitable_when_boundary
+    preferredEvidence:
+      - official_documentation
+      - business_evidence
+      - support_data
+      - internal_analytics
+      - original_visual
+    forbiddenClaims:
+      - inferred or unverified product capability
+      - guaranteed outcome or prediction
+      - an interpretive product replaces medical, legal, financial, or diagnostic advice
+    antiRepetition:
+      - product comparisons must use the reader's decision criteria, not a fixed feature table
+      - scenarios and previews must come from approved product evidence, not generic examples
+
+  expert_method_selection:
+    purpose: Help a reader select an expert, method, or consultation format for a bounded request.
+    allowedGenerators:
+      - method_selection_tree
+      - expert_question_builder
+      - request_by_format_matrix
+      - specialist_quality_signals
+      - consultation_readiness_check
+      - written_call_chat_automated_comparison
+      - normal_and_excessive_data_request_guide
+      - profile_comparison_questions
+      - approved_catalog_match
+      - unsuitable_method_boundary
+    preferredEvidence:
+      - official_documentation
+      - expert_observation
+      - support_data
+      - anonymized_case
+      - business_evidence
+    forbiddenClaims:
+      - an expert can guarantee an outcome
+      - catalog presence proves competence beyond verified profile evidence
+      - a consultation replaces regulated professional advice
+    antiRepetition:
+      - selection criteria must vary by reader request and method limits
+      - catalog matches require current verified profile data and cannot be invented
+
+  life_situation_decision:
+    purpose: Reduce uncertainty around a real-life decision while separating facts, interpretations, and fears.
+    allowedGenerators:
+      - possible_causes_map
+      - conditional_action_scenarios
+      - self_check_questions
+      - request_formulation_builder
+      - bounded_observation_plan
+      - low_risk_mini_experiment
+      - hypothesis_support_and_falsifier
+      - facts_interpretations_fears_split
+      - self_product_expert_professional_route
+    preferredEvidence:
+      - expert_observation
+      - anonymized_case
+      - support_data
+      - official_documentation
+      - original_test
+    forbiddenClaims:
+      - deterministic advice based on an interpretive system
+      - medical, legal, financial, safety, or mental-health direction outside qualified scope
+      - fatalistic framing or guaranteed resolution
+    antiRepetition:
+      - the decision map must be specific to the named situation and plausible alternatives
+      - reflective exercises cannot be generic journaling filler
+
+  concept_explainer:
+    purpose: Make one concept or interpretive system understandable, bounded, and distinguishable from adjacent concepts.
+    allowedGenerators:
+      - concept_relationship_map
+      - system_comparison
+      - misconception_source_correction
+      - bounded_worked_example
+      - boundary_conditions
+      - terminology_translation_map
+      - interpretation_steps
+      - what_more_is_needed_guide
+      - sourced_origin_context
+    preferredEvidence:
+      - official_documentation
+      - expert_observation
+      - original_visual
+    forbiddenClaims:
+      - interpretive terminology is scientific proof
+      - correlation or tradition establishes causation
+      - one worked example proves a universal rule
+    antiRepetition:
+      - the concept map and worked example must answer this page's distinct confusion
+      - do not reuse the same definition-myth-CTA skeleton as the contribution
+      - sourced history is optional, specific to the concept, and included only when traceable sources add understanding
+
+  relationship_compatibility:
+    purpose: Explain interaction dimensions and reflection paths without rating people or predicting relationship fate.
+    allowedGenerators:
+      - two_perspective_context_map
+      - interaction_pattern_scenarios
+      - compatibility_dimensions
+      - communication_reflection_questions
+      - trigger_response_alternatives
+      - expectation_boundary_map
+      - context_needed_before_interpretation
+      - support_route_by_relationship_problem
+    preferredEvidence:
+      - expert_observation
+      - anonymized_case
+      - support_data
+      - official_documentation
+    forbiddenClaims:
+      - guaranteed compatibility, breakup, betrayal, marriage, or relationship outcome
+      - one chart or system determines consent, safety, or another person's intent
+      - diagnosis of a partner or relationship
+    antiRepetition:
+      - scenarios must differ by relationship question and observed interaction, not zodiac label substitution
+      - reflective questions must not imply a predetermined verdict
+
+  forecast_cycle:
+    purpose: Frame a cycle or forecast as uncertain scenarios, observation, and decision checkpoints.
+    allowedGenerators:
+      - scenario_range
+      - time_window_planning_questions
+      - signal_observation_log
+      - uncertainty_and_limits_map
+      - decision_checkpoint_plan
+      - retrospective_template
+      - controllable_and_uncontrollable_factors
+      - escalation_boundary
+    preferredEvidence:
+      - official_documentation
+      - expert_observation
+      - internal_analytics
+    forbiddenClaims:
+      - guaranteed events, dates, outcomes, or predictions
+      - fatalistic or fear-based certainty
+      - medical, legal, financial, or safety action justified by a forecast
+    antiRepetition:
+      - cycles must use distinct time windows, decisions, and observable signals
+      - generic monthly advice or date substitution is not independent value
+
+  historical_cultural_explainer:
+    purpose: Explain the history, cultural context, and evolution of a practice or idea with source boundaries.
+    allowedGenerators:
+      - sourced_timeline
+      - terminology_evolution
+      - cross_tradition_comparison
+      - myth_source_distinction
+      - influence_map
+      - primary_and_secondary_source_guide
+      - modern_usage_boundary
+      - contested_interpretation_map
+    preferredEvidence:
+      - official_documentation
+      - expert_observation
+      - original_visual
+    forbiddenClaims:
+      - tradition or age proves scientific validity
+      - contested history is settled fact
+      - unattributed statistics, quotations, or cultural claims
+    antiRepetition:
+      - the timeline and comparisons must use sources specific to the concept
+      - a generic origin story cannot be reused across traditions
+
+evidencePolicy:
+  allowedTypes:
+    - official_documentation
+    - expert_observation
+    - original_test
+    - original_visual
+    - anonymized_case
+    - support_data
+    - internal_analytics
+    - business_evidence
+    - aggregated_community_pattern
+  sourceClassification:
+    historicalAndCulturalSources: Use evidence_type=official_documentation and preserve publication, institution, date, author, claim boundaries, and contested-status metadata in the evidence record.
+  everyEvidenceRefRequires:
+    - evidence_id
+    - evidence_type
+    - title
+    - summary
+    - reader_problem
+    - source
+    - artifact_refs
+    - claim_boundaries
+    - rights_and_privacy_notes
+  temporalMetadata:
+    - observed_at when applicable
+    - publication date and author inside source metadata for historical or official material
+  commitments:
+    requiredFields:
+      - commitment_id
+      - asset_type
+      - description
+      - reader_problem
+      - value_proposition
+      - owner
+      - target_content_units
+      - validation_method
+      - acceptance_criteria
+      - due_before_publication
+    publicationRule: Any accepted due-before-publication commitment blocks readiness until delivered and verified.
+
+commitmentFallbackPolicy:
+  useOnlyWhen: No already-produced non-SERP reader-value evidence is sufficient for the selected contribution.
+  required:
+    - the commitment produces a concrete reader-facing asset inside this article
+    - the asset matches one allowed generator for the classified article type
+    - the assigned Paperclip role can actually produce it before CMS delivery
+    - acceptance criteria are observable and checked by the validator
+    - source, claim, privacy, and product-capability boundaries remain explicit
+  validExamplesByArticleType:
+    zodiac_profile:
+      - sourced variation or stereotype-boundary matrix tied to approved interpretive references
+      - contextual contrast set with explicit non-deterministic limits
+    product_education:
+      - situation-capability-limit router based only on approved product documentation
+      - approved result-structure preview or input-quality-to-output map
+    expert_method_selection:
+      - request-to-method decision matrix from verified catalog and format data
+      - specialist quality-signals guide with explicit limits and unsafe-claim checks
+    life_situation_decision:
+      - facts-interpretations-fears worksheet specific to the named decision
+      - bounded observation or low-risk reflection plan with falsifiers
+    concept_explainer:
+      - sourced concept-relationship or terminology map
+      - interpretation-steps and boundary-conditions guide tied to traceable sources
+    relationship_compatibility:
+      - two-perspective context map or communication reflection framework without verdicts
+      - expectation and boundary map tied to the named reader problem
+    forecast_cycle:
+      - uncertainty map, observation log, or decision-checkpoint plan without predictions
+      - controllable/uncontrollable factors framework for the named cycle
+    historical_cultural_explainer:
+      - sourced timeline or contested-interpretation map with publication metadata
+      - primary/secondary source guide; no commitment is allowed when traceable sources cannot be obtained
+  invalidCommitments:
+    - obtain semantic-core, ownership, GSC, CMS, SERP, plugin, or runtime access
+    - write more text, add keywords, improve SEO, add an FAQ, table, CTA, checklist, or history block
+    - ask an unspecified expert later without an assigned owner and acceptance criteria
+    - create evidence that requires unavailable private data, customer claims, or unapproved product capabilities
+    - treat an LLM inference, competitor wording, or existing page summary as original evidence
+
+nicheSafety:
+  interpretiveSystemsAreNotScientificProof: true
+  prohibited:
+    - medical claims or diagnosis
+    - legal advice
+    - financial advice or guaranteed financial outcomes
+    - deterministic personality or relationship claims
+    - fatalistic predictions
+    - invented experts, cases, observations, history, statistics, quotations, or product capabilities
+  provenanceRequiredFor:
+    - expert observations
+    - consultation patterns
+    - cases
+    - history
+    - statistics

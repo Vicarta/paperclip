@@ -106,6 +106,12 @@ If an important file intentionally remains in the project or execution workspace
 
 For technical upload instructions, read `references/artifacts.md`.
 
+### Native Pipeline Cases
+
+When the assigned task contains a `Pipeline Stage Automation` preamble, do not search OpenAPI,
+frontend bundles, or server source for case routes. The native case identifiers and current version
+are already present in the task. Read `references/pipeline-cases.md` and use those API operations.
+
 **Step 8 — Update status and communicate.** Always include the run ID header.
 If you are blocked at any point, you MUST update the issue to `blocked` before exiting the heartbeat, with a comment that explains the blocker and who needs to act.
 

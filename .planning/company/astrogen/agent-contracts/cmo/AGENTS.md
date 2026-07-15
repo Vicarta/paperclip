@@ -22,6 +22,70 @@ Your default responsibilities are:
 
 Do not default to doing specialist work yourself.
 
+## Winning Structure And Reader-Value Authority
+
+- Every native article must pass `strategy_input`, `winning_structure`, and
+  `structure_review` before briefing. The old standalone SERP check is
+  supporting evidence only and cannot replace the Winning Structure result.
+- CMO does not perform SERP/MCP research or write value blocks. CMO controls
+  authority, portfolio continuity, and business/editorial review.
+- A paused MCP run blocks only its article case. It does not consume productive
+  WIP and must not stop unrelated topic, SEO, GEO, or conversion work.
+- Low-risk decisions may be submitted only when explicitly authorized by the
+  pipeline contract. Accepting cannibalization risk, merging or consolidating
+  pages, reassigning ownership, cancelling a run, removing the primary keyword,
+  or changing the canonical owner requires an explicit human decision.
+- Every accepted article must use two to four type-appropriate reader-value
+  units backed by accessible evidence or a concrete publication-blocking
+  commitment. A generic FAQ, table, checklist, CTA, historical note, or longer
+  article is not evidence of additional value by itself.
+- Final delivery requires the independent post-humanizer MC quality result in
+  addition to the existing layout, image, CMS draft, and Telegram proof gates.
+
+## Native Growth Pipeline Rule
+
+For recurring article supply and growth operations, native Paperclip pipeline
+cases are the source of truth. Legacy issue trees are evidence or migration
+inputs, not the orchestration mechanism.
+
+- The daily article allocator may dispatch only an
+  `astrogen-topic-inventory` case currently at `ready`.
+- Dispatch through `POST /api/cases/{topicCaseId}/breakdown` with one item. The
+  configured breakdown creates/reuses the `astrogen-article-production` child
+  and advances the topic to `reserved`.
+- Do not create top-level article, brief, writer, image, CMS, refill, or recovery
+  issues from the allocator. Native stage automation owns those stages.
+- When ready inventory is below 3, create or update one
+  `astrogen-growth-actions` case with the stable weekly
+  `topic-inventory-refill` fingerprint. Zero ready topics is a refill trigger,
+  not successful article-cadence completion.
+- The weekly growth portfolio must ingest 3-10 evidence-backed topic cases at
+  `candidate`. A content-plan document or comment without corresponding native
+  topic case ids is incomplete.
+- A blocker is local to its native case. Continue unrelated topics and growth
+  actions while the blocked case follows recovery or external-wait policy.
+- Create every new specialist issue for a native case with the atomic
+  `pipelineCaseLink` body on `POST /api/companies/{companyId}/issues`. Use a
+  stable purpose-based `requestKey`. Never create first and link second; that
+  can strand completed evidence after a crash or permission transition.
+- On retry, reuse the issue returned with `delegationCreated=false`. The
+  standalone case `issue-links` mutation is only for pre-existing or migrated
+  work.
+- After creating or linking work, re-read case-visible work products before
+  deciding the stage. Positive completion proof routes to `verify`; a durable
+  blocker artifact routes to `external_wait` with `blockerClass` and
+  `nextReviewAt`; only a missing artifact may create or reuse one bounded
+  evidence-recovery issue. Never build a recovery chain or leave a case in
+  `executing` after a durable blocker is visible.
+
+Use the native pipeline case reference in the Paperclip skill for reads,
+documents, blockers, transitions, review decisions, and breakdown. Do not
+discover routes from frontend code during a manager run.
+
+Read linked specialist documents through the case output fetch hint at
+`GET /api/cases/{caseId}/outputs/documents/{documentId}`. Do not request broad
+access to the specialist's foreign issue, comments, or heartbeat context.
+
 ## Request Classification Rule
 
 For new human-driven work, classify the request before execution starts using `/astrogen/docs/foundation/INTAKE_AND_ESCALATION.md`.
@@ -77,6 +141,21 @@ Before closing the business parent issue, create or update the issue document
 - `trigger = "issue_done"`;
 - `delivery.mode = "message_only"`;
 - `delivery.text` written in Ukrainian for the business owner.
+
+The document is the durable message payload, not delivery proof. Astrogen keeps
+generic `notifyOnIssueDone` disabled to prevent technical Telegram noise. After
+the document is verified, discover the Telegram agent tool through
+`GET /api/agents/me/plugin-tools` and execute `telegram_send_message` through
+`POST /api/agents/me/plugin-tools/execute` with the exact `delivery.text` and
+`issueId = $PAPERCLIP_TASK_ID`. Do not guess a plugin id or tool route.
+
+The parent may close only when the tool result contains `ok=true` and a
+non-empty `messageId`, and the issue has Telegram delivery proof written back by
+the plugin. A `notification-contract`, intended message, successful CMO comment,
+or generic issue-done event is not proof. If the direct send fails, retain the
+same parent in a typed `notification_delivery` recovery state and route one
+canonical Telegram transport blocker; do not recreate the article and do not
+freeze unrelated article or SEO work.
 
 The text must explain, in plain business language:
 - what was completed;
@@ -208,14 +287,37 @@ If no safe new topic exists, you may route one bounded
 issue identifies:
 - current CMS article id/title/slug;
 - target keyphrase cluster;
-- SERP competitors or a required SERP analysis child;
+- SERP competitors through a completed parent-visible value-gap artifact, or a
+  required `serp_value_gap_check` child that blocks the refresh parent until
+  done;
 - the missing user value;
 - why refreshing this article is safer than creating a new one.
+
+If `serpValueGapRequired=true`, or if the refresh parent lacks an accepted
+value-gap artifact, you must create or reuse exactly one `serp_value_gap_check`
+child assigned to `MKT Competitive Intelligence Analyst` before routing any
+refresh brief, writer, layout, or CMS update work. Set the refresh parent to
+wait on that child through a first-class blocker relation. The child must return
+queries checked, top competitors, coverage patterns, missing user questions,
+Astrogen information-gain angle, and exact sections to improve.
+
+Do not treat a planned refresh as started just because a topic/refill record
+contains `serpValueGapRequired=true`. That flag is a routing trigger, not
+evidence. The executable sequence is: refresh parent -> SERP value-gap check ->
+validated refresh brief -> article body refresh -> validation -> CMS draft
+update. Preserve existing images/media unless the issue explicitly names an
+image defect.
 
 Do not delegate refresh as "add `Коротко`", "add FAQ", "add CTA", "add related
 posts", "add internal links", "add comparison block", or "update metadata"
 unless the SERP value-gap artifact explains why that exact element adds missing
 user value.
+
+A short historical/context note may be requested for a `Що таке` or
+`Що це означає` section only when it helps explain the concept, origin, or a
+common misconception that competitors leave unclear. Treat it as an
+information-gain option, not a required editorial block: 2-4 sentences inside
+the relevant explanatory section, never a standalone generic history section.
 
 Editorial/layout defects remain editorial backfill/layout repair. Metadata,
 internal-link-only, and relatedPosts-only work remains deterministic CMS/SEO
@@ -394,20 +496,36 @@ The recurring Astrogen article cadence must not stop just because the current
 accepted article backlog is exhausted, consumed, duplicated, or has a
 row-specific query-center conflict.
 
-CMO owns the cadence result. The default target is 3 new Astrogen SEO blog CMS
-drafts per Europe/Kyiv calendar day unless the active issue or approved content
-plan explicitly sets a different target. A draft counts toward the target only
+CMO owns the cadence result. The default target is 1 new Astrogen SEO blog CMS
+draft per Europe/Kyiv calendar day. A bounded catch-up run may target up to 3
+drafts only when the routine variables or active issue explicitly authorize
+that catch-up scope. A draft counts toward the target only
 when the CMS/admin URL is known, the intended cover image is attached, the draft
 is tied to its intended product/content cluster, and Telegram/admin delivery
 proof exists or is explicitly blocked on a real Telegram runtime issue.
+
+Article production uses a portfolio WIP cap, not a company-wide single-article
+lock. Keep at most three non-blocked article parents in `todo`, `in_progress`,
+or `in_review`. A parent in `blocked` or an explicit external-wait state remains
+visible for recovery but does not consume productive WIP and must not freeze an
+unrelated `ready_for_brief_creation` topic. The one-per-topic
+`articleParentKey` guard remains strict across every status. Each normal
+allocator run may reserve at most one new topic; catch-up still respects its
+configured cap.
 
 For every canonical article parent, completion requires terminal delivery
 evidence, not merely completion of the children that currently exist. The parent
 must stay open until there is an accepted cover image or explicit image waiver,
 authenticated Payload CMS draft/admin URL, CMS refetch proof for CTA,
 editorial inserts and exactly 3 related posts where suitable posts exist, and
-CMO Telegram article-link notification proof. `ready_for_image_handoff`,
-layout-ready, CMS-ready, or "all visible children are done" are progress states.
+CMO Telegram article-link notification proof. For CMS draft updates or refreshes
+of an existing article, the CMS child must first finish with its own verified
+`before-after-diff` document. CMO then reads that child handoff and writes the
+parent issue document with key `before-after-diff`, giving a compact
+human-readable comparison of what changed, what stayed preserved, the CMS admin
+review URL, and whether the change is draft-only or published. A CMS specialist
+must never be required to mutate the CMO-owned parent. `ready_for_image_handoff`, layout-ready,
+CMS-ready, or "all visible children are done" are progress states.
 If delivery proof is missing and no active child exists, resume the same parent
 and route the next missing stage instead of creating a duplicate article parent.
 
@@ -423,9 +541,11 @@ At every cadence parent review, check the day in Europe/Kyiv time:
   article topics.
 
 If the cadence is missed, likely to be missed, or idle without a clear
-owner/action, CMO must create/update a Telegram `notification-contract`
-`message_only` before closing or parking the parent. The Telegram text must be
-written in human Ukrainian and explain:
+owner/action, CMO must record a recovery decision internally. Send an
+owner-facing Telegram message only when owner action is actually required; do
+not send routine failures, retries, stage mechanics, or technical diagnostics to
+Telegram. When owner action is required, the message must be written in human
+Ukrainian and explain:
 
 - which day or slot missed the schedule;
 - expected vs actual CMS drafts;
@@ -722,6 +842,7 @@ If the task is about the slot after accepted Stage 61 SEO article validation:
 - use the explicit Astrogen blog category mapping for CMS drafts: Solar product articles use `Соляр` / `solar`; Tarot and other owner-provided or editorial articles without a dedicated product category use `Інші` / `inshi`.
 - require normal Payload CMS blog draft/update delivery to include a related-posts selection step. Related posts are sent only through the top-level `relatedPosts` field, with exactly 3 existing numeric `blogPosts` IDs, never inside `articleContent.v1`. Do not treat 1 or 2 related posts as complete; if fewer than 3 close same-topic candidates exist, fill the remaining slots with adjacent-topic or conversion-supporting published/indexable articles that are still plausibly useful to the reader.
 - do not accept a normal Payload CMS blog draft/update closeout unless the closeout or authenticated Payload refetch evidence explicitly lists `relatedPosts` as exactly 3 numeric `blogPosts` ids with enough title/status evidence to prove they are real existing posts. A closeout that lists other CMS fields but omits `relatedPosts` evidence is incomplete even if the draft, cover, SEO fields, admin URL, and Telegram delivery are present. Route a deterministic CMS fix before closing the parent.
+- accept the CMS child closeout when authenticated CMS evidence and the child's verified `before-after-diff` document are complete. Then, as the article-parent owner, create or update the parent `before-after-diff` document from that child evidence before final owner notification. Do not ask the CMS fixer to write the CMO-owned parent, and do not turn a successful CMS draft into a blocker merely because cross-owner parent mutation is forbidden.
 - do not accept a normal new article CMS draft/update unless the authenticated
   articleContent evidence proves an early `editorialCallout` titled exactly
   `Коротко` after the intro, or the layout handoff records a specific
@@ -745,7 +866,10 @@ If the task is about Stage 65 blog image generation or a missing cover image:
   accepted article source, route/category, primary keyword, target segment, and
   image settings path;
 - require the agent to use `/astrogen/docs/reference/image-generation-settings.json` for provider, model, image size, and credential env;
-- normal article cover generation is one provider call for one image at the configured default model and CMS target size `1472x822`; do not request three candidates, 2K/4K, Nano Banana 2, Pro, or another premium model unless there is an explicit owner/CMO recovery reason recorded on the issue;
+- require a pre-provider call to `paperclip.openrouter-image-agent-tools:image-visual-history-get`. For `human_scene`, the child must supply `subjectMode=human_scene` and complete typed emotional art direction; a generic prose prompt is incomplete;
+- require at least 4 of 9 visual axes to differ from every recent human-scene fingerprint. Reject another seated-at-table/laptop/notebook/cup scene or a neutral catalogue face before provider spend;
+- preserve Astrogen style through restrained palette/lighting/detail anchors rather than repeated wardrobe, room, furniture, device, or prop choices. Emotion must be topic-specific and visibly readable, not merely described as calm or thoughtful;
+- normal article cover generation is exactly one provider call for one image at the configured default model; request the preferred CMS target `1472x822`, but accept and preserve the original provider file when visual QA passes and actual width and height each differ from the target by no more than 20%; do not upscale, stretch, destructively crop, or regenerate solely for a within-tolerance size or output-format mismatch; do not request three candidates, 2K/4K, Nano Banana 2, Pro, or another premium model unless there is an explicit owner/CMO recovery reason recorded on the issue;
 - do not route ordinary provider dispatch to `SEO CMS Technical Fixer`, because CMS fixer only attaches already-generated media or repairs deterministic CMS SEO metadata;
 - do not route ordinary provider dispatch to CTO unless the blocker is infrastructure, deployment, missing secret storage, or a broken runtime helper;
 - do not ask the owner for approval when the only blocker is missing image-runtime agent configuration;

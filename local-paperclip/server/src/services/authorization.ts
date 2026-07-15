@@ -339,6 +339,7 @@ async function scopeAllows(
         ? requestedScope.targetAgentId
         : null;
   const requestedProjectId = typeof requestedScope.projectId === "string" ? requestedScope.projectId : null;
+  const requestedPipelineId = typeof requestedScope.pipelineId === "string" ? requestedScope.pipelineId : null;
   let constrained = false;
 
   const projectIds = [
@@ -349,6 +350,16 @@ async function scopeAllows(
   if (projectIds.length > 0) {
     constrained = true;
     if (!scopeIncludesId(projectIds, requestedProjectId)) return false;
+  }
+
+  const pipelineIds = [
+    ...scopeValueList(grantScope.pipelineId),
+    ...scopeValueList(grantScope.pipelineIds),
+    ...prefixedScopeValues(grantScope, "pipeline:"),
+  ];
+  if (pipelineIds.length > 0) {
+    constrained = true;
+    if (!scopeIncludesId(pipelineIds, requestedPipelineId)) return false;
   }
 
   const targetAgentIds = [
@@ -394,8 +405,9 @@ async function scopeAllows(
     if (!matchesSubtree) return false;
   }
 
-  // Unknown metadata keys do not constrain the grant. Recognized constraints
-  // return false above when they fail to match the requested assignment scope.
+  // Unknown metadata keys do not constrain the grant. Recognized project,
+  // pipeline, agent, and subtree constraints fail closed when they do not
+  // match the requested scope.
   return !constrained ? true : constrained;
 }
 

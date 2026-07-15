@@ -1,0 +1,252 @@
+version: 1
+contract: astrogen-content-quality
+appliesTo: astrogen-article-production
+
+mainContentAudit:
+  stage: mc_quality
+  runsAfter: humanize
+  runsBefore: layout
+  input:
+    - final humanized main-content artifact
+    - accepted brief and Winning Structure result
+    - selected value units with evidence or commitment refs
+    - content quality and publication requirements
+    - sibling differentiation evidence
+    - claim, privacy, and niche-safety boundaries
+  separateFrom:
+    - layout and visual polish
+    - navigation, related posts, CTA, and other supplementary content
+    - sitewide scaled-content verdicts
+  axes:
+    purposeFulfillment: The title, intent, and reader task are actually fulfilled.
+    effortAndProvenance: Observable research, analysis, comparison, examples, or deliverables are real and traceable.
+    originalContribution: The page adds evidence-backed understanding or decision support beyond a typical result.
+    depthAndLimits: Mechanisms, distinctions, uncertainty, limits, and material exceptions are covered where needed.
+    usefulness: The reader can understand, decide, prepare, compare, or take a safe next step.
+    completeness: Required Winning Structure sections, value units, and publication commitments are satisfied.
+    specificity: Claims, examples, criteria, and scenarios are concrete enough to be checked.
+    clarity: The reasoning is coherent and structure does not mask weak substance.
+    informationDensity: Repetition, filler, empty headings, generic FAQ, and SEO padding do not dominate.
+    differentiation: The page is not a sibling template with entity or keyword substitution.
+    safety: Evidence, qualifiers, privacy, product limits, and Astrogen niche boundaries are preserved.
+  outcomes:
+    pass:
+      routeTo: layout
+      requires:
+        - no blocking axis failure
+        - all evidence and commitment references resolve
+        - no unmet publication requirement
+        - selected value units are present and substantively differentiated
+    revise_surface:
+      routeTo: humanize
+      allowedWhen:
+        - substance, evidence, structure, and safety already pass
+        - findings are limited to named local prose anti-patterns
+      bounds:
+        - one targeted correction round per audited artifact
+        - only cited sentences or paragraphs may change
+        - a second revise_surface outcome is forbidden; escalate to revise_substantive or reject_unsafe
+    revise_substantive:
+      routeTo: draft
+      bounds:
+        - at most two substantive correction rounds per task revision
+        - a third substantive failure requires reject_unsafe or a manager-reviewed new task revision
+      useWhen:
+        - reader task, evidence-backed value, depth, completeness, specificity, or differentiation fails
+        - a commitment or publication requirement is incomplete
+        - correction changes claims, reasoning, examples, section purpose, or evidence use
+    reject_unsafe:
+      routeTo: cancelled
+      useWhen:
+        - fabricated evidence or product capability is present
+        - prohibited medical, legal, financial, diagnostic, deterministic, or fatalistic claims remain
+        - privacy, rights, or unauthorized ownership decisions cannot be repaired safely in scope
+  findingSchema:
+    required:
+      - outcome
+      - failedAxes
+      - sectionIds
+      - evidenceRefs
+      - observedProblem
+      - requiredCorrection
+      - blocking
+    forbidden:
+      - AI probability or percentage
+      - model attribution
+      - unsupported quality score
+      - generic rewrite request without section evidence
+
+naturalnessPolicy:
+  stage: humanize
+  purpose: Remove observed editorial stiffness without disguising authorship or changing substance.
+  broadPassesPerDraftRevision: 1
+  detectableAntiPatterns:
+    - throat-clearing or meta-commentary before the answer
+    - formulaic hedge openers and summary closers
+    - forced three-item lists used as a repeated rhythm
+    - repeated transition phrases or unnecessary connective bridges
+    - repetitive sentence openings, syntax, or paragraph lengths
+    - excessive headings that fragment a simple thought
+    - vague abstract wording where an approved concrete statement exists
+    - redundant explanation of obvious context
+    - perfectly mirrored sections that erase natural emphasis
+  preserveExactly:
+    - accepted section IDs, hierarchy, and purpose
+    - evidence, source meaning, qualifiers, and uncertainty
+    - claim and privacy boundaries
+    - selected value units and their acceptance criteria
+    - SEO locks, product links, CTA route, and publication requirements
+  prohibited:
+    - AI detection scores, percentages, confidence intervals, or model-family claims
+    - recursive detect-rewrite-detect loops
+    - invented persona, first-person experience, expert authority, emotion, case, or digression
+    - deliberate grammar errors, slang, filler, or randomness added to appear human
+    - changing facts, evidence, structure, or keyword intent to optimize a style metric
+    - copying raw source-prompt language into the article or case artifact
+  correctionRule: A revise_surface return is one finding-bounded correction, not another broad naturalness pass; it cannot repeat.
+
+geoRetrievabilityPolicy:
+  defaultEnabled: false
+  runOnlyWhen:
+    field: geoRetrievabilityRequired
+    equals: true
+    eligibleScope:
+      any:
+        - operation is refresh
+        - articleType is concept_explainer
+        - articleType is product_education
+        - articleType is historical_cultural_explainer
+  checks:
+    - question-led sections begin with a direct answer before elaboration when that improves comprehension
+    - named entities and relationships are explicit enough to resolve without hidden context
+    - a useful fragment remains accurate and understandable when retrieved with its heading
+    - pronouns and shorthand do not make a fragment ambiguous
+    - claims retain source, qualifier, time, scope, and interpretive boundaries
+    - important definitions distinguish the concept from adjacent concepts
+  evidenceInputs:
+    - final page Markdown with accepted section IDs
+    - target query and approved auxiliary query cluster
+    - imported Winning Structure evidence and competitor corpus when available
+    - named entities and source-linked factual claims already accepted for the article
+  boundedChunkReview:
+    targetWords: 220
+    allowedRangeWords: [150, 380]
+    overlapPercentRange: [10, 20]
+    rules:
+      - segmentation is an audit view and never a reason to pad or mechanically resize paragraphs
+      - review semantic coverage, entity proximity, factual specificity, local pronoun clarity, and direct-answer usefulness per chunk
+      - competitor-derived semantic seeds require an actual retained competitor corpus with source refs
+      - model-derived seeds are hypotheses, never factual evidence or required keyword quotas
+      - do not report LSI, similarity, or embedding numbers unless a reproducible external computation produced them
+  findingSchema:
+    required:
+      - sectionId
+      - readerQueryOrRetrievalNeed
+      - observedGap
+      - evidenceRefs
+      - boundedCorrection
+      - blocking
+    output: findings_only
+  prohibited:
+    - keyword-density targets
+    - term quotas or compulsory synonym lists
+    - forced FAQ or question headings
+    - rewriting every section into the same answer-first template
+    - adding unsupported entities, claims, schema, or citations
+    - treating retrievability as a ranking or citation guarantee
+    - rewriting the whole page as the audit result
+    - approximate numerical similarity presented as a measured fact
+
+trendDiscoveryContract:
+  cadence: monthly
+  owner: Chief Marketing Officer
+  purpose: Produce evidence-backed demand and market hypotheses for portfolio review, never automatic article tasks.
+  inputs:
+    - completed-period GSC and GA4 changes
+    - semantic-core and site-search demand evidence
+    - current Astrogen product, expert, and service changes
+    - search-result and competitor shifts from approved tools
+    - time-stamped public, community, or cultural signals with provenance
+    - existing topic inventory, consumed history, and active growth cases
+  hypothesisSchema:
+    required:
+      - hypothesisFingerprint
+      - signalType
+      - audienceAndReaderProblem
+      - affectedEntitiesOrQueries
+      - evidenceRefs
+      - firstObservedAt
+      - expectedHorizon
+      - businessFit
+      - confidenceBand
+      - alternativeExplanation
+      - falsifier
+      - validationNextStep
+      - expiresAt
+      - status
+    allowedStatuses:
+      - observe
+      - validate
+      - reject
+      - expired
+  rules:
+    - distinguish durable shifts, emerging signals, seasonal recurrence, and short-lived noise
+    - one source or one traffic spike is not sufficient evidence by itself
+    - current evidence is required; model memory is not a trend source
+    - hypotheses require normal topic evidence and ownership validation before entering topic inventory
+    - no hypothesis directly creates an article-production case
+    - no automatic CMS mutation, publication, image generation, or Telegram message
+
+scaledContentAuditContract:
+  cadence: monthly
+  owner: SEO Performance Analyst
+  purpose: Protect portfolio value by reviewing only deterministic near-duplicate or repeated-template candidate clusters.
+  candidateSelection:
+    deterministicFirst: true
+    signals:
+      - normalized title and heading-tree similarity
+      - main-content semantic similarity
+      - repeated section-purpose sequence
+      - repeated selected value generators and acceptance criteria
+      - same query intent or entity-substitution pattern
+      - low unique main-content ratio after boilerplate removal
+    excludeBeforeComparison:
+      - global navigation and footer
+      - standard legal or safety notices
+      - CMS chrome and metadata
+      - shared CTA, related posts, and Коротко layout components
+      - cover and decorative media treatment
+    minimumClusterSize: 2
+    auditBoundary: The LLM reviews the bounded candidate cluster and evidence packet, not the whole site by default.
+  findings:
+    assess:
+      - independent reader purpose and main-content value
+      - entity or keyword substitution without new reasoning
+      - repeated structure and semantic sequence
+      - derivative rewrite without meaningful improvement
+      - thin, padded, or nominal main content
+      - evidence, effort, and sibling differentiation
+      - whether the problem is local, template-level, section-level, or sitewide
+    recommendations:
+      - keep
+      - differentiate
+      - consolidate
+      - refresh
+      - park
+  routing:
+    targetPipeline: astrogen-growth-actions
+    findingFingerprint: scaled-content:{clusterFingerprint}:{recommendation}:{evidenceRevision}
+    requiredCaseFields:
+      - candidate URLs and cluster fingerprint
+      - deterministic similarity evidence
+      - shared components excluded
+      - observed substantive overlap
+      - recommendation and rationale
+      - evidence refs and measurement window
+      - manager and proposed specialist executor
+    rules:
+      - repeated evidence updates one native growth case
+      - consolidate and ownership-changing actions require portfolio review and authority
+      - recommendations do not directly mutate CMS or create article tasks
+      - one blocked cluster does not stop unrelated audits or growth cases
+      - absence of sufficient evidence records no-action instead of a spam accusation

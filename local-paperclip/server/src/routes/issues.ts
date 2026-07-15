@@ -162,6 +162,16 @@ import {
   normalizeWorkspaceArtifactRelativePath,
 } from "../services/workspace-artifact-registration.js";
 
+function postgresErrorCode(error: unknown) {
+  let current = error;
+  for (let depth = 0; depth < 4 && current && typeof current === "object"; depth += 1) {
+    const code = "code" in current ? (current as { code?: unknown }).code : null;
+    if (typeof code === "string") return code;
+    current = "cause" in current ? (current as { cause?: unknown }).cause : null;
+  }
+  return null;
+}
+
 const MAX_ISSUE_COMMENT_LIMIT = 500;
 const updateIssueRouteSchema = updateIssueSchema.extend({
   interrupt: z.boolean().optional(),
@@ -5528,7 +5538,11 @@ export function issueRoutes(
     assertCompanyAccess(req, companyId);
     if (await assertLowTrustControlPlaneDenied(req, res, companyId, null)) return;
     assertNoAgentHostWorkspaceCommandMutation(req, collectIssueWorkspaceCommandPaths(req.body));
-    const { watchdogDiscovery: rawWatchdogDiscovery, ...rawCreateBody } = req.body;
+    const {
+      watchdogDiscovery: rawWatchdogDiscovery,
+      pipelineCaseLink,
+      ...rawCreateBody
+    } = req.body;
     const watchdogDiscovery = normalizeWatchdogDiscovery(rawWatchdogDiscovery);
     const watchdogProductBugFollowUp = await resolveTaskWatchdogProductBugFollowUp(
       req,
@@ -5537,6 +5551,31 @@ export function issueRoutes(
       watchdogDiscovery,
     );
     if (watchdogProductBugFollowUp === false) return;
+    if (pipelineCaseLink) {
+      const linkTarget = await db
+        .select({ pipelineId: pipelineCases.pipelineId })
+        .from(pipelineCases)
+        .where(and(
+          eq(pipelineCases.id, pipelineCaseLink.caseId),
+          eq(pipelineCases.companyId, companyId),
+        ))
+        .limit(1)
+        .then((rows) => rows[0] ?? null);
+      if (!linkTarget) throw notFound("Pipeline case not found");
+      const decision = await access.decide({
+        actor: req.actor,
+        action: "pipelines:write",
+        resource: { type: "company", companyId },
+        scope: { pipelineId: linkTarget.pipelineId },
+      });
+      if (!decision.allowed) {
+        throw new HttpError(403, decision.explanation, {
+          code: "pipeline_write_forbidden",
+          reason: decision.reason,
+          pipelineId: linkTarget.pipelineId,
+        });
+      }
+    }
     const effectiveParentId = watchdogProductBugFollowUp ? null : rawCreateBody.parentId;
     let createParent: Awaited<ReturnType<typeof svc.getById>> | null = null;
     if (req.actor.type === "agent" && !effectiveParentId && !watchdogProductBugFollowUp && !isTaskBridgeKeyActor(req)) {
@@ -5631,16 +5670,45 @@ export function issueRoutes(
       projectId: createBody.projectId ?? null,
       executionPolicy,
     }, actor);
-    const issue = await svc.create(companyId, {
-      ...createBody,
-      ...(taskBridgeOriginForActor(req) ?? {}),
-      id: issueId,
-      executionPolicy,
-      ...(sourceTrust ? { sourceTrust } : {}),
-      createdByAgentId: actor.agentId,
-      createdByUserId: actor.actorType === "user" ? actor.actorId : null,
-      watchdogActorRunId: actor.runId,
-    });
+    let issue;
+    let created = true;
+    try {
+      issue = await svc.create(companyId, {
+        ...createBody,
+        ...(taskBridgeOriginForActor(req) ?? {}),
+        id: issueId,
+        executionPolicy,
+        ...(sourceTrust ? { sourceTrust } : {}),
+        createdByAgentId: actor.agentId,
+        createdByUserId: actor.actorType === "user" ? actor.actorId : null,
+        watchdogActorRunId: actor.runId,
+        ...(pipelineCaseLink
+          ? {
+            pipelineCaseLink: {
+              ...pipelineCaseLink,
+              createdByRunId: actor.runId,
+            },
+          }
+          : {}),
+      });
+    } catch (error) {
+      const pgCode = postgresErrorCode(error);
+      if (!pipelineCaseLink || pgCode !== "23505") throw error;
+      const existingId = await db
+        .select({ id: issueRows.id })
+        .from(issueRows)
+        .where(and(
+          eq(issueRows.companyId, companyId),
+          eq(issueRows.originKind, "pipeline_case_delegation"),
+          eq(issueRows.originId, pipelineCaseLink.caseId),
+          eq(issueRows.originFingerprint, pipelineCaseLink.requestKey),
+        ))
+        .limit(1)
+        .then((rows) => rows[0]?.id ?? null);
+      issue = existingId ? await svc.getById(existingId) : null;
+      if (!issue) throw error;
+      created = false;
+    }
     await issueReferencesSvc.syncIssue(issue.id);
     await externalObjectsSvc.syncIssueSafely(issue.id);
     const referenceSummary = await issueReferencesSvc.listIssueReferenceSummary(issue.id);
@@ -5649,7 +5717,7 @@ export function issueRoutes(
       referenceSummary,
     );
 
-    await logActivity(db, {
+    if (created) await logActivity(db, {
       companyId,
       actorType: actor.actorType,
       actorId: actor.actorId,
@@ -5683,7 +5751,7 @@ export function issueRoutes(
       },
     });
 
-    if (executionPolicy?.monitor) {
+    if (created && executionPolicy?.monitor) {
       await logActivity(db, {
         companyId,
         actorType: actor.actorType,
@@ -5706,7 +5774,7 @@ export function issueRoutes(
       });
     }
 
-    if (issue.watchdog) {
+    if (created && issue.watchdog) {
       await logActivity(db, {
         companyId,
         actorType: actor.actorType,
@@ -5725,7 +5793,7 @@ export function issueRoutes(
       });
     }
 
-    void queueIssueAssignmentWakeup({
+    if (created) void queueIssueAssignmentWakeup({
       heartbeat,
       issue,
       reason: "issue_assigned",
@@ -5734,10 +5802,11 @@ export function issueRoutes(
       requestedByActorType: actor.actorType,
       requestedByActorId: actor.actorId,
     });
-    await queueTaskWatchdogEvaluation(issue, actor.runId);
+    if (created) await queueTaskWatchdogEvaluation(issue, actor.runId);
 
-    res.status(201).json({
+    res.status(created ? 201 : 200).json({
       ...issue,
+      ...(pipelineCaseLink ? { delegationCreated: created } : {}),
       relatedWork: referenceSummary,
       referencedIssueIdentifiers: referenceSummary.outbound.map((item) => item.issue.identifier ?? item.issue.id),
     });

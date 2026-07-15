@@ -883,6 +883,20 @@
       "when": 1782840000000,
       "tag": "0125_cost_ledger_retention_hardening",
       "breakpoints": true
+    },
+    {
+      "idx": 126,
+      "version": "7",
+      "when": 1784024209692,
+      "tag": "0126_environment_instance_scope_convergence",
+      "breakpoints": true
+    },
+    {
+      "idx": 127,
+      "version": "7",
+      "when": 1784031000000,
+      "tag": "0127_pipeline_case_atomic_delegation",
+      "breakpoints": true
     }
   ]
 }

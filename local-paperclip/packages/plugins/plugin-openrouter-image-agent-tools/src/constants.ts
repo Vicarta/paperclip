@@ -1,12 +1,14 @@
 export const PLUGIN_ID = "paperclip.openrouter-image-agent-tools";
-export const PLUGIN_VERSION = "0.1.0";
+export const PLUGIN_VERSION = "0.2.0";
 
 export const TOOL_NAMES = {
   generateImage: "generate-image",
+  getVisualHistory: "image-visual-history-get",
 } as const;
 
 export const DEFAULT_OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 export const DEFAULT_OPENROUTER_IMAGE_MODEL = "google/gemini-2.5-flash-image";
+export const DEFAULT_TARGET_DIMENSION_TOLERANCE_PERCENT = 20;
 
 export const OPENROUTER_COST_PROVIDER = "openrouter";
 export const OPENROUTER_COST_BILLING_TYPE = "metered_api";

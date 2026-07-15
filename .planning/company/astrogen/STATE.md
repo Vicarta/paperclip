@@ -124,6 +124,28 @@ Current phase note: Phase 40 foundation is applied and Phase 41 activation passe
 
 ## Roadmap Evolution
 
+- Phase 47 added: Winning Structure And Evidence-Backed Article Value. It upgrades the parked four-operation MCP adapter, makes Winning Structure the article ownership/value source of truth, introduces an eight-type Astrogen value system, adds a post-humanizer MC quality gate, and keeps Trend Discovery, selective GEO checks, and scaled-content auditing outside the normal per-article hot path.
+- 2026-07-15: Phase 47 completed on clean Astrogen. `winning-structure-mcp`
+  v0.2 exposes five verified private tools with durable result import and
+  provider cost evidence. Native article cases now carry evidence/value units,
+  decision state and MC-quality gates. Refresh canary case
+  `f58bf6a8-0d48-439f-9534-fe33020c7a16` delivered CMS draft 123 while
+  preserving media 176; new-article case
+  `f2d24183-891e-4767-b84d-6c5181b46030` delivered CMS draft 126 with one
+  accepted 1344x768 image. Neither was published. The clean app runs
+  `paperclip-app:v2026.626.0-vicarta.67-email-contract-20260715T0148Z`.
+  CTO task AST-373 sent the backed-up change report by email with idempotent
+  delivery proof and cost accounting.
+- Phase 46 added: Autonomous Growth Execution Kernel. Confirmed live root causes include zero native pipeline cases, a global one-open-article lock, cross-owner parent-document deadlock after successful CMS draft creation, repeated canonical SEO blockers, and leadership routines measuring task hygiene instead of growth-output continuity.
+- 2026-07-14: Phase 46 Wave 1 and leadership-control source/live changes applied. Backup: `/home/paperclip/backups/phase46-autonomy-20260713T212152Z`. AST-217/AST-182 resumed from existing CMS draft 124 without duplicate content or image work; direct Telegram delivery completed with messageId `1258`. Article allocator revision 9 now uses productive WIP 3 and blocker isolation. Daily leadership triage revision 3, weekly CMO portfolio revision 2, and weekly CEO direction revision 3 are active and an idempotent API sync reports no drift. Telegram proactive watches remain paused.
+- 2026-07-14: Phase 46 Wave 3 completed on clean Astrogen. Three native
+  Paperclip pipelines are live and idempotently reconciled. The AST-228 canary
+  reused the existing 1344x768 image under the per-axis 20% tolerance policy,
+  created CMS draft 125, completed CMO delivery with Telegram message 1264, and
+  consumed its topic inventory case. Source fixes include instance-environment
+  schema convergence, native pipeline case skill guidance, stage-owner recovery,
+  pipeline-scoped permissions, and deterministic bundled-plugin Docker builds.
+
 - Phase 15 executed with rollback: Paperclip Server Release Update.
 - Phase 16 executed: Paperclip Plugin Compatibility Upgrade staging gate and production cutover.
 - Phase 17 first pass executed: Plugin Standardization And Secrets Vault Migration.
@@ -151,6 +173,7 @@ Current phase note: Phase 40 foundation is applied and Phase 41 activation passe
 - 2026-07-08: Phase 44 executed on clean Astrogen. Missing agent-scoped bindings for Payload CMS, GSC/GA4 MCP, and CrawlObserver were restored for CMO/CTO/SEO evidence agents. The clean app now runs `paperclip-app:v2026.626.0-vicarta.49-portal-semantic-core-20260708T1555Z`, restoring private `/api/portal/companies/astrogen/semantic-core...` routes over existing plugin entity inventory. Live routine revisions were updated so `no-safe-topic` triggers `topic_inventory_refill` instead of closing article cadence as done. CMO, SEO Blog Content Strategist, and SEO Blog Content Plan Validator live AGENTS.md files now carry the Phase 44 topic refill/validation contract.
 - 2026-07-08: Weekly SEO/GEO email delivery gate restored for clean Astrogen. `Weekly Astrogen SEO/GEO action cycle` now treats the detailed email report as mandatory when `paperclip.seo-performance-loop` reports configured email transport: the routine must call `seo-weekly-report-plan-get`, send through `seo-detailed-report-email-send`, and record delivery proof before `done`, or link a CTO-owned email transport blocker. Internal comments/documents are fallback evidence only when email transport is not ready.
 - 2026-07-08: Clean Astrogen image generation cost policy changed. Normal blog cover generation now uses one provider call for one image, default model `google/gemini-2.5-flash-image`, CMS target `1472x822`, `candidateCount=1`/`n=1`, and no premium `google/gemini-3.1-flash-image`/Nano Banana 2 override unless an explicit owner/CMO recovery reason is recorded on the issue. Live clean plugin config and `SEO Blog Image Runtime Executor` instructions were updated accordingly.
+- 2026-07-14: Human-cover similarity and weak-emotion prevention moved into the image plugin. Plugin `paperclip.openrouter-image-agent-tools` v0.2.0 requires typed art direction for `human_scene`, reads company-scoped history, and rejects a proposal before the paid call when it differs from any recent fingerprint on fewer than 4 of 9 axes. Six reviewed covers seed the live history. Negative live preflight rejected missing art direction and an AST-235 duplicate while cost events stayed `513 -> 513`. Current image is `.55-image-emotion-diversity`; `.54-email-developer-handoff` is rollback.
 - 2026-07-09: Phase 14 was reapplied to clean Astrogen runtime. `paperclip.serper-agent-tools` is now active with company-scoped Serper secret and cost accounting, `Astrogen article slot allocator` requires a SERP value-gap gate before brief creation, and the clean live CMO/content/competitive/brief/writer/validator contracts carry the Phase 14 handoff rules. Backup: `/home/paperclip/backups/astrogen-clean-phase14-serp-value-gap/paperclip-20260709-081857.dump`.
 - 2026-07-09: Phase 45 executed: SERP Value-Gap Content Refresh. Existing-article `content_refresh` now means relevant keyphrase and SERP value-gap body/content improvement, not mechanical insertion of editorial blocks, FAQ, CTA, relatedPosts, metadata, or internal links. Clean live AGENTS.md files for CMO, SEO Blog Content Strategist, SEO Blog Content Plan Validator, MKT Competitive Intelligence Analyst, MKT Blog Brief Strategist, SEO Blog Article Writer, SEO Blog Article Validator, and SEO Performance Analyst carry Phase 45 rules. Clean live routine revisions are now `Astrogen article slot allocator` revision 6 and `Weekly Astrogen SEO/GEO action cycle` revision 8.
 
@@ -159,8 +182,7 @@ Current phase note: Phase 40 foundation is applied and Phase 41 activation passe
 - Rebuild a compact Astrogen roadmap from the existing conversation history and Paperclip issues.
 - Keep monitoring the Phase 41 clean SEO/release activation set. Latest successful routine issues: AST-9 daily evidence, AST-10 GSC indexing audit, AST-12 weekly SEO/GEO action cycle, AST-6/AST-7 release check. Backlog outputs: AST-11 indexing follow-up and AST-13 CTR opportunity.
 - Keep old Docker-level Astrogen offline unless an explicit rollback/recovery decision is made. Backup before Docker stop: `/home/paperclip/backups/old-live-before-docker-stop-20260702T204340Z.dump`; state capture: `/home/paperclip/backups/old-astrogen-before-docker-stop-20260702T204340Z.txt`.
-- Keep the article slot allocator paused until a bounded article-to-CMS dry run passes and article cadence config is intentionally enabled.
-- Execute Phase 44 before treating article cadence as fully reliable: add topic inventory refill, connect `no-safe-topic` to refill/blocker handoff, and verify evidence plugin bindings for SEO content agents.
+- Complete Phase 46 Wave 4: add deterministic scheduler/liveness/WIP/blocker-age/outcome-SLO checks and feed native pipeline event/retry evidence into the weekly self-improvement cycle. Wave 3 native pipeline reconciliation and the AST-228 canary completed on 2026-07-14 with CMS draft 125, Telegram proof 1264, article `delivered`, topic `consumed`, and no repeated image provider call.
 - Revisit LLM routine context efficiency after several normal scheduled cycles. This is not a current cost blocker because Codex is subscription-backed, but it remains a reliability/efficiency follow-up in `.planning/company/astrogen/todos/pending/2026-07-02-review-llm-routine-context-efficiency.md`.
 - Keep Semantic Core MCP, DataForSEO, Serper, Exa, Collaborator, Bright Data, paid ads, and social parked until explicit packaging/access/budget gates pass.
 - Keep future commits scoped and documented.

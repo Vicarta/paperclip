@@ -6,4 +6,4 @@ After=docker.service
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/docker buildx prune --force --keep-storage 10GB --filter until=168h
+ExecStart=/usr/bin/docker buildx prune --force --reserved-space 10GB --filter until=168h
