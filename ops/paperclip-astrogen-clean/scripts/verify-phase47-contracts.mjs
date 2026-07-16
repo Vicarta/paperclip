@@ -77,6 +77,8 @@ for (const marker of [
   "parses as JSON",
   "targetIntentCovered",
   "Do not write targetSectionIds",
+  "Every reader_value_evidence entry must contain",
+  "Never use legacy aliases",
 ]) {
   requireValue(
     article.stageAutomation?.strategy_input?.instructions?.includes(marker),
@@ -90,6 +92,14 @@ requireValue(
 requireValue(
   article.stageAutomation?.winning_structure?.instructions?.includes("pass that exact object unchanged"),
   "Winning Structure must consume the exact durable payload",
+);
+requireValue(
+  article.stageAutomation?.winning_structure?.instructions?.includes("validation_source=remote_mcp"),
+  "Winning Structure must require remote MCP validation proof",
+);
+requireValue(
+  article.stageAutomation?.winning_structure?.instructions?.includes("validation_issues fingerprint"),
+  "Winning Structure must suppress unchanged pre-start validation retry loops",
 );
 requireValue(
   article.stageAutomation?.winning_structure?.instructions?.includes("paperclip_normalization_from_selected_value_unit"),

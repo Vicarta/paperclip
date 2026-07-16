@@ -330,6 +330,26 @@ describe("plugin-winning-structure-mcp-agent-tools", () => {
     expect(result.providerCost).toBeNull();
   });
 
+  it("preserves addressable remote validation errors instead of reporting a local success", () => {
+    const structuredContent = {
+      valid: false,
+      errors: ["business_context.reader_value_evidence.0.evidence_id: Field required"],
+      validation_issues: [{
+        path: "business_context.reader_value_evidence.0.evidence_id",
+        code: "missing",
+        message: "Field required",
+      }],
+      task_input_contract_version: "winning-structure-task-input-v1.1",
+    };
+
+    const result = normalizeWinningStructureToolResult({ structuredContent });
+    const summary = JSON.parse(result.content) as Record<string, unknown>;
+
+    expect(summary.classification).toMatchObject({ state: "validation_error", retryable: false });
+    expect(summary.validation_issues).toEqual(structuredContent.validation_issues);
+    expect(result.data.structuredContent).toBe(structuredContent);
+  });
+
   it("classifies stale and conflicting decision responses as non-retryable", () => {
     expect(
       classifyWinningStructureResult({

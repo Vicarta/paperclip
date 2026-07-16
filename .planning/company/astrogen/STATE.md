@@ -124,6 +124,12 @@ Current phase note: Clean Astrogen runs native article, topic, growth-action, an
 
 ## Roadmap Evolution
 
+- 2026-07-16: Phase 47.1 started after a real native article case repeatedly
+  cycled because the deployed adapter substituted local validation success for
+  remote MCP validation. The repair makes remote validation authoritative,
+  returns typed error paths, restores missing plugin activation and service
+  supervision, and resumes the existing case only after a live plugin smoke.
+  Current remote run: `wsrun_20260716120612098654_07b5d4ca8f`.
 - Phase 47 added: Winning Structure And Evidence-Backed Article Value. It upgrades the parked four-operation MCP adapter, makes Winning Structure the article ownership/value source of truth, introduces an eight-type Astrogen value system, adds a post-humanizer MC quality gate, and keeps Trend Discovery, selective GEO checks, and scaled-content auditing outside the normal per-article hot path.
 - 2026-07-15: Phase 47 completed on clean Astrogen. `winning-structure-mcp`
   v0.2 exposes five verified private tools with durable result import and

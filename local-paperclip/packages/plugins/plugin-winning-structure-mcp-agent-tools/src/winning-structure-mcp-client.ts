@@ -278,10 +278,13 @@ export function classifyWinningStructureResult(
   const status = readNonEmptyString(payload?.status);
   const errors = readStringArray(payload?.errors);
   const singleError = readNonEmptyString(payload?.error);
+  const valid = payload?.valid;
   if (singleError) errors.push(singleError);
 
   let state: WinningStructureResultClassification["state"] = "unknown";
-  if (errors.some((error) => STALE_DECISION_ERRORS.has(error))) {
+  if (valid === false) {
+    state = "validation_error";
+  } else if (errors.some((error) => STALE_DECISION_ERRORS.has(error))) {
     state = "stale_decision";
   } else if (errors.includes("decision_version_already_resolved_with_different_response")) {
     state = "decision_conflict";
@@ -332,6 +335,7 @@ function compactSummary(
   const arrayKeys = [
     "errors",
     "warnings",
+    "validation_issues",
     "human_review_reasons",
     "quality_flags",
     "decision_requests",

@@ -7,6 +7,11 @@ Thin Paperclip adapter for a Winning Structure MCP server.
 This plugin lets Paperclip agents call a Winning Structure MCP endpoint without
 exposing endpoint credentials to agents, prompts, UI output, or code.
 
+`validate-task-input` is always executed by the remote MCP. The plugin may reject
+only malformed transport envelopes locally; it never substitutes a local success
+for remote task-input validation. Remote validation failures retain addressable
+field paths in `validation_issues` for deterministic payload repair.
+
 The MCP server is expected to produce SEO structure recommendation artifacts,
 not publishable content.
 

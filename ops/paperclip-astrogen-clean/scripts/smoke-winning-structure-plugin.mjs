@@ -34,6 +34,23 @@ function q(value) {
   return `'${String(value).replaceAll("'", "''")}'`;
 }
 
+function parseJsonContent(value) {
+  if (typeof value === "string") {
+    try {
+      return JSON.parse(value);
+    } catch {
+      return null;
+    }
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const parsed = parseJsonContent(item?.text ?? item?.content ?? item);
+      if (parsed) return parsed;
+    }
+  }
+  return value && typeof value === "object" ? value : null;
+}
+
 async function request(token, method, path, body) {
   const response = await fetch(`${API_BASE}${path}`, {
     method,
@@ -151,18 +168,28 @@ try {
     ?? execution?.data?.data?.structuredContent
     ?? execution?.structuredContent
     ?? null;
-  const compact = typeof execution?.content === "string"
-    ? JSON.parse(execution.content)
-    : {};
-  const validation = structured ?? compact;
+  const validation = structured
+    ?? parseJsonContent(execution?.data?.content)
+    ?? parseJsonContent(execution?.content)
+    ?? {};
+  if (execution?.isError === true || validation?.valid !== true) {
+    throw new Error(`Winning Structure validation smoke failed: ${JSON.stringify(validation).slice(0, 1200)}`);
+  }
+  if (validation.validation_source !== "remote_mcp") {
+    throw new Error(`Winning Structure validation did not prove remote_mcp: ${JSON.stringify(validation).slice(0, 1200)}`);
+  }
+  if (typeof validation.input_hash !== "string" || !validation.input_hash) {
+    throw new Error("Winning Structure validation did not return input_hash");
+  }
   console.log(JSON.stringify({
-    ok: execution?.isError !== true,
+    ok: true,
     toolCount: names.length,
     tools: names,
     validationValid: validation?.valid ?? null,
     errorCount: Array.isArray(validation?.errors) ? validation.errors.length : 0,
     warningCount: Array.isArray(validation?.warnings) ? validation.warnings.length : 0,
     inputHashPresent: typeof validation?.input_hash === "string" && validation.input_hash.length > 0,
+    validationSource: validation.validation_source,
     responseShape: {
       top: Object.keys(result ?? {}).sort(),
       execution: Object.keys(execution ?? {}).sort(),

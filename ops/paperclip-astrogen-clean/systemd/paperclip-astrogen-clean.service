@@ -1,0 +1,16 @@
+[Unit]
+Description=Paperclip Astrogen Clean compose stack
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+PartOf=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/paperclip/apps/paperclip-astrogen-clean
+ExecStart=/usr/bin/docker compose -f /home/paperclip/apps/paperclip-astrogen-clean/docker-compose.yml -p paperclip-astrogen-clean up -d --remove-orphans
+ExecStop=/usr/bin/docker compose -f /home/paperclip/apps/paperclip-astrogen-clean/docker-compose.yml -p paperclip-astrogen-clean stop
+RemainAfterExit=yes
+
+[Install]
+WantedBy=docker.service

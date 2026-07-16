@@ -8,6 +8,9 @@ const DB_CONTAINER = "paperclip-astrogen-clean-db-1";
 const APP_CONTAINER = "paperclip-astrogen-clean-app-1";
 const MCP_CONTAINER = "winning-structure-mcp";
 const PLUGIN_KEY = "paperclip.winning-structure-mcp-agent-tools";
+const PLUGIN_PACKAGE_NAME = "@paperclipai/plugin-winning-structure-mcp-agent-tools";
+const PLUGIN_PACKAGE_PATH = "/app/packages/plugins/plugin-winning-structure-mcp-agent-tools";
+const PLUGIN_INSTALL_ORDER = 130;
 const SECRET_KEY = "winning-structure-mcp-token";
 const MCP_URL = "http://100.98.5.50:8000/mcp";
 const CLIENT_KEY = "astrogen-ukraine";
@@ -105,6 +108,47 @@ function backupDatabase() {
   return path;
 }
 
+function readPluginPackageVersion() {
+  return docker([
+    "exec", APP_CONTAINER, "node", "-e",
+    `process.stdout.write(require(${JSON.stringify(`${PLUGIN_PACKAGE_PATH}/package.json`)}).version || "0.0.0")`,
+  ]);
+}
+
+function readPluginManifest() {
+  const source = `import(${JSON.stringify(`file://${PLUGIN_PACKAGE_PATH}/dist/manifest.js`)}).then((module)=>process.stdout.write(JSON.stringify(module.default||module))).catch((error)=>{process.stderr.write(error.stack||String(error));process.exit(1);})`;
+  return JSON.parse(docker(["exec", APP_CONTAINER, "node", "-e", source]));
+}
+
+function ensurePluginInstalled() {
+  const manifest = readPluginManifest();
+  const proposedPluginId = randomUUID();
+  const version = readPluginPackageVersion();
+  return psql(`
+    insert into plugins (
+      id, plugin_key, package_name, package_path, version, api_version,
+      categories, manifest_json, status, install_order, last_error, updated_at
+    ) values (
+      ${qUuid(proposedPluginId)}, ${q(PLUGIN_KEY)}, ${q(PLUGIN_PACKAGE_NAME)},
+      ${q(PLUGIN_PACKAGE_PATH)}, ${q(version)}, ${Number(manifest.apiVersion || 1)},
+      ${qJson(manifest.categories || [])}, ${qJson(manifest)}, 'ready',
+      ${PLUGIN_INSTALL_ORDER}, NULL, now()
+    )
+    on conflict (plugin_key) do update set
+      package_name=excluded.package_name,
+      package_path=excluded.package_path,
+      version=excluded.version,
+      api_version=excluded.api_version,
+      categories=excluded.categories,
+      manifest_json=excluded.manifest_json,
+      status='ready',
+      install_order=excluded.install_order,
+      last_error=NULL,
+      updated_at=now()
+    returning id;
+  `).trim();
+}
+
 function main() {
   const backupPath = backupDatabase();
   const token = readMcpToken();
@@ -156,8 +200,7 @@ function main() {
       revoked_at=NULL;
   `);
 
-  const pluginId = psql(`select id from plugins where plugin_key=${q(PLUGIN_KEY)};`).trim();
-  if (!pluginId) throw new Error(`Plugin is not installed: ${PLUGIN_KEY}`);
+  const pluginId = ensurePluginInstalled();
   const settings = {
     winningStructureMcpTokenSecretRef: secretId,
     winningStructureMcpUrl: MCP_URL,
