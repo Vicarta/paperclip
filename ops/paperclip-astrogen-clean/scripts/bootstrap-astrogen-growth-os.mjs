@@ -330,6 +330,13 @@ Source of truth:
 - The scheduled allocator is the only normal dispatcher for a topic in stage \`ready\`. A ready-stage automation must not auto-reserve topics.
 - Native article stage automations own SERP check, brief, Claude draft, validation, humanizing, layout, one-call image generation, CMS draft, and CMO delivery.
 
+Native case inventory read path:
+- Resolve pipeline UUIDs through \`GET /api/companies/{companyId}/pipelines\`; never put a pipeline key into a \`pipelineId\` route.
+- Read ready topics through \`GET /api/pipelines/{topicPipelineId}/cases?stageKey=ready&terminal=false&limit=10&offset=0\`.
+- Read open article WIP through \`GET /api/pipelines/{articlePipelineId}/cases?terminal=false&limit=10&offset=0\` and classify productive versus blocked from returned case/work evidence.
+- Find the canonical refill through exact \`caseKey\` on \`GET /api/pipelines/{growthPipelineId}/cases?caseKey={urlEncodedCaseKey}&terminal=false&limit=10\`.
+- Do not probe generic \`/api/cases\`, \`/api/pipeline-cases\`, or \`/api/pipelines/{pipelineKey}/cases\` aliases. A failure caused by a key in a UUID route is a caller-contract error, not a platform blocker.
+
 Capacity and selection:
 - Target one new CMS draft per Europe/Kiev day. Explicit article-only catch-up is bounded to 3 slots per run.
 - Productive WIP cap is 3 article cases without an unresolved blocker. Blocked or external-wait cases do not consume productive WIP and never freeze a different topic.
@@ -1291,6 +1298,7 @@ function agentSpecificInstructions(agent) {
 - Create every new specialist issue for a native case with \`pipelineCaseLink.caseId\` and a stable purpose-based \`pipelineCaseLink.requestKey\` on the issue-create request. This atomically creates the issue and its typed work link. The standalone issue-link route is only for pre-existing or migrated work.
 - After creating or linking work, re-read case-visible work products before deciding the stage. Positive completion proof routes to verify; a durable blocker artifact routes to external_wait with blockerClass and nextReviewAt; only a missing artifact may create or reuse one bounded evidence-recovery issue. Never build a recovery chain or leave a case in executing after a durable blocker is visible.
 - \`astrogen-topic-inventory\` and \`astrogen-article-production\` cases are the source of truth. Do not create article parent/stage/recovery issue trees for recurring cadence.
+- For routine inventory reads, resolve IDs with \`GET /api/companies/{companyId}/pipelines\`, then call the bounded \`GET /api/pipelines/{pipelineId}/cases?stageKey={stageKey}&terminal=false&limit=10&offset=0\` route. Use exact \`caseKey\` for canonical refill lookup. Never guess generic case-list aliases or put a pipeline key into the UUID path.
 - The scheduled allocator selects at most one topic at \`ready\` and calls \`POST /api/cases/{topicCaseId}/breakdown\` with one item. Native breakdown creates/reuses the article child at \`opportunity\` and advances the topic to \`reserved\`.
 - The ready stage has no on-enter automation. Never reserve a topic merely because validation moved it to ready; only the scheduled allocator dispatches capacity.
 - Native article stage automations own SERP check, brief, Claude draft, validation, humanizing, layout, one-call image generation, CMS draft, and CMO delivery. Recovery resumes the same case and stage.

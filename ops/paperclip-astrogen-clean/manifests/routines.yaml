@@ -112,6 +112,12 @@ routines:
         - only the scheduled allocator dispatches a ready topic; ready-stage automation must not auto-reserve it
         - the allocator calls native case breakdown once to create or reuse one article case and atomically advance the topic to reserved
         - pipeline stage automation owns specialist dispatch, typed transitions, recovery, and completion evidence
+      nativeCaseInventory:
+        - resolve pipeline UUIDs with GET /api/companies/{companyId}/pipelines; never put a pipeline key into a pipelineId route
+        - list ready topics with GET /api/pipelines/{topicPipelineId}/cases?stageKey=ready&terminal=false&limit=10&offset=0
+        - list open article WIP with GET /api/pipelines/{articlePipelineId}/cases?terminal=false&limit=10&offset=0 and classify productive versus blocked from returned case/work evidence
+        - find a canonical refill with exact caseKey through GET /api/pipelines/{growthPipelineId}/cases?caseKey={urlEncodedCaseKey}&terminal=false&limit=10
+        - generic /api/cases and guessed /api/pipelines/{pipelineKey}/cases aliases are forbidden; a failed guessed alias is a caller-contract error, not a platform blocker
       activationMode:
         - target 1 new CMS draft per Europe/Kiev day
         - schedule daily at 10:00 Europe/Kiev

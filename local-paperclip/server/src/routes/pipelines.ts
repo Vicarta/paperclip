@@ -84,6 +84,7 @@ import {
 
 /** Per-stage instructions document keys look like `stage-instructions:{stageId}`. */
 const STAGE_INSTRUCTIONS_PREFIX = "stage-instructions:";
+const PIPELINE_CASE_LIST_MAX_LIMIT = 100;
 type PipelineRouteDb = Db | Parameters<Parameters<Db["transaction"]>[0]>[0];
 
 const stageKindSchema = z.enum(["open", "working", "review", "done", "cancelled"]);
@@ -1552,12 +1553,18 @@ export function pipelineRoutes(db: Db, options: Parameters<typeof pipelineServic
     const companyId = await assertPipelineAccess(db, req, pipelineId);
     const stageKey = typeof req.query.stageKey === "string" ? req.query.stageKey : undefined;
     const q = typeof req.query.q === "string" ? req.query.q : undefined;
+    const caseKey = typeof req.query.caseKey === "string" ? req.query.caseKey.trim() : undefined;
     const terminal = req.query.terminal === "true" ? true : req.query.terminal === "false" ? false : undefined;
     const includeRetired = req.query.includeRetired === "true";
     const parentCaseId = typeof req.query.parentCaseId === "string" ? req.query.parentCaseId : undefined;
+    const requestedLimit = parseOptionalNonNegativeInteger(req.query.limit, "limit");
+    const offset = parseOptionalNonNegativeInteger(req.query.offset, "offset") ?? 0;
+    if (requestedLimit === 0) throw badRequest("limit must be a positive integer");
+    const limit = requestedLimit === null ? null : Math.min(requestedLimit, PIPELINE_CASE_LIST_MAX_LIMIT);
+    if (caseKey && caseKey.length > 1_024) throw badRequest("caseKey is too long");
     const parentCase = alias(pipelineCases, "parent_case");
     const parentPipeline = alias(pipelines, "parent_pipeline");
-    const rows = await db
+    const query = db
       .select({
         case: pipelineCases,
         stage: pipelineStages,
@@ -1587,12 +1594,16 @@ export function pipelineRoutes(db: Db, options: Parameters<typeof pipelineServic
         eq(pipelineCases.companyId, companyId),
         eq(pipelineCases.pipelineId, pipelineId),
         stageKey ? eq(pipelineStages.key, stageKey) : undefined,
+        caseKey ? eq(pipelineCases.caseKey, caseKey) : undefined,
         parentCaseId ? eq(pipelineCases.parentCaseId, parentCaseId) : undefined,
         includeRetired ? undefined : isNull(pipelineCases.hiddenFromBoardAt),
         terminal === true ? isNotNull(pipelineCases.terminalKind) : terminal === false ? isNull(pipelineCases.terminalKind) : undefined,
         q ? or(ilike(pipelineCases.title, `%${q}%`), ilike(pipelineCases.summary, `%${q}%`)) : undefined,
       ))
       .orderBy(asc(pipelineCases.createdAt));
+    const rows = limit === null
+      ? await query.offset(offset)
+      : await query.limit(limit).offset(offset);
     const caseIds = rows.map((row) => row.case.id);
     const [activeWork, descendantActiveWorkCounts] = await Promise.all([
       loadActiveWorkForCases(db, companyId, caseIds),

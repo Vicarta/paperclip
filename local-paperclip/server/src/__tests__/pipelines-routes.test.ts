@@ -230,7 +230,17 @@ describeEmbeddedPostgres("pipeline routes", () => {
       .from(pipelineCaseBlockers)
       .where(eq(pipelineCaseBlockers.caseId, batchIngest.body[0].case.id));
     expect(routeBlockers.map((row) => row.blockedByCaseId)).toEqual([batchIngest.body[1].case.id]);
-    await http.get(`/api/pipelines/${pipelineId}/cases`).expect(200);
+    const allCases = await http.get(`/api/pipelines/${pipelineId}/cases?stageKey=intake&terminal=false`).expect(200);
+    const firstPage = await http
+      .get(`/api/pipelines/${pipelineId}/cases?stageKey=intake&terminal=false&limit=1&offset=1`)
+      .expect(200);
+    expect(firstPage.body).toHaveLength(1);
+    expect(firstPage.body[0].case.caseKey).toBe(allCases.body[1].case.caseKey);
+    const exactCase = await http
+      .get(`/api/pipelines/${pipelineId}/cases?caseKey=case-3&limit=10`)
+      .expect(200);
+    expect(exactCase.body.map((row: { case: { caseKey: string } }) => row.case.caseKey)).toEqual(["case-3"]);
+    await http.get(`/api/pipelines/${pipelineId}/cases?limit=0`).expect(400);
     await http.get(`/api/cases/${caseId}`).expect(200);
     await http.patch(`/api/cases/${caseId}`).send({ title: "Case 1 updated", expectedVersion: 1 }).expect(200);
     const claimed = await http.post(`/api/cases/${caseId}/claim`).send({ leaseSeconds: 60 }).expect(200);
@@ -306,6 +316,50 @@ describeEmbeddedPostgres("pipeline routes", () => {
     await http.post(`/api/cases/${blocked.body.case.id}/automations/retry-me/retry`).expect(200);
 
     await http.delete(`/api/pipelines/${pipelineId}/stages/${stageId}?moveCasesToStageId=${qaStage.body.id}`).expect(200);
+  });
+
+  it("allows a same-company agent run to discover pipeline ids and read bounded case inventory", async () => {
+    const company = await seedCompany();
+    const boardHttp = request(app(boardActor));
+    const pipeline = await boardHttp
+      .post(`/api/companies/${company.id}/pipelines`)
+      .send({
+        key: "routine-inventory",
+        name: "Routine inventory",
+        stages: [
+          { key: "ready", name: "Ready", kind: "working", position: 100 },
+          { key: "done", name: "Done", kind: "done", position: 900 },
+          { key: "cancelled", name: "Cancelled", kind: "cancelled", position: 1000 },
+        ],
+      })
+      .expect(201);
+    await boardHttp
+      .post(`/api/pipelines/${pipeline.body.id}/cases`)
+      .send({ caseKey: "topic:ready", title: "Ready topic", stageKey: "ready" })
+      .expect(201);
+
+    const agent = await seedAutomationAgent(company.id);
+    await db.insert(companyMemberships).values({
+      companyId: company.id,
+      principalType: "agent",
+      principalId: agent.id,
+      status: "active",
+      membershipRole: "member",
+    });
+    const agentHttp = request(app({
+      type: "agent",
+      agentId: agent.id,
+      companyId: company.id,
+      runId: randomUUID(),
+      source: "agent_key",
+    }));
+
+    const discovered = await agentHttp.get(`/api/companies/${company.id}/pipelines`).expect(200);
+    expect(discovered.body.find((row: { key: string }) => row.key === "routine-inventory")?.id).toBe(pipeline.body.id);
+    const cases = await agentHttp
+      .get(`/api/pipelines/${pipeline.body.id}/cases?stageKey=ready&terminal=false&limit=10&offset=0`)
+      .expect(200);
+    expect(cases.body.map((row: { case: { caseKey: string } }) => row.case.caseKey)).toEqual(["topic:ready"]);
   });
 
   it("patches case content and workspaceRef in one service transaction", async () => {

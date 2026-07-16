@@ -1,7 +1,10 @@
 # Native Pipeline Case Operations
 
-Use this reference only for a task created by native Paperclip pipeline stage automation.
-The task description supplies `case_id`, `case_version`, `pipeline_id`, and `stage_key`.
+Use this reference for native Paperclip pipeline stage automation and for
+scheduled routine/portfolio tasks that need bounded native case inventory.
+Stage-automation tasks supply `case_id`, `case_version`, `pipeline_id`, and
+`stage_key`. Routine tasks may supply only company context and pipeline keys;
+resolve those keys through the inventory discovery path below.
 
 All routes are under `$PAPERCLIP_API_URL/api`. Authenticate with
 `Authorization: Bearer $PAPERCLIP_API_KEY`. Include
@@ -18,6 +21,23 @@ Do not search OpenAPI, browser assets, or Paperclip source to discover these rou
 - Full case output document: `GET /cases/{caseId}/outputs/documents/{documentId}`
 - Events: `GET /cases/{caseId}/events`
 - Context pack: `GET /cases/{caseId}/context-pack`
+
+### Inventory Discovery For Routine Tasks
+
+Do not guess generic `/cases`, `/pipeline-cases`, or key-in-UUID routes. Resolve
+the real pipeline UUID first:
+
+1. `GET /companies/{companyId}/pipelines`
+2. Find the row whose `key` matches the required pipeline key.
+3. `GET /pipelines/{pipelineId}/cases?stageKey={stageKey}&terminal=false&limit=10&offset=0`
+
+The case list also accepts exact `caseKey={caseKey}` for canonical idempotent
+lookups. `limit` is capped at 100. Omit `stageKey`, `terminal`, `caseKey`, or
+`offset` only when the routine contract does not need that filter.
+
+Agent run JWTs may read these routes only inside their own company. A `500`
+caused by putting a pipeline key where `{pipelineId}` requires a UUID is a caller
+contract error, not evidence that native inventory is unavailable.
 
 Always read the case immediately before a write and use the returned `case.version`.
 Follow the fetch hint returned by case outputs for full document bodies. Do not read a
