@@ -461,6 +461,11 @@ pipelines:
               requiredFields: [curriculumNodeId, curriculumRole, primaryConceptKey, primaryConceptLabelUk, introducedConceptKeys, prerequisiteNodeIds, nextNodeIds, excludedFutureConceptKeys, distinctTeachingContribution, internalLinkPlan]
               requiredArrayLengths: { introducedConceptKeys: 1 }
               singleItemArrayMatchesField: { introducedConceptKeys: primaryConceptKey }
+            - toStageKey: delegated
+              whenCaseField: clusterLane
+              whenCaseFieldEquals: compatibility_reference
+              requiredFields: [allocationFamily, contentPortfolioTrack, portfolioLane]
+              requiredFieldValues: { allocationFamily: zodiac_compatibility, contentPortfolioTrack: audience_applied_questions, portfolioLane: search_demand_core }
       - key: delegated
         name: Delegated
         kind: working
@@ -485,6 +490,8 @@ pipelines:
                 - sourceClusterIds
                 - portfolioLane
                 - contentPortfolioTrack
+                - clusterLane
+                - allocationFamily
                 - curriculumNodeId
                 - curriculumRole
                 - primaryConceptKey
@@ -527,6 +534,8 @@ pipelines:
               - sourceClusterIds
               - portfolioLane
               - contentPortfolioTrack
+              - clusterLane
+              - allocationFamily
               - curriculumNodeId
               - curriculumRole
               - primaryConceptKey
@@ -695,6 +704,11 @@ pipelines:
               requiredFields: [curriculumNodeId, curriculumRole, primaryConceptKey, primaryConceptLabelUk, introducedConceptKeys, prerequisiteNodeIds, nextNodeIds, excludedFutureConceptKeys, distinctTeachingContribution, internalLinkPlan]
               requiredArrayLengths: { introducedConceptKeys: 1 }
               singleItemArrayMatchesField: { introducedConceptKeys: primaryConceptKey }
+            - toStageKey: evidence_ready
+              whenCaseField: clusterLane
+              whenCaseFieldEquals: compatibility_reference
+              requiredFields: [allocationFamily, contentPortfolioTrack, portfolioLane]
+              requiredFieldValues: { allocationFamily: zodiac_compatibility, contentPortfolioTrack: audience_applied_questions, portfolioLane: search_demand_core }
       - key: evidence_ready
         name: Evidence Ready
         kind: working
@@ -707,6 +721,11 @@ pipelines:
               requiredFields: [curriculumNodeId, curriculumRole, primaryConceptKey, primaryConceptLabelUk, introducedConceptKeys, prerequisiteNodeIds, nextNodeIds, prerequisiteArticleUrls, excludedFutureConceptKeys, distinctTeachingContribution, internalLinkPlan]
               requiredArrayLengths: { introducedConceptKeys: 1 }
               singleItemArrayMatchesField: { introducedConceptKeys: primaryConceptKey }
+            - toStageKey: ready
+              whenCaseField: clusterLane
+              whenCaseFieldEquals: compatibility_reference
+              requiredFields: [allocationFamily, contentPortfolioTrack, portfolioLane]
+              requiredFieldValues: { allocationFamily: zodiac_compatibility, contentPortfolioTrack: audience_applied_questions, portfolioLane: search_demand_core }
       - key: ready
         name: Ready For Brief
         kind: working
@@ -731,6 +750,8 @@ pipelines:
                 - supportingQueries
                 - portfolioLane
                 - contentPortfolioTrack
+                - clusterLane
+                - allocationFamily
                 - curriculumNodeId
                 - curriculumRole
                 - primaryConceptKey
@@ -753,6 +774,8 @@ pipelines:
               - supportingQueries
               - portfolioLane
               - contentPortfolioTrack
+              - clusterLane
+              - allocationFamily
               - curriculumNodeId
               - curriculumRole
               - primaryConceptKey
@@ -807,11 +830,11 @@ pipelines:
       candidate:
         owner: SEO Blog Content Strategist
         instructions: |
-          Accept only the guarded new_article child of astrogen-search-demand-opportunities. Preserve searchOpportunityCaseId, semantic IDs, frequency source, ownership verdict, intentClusterKey, clusterDedupeKey, query-family fingerprint, supportingQueries, portfolioLane, contentPortfolioTrack, internal-link plan, trendReportRunId, and exactly one configured primaryAudienceSegmentId for diversity reporting. For western_astrology_learning, copy the canonical curriculum node and require exactly one introduced concept equal to primaryConceptKey; aliases remain one concept, while adjacent definitions, catalogues and untaught interpretation steps are forbidden. Query native topic inventory before advancing: when another nonterminal topic already owns the same intentClusterKey, merge evidence into that canonical topic and reject or expire this duplicate child. Each topic counts once toward exactly one contentPortfolioTrack target; audience segments have no hard quota and must never cause filler. Expire any calendar-date or ephemeral daily-horoscope topic paused by /companies/astrogen/reference/search-demand-policy.yaml even when a legacy parent selected new_article. For trend-derived parents, expire any candidate whose titleUk, topicKey, primary keyword, H1 or slug narrows an audience trend into Astrogen product/service/modality language; set rejectionReason=product_narrowing_contamination. Enrich the candidate without reopening the action decision, update typed case fields, and transition to evidence_ready, waiting_evidence, or expired. Do not create article work yet.
+          Accept only the guarded new_article child of astrogen-search-demand-opportunities. Preserve searchOpportunityCaseId, semantic IDs, frequency source, ownership verdict, intentClusterKey, clusterDedupeKey, query-family fingerprint, supportingQueries, portfolioLane, contentPortfolioTrack, clusterLane, allocationFamily, internal-link plan, trendReportRunId, and exactly one configured primaryAudienceSegmentId for diversity reporting. For clusterLane=compatibility_reference, require allocationFamily=zodiac_compatibility, contentPortfolioTrack=audience_applied_questions, and portfolioLane=search_demand_core. For western_astrology_learning, copy the canonical curriculum node and require exactly one introduced concept equal to primaryConceptKey; aliases remain one concept, while adjacent definitions, catalogues and untaught interpretation steps are forbidden. Query native topic inventory before advancing: when another nonterminal topic already owns the same intentClusterKey, merge evidence into that canonical topic and reject or expire this duplicate child. Each topic counts once toward exactly one contentPortfolioTrack target; audience segments have no hard quota and must never cause filler. Expire any calendar-date or ephemeral daily-horoscope topic paused by /companies/astrogen/reference/search-demand-policy.yaml even when a legacy parent selected new_article. For trend-derived parents, expire any candidate whose titleUk, topicKey, primary keyword, H1 or slug narrows an audience trend into Astrogen product/service/modality language; set rejectionReason=product_narrowing_contamination. Enrich the candidate without reopening the action decision, update typed case fields, and transition to evidence_ready, waiting_evidence, or expired. Do not create article work yet.
       evidence_ready:
         owner: SEO Blog Content Plan Validator
         instructions: |
-          Validate demand or an approved western-astrology curriculum prerequisite, one page-level intentClusterKey, business fit, duplicate/cannibalization risk, CTA route, evidence freshness, one primaryAudienceSegmentId for diversity reporting, exactly one contentPortfolioTrack, trend lineage when applicable, portfolioLane, and incoming/outgoing internal links. Reject duplicate topic lineages for the same intentClusterKey even when primaryQuery wording differs. For contentPortfolioTrack=western_astrology_learning, use /companies/astrogen/reference/western-astrology-curriculum.yaml. Semantic Core demand is not mandatory for an approved missing node, but require exactly one primaryConceptKey and one matching introducedConceptKeys item, a distinct teaching intent, no current owner, no cannibalization, published prerequisite URLs for every dependency, excluded future concepts, SERP analysis and a Winning Structure value plan. A missing classic SERP value gap alone does not reject that prerequisite; more than one new concept or an unavailable prerequisite does. For portfolioLane=audience_interest_editorial, require the bounded monthly lane policy, current signal, defensible editorial bridge, SERP information gain and claim boundaries; direct product binding is not required. For trend-derived topics, reject product_narrowing_contamination before ready. Transition to ready only with complete safe fields; otherwise use rejected_duplicate, needs_owner_direction, or waiting_evidence with a durable reason.
+          Validate demand or an approved western-astrology curriculum prerequisite, one page-level intentClusterKey, business fit, duplicate/cannibalization risk, CTA route, evidence freshness, one primaryAudienceSegmentId for diversity reporting, exactly one contentPortfolioTrack, trend lineage when applicable, portfolioLane, clusterLane/allocationFamily when applicable, and incoming/outgoing internal links. Reject duplicate topic lineages for the same intentClusterKey even when primaryQuery wording differs. For clusterLane=compatibility_reference, require allocationFamily=zodiac_compatibility, contentPortfolioTrack=audience_applied_questions, and portfolioLane=search_demand_core. For contentPortfolioTrack=western_astrology_learning, use /companies/astrogen/reference/western-astrology-curriculum.yaml. Semantic Core demand is not mandatory for an approved missing node, but require exactly one primaryConceptKey and one matching introducedConceptKeys item, a distinct teaching intent, no current owner, no cannibalization, published prerequisite URLs for every dependency, excluded future concepts, SERP analysis and a Winning Structure value plan. A missing classic SERP value gap alone does not reject that prerequisite; more than one new concept or an unavailable prerequisite does. For portfolioLane=audience_interest_editorial, require the bounded monthly lane policy, current signal, defensible editorial bridge, SERP information gain and claim boundaries; direct product binding is not required. For trend-derived topics, reject product_narrowing_contamination before ready. Transition to ready only with complete safe fields; otherwise use rejected_duplicate, needs_owner_direction, or waiting_evidence with a durable reason.
       reserved:
         owner: Chief Marketing Officer
         instructions: |
@@ -844,6 +867,7 @@ pipelines:
       - one intentClusterKey has one canonical nonterminal topic lineage; supporting query variants never count as separate topics
       - western_astrology_learning topics cannot reach ready without one curriculum node, one primary concept, exactly one introduced concept, and published prerequisite links
       - audience_interest_editorial production is capped at four Europe/Kiev calendar-month articles and one per daily batch
+      - allocationFamily=zodiac_compatibility is capped at one article per Europe/Kiev daily allocator batch while its page-level query families remain distinct
 
   - key: astrogen-growth-actions
     name: Astrogen Growth Actions

@@ -107,6 +107,12 @@ rollout:
 
 contentQuality:
   clusterLane: compatibility_reference
+  allocationFamily: zodiac_compatibility
+  contentPortfolioTrack: audience_applied_questions
+  portfolioLane: search_demand_core
+  maximumPerDailyArticleBatch: 1
+  queryFamilyRemainsPageSpecific: true
+  audienceTrendQuotaSatisfiedByThisCluster: false
   westernAstrologyCurriculumLane: false
   onePageOnePrimaryQuestion: true
   uniqueValueRequired: true
@@ -115,6 +121,17 @@ contentQuality:
   productOrServiceNameInTitleForbidden: true
   productBridgeRule: Astrogen products may be mentioned only as a useful contextual body link or final CTA.
   winningStructureRequiredBeforeBrief: true
+
+portfolioIntegration:
+  rule: Compatibility pages remain distinct page-level query families for ownership and cannibalization, but share one allocationFamily so they cannot consume the whole daily article batch.
+  requiredCaseFields:
+    clusterLane: compatibility_reference
+    allocationFamily: zodiac_compatibility
+    contentPortfolioTrack: audience_applied_questions
+    portfolioLane: search_demand_core
+  dailyAllocationCap: 1
+  trendSupplyIndependent: true
+  compatibilityNeverCountsAsAudienceTrend: true
 
 internalLinking:
   pillarLinksToAllSignHubs: true

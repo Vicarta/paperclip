@@ -140,6 +140,7 @@ routines:
         - select at most one eligible topic from the same repetitive query family in one daily batch under /companies/astrogen/reference/search-demand-policy.yaml
         - count unique intentClusterKey values, not query phrases or native rows; never dispatch two topics that resolve to the same reader intent and expected owner page
         - portfolioLane=audience_interest_editorial is a bounded broad-audience lane: dispatch at most one per daily batch and at most four article cases reserved or delivered in the current Europe/Kiev calendar month; prefer enough eligible cases to reach two per month, but never invent or weaken evidence to fill the target
+        - allocationFamily=zodiac_compatibility is capped at one article per daily batch even though every sign hub and pair page keeps its own queryFamilyFingerprint for ownership and cannibalization
         - calendar-date and ephemeral daily-horoscope topic families paused by owner policy are ineligible even when an old case is still at ready; never fill a deficit with either family
         - no-safe-topic is a canonical native growth-case refill trigger, not a successful terminal state
       topicInventoryRefill:
@@ -151,6 +152,8 @@ routines:
         - refill uses Payload CMS, GSC/GA4, semantic-core inventory/review, CrawlObserver, active issue duplicate checks, and consumed topic history
         - refill follows /companies/astrogen/reference/search-demand-policy.yaml: prioritize accepted uncovered semantic-core demand with Ukraine frequency and portfolio breadth; exact-slug absence and one-to-five weekly GSC impressions are insufficient by themselves
         - when semantic inventory lacks broad audience-interest or adjacent-use-case candidates, reuse the latest valid trend report or run the bounded low-inventory fallback under /companies/astrogen/reference/trend-topic-policy.yaml; trend output is portfolio evidence and proposed phrases require separate semantic-core validation before search-demand intake
+        - semantic_core_and_curriculum and audience_trends are independent refill source lanes; keep at most one live continuation per lane, and never let a live, blocked, or compatibility-focused semantic continuation satisfy or freeze a deficient audience_trends track
+        - while audience_trends ready plus reserved supply is below three, reuse or create its stable bounded trend continuation even when compatibility, curriculum, or another semantic campaign is already active
         - weekly CMO planning fills the 25-topic rolling plan by contentPortfolioTrack targets 12/5/3/3/2; audience segments are diversity guardrails, not hard quotas; only native delegated-stage breakdown after a validated selectedAction=new_article decision may create a topic candidate
         - before native search-demand ingest, cluster accepted phrases by reader outcome, search intent, expected owner page and SERP family; one intentClusterKey creates one canonical opportunity with one primaryQuery and supportingQueries, and portfolio counts use unique intentClusterKey values
         - if tools are unavailable, attach one typed blocker to the refill growth case instead of asking the owner for topics or stopping unrelated work

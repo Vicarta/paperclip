@@ -177,6 +177,8 @@ audienceInterestEditorialLane:
 portfolioDiversity:
   dailyBatch:
     maxTopicsFromSameQueryFamily: 1
+    allocationFamilyCaps:
+      zodiac_compatibility: 1
     repetitiveFamilies:
       - daily horoscope by zodiac sign
       - horoscope for a calendar date
@@ -189,6 +191,25 @@ portfolioDiversity:
     missingBroadCandidateAction: continue_refill_without_inventing_topic
     audienceInterestEditorialMonthlyTarget: 2
     audienceInterestEditorialMonthlyMaximum: 4
+  independentSourceLaneRefill:
+    enabled: true
+    maxActiveContinuationsPerSourceLane: 1
+    sourceLanes:
+      semantic_core_and_curriculum:
+        suppliesTracks:
+          - western_astrology_learning
+          - audience_applied_questions
+          - trust_expert_method_boundaries
+          - commercial_unmet_demand
+      audience_trends:
+        suppliesTracks:
+          - audience_trends
+        refillBelowReadyReservedCount: 3
+    rules:
+      - a live or blocked continuation in one source lane never satisfies or freezes another deficient source lane
+      - compatibility_reference work belongs to semantic_core_and_curriculum and never satisfies audience_trends
+      - each source lane reuses one canonical continuation key and may not create parallel duplicate work
+      - the refill case remains executing until total supply and every track target pass, or each deficient lane has its own typed wait with a future monitor
   rationale:
     - direct product binding is optional when the demand serves a verified Astrogen audience segment
     - broad audience interest still requires search-demand, ownership and cannibalization evidence
