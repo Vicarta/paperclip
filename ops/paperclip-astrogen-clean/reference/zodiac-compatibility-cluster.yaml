@@ -1,0 +1,138 @@
+version: astrogen-zodiac-compatibility-cluster-v1
+company: astrogen
+market:
+  geo: UA
+  language: uk
+
+objective: Build a traffic-oriented zodiac compatibility cluster without duplicate page ownership, thin programmatic pages, or direct article creation outside the native search-demand pipeline.
+
+architecture:
+  pillar:
+    count: 1
+    pageKey: zodiac-compatibility
+    role: canonical_cluster_entry
+    existingOwnerAction: refresh_merge_or_reposition
+  signHubs:
+    count: 12
+    role: one sign with all twelve sign relationships
+    signKeys:
+      - aries
+      - taurus
+      - gemini
+      - cancer
+      - leo
+      - virgo
+      - libra
+      - scorpio
+      - sagittarius
+      - capricorn
+      - aquarius
+      - pisces
+  pairPages:
+    maximumCanonicalCount: 78
+    role: one unordered zodiac pair per canonical page
+    canonicalPairKeyRule: Sort the two canonical sign keys before building the page key and URL owner fingerprint.
+    reverseOrderCreatesNewPage: false
+    sameSignPairsAllowed: true
+  genderVariants:
+    defaultRole: supporting_query
+    separatePageDefault: false
+    splitOnlyWhen:
+      - current Ukraine SERP evidence proves a materially different reader intent and result family
+      - distinct geo demand is retained by Semantic Core
+      - the page can provide materially different value without deterministic gender stereotypes
+
+semanticCoreDiscovery:
+  requiredForEveryProposedPage: true
+  projectId: astrogen-ukraine
+  intendedLayer: adjacent_use_case_intent
+  productionMode: live
+  providerCacheMode: read_write
+  localInventoryFirst: true
+  competitorSerpExpansion: true
+  batchDiscoveryAllowed: true
+  maximumCandidateKeywordsPerRun: 50
+  rule: Discovery may run in bounded family batches, but every proposed page must receive its own accepted pageKeywordPacket before ownership review.
+  pageKeywordPacketRequiredFields:
+    - pageKey
+    - pageType
+    - canonicalQuery
+    - supportingQueries
+    - semanticRunIds
+    - sourceSemanticCandidateIds
+    - sourceClusterIds
+    - geoSearchVolume
+    - globalSearchVolume
+    - volumeStatus
+    - lifecycleState
+    - intentClusterKey
+    - queryFamilyFingerprint
+    - serpSegmentRefs
+    - localeNotes
+  lifecycleRule: Candidate, review, parked, rejected, mixed-locale, and provider-error rows cannot qualify a page for article planning.
+  costRule: Read get-run-costs after every live run and reuse project-scoped provider cache before scheduling another batch.
+  forbidden:
+    - accepting a keyword only because it appears in a seed CSV
+    - treating one keyword variant as one page
+    - launching one full Semantic Core run per page when a family batch can preserve page-level evidence
+    - creating topic or article work directly from Semantic Core output
+
+ownershipAndCannibalization:
+  fullCmsInventoryRequired: true
+  activePaperclipWorkInventoryRequired: true
+  existingServiceAndCategoryOwnersRequired: true
+  oneCanonicalOwnerPerIntentCluster: true
+  reversePairQueriesShareOwnerByDefault: true
+  selectedActions:
+    - new_article
+    - refresh
+    - merge
+    - reposition
+    - internal_link
+    - no_action
+  newArticleRule: Only an uncovered canonical intent with accepted Semantic Core evidence may select new_article.
+  existingOwnerRule: An existing owner routes to refresh, merge, reposition, or internal_link instead of another article.
+
+rollout:
+  wave1:
+    - resolve the existing pillar owner and its required action
+    - produce accepted pageKeywordPacket records for all twelve sign hubs
+    - discover and rank canonical pair demand without creating reverse-order duplicates
+    - select twelve to twenty pair pages for the first production cohort
+    - create or reuse native search-demand opportunities for eligible canonical intents
+  laterWaves:
+    - measure indexing, impressions, clicks, owner conflicts, and cannibalization
+    - expand toward seventy-eight pair pages only when prior waves remain distinct and useful
+  directMassArticleCreationForbidden: true
+
+contentQuality:
+  clusterLane: compatibility_reference
+  westernAstrologyCurriculumLane: false
+  onePageOnePrimaryQuestion: true
+  uniqueValueRequired: true
+  inventedCompatibilityPercentagesForbidden: true
+  deterministicGenderClaimsForbidden: true
+  productOrServiceNameInTitleForbidden: true
+  productBridgeRule: Astrogen products may be mentioned only as a useful contextual body link or final CTA.
+  winningStructureRequiredBeforeBrief: true
+
+internalLinking:
+  pillarLinksToAllSignHubs: true
+  signHubLinksToEligiblePairPages: true
+  pairPageLinksToBothSignHubs: true
+  pairPageLinksToPillar: true
+  contextualProductLinkMaximum: 1
+  finalCtaAllowed: true
+  onlyCanonicalUrlsInLinksAndSitemap: true
+
+completionProof:
+  requiredDocuments:
+    - compatibility-page-map
+    - compatibility-keyword-research
+    - compatibility-rollout-plan
+  firstWaveCompleteWhen:
+    - pillar ownership action is selected
+    - twelve sign hub pageKeywordPacket records have final Semantic Core dispositions
+    - twelve to twenty canonical pair candidates are ranked with page-level evidence
+    - every eligible page has a native search-demand case or an explicit non-article action
+    - no direct topic or article issue was created outside guarded native breakdown

@@ -1373,6 +1373,7 @@ function agentSpecificInstructions(agent) {
 
 ## Native Article And Topic Pipeline Control
 
+- For the zodiac compatibility acquisition cluster, follow /companies/astrogen/reference/zodiac-compatibility-cluster.yaml. Delegate Semantic Core discovery and validation before page planning; do not assign pillar, sign-hub, or pair-page writing directly. Require one page-level keyword packet for every proposed URL, treat reverse sign order and gender wording as supporting queries by default, and route existing owners to refresh/merge/reposition/internal_link. Only a guarded native search-demand opportunity with selectedAction=new_article may create production work.
 - CMO controls portfolio choice and delivery gates but does not perform SERP research, writing, image generation, CMS mutation, or runtime repair.
 - Create every new specialist issue for a native case with \`pipelineCaseLink.caseId\` and a stable purpose-based \`pipelineCaseLink.requestKey\` on the issue-create request. This atomically creates the issue and its typed work link. The standalone issue-link route is only for pre-existing or migrated work.
 - After creating or linking work, re-read case-visible work products before deciding the stage. Positive completion proof routes to verify; a durable blocker artifact routes to external_wait with blockerClass and nextReviewAt; only a missing artifact may create or reuse one bounded evidence-recovery issue. Never build a recovery chain or leave a case in executing after a durable blocker is visible.
@@ -1468,6 +1469,7 @@ function agentSpecificInstructions(agent) {
 
 ## Topic Inventory Refill Contract
 
+- For zodiac compatibility work, read /companies/astrogen/reference/zodiac-compatibility-cluster.yaml. Preserve one pillar, twelve sign hubs, and at most seventy-eight unordered canonical pair owners. Semantic discovery may be batched by family, but every proposed URL requires its own accepted pageKeywordPacket. Never create separate owners for reversed sign order or gender phrasing without distinct current SERP and demand proof.
 - Own evidence enrichment for \`astrogen-search-demand-opportunities\` and guarded topic candidates delegated from approved \`new_article\` actions.
 - Use compact evidence from Payload CMS, GSC/GA4, semantic-core
   inventory/review, CrawlObserver/internal-link data, active Paperclip issues,
@@ -1535,6 +1537,7 @@ function agentSpecificInstructions(agent) {
 
 ## Local Semantic Inventory Contract
 
+- For an assigned zodiac compatibility campaign, follow /companies/astrogen/reference/zodiac-compatibility-cluster.yaml. Research the pillar, all twelve sign hubs, and bounded pair families through \`astrogen-ukraine\` on \`adjacent_use_case_intent\`. Reuse project cache and batch related seeds, but return a separate accepted pageKeywordPacket for every proposed page. Reverse sign order, mixed-locale wording, and gender variants are aliases/supporting queries unless current SERP evidence proves a different page intent.
 - Read the latest accepted company/project semantic-core snapshot through \`paperclip.semantic-core-mcp-agent-tools:get-local-inventory\` before declaring inventory unavailable or requesting another agent handoff. Read candidates from \`acceptedKeywords\` and use \`geoSearchVolume\`; a migrated snapshot may correctly report \`clusters: 0\`.
 - This local read-only tool requires no external MCP token. Use \`limit<=50\`, page or filter by \`minimumGeoSearchVolume\`, and return compact candidate evidence rather than the raw import payload.
 - For search-demand handoffs, return a bounded batch of high-priority accepted keyword candidates or existing clusters with stable IDs and frequency for the campaign's one deficient primary audience segment. Do not claim \`uncovered\` from semantic-core alone: the content strategist must group intent and verify full CMS coverage, cannibalization and URL ownership. Do not create article or topic cases yourself.
@@ -1574,6 +1577,7 @@ function agentSpecificInstructions(agent) {
 
 ## Topic Inventory Validation Gate
 
+- For zodiac compatibility work, read /companies/astrogen/reference/zodiac-compatibility-cluster.yaml and reject any page without a final accepted pageKeywordPacket, unique canonical owner, complete CMS check, and guarded search-demand lineage. Reject reverse-order or gender-only duplicates unless distinct current SERP and demand evidence proves a separate intent.
 - For \`western_astrology_learning\`, read /companies/astrogen/reference/western-astrology-curriculum.yaml and require one \`primaryConceptKey\` plus exactly one matching \`introducedConceptKeys\` item. A definition, list, comparison, FAQ answer, example, catalogue, or workflow for an adjacent astrology term is another concept even when labelled supporting context. Require published prerequisite article URLs before a dependent node reaches \`ready\`.
 - Validate \`topic_inventory_refill\` packets before the article allocator can
   consume them.

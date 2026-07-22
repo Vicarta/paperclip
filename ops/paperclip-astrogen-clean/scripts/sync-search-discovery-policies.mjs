@@ -29,6 +29,10 @@ const POLICIES = [
     name: "western-astrology-curriculum.yaml",
     version: "version: astrogen-western-astrology-curriculum-v1",
   },
+  {
+    name: "zodiac-compatibility-cluster.yaml",
+    version: "version: astrogen-zodiac-compatibility-cluster-v1",
+  },
 ];
 
 function digest(value) {
