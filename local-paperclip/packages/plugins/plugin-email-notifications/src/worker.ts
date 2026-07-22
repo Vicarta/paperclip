@@ -42,6 +42,14 @@ type DeveloperHandoffPage = {
   verification: string[];
 };
 
+type DeveloperHandoffReport = {
+  subject: string;
+  text: string;
+  html: string;
+  pages: DeveloperHandoffPage[];
+  submittedText: string;
+};
+
 function stringValue(value: unknown, fallback = "") {
   return typeof value === "string" && value.trim() ? value.trim() : fallback;
 }
@@ -82,6 +90,13 @@ function splitEmails(value: unknown) {
   return stringValue(value)
     .split(/[,\n;]/)
     .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+function splitCommaSeparated(value: unknown) {
+  return stringValue(value)
+    .split(/[,\n;]/)
+    .map((item) => item.trim())
     .filter(Boolean);
 }
 
@@ -169,6 +184,20 @@ function deliveryStateKey(idempotencyKey: string) {
 
 function toMarkdownList(items: string[]) {
   return items.length ? items.map((item) => `- ${item}`).join("\n") : "- none";
+}
+
+function escapeHtml(value: string) {
+  return value.replace(/[&<>"']/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "\"": "&quot;",
+    "'": "&#39;",
+  })[character] ?? character);
+}
+
+function htmlList(items: string[]) {
+  return `<ul>${items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`;
 }
 
 function buildChangeReport(params: Record<string, unknown>) {
@@ -278,7 +307,7 @@ function developerHandoffPages(value: unknown): DeveloperHandoffPage[] {
   });
 }
 
-function buildDeveloperHandoff(params: Record<string, unknown>) {
+function buildDeveloperHandoff(params: Record<string, unknown>): DeveloperHandoffReport {
   const summary = stringValue(params.summary);
   const impact = stringValue(params.impact);
   const sharedActions = arrayOfStrings(params.sharedActions);
@@ -302,6 +331,28 @@ function buildDeveloperHandoff(params: Record<string, unknown>) {
     "",
   ]);
 
+  const html = `<!doctype html>
+<html lang="uk">
+  <body style="margin:0;background:#f5f6f7;color:#17212b;font-family:Arial,sans-serif;line-height:1.5">
+    <main style="max-width:760px;margin:0 auto;padding:28px">
+      <h1 style="margin:0 0 18px;font-size:24px">Технічне завдання для розробників</h1>
+      <p>${escapeHtml(summary)}</p>
+      <h2 style="font-size:18px">Вплив</h2>
+      <p>${escapeHtml(impact)}</p>
+      <h2 style="font-size:18px">Сторінки для виправлення</h2>
+      ${pages.map((page, index) => `<section style="margin:0 0 22px;padding:16px;background:#fff;border:1px solid #d9dde2">
+        <h3 style="margin:0 0 10px;font-size:16px">${index + 1}. <a href="${escapeHtml(page.url)}">${escapeHtml(page.url)}</a></h3>
+        <p><strong>Поточна проблема:</strong> ${escapeHtml(page.currentProblem)}</p>
+        <p><strong>Що виправити:</strong></p>${htmlList(page.requiredChanges)}
+        <p><strong>Як перевірити:</strong></p>${htmlList(page.verification)}
+      </section>`).join("")}
+      <h2 style="font-size:18px">Спільні технічні зміни</h2>
+      ${htmlList(sharedActions)}
+      <p style="color:#52606d">Джерело: ${escapeHtml(sourceIssue)}${sourceIssueUrl ? ` — <a href="${escapeHtml(sourceIssueUrl)}">відкрити в Paperclip</a>` : ""}</p>
+    </main>
+  </body>
+</html>`;
+
   return {
     subject,
     text: [
@@ -316,7 +367,45 @@ function buildDeveloperHandoff(params: Record<string, unknown>) {
       "",
       `Джерело: ${sourceIssue}${sourceIssueUrl ? ` — ${sourceIssueUrl}` : ""}`,
     ].join("\n"),
+    html,
+    pages,
+    submittedText: [
+      summary,
+      impact,
+      ...pages.flatMap((page) => [page.currentProblem, ...page.requiredChanges, ...page.verification]),
+      ...sharedActions,
+    ].join("\n"),
   };
+}
+
+function developerHandoffHostnames(config: EmailNotificationsConfig) {
+  const hosts = splitCommaSeparated(config.developerHandoffAllowedHosts).map((rawHost) => {
+    try {
+      return new URL(rawHost.includes("://") ? rawHost : `https://${rawHost}`).hostname.toLowerCase();
+    } catch {
+      throw new Error(`developerHandoffAllowedHosts contains an invalid hostname: ${rawHost}`);
+    }
+  });
+  if (!hosts.length) {
+    throw new Error("developerHandoffAllowedHosts must contain at least one public website hostname");
+  }
+  return new Set(hosts);
+}
+
+function assertDeveloperHandoffPolicy(report: DeveloperHandoffReport, config: EmailNotificationsConfig) {
+  const allowedHosts = developerHandoffHostnames(config);
+  for (const page of report.pages) {
+    const host = new URL(page.url).hostname.toLowerCase();
+    if (!allowedHosts.has(host)) {
+      throw new Error(`affectedPages URL host is not an approved external site: ${host}`);
+    }
+  }
+  if (!stringValue(config.defaultLanguage, DEFAULT_CONFIG.defaultLanguage).toLowerCase().startsWith("uk")) return;
+  const letters = report.submittedText.match(/\p{L}/gu) ?? [];
+  const cyrillicLetters = report.submittedText.match(/[А-Яа-яІіЇїЄєҐґ]/g) ?? [];
+  if (cyrillicLetters.length < 20 || cyrillicLetters.length / Math.max(1, letters.length) < 0.55) {
+    throw new Error("developer handoff must be written in Ukrainian before delivery");
+  }
 }
 
 async function emitEmailCost(input: {
@@ -635,6 +724,16 @@ const plugin = definePlugin({
       async (params, runCtx) => {
         const record = objectValue(params);
         const report = buildDeveloperHandoff(record);
+        const config = await getConfig(ctx);
+        try {
+          assertDeveloperHandoffPolicy(report, config);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          return {
+            error: `Developer handoff rejected: ${message}`,
+            data: { kind: "developer_handoff_policy_rejected", deliveryAttempted: false, reason: message },
+          };
+        }
         return await sendEmail({
           ctx,
           runCtx,
@@ -643,6 +742,7 @@ const plugin = definePlugin({
           params: record,
           subject: report.subject,
           text: report.text,
+          html: report.html,
         });
       },
     );

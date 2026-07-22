@@ -1,6 +1,6 @@
 {
   "name": "@paperclipai/plugin-crawlobserver-agent-tools",
-  "version": "0.1.0",
+  "version": "0.1.4",
   "type": "module",
   "private": true,
   "description": "Paperclip agent tools backed by the private CrawlObserver SEO crawler API",

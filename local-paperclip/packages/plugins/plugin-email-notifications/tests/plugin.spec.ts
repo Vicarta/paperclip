@@ -103,6 +103,7 @@ describe("plugin-email-notifications", () => {
         fromEmail: "paperclip@aibizmate.com",
         defaultRecipientEmails: "o.savitsky@gmail.com",
         allowlistedRecipientEmails: "o.savitsky@gmail.com",
+        developerHandoffAllowedHosts: "astrogen.com.ua",
       },
     });
     await plugin.definition.setup(harness.ctx);
@@ -257,6 +258,7 @@ describe("plugin-email-notifications", () => {
         fromEmail: "paperclip@aibizmate.com",
         defaultRecipientEmails: "o.savitsky@gmail.com",
         allowlistedRecipientEmails: "o.savitsky@gmail.com",
+        developerHandoffAllowedHosts: "astrogen.com.ua",
       },
     });
     await plugin.definition.setup(harness.ctx);
@@ -296,6 +298,84 @@ describe("plugin-email-notifications", () => {
     expect(body.text).toContain("Сторінки для виправлення:\n1. https://astrogen.com.ua/children");
     expect(body.text).toContain("Що виправити:\n- Додати унікальні title і description.");
     expect(body.text).toContain("Як перевірити:\n- Перевірити initial HTML через curl.");
+    expect(body.html).toContain("<html lang=\"uk\">");
+    expect(body.html).toContain("Технічне завдання для розробників");
+  });
+
+  it("rejects internal endpoints and English source text from developer handoffs", async () => {
+    const fetchMock = mockResend("resend-blocked-handoff");
+    const harness = createTestHarness({
+      manifest,
+      config: {
+        resendApiKeySecretRef: "secret-resend",
+        fromEmail: "paperclip@aibizmate.com",
+        defaultRecipientEmails: "o.savitsky@gmail.com",
+        allowlistedRecipientEmails: "o.savitsky@gmail.com",
+        developerHandoffAllowedHosts: "astrogen.com.ua",
+        defaultLanguage: "uk",
+      },
+    });
+    await plugin.definition.setup(harness.ctx);
+
+    const base = {
+      summary: "Потрібно виправити metadata.",
+      impact: "Сторінки важче розрізняти в пошуку.",
+      sharedActions: ["Оновити sitemap."],
+      sourceIssue: "AST-424",
+    };
+
+    const rejectedInternal = await harness.executeTool(
+      TOOL_NAMES.sendDeveloperHandoff,
+      {
+        ...base,
+        affectedPages: [{
+          url: "http://127.0.0.1:3100/api/cases?limit=10",
+          currentProblem: "Внутрішній route не відповідає.",
+          requiredChanges: ["Додати endpoint."],
+          verification: ["Перевірити route."],
+        }],
+      },
+      runCtx,
+    );
+    expect(rejectedInternal.error).toContain("not an approved external site");
+
+    const rejectedEnglish = await harness.executeTool(
+      TOOL_NAMES.sendDeveloperHandoff,
+      {
+        summary: "Fix the metadata issue.",
+        impact: "Search engines cannot distinguish the pages.",
+        sharedActions: ["Deploy the site."],
+        sourceIssue: "AST-424",
+        affectedPages: [{
+          url: "https://astrogen.com.ua/children",
+          currentProblem: "The homepage title is rendered.",
+          requiredChanges: ["Set a unique title."],
+          verification: ["Check rendered HTML."],
+        }],
+      },
+      runCtx,
+    );
+    expect(rejectedEnglish.error).toContain("must be written in Ukrainian");
+
+    const rejectedMixedLanguage = await harness.executeTool(
+      TOOL_NAMES.sendDeveloperHandoff,
+      {
+        summary: "Потрібно перевірити сторінку.",
+        impact: "Search engines cannot distinguish these pages because the deployment renders the wrong metadata for several routes.",
+        sharedActions: ["Deploy the website and verify all affected pages in production."],
+        sourceIssue: "AST-424",
+        affectedPages: [{
+          url: "https://astrogen.com.ua/children",
+          currentProblem: "The homepage title is rendered instead of a unique title.",
+          requiredChanges: ["Set a unique title and description."],
+          verification: ["Check the rendered production HTML."],
+        }],
+      },
+      runCtx,
+    );
+    expect(rejectedMixedLanguage.error).toContain("must be written in Ukrainian");
+
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("renders the weekly SEO report as Ukrainian HTML and rejects English fallback", async () => {
@@ -324,7 +404,10 @@ describe("plugin-email-notifications", () => {
           watchItems: [],
           noActionReason: "Недостатньо даних для зміни сторінок.",
           ownerAction: "",
-          details: [],
+          details: [{
+            title: "Обмеження даних",
+            body: "GSC використано для sc-domain:astrogen.com.ua. CrawlObserver не використано як технічний proof, бо в bounded session list не було сесії для trust gate.",
+          }],
         },
         idempotencyKey: "weekly-seo-2026-07-15",
       },
@@ -335,6 +418,8 @@ describe("plugin-email-notifications", () => {
     const body = JSON.parse(String(request.body));
     expect(body.html).toContain("Що Paperclip робить далі");
     expect(body.html).toContain("Основні показники");
+    expect(body.html).toContain("Технічні дані сканування сайту не включено");
+    expect(body.html).not.toMatch(/bounded|trust gate|технічний proof|list-sessions/i);
     expect(body.text).toContain("ЩО PAPERCLIP РОБИТЬ ДАЛІ");
 
     await expect(harness.executeTool(

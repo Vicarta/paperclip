@@ -1,6 +1,12 @@
 import { definePlugin, runWorker, type ToolResult } from "@paperclipai/plugin-sdk";
 import { PLUGIN_ID, TOOL_NAMES } from "./constants.js";
 import {
+  looseObjectSchema,
+  sessionsQuerySchema,
+  sessionPagedSchema,
+  sessionSchema,
+} from "./manifest.js";
+import {
   buildSessionPath,
   callCrawlObserverApi,
   prepareLinksQuery,
@@ -12,6 +18,7 @@ import {
   prepareResourceChecksQuery,
   prepareSessionsQuery,
   prepareStartCrawlBody,
+  normalizeSessionInventory,
   type CrawlObserverPluginConfig,
   type CrawlObserverRequest,
 } from "./crawlobserver-client.js";
@@ -60,11 +67,6 @@ function sessionPagedGetRequest(
   };
 }
 
-const looseObjectSchema = {
-  type: "object",
-  additionalProperties: true,
-} as const;
-
 const plugin = definePlugin({
   async setup(ctx) {
     ctx.logger.info(`${PLUGIN_ID} plugin setup complete`);
@@ -103,19 +105,24 @@ const plugin = definePlugin({
       TOOL_NAMES.listSessions,
       {
         displayName: "CrawlObserver List Sessions",
-        description: "Call `GET /api/sessions`.",
-        parametersSchema: looseObjectSchema,
+        description:
+          "Call `GET /api/sessions`. The configured company project is injected when project_id is omitted.",
+        parametersSchema: sessionsQuerySchema,
       },
       async (params): Promise<ToolResult> => {
         const config = await getConfig(ctx);
-        return await callApi({
-          ctx,
+        const result = await callCrawlObserverApi({
+          config,
           request: {
-            method: "GET",
-            path: "/api/sessions",
-            query: prepareSessionsQuery({ params, config }),
+              method: "GET",
+              path: "/api/sessions",
+              query: prepareSessionsQuery({ params, config }),
           },
+          resolveSecret: (secretRef) => ctx.secrets.resolve(secretRef),
+          fetchFn: ctx.http.fetch,
         });
+        const compact = normalizeSessionInventory(result.data);
+        return { content: JSON.stringify(compact, null, 2), data: compact };
       },
     );
 
@@ -150,7 +157,7 @@ const plugin = definePlugin({
         {
           displayName: tool[1],
           description: `${tool[1]}. Requires plugin config \`allowMutatingTools=true\`.`,
-          parametersSchema: looseObjectSchema,
+          parametersSchema: sessionSchema,
         },
         async (params): Promise<ToolResult> => {
           const config = await getConfig(ctx);
@@ -179,7 +186,7 @@ const plugin = definePlugin({
         {
           displayName: tool[1],
           description: `${tool[1]}.`,
-          parametersSchema: looseObjectSchema,
+          parametersSchema: sessionSchema,
         },
         async (params): Promise<ToolResult> =>
           await callApi({ ctx, request: sessionGetRequest(params, tool[2]) }),
@@ -191,7 +198,7 @@ const plugin = definePlugin({
       {
         displayName: "CrawlObserver List Pages",
         description: "Call `GET /api/sessions/{id}/pages`.",
-        parametersSchema: looseObjectSchema,
+        parametersSchema: sessionPagedSchema,
       },
       async (params): Promise<ToolResult> => {
         const config = await getConfig(ctx);
@@ -215,7 +222,7 @@ const plugin = definePlugin({
         {
           displayName: tool[1],
           description: `${tool[1]}.`,
-          parametersSchema: looseObjectSchema,
+          parametersSchema: sessionPagedSchema,
         },
         async (params): Promise<ToolResult> => {
           const config = await getConfig(ctx);
@@ -236,7 +243,14 @@ const plugin = definePlugin({
       {
         displayName: "CrawlObserver Page Detail",
         description: "Call `GET /api/sessions/{id}/page-detail?url=<url>`.",
-        parametersSchema: looseObjectSchema,
+        parametersSchema: {
+          type: "object",
+          properties: {
+            sessionId: { type: "string" },
+            url: { type: "string" },
+          },
+          required: ["sessionId", "url"],
+        },
       },
       async (params): Promise<ToolResult> =>
         await callApi({
@@ -255,7 +269,7 @@ const plugin = definePlugin({
         displayName: "CrawlObserver Resource Checks",
         description:
           "Call `GET /api/sessions/{id}/resource-checks` with allowlisted pagination and resource filters. Use `resource_type=image` for page-image audits.",
-        parametersSchema: looseObjectSchema,
+        parametersSchema: sessionPagedSchema,
       },
       async (params): Promise<ToolResult> => {
         const config = await getConfig(ctx);
@@ -276,7 +290,7 @@ const plugin = definePlugin({
         displayName: "CrawlObserver Page Issues",
         description:
           "Call `GET /api/sessions/{id}/page-issues` with filters such as severity, issue_type, and url.",
-        parametersSchema: looseObjectSchema,
+        parametersSchema: sessionPagedSchema,
       },
       async (params): Promise<ToolResult> => {
         const config = await getConfig(ctx);
@@ -302,7 +316,7 @@ const plugin = definePlugin({
         {
           displayName: tool[1],
           description: `${tool[1]}.`,
-          parametersSchema: looseObjectSchema,
+          parametersSchema: sessionPagedSchema,
         },
         async (params): Promise<ToolResult> => {
           const config = await getConfig(ctx);

@@ -81,6 +81,12 @@ const manifest: PaperclipPluginManifestV1 = {
         description: "Comma-separated concrete recipients that agent tools are allowed to address.",
         default: DEFAULT_CONFIG.allowlistedRecipientEmails,
       },
+      developerHandoffAllowedHosts: {
+        type: "string",
+        title: "Developer Handoff Allowed Hosts",
+        description: "Comma-separated public website hostnames allowed in developer handoff affectedPages. Paperclip, localhost, private, and tailnet endpoints are never valid handoff targets.",
+        default: DEFAULT_CONFIG.developerHandoffAllowedHosts,
+      },
       defaultLanguage: {
         type: "string",
         title: "Default Language",

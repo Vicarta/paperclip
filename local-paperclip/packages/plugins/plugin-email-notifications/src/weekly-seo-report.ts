@@ -52,6 +52,30 @@ function stringValue(value: unknown, max = 4_000): string {
   return typeof value === "string" ? value.trim().slice(0, max) : "";
 }
 
+export function ownerFacingSeoText(value: string): string {
+  return value
+    .replace(
+      /CrawlObserver[^.!?]*(?:bounded|list-sessions|get-session-quality|trust gate|technical proof|технічний proof)[^.!?]*[.!?]?/giu,
+      "Технічні дані сканування сайту не включено до цього звіту, оскільки на момент його формування не було підтвердженої актуальної перевірки.",
+    )
+    .replaceAll("sc-domain:astrogen.com.ua", "сайту astrogen.com.ua")
+    .replace(/\bGSC\b/g, "Google Search Console")
+    .replace(/\bSERP value-gap\b/gi, "аналіз конкурентних сторінок і незакритих питань аудиторії")
+    .replace(/\bquery-to-URL ownership\b/gi, "перевірка відповідальної сторінки для запиту")
+    .replace(/\bcontent_refresh\b/gi, "оновлення статті")
+    .replace(/\bnative cases?\b/gi, "процеси Paperclip")
+    .replace(/\barticle slots?\b/gi, "нові статті")
+    .replace(/\bin_review\b/gi, "на перевірці")
+    .replace(/\bexternal_wait\b/gi, "очікує зовнішньої технічної дії")
+    .replace(/\bblocked\b/gi, "заблоковано")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+function ownerText(value: unknown, max = 4_000): string {
+  return ownerFacingSeoText(stringValue(value, max));
+}
+
 function arrayValue(value: unknown, max = 20): Record<string, unknown>[] {
   return Array.isArray(value)
     ? value.slice(0, max).map(objectValue).filter((item) => Object.keys(item).length > 0)
@@ -90,7 +114,7 @@ function parseReport(value: unknown): WeeklySeoEmailReport | null {
   if (!Object.keys(input).length) return null;
 
   const period = stringValue(input.period, 300);
-  const executiveSummary = stringValue(input.executiveSummary, 2_500);
+  const executiveSummary = ownerText(input.executiveSummary, 2_500);
   if (!period || !executiveSummary) {
     throw new Error("structured SEO report requires period and executiveSummary");
   }
@@ -102,26 +126,26 @@ function parseReport(value: unknown): WeeklySeoEmailReport | null {
       label: stringValue(item.label, 200),
       current: stringValue(item.current, 100),
       previous: stringValue(item.previous, 100),
-      interpretation: stringValue(item.interpretation, 500),
+      interpretation: ownerText(item.interpretation, 500),
     })).filter((item) => item.label && item.current),
     actions: arrayValue(input.actions, 12).map((item) => ({
       issueId: stringValue(item.issueId, 50),
       title: stringValue(item.title, 300),
       owner: stringValue(item.owner, 150),
-      status: stringValue(item.status, 100),
-      nextStep: stringValue(item.nextStep, 700),
+      status: ownerText(item.status, 100),
+      nextStep: ownerText(item.nextStep, 700),
       url: safeHttpUrl(stringValue(item.url, 1_000)),
     })).filter((item) => item.title && item.nextStep),
     watchItems: arrayValue(input.watchItems, 12).map((item) => ({
       title: stringValue(item.title, 300),
-      reason: stringValue(item.reason, 700),
+      reason: ownerText(item.reason, 700),
       nextReview: stringValue(item.nextReview, 200),
     })).filter((item) => item.title && item.reason),
-    noActionReason: stringValue(input.noActionReason, 1_500),
-    ownerAction: stringValue(input.ownerAction, 1_000),
+    noActionReason: ownerText(input.noActionReason, 1_500),
+    ownerAction: ownerText(input.ownerAction, 1_000),
     details: arrayValue(input.details, 8).map((item) => ({
       title: stringValue(item.title, 300),
-      body: stringValue(item.body, 3_000),
+      body: ownerText(item.body, 3_000),
     })).filter((item) => item.title && item.body),
   };
 }

@@ -1,5 +1,5 @@
 export const PLUGIN_ID = "paperclip.crawlobserver-agent-tools";
-export const PLUGIN_VERSION = "0.1.0";
+export const PLUGIN_VERSION = "0.1.4";
 
 export const DEFAULT_CRAWLOBSERVER_BASE_URL =
   "http://ubuntu-aibizmate-n8n.tailbd4e1c.ts.net:8899";

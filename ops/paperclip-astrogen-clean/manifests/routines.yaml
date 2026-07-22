@@ -105,40 +105,55 @@ routines:
     concurrencyPolicy: skip_if_active
     catchUpPolicy: enqueue_missed_with_cap
     workflow: article_cadence
-    activationGate: controlled clean activation, target 1 CMS draft per day
+    activationGate: controlled clean activation, target 3 CMS drafts per Europe/Kiev day
     processContract:
       orchestration:
         - astrogen-topic-inventory and astrogen-article-production native pipelines are the source of truth
         - only the scheduled allocator dispatches a ready topic; ready-stage automation must not auto-reserve it
-        - the allocator calls native case breakdown once to create or reuse one article case and atomically advance the topic to reserved
+        - the allocator dispatches a bounded daily batch through native case breakdown, creating or reusing one article case per selected topic and atomically advancing each topic to reserved
         - pipeline stage automation owns specialist dispatch, typed transitions, recovery, and completion evidence
       nativeCaseInventory:
         - resolve pipeline UUIDs with GET /api/companies/{companyId}/pipelines; never put a pipeline key into a pipelineId route
         - list ready topics with GET /api/pipelines/{topicPipelineId}/cases?stageKey=ready&terminal=false&limit=10&offset=0
+        - an eligible ready topic is read from row.case, must have row.case.fields.selectedAction=new_article, and must have row.parentCase.pipeline.key=astrogen-search-demand-opportunities with row.parentCase.case.id equal to row.case.parentCaseId; legacy ready cases without that lineage are not counted or dispatched
         - list open article WIP with GET /api/pipelines/{articlePipelineId}/cases?terminal=false&limit=10&offset=0 and classify productive versus blocked from returned case/work evidence
-        - find a canonical refill with exact caseKey through GET /api/pipelines/{growthPipelineId}/cases?caseKey={urlEncodedCaseKey}&terminal=false&limit=10
+        - find the canonical refill with exact caseKey growth:topic-inventory-refill:{ISO-week} through GET /api/pipelines/{growthPipelineId}/cases?caseKey={urlEncodedCaseKey}&terminal=false&limit=10
+        - compute ISO-week from the current Europe/Kiev business date; a prior-week nonterminal refill is historical evidence and never the current canonical continuation
+        - every /pipelines/{pipelineId}/cases response is a direct JSON array of wrapper rows shaped as {case, stage, parentCase, activeWork, descendantActiveWorkCount}; read case fields from row.case and guarded lineage from row.parentCase.pipeline, never from top-level row.fields or a guessed parentPipeline field
+        - count Array.isArray(response) ? response.length : protocol_error, and treat [] as the only valid empty inventory
+        - missing response.items or response.cases is never evidence of zero inventory; a non-array response is a shared protocol blocker and cannot close the allocator or trigger a refill decision
         - generic /api/cases and guessed /api/pipelines/{pipelineKey}/cases aliases are forbidden; a failed guessed alias is a caller-contract error, not a platform blocker
       activationMode:
-        - target 1 new CMS draft per Europe/Kiev day
+        - target 3 new CMS drafts per Europe/Kiev day
         - schedule daily at 10:00 Europe/Kiev
-        - bounded article-only catch-up may deliver up to maxCatchUpSlotsPerRun when explicitly configured
+        - the same bounded allocator reconciles a current-day batch deficit when explicitly invoked; this is not broad scheduler catch-up
       bounds:
-        - at most one new article slot per routine execution
+        - calculate availableSlots = min(3 - currentDayNewArticleBatchCount, 3 - productiveWipCount, eligibleReadyTopicCount); currentDayNewArticleBatchCount includes only today's new-article cases reserved or delivered by this allocator, never refreshes or cancelled cases
+        - dispatch every selected topic sequentially in the same routine execution, up to availableSlots; each topic has its own breakdown request and idempotency key
         - never use broad catch-up outside the article cadence contract
         - use a productive WIP cap of 3 non-blocked article parents; blocked or externally waiting parents do not consume productive WIP capacity
         - never create a duplicate parent for the same articleParentKey, even when the canonical parent is blocked
-        - when one article is blocked, continue an unrelated ready topic if the productive WIP cap and daily/catch-up quota allow it
+        - when one selected topic is duplicate, blocked, or has a topic-specific breakdown failure, record typed evidence and continue an unrelated ready topic while capacity remains; stop only for a shared API/authentication failure
+        - select at most one eligible topic from the same repetitive query family in one daily batch under /companies/astrogen/reference/search-demand-policy.yaml
+        - count unique intentClusterKey values, not query phrases or native rows; never dispatch two topics that resolve to the same reader intent and expected owner page
+        - portfolioLane=audience_interest_editorial is a bounded broad-audience lane: dispatch at most one per daily batch and at most four article cases reserved or delivered in the current Europe/Kiev calendar month; prefer enough eligible cases to reach two per month, but never invent or weaken evidence to fill the target
+        - calendar-date and ephemeral daily-horoscope topic families paused by owner policy are ineligible even when an old case is still at ready; never fill a deficit with either family
         - no-safe-topic is a canonical native growth-case refill trigger, not a successful terminal state
       topicInventoryRefill:
-        - allocator consumes only astrogen-topic-inventory cases at stage ready
-        - if fewer than 3 ready topics exist, ingest or update one astrogen-growth-actions case with fingerprint topic-inventory-refill:{ISO-week}; that execution discovers or advances astrogen-search-demand-opportunities, never topic candidates directly
+        - allocator consumes only lineage-valid astrogen-topic-inventory cases at stage ready with selectedAction=new_article
+        - independently of today's article slots, ingest or update one astrogen-growth-actions case with fingerprint topic-inventory-refill:{ISO-week} while ready plus reserved eligible supply is below 25 or any contentPortfolioTrack is below its 12/5/3/3/2 target; that execution discovers or advances astrogen-search-demand-opportunities, never topic candidates directly
+        - an executing stage name is not liveness proof; require current activeWork, positive descendantActiveWorkCount, or a linked work issue with an explicit future monitor/recovery path
+        - when the exact current-week refill is below target and has no live work path, atomically delegate one bounded SEO Blog Content Strategist continuation with pipelineCaseLink.caseId and stable requestKey topic-inventory-refill:{ISO-week}:continuation:v{caseVersion}
         - never create a legacy refill issue tree from the allocator
         - refill uses Payload CMS, GSC/GA4, semantic-core inventory/review, CrawlObserver, active issue duplicate checks, and consumed topic history
-        - weekly CMO planning ingests or updates 3-10 stable astrogen-search-demand-opportunities cases at discovered; only native delegated-stage breakdown after a validated selectedAction=new_article decision may create a topic candidate
+        - refill follows /companies/astrogen/reference/search-demand-policy.yaml: prioritize accepted uncovered semantic-core demand with Ukraine frequency and portfolio breadth; exact-slug absence and one-to-five weekly GSC impressions are insufficient by themselves
+        - when semantic inventory lacks broad audience-interest or adjacent-use-case candidates, reuse the latest valid trend report or run the bounded low-inventory fallback under /companies/astrogen/reference/trend-topic-policy.yaml; trend output is portfolio evidence and proposed phrases require separate semantic-core validation before search-demand intake
+        - weekly CMO planning fills the 25-topic rolling plan by contentPortfolioTrack targets 12/5/3/3/2; audience segments are diversity guardrails, not hard quotas; only native delegated-stage breakdown after a validated selectedAction=new_article decision may create a topic candidate
+        - before native search-demand ingest, cluster accepted phrases by reader outcome, search intent, expected owner page and SERP family; one intentClusterKey creates one canonical opportunity with one primaryQuery and supportingQueries, and portfolio counts use unique intentClusterKey values
         - if tools are unavailable, attach one typed blocker to the refill growth case instead of asking the owner for topics or stopping unrelated work
       atomicDispatch:
-        - call POST /api/cases/{topicCaseId}/breakdown with one item keyed by topicKey:reservation-v{topicCaseVersion}
-        - ready-stage breakdown targets astrogen-article-production opportunity and advances the topic to reserved
+        - for each selected topic, call POST /api/cases/{topicCaseId}/breakdown with one item keyed by topicKey:reservation-v{topicCaseVersion}
+        - ready-stage breakdown targets astrogen-article-production opportunity and advances the topic to reserved only when selectedAction=new_article
         - record the returned child article case id as consumingArticleCaseId and set a bounded reservation expiry
         - topic case version is the reservation generation; retries of the same generation reuse one child, while a released topic creates a new child on its newer version
         - native requestKey and caseKey provide per-generation idempotency; do not create article, brief, writer, or recovery issue trees
@@ -157,22 +172,27 @@ routines:
         - use abstract_graphic for abstract concepts, definitions, zodiac-sign profiles, generic horoscope topics, frameworks, lists, comparisons, metrics, or non-personal explanations
         - abstract_graphic covers must not contain people, faces, hands, bodies, silhouettes, or model-like figures
       parentCompletionGate:
-        - canonical article parent remains open until accepted cover image or explicit waiver, authenticated CMS draft/admin URL, verified CTA/editorial/relatedPosts gates, and CMO Telegram article-link proof exist
+        - canonical article parent remains open until an accepted cover image is attached as both CMS coverImage and ogImage, authenticated CMS draft/admin URL, verified CTA/editorial/relatedPosts gates, and CMO Telegram article-link proof exist; draft-only means no publication and never waives required media
         - notification-contract is message content only; CMO must directly execute the discovered telegram_send_message agent tool with the parent issueId
         - Telegram completion proof requires ok=true, a non-empty messageId, and plugin delivery-proof writeback; an intended message or done event is not proof
         - notification transport recovery affects only delivery for that article and never consumes productive article WIP or freezes unrelated SEO/content lanes
+      deficitContinuation:
+        - one successful article does not close a remaining same-day deficit
+        - when ready inventory is empty and the current-day count is below three, keep the same allocator issue in_progress with executionPolicy.monitor.nextCheckAt for a bounded inventory recheck
+        - at monitor wake, dispatch newly ready topics; close only after three slots, the productive WIP cap, or durable typed evidence that the remaining daily slots are impossible
+        - a current-week refill in executing without active work or a future monitor is stranded and must be given one atomic native delegation before the allocator recheck
         - CMS specialists write delivery and before-after evidence on their own child issue; CMO aggregates verified child evidence into the parent it owns
         - ready_for_image_handoff, layout-ready, CMS-ready, or all-current-children-done is progress evidence, not parent completion
         - if no active child exists and delivery proof is missing, resume the same parent and route the next missing stage instead of creating a duplicate article parent
       allowedSideEffects:
-        - dispatch one ready native topic through breakdown when gates pass
+        - dispatch up to availableSlots ready native topics through independent breakdown calls when gates pass
         - ingest or update one canonical native refill growth case when inventory is below the low-water mark
       forbidden:
         - generate images in the allocator
         - publish CMS content
         - send owner-facing Telegram from the allocator
         - create broad semantic-core or competitor-research batches
-      completionGate: one native article case is live from breakdown, quota is satisfied, productive WIP is full, or one canonical refill growth case is live for low or empty inventory
+      completionGate: all available current-day slots are dispatched or a typed capacity/inventory/API constraint is recorded; a parser/response-shape error is a shared protocol blocker and cannot be reported as zero eligible inventory; independently, if ready plus reserved plan inventory is below 25 or any contentPortfolioTrack is below its 12/5/3/3/2 target, one canonical refill growth case is live with current quota evidence, an accountable specialist, and a due nextReviewAt
     variables: []
 
   - title: Weekly Astrogen SEO/GEO action cycle
@@ -221,6 +241,9 @@ routines:
       emailDeliveryContract:
         - use the completed Wednesday-Tuesday Europe/Kiev reporting window and the previous Wednesday-Tuesday comparison window; treat the latest 2 days as provisional when source latency applies
         - write for a non-technical company owner in simple Ukrainian; explain business meaning first and keep tool names, payload details, and internal implementation terms out of the main summary
+        - CrawlObserver list-sessions is a compact object with sessions rows carrying camelCase sessionId and quality.isFullCrawl; select the latest completed row with quality.trusted=true, quality.status=trusted and quality.isFullCrawl=true, then confirm it with get-session-quality before technical conclusions
+        - a non-empty sessions array is never reported as no crawl session; a missing canonical sessionId is a plugin protocol blocker, not an evidence limitation
+        - owner email may say only whether verified technical crawl evidence was included and what that means; bounded, list-sessions, get-session-quality, trust gate, proof, raw statuses and adapter terminology remain in the internal issue evidence
         - the first section must say what Paperclip will do next; every action must name the existing issue or native case, accountable agent, current status, exact next step, and review date when known
         - separate executable actions from watch/cooldown/no-action decisions; never present a blocked or external-wait issue as completed work
         - call paperclip.email-notifications:email-seo-weekly-report-send with the structured report object and an issue-scoped idempotency key; the plugin renders safe Ukrainian HTML plus a plain-text fallback
@@ -262,13 +285,18 @@ routines:
         - repeated findings update one canonical remediation issue
       output:
         - weekly-growth-plan document with 3-7 evidence-backed actions when safe actions exist
-        - ingest or update 3-10 evidence-backed astrogen-search-demand-opportunities cases at discovered with stable fingerprints; never ingest topic candidates directly
+        - ingest or update evidence-backed astrogen-search-demand-opportunities cases at discovered with stable fingerprints under /companies/astrogen/reference/search-demand-policy.yaml until the rolling 25-topic contentPortfolioTrack matrix 12/5/3/3/2 is met; never ingest topic candidates directly
         - drive ownership_review and action_selected decisions so only safe uncovered demand reaches topic inventory through native breakdown
-        - keep ready inventory target 10 and low-water mark 3; a Markdown-only content plan is incomplete
+        - keep a rolling future-plan target of 25 eligible ready plus reserved topics split by contentPortfolioTrack as 12 western astrology learning, 5 applied audience questions, 3 trends, 3 trust/expert/method boundaries, and 2 commercial unmet-demand topics; audience segments are diversity metadata and a Markdown-only or comment-only content plan is incomplete
         - manage delegated opportunity actions through downstream outcomes; discovered cases and candidate IDs are progress, not inventory success
+        - compute the current Europe/Kiev ISO week and use only exact caseKey growth:topic-inventory-refill:{ISO-week}; a prior-week nonterminal case cannot satisfy the current plan
+        - treat stage=executing and nextReviewAt as metadata, not liveness proof; require current activeWork, descendant active work, or a linked issue with a future monitor/recovery path
+        - if the exact current-week refill is below target and stranded, atomically delegate one SEO Blog Content Strategist continuation with pipelineCaseLink.caseId and requestKey topic-inventory-refill:{ISO-week}:continuation:v{caseVersion}
+        - enforce portfolio breadth: reject paused calendar-date and ephemeral daily-horoscope opportunities, then seek validated audience-interest or adjacent-use-case demand before another product variant
+        - consume the latest project-scoped trend report as evidence only; selected trend phrases must pass normal semantic-core provider validation before search-demand intake
         - every accepted action is delegated or linked to an executable existing issue or pipeline case
         - record ready-topic inventory, productive and blocked article WIP, CMS drafts delivered, and SEO actions completed
-      completionGate: accepted actions delegated or linked, blockers classified, and unrelated lanes continue; content supply additionally requires at least 3 current ready topics or one nonterminal search-demand opportunity/refill execution path with an accountable specialist and nextReviewAt; discovered, candidate, rejected or no-action records never satisfy inventory readiness
+      completionGate: accepted actions delegated or linked, blockers classified, and unrelated lanes continue; content supply additionally requires 25 current eligible ready plus reserved topics satisfying contentPortfolioTrack targets 12/5/3/3/2, or the exact current-week refill with an accountable specialist and current active work or a future monitor; stage=executing and nextReviewAt alone are insufficient, and discovered, candidate, rejected, consumed or no-action records never satisfy future-plan readiness
 
   - title: Monthly Astrogen trend discovery
     owner: Chief Marketing Officer
@@ -279,7 +307,7 @@ routines:
     concurrencyPolicy: coalesce_if_active
     catchUpPolicy: skip_missed
     workflow: monthly_trend_discovery
-    activationGate: current GSC/GA4, semantic-core, product, and approved external-signal evidence available
+    activationGate: Semantic Core MCP trend project astrogen-audience-trends-ukraine, validation project astrogen-ukraine, and current Payload CMS inventory are available
     processContract:
       purpose:
         - identify evidence-backed durable shifts, emerging demand, seasonal recurrences, and plausible early signals
@@ -287,25 +315,57 @@ routines:
       inputs:
         - completed-period GSC/GA4 and site-search changes
         - semantic-core evidence and current topic inventory
-        - verified Astrogen product, expert, service, and audience changes
+        - verified audience segment changes, public/community/cultural signals and seasonal recurrences
+        - Astrogen product, expert and service changes only as business-fit or duplicate/ownership context
         - approved SERP/competitor and public/community signals with source timestamps
         - active growth cases and consumed topic history
+        - /companies/astrogen/reference/trend-topic-policy.yaml
       bounds:
-        - inspect at most 20 compact candidate signals
-        - retain at most 8 typed hypotheses per run
-        - require at least two independent signals or one first-party signal plus a concrete validation plan
-        - every hypothesis has a falsifier, expiry, and stable fingerprint
+        - call paperclip.semantic-core-mcp-agent-tools:generate-trend-topic-report once per focused report with project_id=astrogen-audience-trends-ukraine, analysis_date=YYYY-MM-DD in Europe/Kiev, the one deficient primary audience segment selected by the campaign, current existing_content as duplicate context only, six-month horizon and bounded private-project cache settings from trend-topic-policy.yaml
+        - use only the declared tool fields; map CMS pages to existing_content, first-party metrics to internal_signals, and company context to project.business_context; never send top-level business_context, runtime_inputs, existing_content_inventory, topic_pipeline_snapshot or semantic_core_inventory
+        - focus the report by sending exactly one configured row in audience_segments; primary_audience_segment_id and reviewed_fingerprints are not MCP fields, and internal_signals rows require title plus description rather than name/value
+        - do not send products; do not put Astrogen product/service/modality terms in project.description, project.market, project.business_context, company_goal, audience_segments.name or audience_segments.description
+        - project.output_language is required; existing_content rows contain only title, optional url, and status=published|planned; internal_signals is an array; do not send CMS slug or publishedAt as extra fields
+        - retain at most 8 clusters and 3 topic ideas per cluster; a successful zero-cluster report is valid
+        - preserve rejected signals, warnings, research summary, cache telemetry and cost events instead of filling empty output
+        - every retained hypothesis has a current temporal/behavioral audience signal, falsifier, expiry, stable fingerprint and source evidence from the report; evergreen how-to/checklist/explainer ideas are not trends without a recent temporal, seasonal, cultural, public-interest, search-behavior or audience-language shift
+        - validate selected concrete phrases only through run-layer-and-wait with explicit mode=live on a non-core layer and the exact bounded candidate_keywords array; mock/fixture output is smoke evidence only and can never satisfy production demand routing
+        - before provider validation, classify each selected phrase into exactly one supported candidate layer: adjacent_use_case_intent for decisions and situations served by Astrogen expertise, audience_need_intent for explicit audience problems or safety needs, or audience_interest_intent for broader verified audience interests; partition the wave by layer while keeping at most 5 phrases total
+        - audience_interest_intent is the bounded editorial bridge lane for 2-4 articles per Europe/Kiev month; direct product or entity anchoring is not required when current audience evidence, defensible Astrogen perspective, SERP information gain, safety boundaries and internal-link value pass, and no_entity_anchor or owner_mismatch alone is not a terminal park reason
+        - core_product_intent is not a candidate-keyword validation layer; retain direct product/service signals as trend evidence for the separate semantic-core seed/core workflow and do not submit them to run-layer-and-wait
+        - parked_outside_layer or owner_mismatch is not bounded-exhaustion evidence when the phrase has not been tested once in its preclassified intended layer; correct the layer within the same wave, never sweep a phrase across all layers, and never count the correction as a new trend wave
+        - require candidate_keyword_count to equal the deduplicated submitted phrase count and record accepted, review, parked or rejected disposition for every submitted phrase before search-demand routing
+        - candidate_review is nonterminal: delegate one stable review child per validation wave to SEO Semantic Core Validator, submit append-only accept, park or reject decisions, and materialize each distinct original semantic-run/layer partition in one cached live rerun before the wave or parent can close; never combine phrases from different intended layers in one materializing run
+        - validation child titles, purpose lines, and completion gates must say validate/classify and produce an ingestion handoff packet; they must not say the semantic-core assignee will materialize native search-demand cases
+        - read the latest durable report through paperclip.semantic-core-mcp-agent-tools:get-trend-topic-report before another paid trend call
+        - run at most 3 validation waves per report and at most 5 concrete audience-situation or reader-problem anchored Ukrainian search phrases per wave; every phrase carries the focused report's one primaryAudienceSegmentId, product/service binding is downstream action context only, and editorial topic titles, evergreen advice, clinical/psychotherapy lanes, or product terms without current audience evidence are not valid candidate_keywords
+        - never narrow a retained audience trend into an Astrogen product, service, modality, route, existing owner URL, or product keyword family; trend-derived phrases, topic titles, H1s, slugs, primary keywords, and topicKeys must remain audience-discussion themes. If product/service/modality wording was introduced by Paperclip rather than present in the retained audience signal, reject/cancel it as product_narrowing_contamination. Products may appear later only as contextual body links when useful.
+        - use child fingerprint trend-validation:{trendReportRunId}:wave:{waveNumber}; inspect direct children before delegation and reuse the matching nonterminal child instead of creating duplicate validation or config-blocker issues
+        - never reuse a phrase already parked or rejected; when a wave is all parked and unused non-calendar clusters remain, delegate the next bounded wave for the same deficient primary segment instead of closing the routine
+        - a terminal validation child is not success evidence by status alone; before done it must append exactly one machine-readable fenced JSON result projection under the reserved heading "## trendIngestionResult" with finalDisposition, acceptedSemanticCandidates, acceptedSemanticCandidateCount, createdSearchDemandCaseIds, eligibleReadyTopicCountAfter, segmentEligibleTopicCountAfter, remainingUnusedClusters, and validationWave; never use that exact heading for prose, checklists, or required-field notes
+        - accepted_for_search_demand_ingestion means CMO or the ingestion owner still must create or reuse native search-demand cases; acceptedSemanticCandidateCount never increments ready or reserved topic inventory
+        - validation children and semantic-core agents do not require pipelines:write; if they lack it, that is expected role separation, not a CTO blocker or permission escalation request
+        - when acceptedSemanticCandidates is non-empty and createdSearchDemandCaseIds is empty, CMO creates or reuses exactly one bounded ingestion handoff assigned to SEO Blog Content Strategist; that handoff materializes search-demand cases and reports the real native case IDs back to the parent flow
+        - ingestion groups acceptedSemanticCandidates before native writes; phrases from the same reader intent and expected owner page become one canonical search-demand case with supportingQueries, sourceSemanticCandidateIds and sourceClusterIds, never one case per phrase
+        - createdSearchDemandCaseIds lists only actual native case IDs, while eligibleReadyTopicCountAfter and segmentEligibleTopicCountAfter are queried from live lineage-valid ready plus reserved topic cases; if the native query is unavailable, use null and a typed blocker rather than an inferred number
+        - CMO must read that result projection from the direct child issue; if no search-demand case was created, the audience_trends track remains below 3, validationWave is below 3, and unused eligible clusters remain, delegate the next wave instead of closing the routine
+        - when all 3 waves are exhausted or no eligible unused cluster remains, close only with an explicit exhausted report result; never infer accepted demand from a child being done
+        - after a report is exhausted, select the most deficient segment again and run another focused report while the portfolio campaign daily/run bounds permit; use previous_clusters and reviewed fingerprints so later reports seek novel demand
+        - update the canonical refill case document next-content-plan with two sections: verifiedTopicPlan from live ready/reserved cases, and trendOpportunityQueue from audience-first trend candidates including status, not-counted reason, next action owner and evidence refs; every verified topic row includes native topic case id, primary segment, query/frequency, ownership and duplicate verdicts, incoming/outgoing links, trend report run id, and stage
       allowedSideEffects:
-        - store one monthly hypothesis document
+        - store one project-scoped semantic-core-trend-topic-report entity and one human-readable monthly hypothesis document
         - update the CMO portfolio evidence packet by stable hypothesis fingerprint
-        - route a bounded evidence-validation growth case when the next step is concrete
+        - route a bounded semantic-core provider-validation growth case when a proposed search phrase is concrete
       forbidden:
+        - call prepare-paperclip-import for the trend run
+        - treat trend clusters or topic ideas as accepted semantic-core keywords
         - create astrogen-topic-inventory or astrogen-article-production cases directly
         - treat a hypothesis as an approved topic or fact
         - use model memory as current trend evidence
         - mutate or publish CMS content
         - generate images or send Telegram messages
-      completionGate: typed observe/validate/reject/expired hypotheses or explicit no-supported-trend evidence; never an article task
+      completionGate: terminal child status alone never satisfies this gate; require durable trend report identity, warnings/cache/cost telemetry and typed observe/validate/reject/expired hypotheses or explicit zero-cluster/no-supported-trend evidence; every retained hypothesis has a current temporal/behavioral audience signal and is not merely product/modality/clinical/evergreen demand; when concrete phrases are selected, every candidate_review has been resolved by SEO Semantic Core Validator and each phrase has a final accepted, parked or rejected disposition from a live run on its preclassified intended layer; accepted phrases are grouped into unique intentClusterKey opportunities before native ingest; trend research fills only the audience_trends share of the 12/5/3/3/2 portfolio and never fabricates topics for other tracks; report completion never completes portfolio refill while total future supply or any contentPortfolioTrack target is deficient; next-content-plan is a real case document matching unique native ready/reserved intent-cluster IDs; never an article task
+      titleGate: trend-derived article titles are audience-first discussion themes and never Astrogen product/service/modality names
 
   - title: Monthly Astrogen scaled-content audit
     owner: SEO Performance Analyst

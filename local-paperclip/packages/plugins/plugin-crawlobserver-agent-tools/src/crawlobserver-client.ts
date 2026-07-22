@@ -19,6 +19,10 @@ type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
 type QueryValue = string | number | boolean | null | undefined;
 type QueryParams = Record<string, QueryValue>;
 
+const RETRYABLE_READ_STATUSES = new Set([502, 503, 504]);
+const MAX_READ_ATTEMPTS = 2;
+const READ_RETRY_DELAY_MS = 250;
+
 export type CrawlObserverRequest = {
   method?: "GET" | "POST" | "DELETE";
   path: string;
@@ -139,6 +143,64 @@ function readRecord(value: unknown): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
+function readFiniteNumber(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function readBoolean(value: unknown) {
+  return typeof value === "boolean" ? value : null;
+}
+
+function firstValue(record: Record<string, unknown>, keys: string[]) {
+  for (const key of keys) {
+    if (record[key] != null) return record[key];
+  }
+  return null;
+}
+
+export function normalizeSessionInventory(value: unknown) {
+  const root = readRecord(value);
+  const rawSessions = Array.isArray(value)
+    ? value
+    : Array.isArray(root.sessions)
+      ? root.sessions
+      : Array.isArray(root.items)
+        ? root.items
+        : [];
+  const sessions = rawSessions.flatMap((candidate) => {
+    const row = readRecord(candidate);
+    const id = readNonEmptyString(firstValue(row, ["sessionId", "session_id", "id", "ID"]));
+    if (!id) return [];
+    const quality = readRecord(row.quality);
+    return [{
+      sessionId: id,
+      projectId: readNonEmptyString(firstValue(row, ["projectId", "project_id", "ProjectID"])),
+      label: readNonEmptyString(firstValue(row, ["label", "Label"])) ?? "",
+      status: readNonEmptyString(firstValue(row, ["status", "Status"])) ?? "unknown",
+      startedAt: readNonEmptyString(firstValue(row, ["startedAt", "started_at", "StartedAt"])),
+      finishedAt: readNonEmptyString(firstValue(row, ["finishedAt", "finished_at", "FinishedAt"])),
+      pagesCrawled: readFiniteNumber(firstValue(row, ["pagesCrawled", "pages_crawled", "PagesCrawled"])),
+      seedUrls: Array.isArray(firstValue(row, ["seedUrls", "seed_urls", "SeedURLs"]))
+        ? firstValue(row, ["seedUrls", "seed_urls", "SeedURLs"])
+        : [],
+      isQueued: readBoolean(firstValue(row, ["isQueued", "is_queued"])) ?? false,
+      isRunning: readBoolean(firstValue(row, ["isRunning", "is_running"])) ?? false,
+      quality: {
+        trusted: readBoolean(quality.trusted),
+        status: readNonEmptyString(quality.status),
+        score: readFiniteNumber(quality.score),
+        isFullCrawl: readBoolean(firstValue(quality, ["isFullCrawl", "is_full_crawl"])),
+        baselineSessionId: readNonEmptyString(firstValue(quality, ["baselineSessionId", "baseline_session_id"])),
+        summary: readNonEmptyString(quality.summary),
+      },
+    }];
+  });
+  return {
+    sessions,
+    total: readFiniteNumber(root.total) ?? sessions.length,
+  };
+}
+
 function normalizeBaseUrl(value: unknown) {
   const candidate = readNonEmptyString(value) ?? DEFAULT_CRAWLOBSERVER_BASE_URL;
   const parsed = new URL(candidate);
@@ -185,7 +247,7 @@ function assertMutationAllowed(config: CrawlObserverPluginConfig) {
   }
 }
 
-function assertAllowedProject(input: {
+function resolveScopedProjectId(input: {
   config: CrawlObserverPluginConfig;
   projectId?: unknown;
 }) {
@@ -196,11 +258,15 @@ function assertAllowedProject(input: {
       `CrawlObserver project_id is not allowed: ${requestedProjectId}. Allowed project_id: ${allowedProjectId}`,
     );
   }
+  return requestedProjectId ?? allowedProjectId;
 }
 
 function requireSessionId(params: unknown) {
-  const value = readNonEmptyString(readRecord(params).sessionId);
-  if (!value) throw new Error("CrawlObserver sessionId is required");
+  const record = readRecord(params);
+  const value = readNonEmptyString(record.sessionId) ?? readNonEmptyString(record.session_id);
+  if (!value) {
+    throw new Error("CrawlObserver sessionId is required (provider session_id is accepted as an alias)");
+  }
   return encodeURIComponent(value);
 }
 
@@ -255,42 +321,55 @@ export async function callCrawlObserverApi(input: {
   const url = new URL(`${normalized.baseUrl}${input.request.path}`);
   appendQuery(url, input.request.query);
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), normalized.requestTimeoutMs);
-  try {
-    const response = await input.fetchFn(url.toString(), {
-      method: input.request.method ?? "GET",
-      headers: {
-        "X-API-Key": apiKey,
-        Accept: "application/json",
-        ...(input.request.body == null
-          ? {}
-          : { "Content-Type": "application/json" }),
-      },
-      body:
-        input.request.body == null ? undefined : JSON.stringify(input.request.body),
-      signal: controller.signal,
-    });
-    const text = await response.text();
-    if (!response.ok) {
-      const detail = normalizeErrorBody(text);
-      throw new Error(
-        `CrawlObserver HTTP ${response.status}${detail ? `: ${detail}` : ""}`,
-      );
+  const method = input.request.method ?? "GET";
+  const attempts = method === "GET" ? MAX_READ_ATTEMPTS : 1;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), normalized.requestTimeoutMs);
+    try {
+      const response = await input.fetchFn(url.toString(), {
+        method,
+        headers: {
+          "X-API-Key": apiKey,
+          Accept: "application/json",
+          ...(input.request.body == null
+            ? {}
+            : { "Content-Type": "application/json" }),
+        },
+        body:
+          input.request.body == null ? undefined : JSON.stringify(input.request.body),
+        signal: controller.signal,
+      });
+      const text = await response.text();
+      if (!response.ok) {
+        if (attempt < attempts && RETRYABLE_READ_STATUSES.has(response.status)) {
+          await new Promise((resolve) => setTimeout(resolve, READ_RETRY_DELAY_MS));
+          continue;
+        }
+        const detail = normalizeErrorBody(text);
+        throw new Error(
+          `CrawlObserver HTTP ${response.status}${detail ? `: ${detail}` : ""}`,
+        );
+      }
+      const data = text.trim().length > 0 ? JSON.parse(text) : null;
+      return {
+        content: JSON.stringify(data, null, 2),
+        data,
+      };
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        throw new Error("CrawlObserver request timed out");
+      }
+      if (attempt < attempts && error instanceof TypeError) {
+        await new Promise((resolve) => setTimeout(resolve, READ_RETRY_DELAY_MS));
+        continue;
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeout);
     }
-    const data = text.trim().length > 0 ? JSON.parse(text) : null;
-    return {
-      content: JSON.stringify(data, null, 2),
-      data,
-    };
-  } catch (error) {
-    if (error instanceof Error && error.name === "AbortError") {
-      throw new Error("CrawlObserver request timed out");
-    }
-    throw error;
-  } finally {
-    clearTimeout(timeout);
   }
+  throw new Error("CrawlObserver request failed after bounded retry");
 }
 
 export function prepareStartCrawlBody(input: {
@@ -303,13 +382,17 @@ export function prepareStartCrawlBody(input: {
     ? params.seeds.filter((seed): seed is string => typeof seed === "string" && seed.trim().length > 0)
     : [];
   if (seeds.length === 0) throw new Error("CrawlObserver crawl seeds are required");
-  assertAllowedProject({ config: input.config, projectId: params.project_id });
+  const projectId = resolveScopedProjectId({
+    config: input.config,
+    projectId: params.project_id,
+  });
 
   const body: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(params)) {
     if (START_CRAWL_FIELDS.has(key) && value != null) body[key] = value;
   }
   body.seeds = seeds;
+  if (projectId) body.project_id = projectId;
   return body;
 }
 
@@ -324,7 +407,13 @@ export function prepareReadEndpointRequest(input: {
     throw new Error(`CrawlObserver read endpoint is not allowed: ${endpointTemplate}`);
   }
   const query = readRecord(params.query);
-  assertAllowedProject({ config: input.config, projectId: query.project_id });
+  const projectId = resolveScopedProjectId({
+    config: input.config,
+    projectId: query.project_id,
+  });
+  if (endpointTemplate === "/api/sessions" && projectId) {
+    query.project_id = projectId;
+  }
   const sessionId = endpointTemplate.includes("{id}")
     ? requireSessionId(params)
     : null;
@@ -343,12 +432,17 @@ export function prepareSessionsQuery(input: {
   config: CrawlObserverPluginConfig;
 }) {
   const params = readRecord(input.params);
-  assertAllowedProject({ config: input.config, projectId: params.project_id });
-  return cleanQuery(
+  const projectId = resolveScopedProjectId({
+    config: input.config,
+    projectId: params.project_id,
+  });
+  const query = cleanQuery(
     params,
     SESSION_FILTER_FIELDS,
     normalizeConfig(input.config).maxPageLimit,
   );
+  if (projectId) query.project_id = projectId;
+  return query;
 }
 
 export function preparePagesQuery(input: {

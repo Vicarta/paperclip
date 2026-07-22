@@ -1,0 +1,15 @@
+# syntax=docker/dockerfile:1.20
+ARG BASE_IMAGE=paperclip-app:v2026.626.0-vicarta.131-openrouter-success-transition-20260721
+FROM ${BASE_IMAGE}
+
+USER root
+COPY --chown=node:node crawlobserver/package.json /app/packages/plugins/plugin-crawlobserver-agent-tools/package.json
+COPY --chown=node:node crawlobserver/dist/ /app/packages/plugins/plugin-crawlobserver-agent-tools/dist/
+COPY --chown=node:node email/package.json /app/packages/plugins/plugin-email-notifications/package.json
+COPY --chown=node:node email/dist/ /app/packages/plugins/plugin-email-notifications/dist/
+RUN node -e "const crawl=require('/app/packages/plugins/plugin-crawlobserver-agent-tools/package.json'); const email=require('/app/packages/plugins/plugin-email-notifications/package.json'); if(crawl.version!=='0.1.4'||email.version!=='0.3.1') process.exit(1)" \
+  && test -f /app/packages/plugins/plugin-crawlobserver-agent-tools/dist/worker.js \
+  && test -f /app/packages/plugins/plugin-email-notifications/dist/worker.js \
+  && command -v psql >/dev/null 2>&1
+
+# Keep the base image entrypoint, command, and runtime server unchanged.

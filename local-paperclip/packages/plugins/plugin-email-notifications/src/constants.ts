@@ -1,5 +1,5 @@
 export const PLUGIN_ID = "paperclip.email-notifications";
-export const PLUGIN_VERSION = "0.3.0";
+export const PLUGIN_VERSION = "0.3.1";
 
 export const TOOL_NAMES = {
   sendEmailNotification: "email-notification-send",
@@ -19,6 +19,7 @@ export const DEFAULT_CONFIG = {
   fromEmail: "",
   defaultRecipientEmails: "",
   allowlistedRecipientEmails: "",
+  developerHandoffAllowedHosts: "",
   defaultLanguage: "uk",
   costAccountingMode: "estimated_per_email",
   estimatedEmailCostUsd: 0.001,

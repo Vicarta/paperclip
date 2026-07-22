@@ -12,6 +12,8 @@ http://ubuntu-aibizmate-n8n.tailbd4e1c.ts.net:8899
 
 The plugin lets Paperclip agents acquire crawl evidence from CrawlObserver without exposing credentials in prompts, issue comments, frontend code, or logs. It is not an SEO decision engine. Paperclip owns durable storage, findings, issue lifecycle, prioritization, and remediation routing.
 
+`list-sessions` returns a bounded compact DTO. Every row has a canonical camelCase `sessionId`; provider-only `ID`, `Config`, and other large acquisition payloads are not exposed to the agent context.
+
 ## Security Model
 
 - The API key is stored only as a Paperclip company secret reference.
@@ -20,13 +22,14 @@ The plugin lets Paperclip agents acquire crawl evidence from CrawlObserver witho
 - Agents cannot override the base URL per call.
 - Generic endpoint calls are restricted to a backend allowlist of read-only API paths.
 - Mutating tools are disabled by default and require `allowMutatingTools=true`.
-- If `allowedProjectId` is configured, calls with another `project_id` are rejected before reaching CrawlObserver.
+- If `allowedProjectId` is configured, session inventory calls inject it when omitted and reject another `project_id` before reaching CrawlObserver.
+- Read-only calls retry once on transient gateway statuses `502`, `503`, and `504`; mutating calls are never retried automatically.
 
 ## Configuration
 
 - `crawlObserverApiKeySecretRef`: Paperclip secret ID storing the CrawlObserver API key.
 - `crawlObserverBaseUrl`: private Tailnet API base URL.
-- `allowedProjectId`: optional CrawlObserver project guardrail.
+- `allowedProjectId`: company-scoped CrawlObserver project guardrail and default for session inventory.
 - `allowMutatingTools`: enables crawl start/stop/resume/retry.
 - `requestTimeoutMs`: timeout for one API call.
 - `maxPageLimit`: maximum forwarded `limit` for paged reads.

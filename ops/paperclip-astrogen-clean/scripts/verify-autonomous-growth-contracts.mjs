@@ -3,6 +3,7 @@ import { spawnSync } from "node:child_process";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { routineContracts } from "./bootstrap-astrogen-growth-os.mjs";
+import { readFileSync } from "node:fs";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const PIPELINE_MANIFEST = resolve(SCRIPT_DIR, "../manifests/pipelines.yaml");
@@ -23,7 +24,7 @@ function assert(condition, message) {
 
 function includesAll(value, fragments, label) {
   for (const fragment of fragments) {
-    assert(value.includes(fragment), `${label} is missing invariant: ${fragment}`);
+    assert(value.toLowerCase().includes(fragment.toLowerCase()), `${label} is missing invariant: ${fragment}`);
   }
 }
 
@@ -51,20 +52,51 @@ function main() {
     topic.transitions.some((transition) => transition.from === "ready" && transition.to === "rejected_duplicate"),
     "Proven duplicate reconciliation must be able to reject a released topic",
   );
+  const article = manifest.pipelines.find((pipeline) => pipeline.key === "astrogen-article-production");
+  const imageRecovery = article?.stages?.find((stage) => stage.key === "image_recovery_review");
+  assert(imageRecovery?.position === 1350, "CMO image recovery review stage is missing");
+  assert(
+    article.transitions.some((transition) => transition.from === "image" && transition.to === "image_recovery_review"),
+    "Hard visual QA failures must route to the CMO recovery stage",
+  );
+  assert(
+    article.transitions.some((transition) => transition.from === "image_recovery_review" && transition.to === "image"),
+    "CMO recovery must return a case to image only through the native pipeline",
+  );
+  assert(
+    article.transitions.some((transition) => transition.from === "image_recovery_review"
+      && transition.to === "cms_draft"
+      && transition.label === "accept_existing_after_visual_review"),
+    "CMO recovery must accept a valid existing candidate without another provider call",
+  );
 
   includesAll(routineContracts.articleSlotAllocator, [
     "POST /api/cases/{topicCaseId}/breakdown",
     "{topicKey}:reservation-v{topicCaseVersion}",
     "topic-inventory-refill:{ISO-week}",
+    "Target three new CMS drafts per Europe/Kiev day",
+    "availableSlots = min(3 - currentDayNewArticleBatchCount, 3 - productiveWipCount, eligibleReadyTopicCount)",
+    "Every `/pipelines/{pipelineId}/cases` response is a direct JSON array",
+    "A single successful breakdown does not satisfy a remaining daily batch deficit",
+    "A refill stage name is not liveness proof",
+    "executionPolicy.monitor.nextCheckAt",
+    "topic-inventory-refill:{ISO-week}:continuation:v{caseVersion}",
     "Never create a legacy article parent",
   ], "Article allocator contract");
+  const routineSyncSource = readFileSync(resolve(SCRIPT_DIR, "sync-autonomous-growth-routines.mjs"), "utf8");
+  includesAll(routineSyncSource, [
+    "env: null",
+    "Routine env drift remains after sync",
+  ], "Routine synchronization contract");
   includesAll(routineContracts.leadershipBacklogTriage, [
     "already assigned, blocked, in-progress, or foreign-owned issue",
     "A 403 while attempting to mutate a foreign issue is a routing error",
   ], "Leadership contract");
   includesAll(routineContracts.weeklyGrowthPortfolio, [
-    "3-10 evidence-backed",
-    "native topic case ids",
+    "25 lineage-valid future topics",
+    "next-content-plan",
+    "exact `caseKey=growth:topic-inventory-refill:{ISO-week}`",
+    "A stage label such as `executing` is not evidence of execution",
   ], "Weekly CMO contract");
   includesAll(routineContracts.dailyEvidence, ["astrogen-growth-actions"], "Daily evidence contract");
   includesAll(routineContracts.gscIndexingAudit, ["astrogen-growth-actions"], "GSC audit contract");
@@ -77,6 +109,7 @@ function main() {
       "outcome-aware topic consume/release",
       "no ready-stage automation",
       "allocator native dispatch and refill",
+      "three-slot daily batch and deficit reconciliation",
       "CEO foreign-issue boundary",
       "weekly native topic supply",
       "collector growth-case dedup",

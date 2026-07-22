@@ -7,7 +7,10 @@ import {
   callCrawlObserverApi,
   preparePagesQuery,
   prepareReadEndpointRequest,
+  prepareSessionsQuery,
   prepareStartCrawlBody,
+  buildSessionPath,
+  normalizeSessionInventory,
 } from "../src/crawlobserver-client.js";
 
 vi.mock("../src/crawlobserver-client.js", async () => {
@@ -26,6 +29,52 @@ const callCrawlObserverApiMock = vi.mocked(callCrawlObserverApi);
 describe("plugin-crawlobserver-agent-tools", () => {
   beforeEach(() => {
     callCrawlObserverApiMock.mockReset();
+  });
+
+  it("declares sessionId for every session-scoped inventory tool", () => {
+    const sessionTools = [
+      TOOL_NAMES.getSessionQuality,
+      TOOL_NAMES.listPages,
+      TOOL_NAMES.listLinks,
+      TOOL_NAMES.listInternalLinks,
+      TOOL_NAMES.getSitemapUrls,
+      TOOL_NAMES.getResourceChecks,
+      TOOL_NAMES.getPageIssues,
+      TOOL_NAMES.getRedirectPages,
+      TOOL_NAMES.getNearDuplicates,
+      TOOL_NAMES.getStructuredData,
+    ];
+
+    for (const toolName of sessionTools) {
+      const tool = manifest.tools?.find((candidate) => candidate.name === toolName);
+      expect(tool?.parametersSchema).toMatchObject({
+        properties: { sessionId: { type: "string" } },
+        required: ["sessionId"],
+      });
+    }
+  });
+
+  it("declares a bounded list-sessions schema", () => {
+    const tool = manifest.tools?.find(
+      (candidate) => candidate.name === TOOL_NAMES.listSessions,
+    );
+    expect(tool?.parametersSchema).toEqual({
+      type: "object",
+      properties: {
+        project_id: expect.objectContaining({ type: "string" }),
+        limit: { type: "number" },
+        offset: { type: "number" },
+        search: { type: "string" },
+      },
+      additionalProperties: false,
+    });
+  });
+
+  it("normalizes CrawlObserver's provider session_id alias", () => {
+    expect(buildSessionPath({
+      params: { session_id: "provider-session-1" },
+      suffix: "/pages",
+    })).toBe("/api/sessions/provider-session-1/pages");
   });
 
   it("registers the health tool and forwards through backend config", async () => {
@@ -96,6 +145,102 @@ describe("plugin-crawlobserver-agent-tools", () => {
         },
       }),
     ).toThrow(/project_id is not allowed/);
+  });
+
+  it("injects the company-scoped project into session inventory", () => {
+    expect(
+      prepareSessionsQuery({
+        params: { limit: 5, offset: 0 },
+        config: {
+          allowedProjectId: "project-1",
+          maxPageLimit: 100,
+        },
+      }),
+    ).toEqual({
+      limit: 5,
+      offset: 0,
+      project_id: "project-1",
+    });
+
+    expect(() =>
+      prepareSessionsQuery({
+        params: { project_id: "other-project" },
+        config: { allowedProjectId: "project-1" },
+      }),
+    ).toThrow(/project_id is not allowed/);
+  });
+
+  it("normalizes provider session inventory into a compact camelCase DTO", () => {
+    expect(normalizeSessionInventory({
+      sessions: [{
+        ID: "session-1",
+        ProjectID: "project-1",
+        Label: "Full crawl",
+        Status: "completed",
+        StartedAt: "2026-07-18T19:54:26Z",
+        FinishedAt: "2026-07-18T19:57:59Z",
+        PagesCrawled: 191,
+        SeedURLs: ["https://astrogen.com.ua/"],
+        Config: "large provider payload must not leak",
+        quality: {
+          trusted: true,
+          status: "trusted",
+          score: 90,
+          is_full_crawl: true,
+          baseline_session_id: "baseline-1",
+          summary: "Crawl data is trusted.",
+        },
+      }],
+      total: 1,
+    })).toEqual({
+      sessions: [{
+        sessionId: "session-1",
+        projectId: "project-1",
+        label: "Full crawl",
+        status: "completed",
+        startedAt: "2026-07-18T19:54:26Z",
+        finishedAt: "2026-07-18T19:57:59Z",
+        pagesCrawled: 191,
+        seedUrls: ["https://astrogen.com.ua/"],
+        isQueued: false,
+        isRunning: false,
+        quality: {
+          trusted: true,
+          status: "trusted",
+          score: 90,
+          isFullCrawl: true,
+          baselineSessionId: "baseline-1",
+          summary: "Crawl data is trusted.",
+        },
+      }],
+      total: 1,
+    });
+  });
+
+  it("returns compact list-sessions data without the raw Config payload", async () => {
+    const harness = createTestHarness({
+      manifest,
+      config: {
+        crawlObserverApiKeySecretRef: "secret-co",
+        allowedProjectId: "project-1",
+      },
+    });
+    await plugin.definition.setup(harness.ctx);
+    callCrawlObserverApiMock.mockResolvedValueOnce({
+      content: "raw",
+      data: {
+        sessions: [{ ID: "session-1", ProjectID: "project-1", Config: "large" }],
+        total: 1,
+      },
+    });
+
+    const result = await harness.executeTool(TOOL_NAMES.listSessions, { limit: 5 });
+
+    expect(result.data).toMatchObject({
+      total: 1,
+      sessions: [{ sessionId: "session-1", projectId: "project-1" }],
+    });
+    expect(result.content).not.toContain("Config");
   });
 
   it("registers start-crawl as a gated backend call", async () => {
@@ -408,5 +553,56 @@ describe("plugin-crawlobserver-agent-tools", () => {
         },
       }),
     ).rejects.not.toThrow("super-secret-api-key");
+  });
+
+  it("retries one transient read-only gateway failure", async () => {
+    const actual =
+      await vi.importActual<typeof import("../src/crawlobserver-client.js")>(
+        "../src/crawlobserver-client.js",
+      );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 502,
+        text: async () => JSON.stringify({ error: "temporary gateway failure" }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({ sessions: [], total: 0 }),
+      });
+
+    const result = await actual.callCrawlObserverApi({
+      config: { crawlObserverApiKeySecretRef: "secret-co" },
+      resolveSecret: async () => "super-secret-api-key",
+      fetchFn: fetchMock as unknown as typeof fetch,
+      request: { method: "GET", path: "/api/sessions" },
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(result.data).toEqual({ sessions: [], total: 0 });
+  });
+
+  it("does not retry mutating calls", async () => {
+    const actual =
+      await vi.importActual<typeof import("../src/crawlobserver-client.js")>(
+        "../src/crawlobserver-client.js",
+      );
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 502,
+      text: async () => JSON.stringify({ error: "temporary gateway failure" }),
+    });
+
+    await expect(
+      actual.callCrawlObserverApi({
+        config: { crawlObserverApiKeySecretRef: "secret-co" },
+        resolveSecret: async () => "super-secret-api-key",
+        fetchFn: fetchMock as unknown as typeof fetch,
+        request: { method: "POST", path: "/api/crawl", body: { seeds: [] } },
+      }),
+    ).rejects.toThrow("CrawlObserver HTTP 502");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

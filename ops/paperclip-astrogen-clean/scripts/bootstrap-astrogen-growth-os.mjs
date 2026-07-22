@@ -45,6 +45,7 @@ const secretDefs = [
   ["dataforseo-api-password", "parked"],
   ["serper-api-key", "required"],
   ["winning-structure-mcp-token", "required"],
+  ["semantic-core-mcp-token", "required"],
   ["exa-api-key", "parked"],
   ["collaborator-api-key", "parked"],
   ["bright-data-api-token", "parked"],
@@ -105,9 +106,8 @@ const pluginDefs = [
     key: "paperclip.semantic-core-mcp-agent-tools",
     packageName: "@paperclipai/plugin-semantic-core-mcp-agent-tools",
     packagePath: "/app/packages/plugins/plugin-semantic-core-mcp-agent-tools",
-    active: false,
+    active: true,
     installOrder: 80,
-    disabledReason: "Requires packaging smoke before activation.",
   },
   {
     key: "paperclip.dataforseo-agent-tools",
@@ -187,7 +187,7 @@ export const agentDefs = [
   role("SEO Blog Content Plan Validator", "researcher", "SEO Blog Content Plan Validator", "SEO Blog Content Strategist", "eye", true, false, "Validates content plans before article production starts."),
   role("MKT Blog Brief Strategist", "cmo", "Blog Brief Strategist", "SEO Blog Content Strategist", "file-code", true, false, "Creates compact article briefs with locked title, route, keywords, scope, and CTA constraints."),
   role("SEO Blog Article Writer (Claude)", "researcher", "SEO Blog Article Writer", "MKT Blog Brief Strategist", "brain", false, false, "Writes canonical Ukrainian article artifacts through OpenRouter from accepted briefs only.", "openrouter"),
-  role("SEO Blog Article Writer (ChatGPT)", "researcher", "Fallback SEO Blog Article Writer", "MKT Blog Brief Strategist", "brain", true, false, "Fallback writer used only for confirmed Claude/OpenRouter blockers or explicit CMO recovery."),
+  role("SEO Blog Article Writer (ChatGPT)", "researcher", "Fallback SEO Blog Article Writer", "MKT Blog Brief Strategist", "brain", true, false, "Fallback writer used only for confirmed Claude/OpenRouter blockers or explicit CMO recovery.", "codex_local", "fallback-seo-blog-article-writer"),
   role("SEO Blog Article Validator", "researcher", "SEO Blog Article Validator", "SEO Blog Content Plan Validator", "shield", false, false, "Validates drafts against brief lock, factual risk, Astrogen voice, and artifact protocol."),
   role("SEO Blog Humanizer", "researcher", "SEO Blog Humanizer", "SEO Blog Article Validator", "sparkles", false, false, "Improves accepted drafts for natural Ukrainian readability without changing SEO locks."),
   role("SEO Blog Article Layout Editor", "researcher", "SEO Blog Article Layout Editor", "SEO Blog Humanizer", "layout", false, false, "Creates articleContent layout JSON and CMS-ready body structure."),
@@ -333,25 +333,37 @@ Source of truth:
 Native case inventory read path:
 - Resolve pipeline UUIDs through \`GET /api/companies/{companyId}/pipelines\`; never put a pipeline key into a \`pipelineId\` route.
 - Read ready topics through \`GET /api/pipelines/{topicPipelineId}/cases?stageKey=ready&terminal=false&limit=10&offset=0\`.
+- Count and dispatch only wrapper rows whose \`row.case.fields.selectedAction=new_article\`, \`row.parentCase.pipeline.key=astrogen-search-demand-opportunities\`, and \`row.parentCase.case.id\` equals \`row.case.parentCaseId\`. A legacy ready case without guarded opportunity lineage is ineligible and must not consume capacity.
 - Read open article WIP through \`GET /api/pipelines/{articlePipelineId}/cases?terminal=false&limit=10&offset=0\` and classify productive versus blocked from returned case/work evidence.
-- Find the canonical refill through exact \`caseKey\` on \`GET /api/pipelines/{growthPipelineId}/cases?caseKey={urlEncodedCaseKey}&terminal=false&limit=10\`.
+- Find the canonical refill through exact \`caseKey=growth:topic-inventory-refill:{ISO-week}\` on \`GET /api/pipelines/{growthPipelineId}/cases?caseKey={urlEncodedCaseKey}&terminal=false&limit=10\`.
+- Compute \`{ISO-week}\` from the current Europe/Kiev business date. A nonterminal refill from an earlier week is historical evidence, never the current canonical continuation, even when its stage is \`executing\` or its \`nextReviewAt\` is in the future.
+- Every \`/pipelines/{pipelineId}/cases\` response is a direct JSON array of wrapper rows shaped as \`{case, stage, parentCase, activeWork, descendantActiveWorkCount}\`. Read fields from \`row.case\` and lineage from \`row.parentCase\`; never read top-level \`row.fields\` or a guessed \`parentPipeline\`. Count it with \`Array.isArray(response) ? response.length : protocol_error\`; \`[]\` is the only valid empty inventory. Never read \`response.items\`, \`response.cases\`, or infer an empty result from an object-shaped response.
 - Do not probe generic \`/api/cases\`, \`/api/pipeline-cases\`, or \`/api/pipelines/{pipelineKey}/cases\` aliases. A failure caused by a key in a UUID route is a caller-contract error, not a platform blocker.
 
 Capacity and selection:
-- Target one new CMS draft per Europe/Kiev day. Explicit article-only catch-up is bounded to 3 slots per run.
+- Target three new CMS drafts per Europe/Kiev day. This is a controlled daily batch, not a broad scheduler catch-up.
 - Productive WIP cap is 3 article cases without an unresolved blocker. Blocked or external-wait cases do not consume productive WIP and never freeze a different topic.
-- Read ready topic cases, choose at most one deterministically by human priority, demand evidence, freshness, and oldest ready timestamp. Never invent a topic inside this routine.
+- Calculate \`availableSlots = min(3 - currentDayNewArticleBatchCount, 3 - productiveWipCount, eligibleReadyTopicCount)\`. \`currentDayNewArticleBatchCount\` includes only new-article cases reserved or delivered by this allocator in the current Europe/Kiev day; it excludes refreshes, cancelled cases, and article cases from an earlier batch.
+- Select up to \`availableSlots\` lineage-valid ready topic cases deterministically by human priority, demand evidence, freshness, and oldest ready timestamp. Never invent a topic inside this routine.
+- Select at most one eligible topic from the same repetitive query family in one daily batch. Explicit calendar-date themes and ephemeral daily-horoscope themes, including sign-specific "на сьогодні" variants, are paused by owner policy and are never eligible even when a legacy case remains at ready.
+- Count and select unique \`intentClusterKey\` values. Two differently worded topics that seek the same reader outcome and expected owner page are one topic; merge supporting queries and reject the duplicate lineage before dispatch.
+- For \`portfolioLane=audience_interest_editorial\`, dispatch at most one topic per daily batch and at most four article cases reserved or delivered in the current Europe/Kiev calendar month. Prefer enough evidence-backed cases to reach two per month, but never invent or weaken a topic to meet that target.
+- Dispatch the selected topics sequentially. A duplicate, blocked, or topic-specific breakdown failure records typed evidence for that topic and continues with the next independently ready topic. Stop the batch only for a shared API/authentication failure.
 
 Atomic dispatch:
-- Call \`POST /api/cases/{topicCaseId}/breakdown\` once with one item. The ready stage configuration must target \`astrogen-article-production\` stage \`opportunity\`, use piece noun \`article\`, and advance the topic to \`reserved\`.
+- For each selected topic, call \`POST /api/cases/{topicCaseId}/breakdown\` once with one item. The ready stage configuration must target \`astrogen-article-production\` stage \`opportunity\`, use piece noun \`article\`, and advance the topic to \`reserved\`.
 - The item key is \`{topicKey}:reservation-v{topicCaseVersion}\`. The ready topic case version is the reservation generation: a retry of the same generation reuses one child, while a topic released after cancellation has a newer version and creates a new child instead of reusing the cancelled case. Its fields include operation=create, targetQueryCluster from queryCluster, blockerClass=null, nextReviewAt=null, attemptCount=0, cmsDraftId=null, cmsAdminUrl=null, and telegramMessageId=null. Inherited topic fields provide topicKey, titleUk, ctaRoute, and evidenceRefs.
 - Treat the breakdown response as the reservation proof. Record the returned child article case id as consumingArticleCaseId and set a bounded reservationExpiresAt if the reserved-stage automation has not already done so.
 - Breakdown request keys and native case keys are the per-reservation-generation idempotency boundary. Never create a legacy article parent, brief child, writer child, refill child, or recovery issue from the allocator.
 
 Inventory refill:
-- When ready inventory is below 3, ingest or update one canonical \`astrogen-growth-actions\` case with fingerprint \`topic-inventory-refill:{ISO-week}\`; do not create a blocked issue chain.
-- The growth case delegates evidence-backed candidate generation to CMO and content specialists. Weekly CMO portfolio planning must ingest 3-10 candidate topic cases into \`astrogen-topic-inventory\`; candidate/evidence_ready stage automations validate them.
-- If zero ready topics exist, the allocator still creates or updates that refill growth case and exits with the native case as a live continuation. \`no-safe-topic\` is never terminal success by itself.
+- Independently of today's article slots, ingest or update one canonical \`astrogen-growth-actions\` case with fingerprint \`topic-inventory-refill:{ISO-week}\` and case key \`growth:topic-inventory-refill:{ISO-week}\` while eligible \`ready + reserved\` supply is below 25 or any \`contentPortfolioTrack\` is below its 12/5/3/3/2 target; do not create a blocked issue chain.
+- A refill stage name is not liveness proof. Treat the current-week refill as live only when the case wrapper exposes current \`activeWork\`, positive \`descendantActiveWorkCount\`, or a current linked work issue with an explicit future monitor/recovery path. A done, cancelled, stale, prior-week, or unmonitored blocked issue does not count.
+- When the exact current-week refill is below target and has no live work path, atomically delegate one bounded continuation to SEO Blog Content Strategist through issue creation with \`pipelineCaseLink.caseId\` and stable \`pipelineCaseLink.requestKey=topic-inventory-refill:{ISO-week}:continuation:v{caseVersion}\`. Reuse the returned issue on retry; never create first and link second.
+- The growth case delegates evidence-backed search-demand and curriculum planning until the rolling plan contains 12 western-astrology learning topics, 5 applied audience questions, 3 trends, 3 trust/expert/method-boundary topics, and 2 commercial unmet-demand topics. Audience segments are diversity guardrails, not hard quotas. Only a delegated \`selectedAction=new_article\` breakdown may create a topic candidate.
+- Before native search-demand ingestion, group accepted phrases by reader outcome, search intent, expected owner page and SERP family. One \`intentClusterKey\` creates one canonical opportunity and one plan row; variants remain \`supportingQueries\`.
+- Prioritize portfolio breadth across audience-interest, adjacent-use-case, audience-need, and core-product demand. When accepted semantic inventory cannot supply enough broad candidates, reuse the latest valid trend report or run the bounded low-inventory fallback under /companies/astrogen/reference/trend-topic-policy.yaml. Trend output is evidence only: every proposed phrase must pass normal semantic-core validation before it can enter search-demand intake.
+- If the portfolio-track matrix is incomplete, the allocator creates or updates that refill growth case and verifies its real work/monitor path. \`no-safe-topic\` is never terminal success by itself.
 - Missing Payload, GSC/GA4, semantic-core, CrawlObserver, or pipeline access becomes a typed blocker on the refill growth case. It does not stop other growth or article cases and is not sent to the owner as a topic-choice request.
 
 Article delivery invariants:
@@ -361,7 +373,9 @@ Article delivery invariants:
 - CMS remains draft-only. Generic technical Telegram notifications and proactive watches remain off.
 
 Completion gate:
-- Done only when one native article case is live from a successful breakdown, the current daily/catch-up quota is already satisfied, productive WIP is full, or one canonical refill growth case is live for an empty/low inventory.
+- Done only when the current-day batch target or productive WIP cap is satisfied. A single successful breakdown does not satisfy a remaining daily batch deficit.
+- When the current-day count is below three solely because ready inventory is empty, keep this same allocator issue \`in_progress\` with \`executionPolicy.monitor.nextCheckAt\` set to a bounded inventory recheck and notes naming the exact current-week refill case. At the monitor wake, re-read inventory and dispatch newly ready topics. Close only after three current-day slots are reserved/delivered, the WIP cap is reached, or a durable typed provider/owner-policy bound makes the remaining slots impossible for this business day.
+- A refill in \`executing\` without active work or a future monitor is stranded work, not a completion condition. Repair its native delegation before scheduling the allocator recheck.
 - A comment, legacy child issue, narrative no-slot report, or raw tool output is not completion evidence.`,
 
   weeklySeoGeo: `Purpose: turn compact daily evidence into a weekly Astrogen SEO/GEO action cycle.
@@ -392,11 +406,13 @@ Allowed side effects:
 - Send the detailed weekly SEO report through \`paperclip.email-notifications:email-seo-weekly-report-send\`.
 
 Search-demand opportunity contract:
-- Every finding follows discovered -> evidence_ready -> ownership_review -> action_selected -> delegated -> verified -> measured.
-- Combine GSC query/page evidence, semantic-core geo frequency, Payload/live coverage, CrawlObserver, current SERP evidence, and existing action history.
+- Every actionable finding follows discovered -> evidence_ready -> ownership_review -> action_selected -> delegated -> verified -> measured. A durable no-action decision terminates at action_selected -> cancelled and creates no downstream work.
+- Follow /companies/astrogen/reference/search-demand-policy.yaml. Start from accepted uncovered semantic-core clusters ranked by Ukraine geo frequency; use GSC query/page evidence, Payload/live coverage, CrawlObserver, current SERP evidence, and existing action history to resolve ownership. Exact-slug absence or one-to-five weekly GSC impressions never qualify a new article by themselves.
+- Treat trend reports as portfolio evidence only. A trend phrase must pass the normal semantic-core validation workflow before it can become search-demand evidence. Calendar-date themes are paused and route to no_action rather than topic inventory.
 - Resolve query-to-URL ownership and cannibalization before action selection.
-- Select exactly one action: new_article, refresh, merge, reposition, internal_link, technical, or no_action.
+- Select exactly one closed-enum action: new_article, refresh, merge, reposition, internal_link, technical, or no_action. Never append a reason to selectedAction; store actionReasonCode/actionReasonSummary separately. The discovered stage never writes selectedAction.
 - Only a delegated opportunity with the durable decision selectedAction=new_article may call native breakdown into topic inventory. The breakdown waits for the topic/article child outcome before verification. All other actions use linked growth execution cases.
+- no_action records its reason, cooldown and nextReviewAt, then uses action_selected -> cancelled without a child, execution blocker, verification, or measurement task.
 
 Content refresh contract:
 - \`content_refresh\` means improving an existing article's body/content after
@@ -416,6 +432,9 @@ Content refresh contract:
 Email delivery contract:
 - Use the completed Wednesday-Tuesday Europe/Kiev period and the previous Wednesday-Tuesday comparison period; mark the latest 2 source days provisional when applicable.
 - Write for a non-technical company owner in simple Ukrainian. Explain business meaning first; keep tool names, payload details, and internal implementation terms out of the main summary.
+- CrawlObserver \`list-sessions\` returns a compact object whose \`sessions\` rows carry camelCase \`sessionId\` and \`quality.isFullCrawl\`. Select the latest completed row with \`quality.trusted=true\`, \`quality.status=trusted\`, and \`quality.isFullCrawl=true\`, then confirm it through \`get-session-quality\` before technical conclusions.
+- A non-empty \`sessions\` array is never reported as no crawl session. Missing canonical \`sessionId\` is a plugin protocol blocker, not an evidence limitation.
+- Owner email may say only whether verified technical crawl evidence was included and what that means. Keep \`bounded\`, \`list-sessions\`, \`get-session-quality\`, \`trust gate\`, \`proof\`, raw statuses, and adapter terminology in internal issue evidence.
 - The first section must say what Paperclip will do next. Every action must name the existing issue or native case, accountable agent, current status, exact next step, and review date when known.
 - Separate executable actions from watch/cooldown/no-action decisions. Never present a blocked or external-wait issue as completed work.
 - Call paperclip.email-notifications:email-seo-weekly-report-send with the structured report object and an idempotency key tied to the routine issue. The company-scoped plugin renders safe HTML plus a plain-text fallback.
@@ -459,18 +478,22 @@ Continuity rules:
 
 Output contract:
 - Create/update a compact weekly-growth-plan issue document with 3-7 prioritized actions when evidence supports them.
-- Ingest or update 3-10 evidence-backed \`astrogen-search-demand-opportunities\` cases at \`discovered\` using stable fingerprints. Never ingest topic candidates directly.
+- Ingest or update evidence-backed \`astrogen-search-demand-opportunities\` cases at \`discovered\` using stable fingerprints and /companies/astrogen/reference/search-demand-policy.yaml until the rolling contentPortfolioTrack matrix 12/5/3/3/2 is met. Never ingest topic candidates directly.
+- Keep the portfolio broader than current products: trend discovery starts from current audience segment situations, temporal/behavioral signals, cultural shifts, reader problems, seasonal recurrences and safety concerns, not from Astrogen products, modalities, service pages, existing keyword families or semantic-core seed catalogs. Evergreen how-to/checklist/explainer ideas, clinical/psychotherapy lanes, and product/modality families are not trend candidates by themselves. Do not fill a plan with near-identical sign/product query families. Calendar-date themes remain paused.
+- If accepted semantic demand cannot maintain the low-water mark, reuse the latest valid trend report or delegate the bounded fallback in /companies/astrogen/reference/trend-topic-policy.yaml. Raw trend phrases are evidence only and must pass normal semantic-core validation before search-demand intake.
 - Drive each opportunity through ownership review and one action selection. Only guarded \`new_article\` breakdown may create a native topic candidate.
-- Maintain a target of 10 validated ready topics and a low-water mark of 3. Candidate and evidence-ready stage automations own enrichment and duplicate/cannibalization validation; CMO does not mark a candidate ready by narrative assertion.
-- Manage delegated topic generation through the final validator outcomes. Candidate submissions and case IDs are progress, not inventory success; candidate, evidence_ready, consumed, rejected_duplicate and narrative lists do not count as ready inventory.
+- Maintain 25 lineage-valid future topics across \`ready\` and \`reserved\` with contentPortfolioTrack targets 12/5/3/3/2. Keep primaryAudienceSegmentId for diversity reporting only; never create filler for a segment. Candidate and evidence-ready stage automations own enrichment and duplicate/cannibalization validation.
+- Manage delegated topic generation through final validator outcomes. Candidate submissions are progress, not inventory success; candidate, evidence_ready, consumed, rejected_duplicate, secondary-segment aliases, comments and narrative lists do not count. Update the canonical refill case document \`next-content-plan\` from the live counted native cases.
+- Compute the current Europe/Kiev ISO week and use only exact \`caseKey=growth:topic-inventory-refill:{ISO-week}\` as the canonical refill. A prior-week nonterminal case is stale portfolio history and must not satisfy this week's completion gate.
+- A stage label such as \`executing\` is not evidence of execution. Require current \`activeWork\`, positive descendant active work, or a linked issue with a future monitor/recovery path. If the exact current-week case is below target and has no such path, atomically delegate one SEO Blog Content Strategist continuation with \`pipelineCaseLink.caseId\` and stable request key \`topic-inventory-refill:{ISO-week}:continuation:v{caseVersion}\`.
 - Each action names the business/search outcome, evidence, accountable manager, specialist executor, completion proof, and review window.
 - Delegate accepted actions immediately or link the existing canonical execution issue/case.
 - Record ready-topic inventory level, productive article WIP, blocked article count, CMS drafts delivered in the completed week, and SEO actions completed.
 
 Completion gate:
 - A report alone is not completion. Every accepted action is delegated or linked to an executable existing path; blocked items have an owner and recovery/external-wait class; unrelated lanes continue.
-- Content-supply completion requires at least 3 current non-retired topic cases actually at ready. If the count is lower, one canonical refill case or search-demand opportunity must remain nonterminal with an accountable specialist and nextReviewAt.
-- Native topic case ids in candidate, evidence_ready, consumed, rejected_duplicate, or a list in comments/document never satisfy the ready-inventory gate.
+- Content-supply completion requires at least 25 non-retired lineage-valid topic cases at \`ready\` or \`reserved\` satisfying contentPortfolioTrack targets 12/5/3/3/2. If total or any track is lower, the exact current-week refill has an accountable specialist plus active linked work or a future monitor; \`stage=executing\` and \`nextReviewAt\` alone are insufficient.
+- Native topic case ids in candidate, evidence_ready, consumed, rejected_duplicate, secondary segment aliases, or a list in comments never satisfy the portfolio gate. The \`next-content-plan\` case document must contain the same live native IDs counted by the gate.
 - If fewer than 3 safe actions exist, include durable no-safe-action evidence rather than inventing work.`,
 
   weeklyCeoDirection: `Purpose: make one broad company-level direction decision for Astrogen after the weekly SEO/GEO and CMO growth portfolio cycles.
@@ -572,18 +595,28 @@ Completion gate:
   monthlyTrendDiscovery: `Purpose: produce evidence-backed Astrogen demand and market hypotheses for CMO portfolio review without creating article work directly.
 
 Inputs and bounds:
-- Use completed-period GSC/GA4 and site-search changes, semantic-core evidence, current topic inventory, verified Astrogen product/service changes, approved SERP/competitor evidence, and time-stamped public or community signals.
-- Inspect at most 20 compact candidate signals and retain at most 8 hypotheses.
-- Require two independent signals, or one first-party signal with a concrete validation plan.
-- Every hypothesis has a stable fingerprint, audience problem, evidence refs, first-observed date, expected horizon, business fit, confidence band, alternative explanation, falsifier, next validation step, expiry, and observe/validate/reject/expired status.
+- Follow /companies/astrogen/reference/trend-topic-policy.yaml. This routine fills only contentPortfolioTrack=audience_trends with a target of three eligible topics; it never fills the other four portfolio tracks. Read the latest durable report first through \`paperclip.semantic-core-mcp-agent-tools:get-trend-topic-report\`; when the audience_trends track is deficient, choose an underrepresented audience segment as a diversity guardrail and call \`paperclip.semantic-core-mcp-agent-tools:generate-trend-topic-report\` for that one segment only when no reusable report can reduce the deficit, with \`project_id=astrogen-audience-trends-ukraine\`, \`analysis_date=YYYY-MM-DD\` in Europe/Kiev, \`mode=live\`, the bounded six-month horizon, full existing-content inventory as duplicate context only, prior clusters/reviewed fingerprints, and private-project cache policy.
+- Use only the declared tool fields: map CMS pages to \`existing_content\`, first-party metrics to \`internal_signals\`, and company context to \`project.business_context\`. Never send top-level \`business_context\`, \`runtime_inputs\`, \`existing_content_inventory\`, \`topic_pipeline_snapshot\`, or \`semantic_core_inventory\`.
+- Focus a campaign report by sending exactly one configured entry in \`audience_segments\`. Never send \`primary_audience_segment_id\` or \`reviewed_fingerprints\`; they are not MCP fields. Apply reviewed fingerprints locally and summarize exclusions only in an \`internal_signals\` row with required \`title\` and \`description\`, not \`name\`/\`value\`.
+- \`project.output_language\` is required; each \`existing_content\` row contains only \`title\`, optional \`url\`, and \`status=published|planned\`; \`internal_signals\` is an array. Do not send CMS \`slug\` or \`publishedAt\` as extra fields.
+- Do not send \`products\` to \`generate-trend-topic-report\`. Do not put Astrogen product/service/modality terms in \`project.description\`, \`project.market\`, \`project.business_context\`, \`company_goal\`, \`audience_segments.name\`, or \`audience_segments.description\`. Existing content and previous clusters may contain those terms only as duplicate/ownership exclusion context.
+- Preserve status, run_id, clusters, watchlist, rejected_signals, warnings, research_summary, cache_summary, cost.events, and report_markdown as one project-scoped durable trend report.
+- A successful report may contain zero clusters. Never invent missing hypotheses or repeat the paid call merely to fill a quota.
 
 Execution boundary:
 - CMO manages hypotheses and delegates validation; CMO does not perform specialist research or create article tasks here.
-- A hypothesis cannot enter topic inventory until normal evidence and ownership validation pass.
+- Never call \`prepare_paperclip_import\` for a trend run and never treat trend phrases as accepted semantic-core keywords.
+- A promising phrase must be submitted separately to the normal semantic-core workflow. Only accepted demand may enter \`astrogen-search-demand-opportunities\`; only a later delegated \`selectedAction=new_article\` decision may create topic inventory.
+- A \`candidate_review\` result is nonterminal. Delegate one stable review child per validation wave to SEO Semantic Core Validator, keep the parent open, and require append-only review plus one cached live materializing rerun per distinct original semantic-run/layer partition before the phrases are accepted, parked or rejected. Never combine phrases from different intended layers in one materializing run. Low confidence is not an owner decision. Validation child titles, purpose lines, and completion gates must describe validation/classification plus an ingestion handoff packet only; do not say the semantic-core assignee will materialize native search-demand cases.
+- Validate at most five concrete Ukrainian search phrases with an audience-situation or reader-problem anchor per wave and at most three waves per report through run-layer-and-wait with explicit mode=live on \`astrogen-ukraine\`. Every phrase carries the report's exactly one \`primaryAudienceSegmentId\`; secondary segments never satisfy another quota. Every phrase must derive from a retained current temporal/behavioral audience signal; evergreen how-to/checklist/explainer ideas, clinical/psychotherapy lanes, and product/modality families are not enough. Product/service binding is downstream action context only and never a trend-generation seed. Never narrow a retained audience trend into an Astrogen product, service, modality, route, existing owner URL, or product keyword family; trend-derived phrases, topic titles, H1s, slugs, primary keywords and topicKeys must remain audience-discussion themes. If Paperclip introduced product/service/modality wording instead of preserving the audience signal, reject/cancel it as \`product_narrowing_contamination\`. Products may appear later only as contextual body links when useful. Mock or fixture output is smoke evidence only and can never satisfy production demand routing. Never reuse parked or rejected phrases. Each wave uses stable child fingerprint \`trend-validation:{trendReportRunId}:wave:{waveNumber}\`; inspect direct children and reuse the matching nonterminal child instead of creating duplicate validation or config-blocker work. If one wave is all parked, the focused segment remains below five, and unused non-calendar clusters remain, delegate the next bounded wave instead of closing discovery.
+- Before validation, classify each selected phrase into exactly one supported candidate layer: \`adjacent_use_case_intent\` for decisions and situations served by Astrogen expertise, \`audience_need_intent\` for explicit audience problems or safety needs, or \`audience_interest_intent\` for broader verified audience interests. Partition the wave into layer-homogeneous calls while keeping at most five phrases total. Never submit \`core_product_intent\` to candidate-keyword validation; preserve direct product/service signals for the separate semantic-core seed/core workflow. A \`parked_outside_layer\` or \`owner_mismatch\` result is nonterminal if the phrase was not run on its preclassified intended layer: correct it once inside the same wave. Never sweep a phrase across every layer.
+- \`audience_interest_intent\` feeds the bounded \`audience_interest_editorial\` portfolio lane, targeting two and capped at four articles per Europe/Kiev calendar month. It does not require direct product or entity anchoring when current audience evidence, a defensible Astrogen editorial bridge, SERP information gain, claim boundaries, non-cannibalization and useful internal links pass. \`no_entity_anchor\` or \`owner_mismatch\` alone is not a terminal park reason for that lane.
+- A terminal validation child is not success evidence by status alone. Before done it must append exactly one machine-readable fenced JSON result projection under the reserved heading \`## trendIngestionResult\` with \`finalDisposition\`, \`acceptedSemanticCandidates\`, \`acceptedSemanticCandidateCount\`, \`createdSearchDemandCaseIds\`, \`eligibleReadyTopicCountAfter\`, \`primaryAudienceSegmentId\`, \`segmentEligibleTopicCountAfter\`, \`remainingUnusedClusters\`, and \`validationWave\`. Do not use that exact heading for prose, checklists, or required-field notes. \`accepted_for_search_demand_ingestion\` means the ingestion owner must still create or reuse native search-demand cases. Accepted candidate count never increments topic inventory. \`createdSearchDemandCaseIds\` contains only real native case IDs; ready counts come only from live lineage-valid topic cases at ready plus reserved, or are null with a typed evidence-access blocker. Semantic-core validators do not need \`pipelines:write\`; a missing write permission on a validation child is expected role separation, not a CTO blocker. If accepted candidates exist but no native case IDs exist, create or reuse one bounded ingestion handoff assigned to SEO Blog Content Strategist, then read the returned real case IDs before deciding the next wave. If no search-demand case was created, the focused segment remains below five, the current wave is below three, and eligible unused clusters remain, delegate the next wave. Report exhaustion continues with the most deficient segment under campaign bounds or a first-class next-window monitor; it never completes an underfilled portfolio.
+- Before native ingestion, group accepted phrases into page-level intent clusters. One reader outcome plus one search intent and expected owner page creates one \`intentClusterKey\`, one canonical opportunity and one quota row; choose one primary query and retain the rest as supporting queries. A provider phrase, semantic row or trend run is never a separate opportunity by itself.
 - Do not use model memory as current trend evidence, mutate CMS, publish, generate images, or send Telegram.
 
 Completion gate:
-- Store a typed monthly hypothesis document and route only concrete bounded validation work, or record explicit no-supported-trend evidence. Never close with an article task created from an unvalidated hypothesis.`,
+- Store every typed trend report with cache and cost telemetry, then route only bounded semantic validation for selected phrases or record explicit zero-cluster/no-supported-trend evidence. No \`candidate_review\` may remain unresolved. Trend discovery fills only contentPortfolioTrack=audience_trends, whose rolling target is 3; it never fills the other four tracks. A report may finish after bounded exhaustion, but portfolio refill closes only at 25 eligible \`ready + reserved\` topics satisfying 12/5/3/3/2 with a matching \`next-content-plan\` document. Never create an article or topic directly from trend output.`,
 
   monthlyScaledContentAudit: `Purpose: detect bounded Astrogen near-duplicate or repeated-template article clusters that lack independent reader value.
 
@@ -621,7 +654,7 @@ export const routineDefs = [
   routine("Astrogen article slot allocator", "Chief Marketing Officer", "0 10 * * *", routineContracts.articleSlotAllocator, "skip_if_active", "article_cadence", {
     status: "active",
     triggerEnabled: true,
-    activation: "controlled_target_1_after_phase41",
+    activation: "active_daily_batch_3",
     catchUpPolicy: "enqueue_missed_with_cap",
   }),
   routine("Weekly Astrogen SEO/GEO action cycle", "SEO Performance Analyst", "0 9 * * 3", routineContracts.weeklySeoGeo, "coalesce_if_active", "seo_performance_loop", {
@@ -661,13 +694,26 @@ export const routineDefs = [
   }),
 ];
 
-function role(name, roleName, title, reportsTo, icon, search, canCreateAgents, charter, adapterType = "codex_local") {
-  const slug = name
+function role(name, roleName, title, reportsTo, icon, search, canCreateAgents, charter, adapterType = "codex_local", slugOverride = null) {
+  const slug = slugOverride ?? name
     .toLowerCase()
     .replace(/\([^)]*\)/g, "")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
   return { name, role: roleName, title, reportsTo, icon, search, canCreateAgents, charter, adapterType, slug };
+}
+
+export function assertUniqueAgentSlugs(agents = agentDefs) {
+  const bySlug = new Map();
+  for (const agent of agents) {
+    const current = bySlug.get(agent.slug) ?? [];
+    current.push(agent.name);
+    bySlug.set(agent.slug, current);
+  }
+  const collisions = [...bySlug.entries()].filter(([, names]) => names.length > 1);
+  if (collisions.length > 0) {
+    throw new Error(`Agent instruction-root slug collision: ${collisions.map(([slug, names]) => `${slug} <- ${names.join(", ")}`).join("; ")}`);
+  }
 }
 
 function routine(title, owner, cron, description, concurrencyPolicy, workflowKey, options = {}) {
@@ -1079,6 +1125,21 @@ function buildActivePluginConfig(pluginKey, oldConfig, secretIds) {
     config.payloadApiKeySecretRef = secretIds.astrogen_payload_cms_api_key;
     config.payloadApiBaseUrl = config.payloadApiBaseUrl || "https://cms.astrogen.com.ua/api";
     config.requestTimeoutMs = 60000;
+    config.defaultEditorialAuthor = {
+      name: "Astrogen",
+      slug: "astrogen",
+      roleTitle: "Редакція Astrogen",
+    };
+    config.articleTypeCategoryDefaults = {
+      zodiac_profile: { slug: "astrologiya", title: "Астрологія" },
+      product_education: { slug: "inshi", title: "Інші" },
+      expert_method_selection: { slug: "eksperty", title: "Експерти" },
+      life_situation_decision: { slug: "inshi", title: "Інші" },
+      concept_explainer: { slug: "astrologiya", title: "Астрологія" },
+      relationship_compatibility: { slug: "stosunky", title: "Стосунки" },
+      forecast_cycle: { slug: "free-horoscope", title: "Безкоштовний персональний тижневий гороскоп" },
+      historical_cultural_explainer: { slug: "inshi", title: "Інші" },
+    };
   }
   if (pluginKey === "paperclip.gsc-bing-ga4-mcp-agent-tools") {
     config.gscBingGa4McpTokenSecretRef = secretIds["search-console-mcp-astrogen-token"];
@@ -1090,6 +1151,7 @@ function buildActivePluginConfig(pluginKey, oldConfig, secretIds) {
   if (pluginKey === "paperclip.crawlobserver-agent-tools") {
     config.crawlObserverApiKeySecretRef = secretIds["crawlobserver-api-key"];
     config.crawlObserverBaseUrl = "http://ubuntu-aibizmate-n8n.tailbd4e1c.ts.net:8899";
+    config.allowedProjectId = "fe5261b6-e793-44ae-a093-253a19b3c78e";
     config.requestTimeoutMs = 120000;
     config.allowMutatingTools = false;
   }
@@ -1133,10 +1195,21 @@ function buildActivePluginConfig(pluginKey, oldConfig, secretIds) {
     config.estimatedSearchCostUsd = 0.001;
     config.estimatedNewsCostUsd = 0.001;
   }
+  if (pluginKey === "paperclip.semantic-core-mcp-agent-tools") {
+    config.semanticCoreMcpTokenSecretRef = secretIds["semantic-core-mcp-token"];
+    config.semanticCoreMcpUrl = "http://100.98.5.50:8001/mcp";
+    config.allowedProjectIdsCsv = "astrogen-ukraine,astrogen-audience-trends-ukraine";
+    config.allowedClientKeysCsv = "";
+    config.requestTimeoutMs = 300000;
+    config.pollIntervalMs = 2000;
+    config.runWaitTimeoutMs = 600000;
+    config.localInventoryReadOnly = true;
+    config.maxLocalInventoryRows = 50;
+  }
   if (pluginKey === "paperclip.winning-structure-mcp-agent-tools") {
     config.winningStructureMcpTokenSecretRef = secretIds["winning-structure-mcp-token"];
     config.winningStructureMcpUrl = "http://100.98.5.50:8000/mcp";
-    config.allowedClientKeysCsv = "astrogen-ukraine";
+    config.allowedClientKeysCsv = "astrogen-ukraine,astrogen-audience-trends-ukraine";
     config.requestTimeoutMs = 180000;
     config.costAccountingMode = "provider_reported";
   }
@@ -1241,6 +1314,9 @@ ${agentSpecificInstructions(agent)}
 - Do not spend external budget, send owner-facing messages, or mutate production systems unless the issue explicitly authorizes that action.
 - If blocked, name the blocker class, the owner, and the concrete next action.
 - Human-facing Astrogen communication must be Ukrainian, concise, and understandable without internal stage labels.
+- Build multiline issue descriptions/comments as data: use the Paperclip helper, a JSON file, \`jq --rawfile\`, or \`JSON.stringify\`. Never interpolate Markdown, backticks, angle brackets, or \`$VAR\` into a shell command; shell substitution must never be able to alter task evidence.
+- Keep payload construction and API mutation free of cleanup commands. Never append \`rm\`, temp-directory cleanup, or another destructive operation to a command that creates or sends a Paperclip payload; leave bounded temp files for normal workspace cleanup. When building JSON from a file with jq, use \`jq -n --rawfile\` so the command always emits a JSON document.
+- For \`PATCH /api/cases/{caseId}\`, use \`fieldPatch\` for incremental top-level field changes with the latest \`expectedVersion\`. Use \`fields\` only for an intentional full replacement after verifying the outgoing complete field count. Never send both.
 
 ## Canonical Astrogen Scope
 
@@ -1269,7 +1345,7 @@ ${agentSpecificInstructions(agent)}
 ## Cycle Safety
 
 - Scheduled work must have a bounded input set, quota, and completion gate.
-- Missed article slots are not automatically backfilled.
+- A current-day article batch deficit is reconciled only by the same bounded native allocator, up to its daily target and productive-WIP cap. It never enables a broad scheduler catch-up storm.
 - Telegram is for owner-facing decisions and summaries, not internal routine status.
 `;
 }
@@ -1285,6 +1361,7 @@ function agentSpecificInstructions(agent) {
 - Never patch, close, cancel, reassign, or rewrite the blocker graph of an already assigned, blocked, in-progress, or foreign-owned issue. Treat it as evidence and create or update one \`astrogen-growth-actions\` case by stable finding fingerprint.
 - A 403 on foreign issue mutation means the route was wrong. Stop that mutation, use the native growth case, and continue unrelated priorities; do not block the leadership cycle.
 - Repeated findings for one URL and root cause update the same growth case. External dependencies use \`external_wait\` plus nextReviewAt and never freeze unrelated work.
+- In growth \`external_wait\`, current typed case fields outrank stale linked issues and artifacts. When \`executionStatus=waiting_next_day_trend_research\`, \`blockerClass=bounded_trend_cooldown\`, \`ownerActionRequired=false\`, and \`nextReviewAt\` is in the future, keep the case in \`external_wait\` and PATCH the same automation issue with \`executionPolicy.monitor.nextCheckAt=case.nextReviewAt\`, \`executionPolicy.monitor.scheduledBy=assignee\`, and concise notes. Do not resume because an older blocker issue became done. At monitor wake, resume only when eligible ready inventory or a permitted fresh/reused bounded trend run provides a concrete execution path; otherwise advance one bounded monitor without comments or owner notifications.
 - Article lifecycle belongs to CMO and the \`astrogen-article-production\` pipeline. Do not create article stage/recovery issue trees or perform image generation, CMS mutation, Telegram delivery, SEO analysis, or provider calls.
 `;
   }
@@ -1299,17 +1376,31 @@ function agentSpecificInstructions(agent) {
 - After creating or linking work, re-read case-visible work products before deciding the stage. Positive completion proof routes to verify; a durable blocker artifact routes to external_wait with blockerClass and nextReviewAt; only a missing artifact may create or reuse one bounded evidence-recovery issue. Never build a recovery chain or leave a case in executing after a durable blocker is visible.
 - \`astrogen-topic-inventory\` and \`astrogen-article-production\` cases are the source of truth. Do not create article parent/stage/recovery issue trees for recurring cadence.
 - For routine inventory reads, resolve IDs with \`GET /api/companies/{companyId}/pipelines\`, then call the bounded \`GET /api/pipelines/{pipelineId}/cases?stageKey={stageKey}&terminal=false&limit=10&offset=0\` route. Use exact \`caseKey\` for canonical refill lookup. Never guess generic case-list aliases or put a pipeline key into the UUID path.
-- The scheduled allocator selects at most one topic at \`ready\` and calls \`POST /api/cases/{topicCaseId}/breakdown\` with one item. Native breakdown creates/reuses the article child at \`opportunity\` and advances the topic to \`reserved\`.
+- Pipeline stage automation is stored under \`stage.config.onEnter\` and \`stage.config.automation\`. Do not inspect only top-level \`stage.onEnter\` or \`stage.automation\`, and do not create manual bridging issues merely because those top-level aliases are null.
+- The bounded pipeline case-list response is always a direct JSON array of wrapper rows shaped as \`{case, stage, parentCase, activeWork, descendantActiveWorkCount}\`. Read fields from \`row.case\` and guarded lineage from \`row.parentCase.pipeline\`. Count only \`Array.isArray(response) ? response.length : protocol_error\`; a missing \`items\` or \`cases\` property is never evidence of zero inventory. On a non-array response, record a shared protocol blocker and do not create a refill or close the allocator from that response.
+- The scheduled allocator calculates the current-day batch deficit and selects up to three lineage-valid topics at \`ready\`, bounded by productive WIP. Eligibility requires \`selectedAction=new_article\` and the guarded search-demand parent. It calls \`POST /api/cases/{topicCaseId}/breakdown\` once per selected topic, so native breakdown creates/reuses each article child at \`opportunity\` and advances only that topic to \`reserved\`.
 - The ready stage has no on-enter automation. Never reserve a topic merely because validation moved it to ready; only the scheduled allocator dispatches capacity.
 - Native article stage automations own SERP check, brief, Claude draft, validation, humanizing, layout, one-call image generation, CMS draft, and CMO delivery. Recovery resumes the same case and stage.
 - Phase 47 replaces the standalone SERP gate with the native \`strategy_input -> winning_structure -> structure_decision | structure_review\` path. CMO manages authority and portfolio continuity but never performs MCP research or writes the article.
 - A paused Winning Structure run blocks only its article case and does not consume productive WIP. Low-risk decisions may be submitted only when the option is explicitly authorized by the pipeline contract. Accepting cannibalization risk, merging/consolidating, reassigning ownership, cancelling a run, removing the primary keyword, or changing the canonical owner requires an explicit human decision.
 - For an added-value pause, CMO may authorize only a concrete reader-facing asset from /companies/astrogen/reference/article-value-system.yaml with an assigned producing role, validation method, observable acceptance criteria, and due_before_publication=true. Semantic-core/ownership/tool access, generic research, more text, keywords, or a table/FAQ/checklist/CTA by itself is not reader value.
 - Delivery is terminal only at article stage \`delivered\` with accepted cover or waiver, authenticated CMS admin URL, verified content gates, and gender-neutral Telegram delivery proof. CMS remains draft-only.
-- When ready inventory is below 3, create or update one \`astrogen-growth-actions\` case with fingerprint \`topic-inventory-refill:{ISO-week}\`. Do not create a refill issue chain.
-- Weekly portfolio planning ingests 3-10 evidence-backed topic cases at \`candidate\` with stable topic keys. A content-plan document without native topic case ids is incomplete.
-- After delegation, follow every candidate through enrichment and validation. Do not close the portfolio or refill because three candidates were submitted; re-read the live topic pipeline and count only non-retired cases at \`ready\`.
-- If validation leaves fewer than 3 ready topics, keep or return the canonical refill growth case to \`executing\`, delegate a bounded continuation to the existing specialist path, and set \`nextReviewAt\`. The native verify gate prevents false \`measured\` completion.
+- In native \`image_recovery_review\`, CMO may authorize exactly one corrective provider retry for a case-visible hard visual QA defect such as readable text, numbers, language-like glyph clutter, fabricated screen content, or another explicit visual-policy violation. A familiar non-linguistic pictogram or decorative strokes that form no readable letters, words, numbers, controls, or fake interface are not pseudo-writing by themselves. If visual review overturns a false-positive QA decision and dimensions remain within tolerance, CMO registers and accepts the existing candidate through the typed \`accept_existing_after_visual_review\` transition without another provider call. It never authorizes a retry for a dimension/format miss within the per-axis 20 percent tolerance, never generates the image itself, and never asks the owner for this operational decision.
+- Keep one canonical \`astrogen-growth-actions\` refill case live while eligible \`ready + reserved\` inventory is below 25 or any contentPortfolioTrack is below its 12/5/3/3/2 target. Use fingerprint \`topic-inventory-refill:{ISO-week}\` and case key \`growth:topic-inventory-refill:{ISO-week}\`; do not create a refill issue chain.
+- Portfolio planning and segmented trend research ingest evidence-backed \`astrogen-search-demand-opportunities\` until the rolling content plan contains 25 future topics, five counted once under each configured \`primaryAudienceSegmentId\`. Only delegated \`new_article\` decisions create guarded topic candidates. Raw reports, comments, and direct legacy topic lists are incomplete.
+- At \`action_selected\`, write \`selectedAction\` as exactly one closed-enum value: \`new_article\`, \`refresh\`, \`merge\`, \`reposition\`, \`internal_link\`, \`technical\`, or \`no_action\`. Store the reason separately; never append it to the enum. A durable \`no_action\` uses the native \`action_selected -> cancelled\` transition and creates no child, blocker, verification, or measurement work.
+- Portfolio selection favors breadth across audience-interest, adjacent-use-case, audience-need, and core-product demand and selects at most one repetitive query family per daily batch. Calendar-date themes are paused by owner policy and must not enter article production.
+- When accepted semantic demand cannot supply enough broad candidates, use the latest valid trend report or the bounded low-inventory fallback in /companies/astrogen/reference/trend-topic-policy.yaml. Trend output remains evidence only until each selected phrase passes normal semantic-core validation.
+- A semantic \`candidate_review\` result is not a completed wave and never becomes an owner question by default. Reuse or delegate exactly one child with fingerprint \`trend-review:{trendReportRunId}:wave:{validationWave}\` to SEO Semantic Core Validator, keep the trend parent open, and continue only after every reviewed phrase is materialized as accepted, parked or rejected in its original semantic-run/layer partition.
+- Accepted emerging trend demand may use the bounded \`trend_emerging\` evidence fallback when Ukraine frequency is unavailable, but only with the live report identity, retained sources, expiry, falsifier, confidence/warnings and full CMS ownership/cannibalization review. Never invent volume.
+- For trend validation and ingestion, a child being \`done\` is not success evidence. Read the child's \`## trendIngestionResult\` JSON section and require \`finalDisposition\`, \`createdSearchDemandCaseIds\`, \`eligibleReadyTopicCountAfter\`, \`primaryAudienceSegmentId\`, \`segmentEligibleTopicCountAfter\`, \`remainingUnusedClusters\`, and \`validationWave\`. The \`## trendIngestionResult\` heading is reserved for one machine-readable fenced JSON object only; do not use that exact heading for prose, checklists, or required-field notes. If accepted candidates exist but no search-demand case was created, delegate one ingestion handoff to SEO Blog Content Strategist; do not ask CTO to grant \`pipelines:write\` to semantic-core agents. If no search-demand case was created, the focused segment remains below five, the wave is below three, and eligible unused clusters remain, delegate the next bounded wave.
+- Require trend ingestion to report unique \`intentClusterKey\` values. Similar phrases that share reader outcome, intent, SERP family and expected owner page become one canonical search-demand opportunity with supporting queries; they never count as separate topics or segment-quota progress.
+- Control the \`audience_interest_editorial\` lane at portfolio level: prefer enough eligible topics to deliver two per Europe/Kiev month, never reserve more than four in that month, and never dispatch more than one in a daily batch. The target never authorizes filler or weaker evidence.
+- Require \`layerValidationMatrix\` in the trend ingestion result. Do not accept bounded exhaustion while any phrase has only \`parked_outside_layer\` or \`owner_mismatch\` evidence from a layer different from its preclassified intended layer.
+- After delegation, follow every opportunity and candidate through ownership, enrichment, and validation. Re-read live \`ready\` and \`reserved\` cases and count each topic once under exactly one primary segment; secondary segments never close a deficit.
+- If total eligible future supply is below 25 or any contentPortfolioTrack is below target, keep or return the canonical refill growth case to \`executing\`, select the most deficient track and its appropriate source lane, delegate a bounded continuation, and set \`nextReviewAt\`. The native grouped quota gate prevents false \`measured\` completion.
+- Update \`next-content-plan\` on the canonical refill case from the same live native case IDs used by quota accounting, and include a separate visible \`trendOpportunityQueue\` section for audience-first trend candidates that are not yet counted. The verified topic section includes topicCaseId, topicKey, titleUk, primary query/frequency, one primary segment, ownership and duplicate verdicts, incoming/outgoing internal links, trend report run id, and native stage. The trend queue includes trendReportRunId, primaryAudienceSegmentId, audience signal, reader problem, proposed phrase, status, not-counted reason, next action owner, and evidence refs. Agent comments are not this document.
+- When the campaign daily/run bound is exhausted and the next permitted focused report is on a future Kyiv window, move the canonical refill case to \`external_wait\` with typed bounded-cooldown fields and a first-class monitor. Do not mark it measured or ask the owner to invent topics.
 - Missing evidence tooling becomes one typed blocker on the refill growth case. Empty inventory never freezes unrelated lanes and is never sent to the owner as a technical choice.
 
 ## SERP Value-Gap Content Refresh Control
@@ -1348,10 +1439,25 @@ function agentSpecificInstructions(agent) {
 ## Developer Handoff Email Contract
 
 - When implementation requires a site developer, produce a concrete technical package first and send it only through \`paperclip.email-notifications:email-developer-handoff-send\`.
+- Use it only for affected pages on a configured public Astrogen website host. A Paperclip API, agent permission, plugin, native-case route, harness, localhost, private-network, or tailnet problem is an internal CTO recovery path, never a developer handoff and never an owner email.
 - Include every exact affected public URL. For each URL provide the current problem, required code/configuration changes, and post-deploy verification steps.
 - Include shared repository/deploy/sitemap actions and the source Paperclip issue. A link to an issue or attachment does not replace the URL list in the email.
 - Do not use \`email-notification-send\` or a generic incident summary for developer implementation requests.
 - If the exact affected scope is not known, continue deterministic evidence collection or keep the case in technical investigation. Do not send an incomplete handoff to the owner.
+`;
+  }
+
+  if (agent.name === "SEO Performance Analyst") {
+    return `
+
+## Native Search-Demand Evidence Contract
+
+- A search-demand case with \`semanticLifecycleState=accepted\` and a durable \`semanticMaterializedRunId\` or \`semanticAcceptedRunId\` has already passed Semantic Core validation. Verify that stored lineage; never call \`run-layer\` again for the same phrase from discovered-stage automation.
+- The discovered stage never writes \`selectedAction\`. Exact invalid/duplicate signals plus owner-paused calendar-date or ephemeral daily-horoscope intents use the native \`discovered -> cancelled\` transition with a typed rejection reason. All other signals, including likely overlap/no-action cases, preserve evidence and advance to \`evidence_ready\` so ownership and action selection stay with their designated stages.
+- For CrawlObserver, call \`list-sessions\` first and use the exact returned crawl ID as the camelCase \`sessionId\` parameter for every session-scoped tool. Never use \`session_id\` or \`id\`, and never guess parameters after a schema error.
+- CrawlObserver data is decision evidence only after \`get-session-quality({ sessionId })\` confirms the trust gate. A stale or untrusted crawl is an explicit evidence limitation, not permission to invent a clean coverage verdict.
+- Trend-emerging demand with unavailable geo frequency remains eligible only through the bounded policy evidence already stored on the case. Preserve \`unavailable_not_zero\` and never infer volume.
+- In native search-demand \`verified\`, a valid unpublished CMS draft waits on the current automation issue. Store \`nextReviewAt\` in the case and PATCH that issue with \`executionPolicy.monitor.nextCheckAt\` set to the same timestamp, \`executionPolicy.monitor.scheduledBy=assignee\`, and notes naming the case/CMS draft; keep it \`in_progress\`. Do not use generic \`monitorNextCheckAt\`/\`monitorNotes\` fields, which are not the writable API contract. Do not create a human interaction, owner request, publication child task, or repeated verification issue just because the draft is not published yet.
 `;
   }
 
@@ -1364,9 +1470,18 @@ function agentSpecificInstructions(agent) {
 - Use compact evidence from Payload CMS, GSC/GA4, semantic-core
   inventory/review, CrawlObserver/internal-link data, active Paperclip issues,
   and consumed topic history.
-- Ingest or update 3-10 native search-demand cases at \`discovered\` using stable opportunity fingerprints. Never ingest topic candidates directly. Enrich only a topic candidate created by guarded native breakdown after \`selectedAction=new_article\`, then transition it to \`evidence_ready\`, \`waiting_evidence\`, or \`expired\`; the validator alone moves evidence-ready cases to \`ready\`, \`needs_owner_direction\`, or \`rejected_duplicate\`.
+- Read the latest accepted semantic-core snapshot through \`paperclip.semantic-core-mcp-agent-tools:get-local-inventory\` before declaring semantic-core unavailable. The returned rows are under \`acceptedKeywords\` with \`id\`, \`keyword\`, \`normalizedKeyword\`, \`layer\`, \`geoSearchVolume\`, \`globalSearchVolume\`, and \`domainTopicMatch\`; \`clusters: []\` is valid for a migrated snapshot. This local read-only tool requires no external MCP token, returns at most 50 rows, and must be paged or filtered by \`minimumGeoSearchVolume\` instead of requesting a raw import payload.
+- The authenticated Semantic Core MCP validation project is exactly \`astrogen-ukraine\`. Trend reports use only \`astrogen-audience-trends-ukraine\`. Never probe guessed aliases, legacy snapshot IDs, domains, company UUIDs, or Paperclip project UUIDs as MCP project IDs. Read each tool schema once and send only its declared parameters.
+- Group related accepted keywords into a stable search-demand opportunity, then establish uncovered/owned status through the full Payload/live CMS inventory. Semantic-core supplies accepted demand and frequency; it does not replace CMS coverage or cannibalization review.
+- Ingest or update native search-demand cases at \`discovered\` using stable opportunity fingerprints and /companies/astrogen/reference/search-demand-policy.yaml until contentPortfolioTrack counts satisfy western_astrology_learning=12, audience_applied_questions=5, audience_trends=3, trust_expert_method_boundaries=3, and commercial_unmet_demand=2. Fill the most deficient portfolio track with its correct source lane; do not use trend research as filler outside audience_trends. Every campaign row carries exactly one \`contentPortfolioTrack\`, exactly one \`primaryAudienceSegmentId\` for diversity reporting, optional secondary segments, and trendReportRunId only when trend-derived. For western_astrology_learning curriculum nodes, accepted Semantic Core demand may be replaced only by the approved typed curriculum proof; ownership, cannibalization, SERP analysis, internal links and Winning Structure remain mandatory. A GSC-only fallback needs at least 20 impressions in a completed 28-day window and proof that no stronger uncovered semantic candidate should precede it. An accepted emerging trend phrase may instead use the policy's fully evidenced \`trend_emerging\` fallback when frequency is unavailable; preserve \`unavailable_not_zero\` and never invent volume. A proposed trend phrase must still pass normal semantic-core validation and resolve any \`candidate_review\` before search-demand intake. Reject/cancel \`product_narrowing_contamination\` if the phrase/title/topicKey introduces Astrogen product, service, modality, route, existing owner URL, or product keyword-family language instead of the retained audience signal. Never ingest topic candidates directly. When a trend validation handoff has \`acceptedSemanticCandidates\` but no \`createdSearchDemandCaseIds\`, this role owns materializing or reusing those native search-demand cases and reporting the real case IDs back to the parent issue; do not redirect that work to semantic-core agents or CTO permissions. Enrich only a topic candidate created by guarded native breakdown after \`selectedAction=new_article\`, then transition it to \`evidence_ready\`, \`waiting_evidence\`, or \`expired\`; the validator alone moves evidence-ready cases to \`ready\`, \`needs_owner_direction\`, or \`rejected_duplicate\`.
+- Before any native search-demand create, cluster the complete handoff by reader outcome, search intent, expected page type/owner and SERP family. Create or reuse one canonical case per \`intentClusterKey\`, with stable \`clusterDedupeKey\`, one \`primaryQuery\`, all variants in \`supportingQueries\`, and arrays of \`sourceSemanticCandidateIds\` and \`sourceClusterIds\`. The canonical case key must be independent of validation run and phrase wording. If a phrase-level case already exists, merge its evidence into the canonical case, record \`canonicalOpportunityCaseId\`, and cancel/reject duplicate opportunity/topic lineages before allocation. Quotas and plan rows count unique \`intentClusterKey\`, not accepted phrases or native rows.
+- Set \`portfolioLane=audience_interest_editorial\` only for accepted \`audience_interest_intent\`; all other cases use \`search_demand_core\`. The editorial lane needs no direct product/entity anchor, but must carry current audience evidence, an Astrogen editorial bridge, SERP information gain, safety boundaries and internal-link value. Products remain optional contextual body links only.
+- Native search-demand ingest uses \`POST /api/pipelines/{pipelineId}/cases\` with \`caseKey\`, \`title\`, \`summary\`, and \`stageKey=discovered\` at the top level; typed demand evidence belongs under \`fields\`. Never hide \`caseKey\` inside \`fields\`. Reuse the stable case key on retry so a transport failure cannot create a duplicate.
+- Build every native case create/update body in a JSON file or through \`JSON.stringify\`; keep \`summary\` and string fields plain text without Markdown backticks. Never inline a case payload into a shell command.
+- Exclude explicit calendar-date themes and ephemeral daily-horoscope themes while the owner pause is active, including named day/month zodiac profiles, birthday-date profiles, horoscopes for a named calendar date, and sign-specific variants "на сьогодні". Record a discovered legacy opportunity from either family as a typed owner-policy rejection and use discovered -> cancelled without writing selectedAction; expire an undelivered topic candidate instead of producing an article.
 - Every ready topic must include topicKey, Ukrainian working title, primary
-  query, supporting queries, intent, funnel role, audience segment, target
+  query, supporting queries, intent, funnel role, exactly one configured
+  primaryAudienceSegmentId, optional non-counting secondaryAudienceSegmentIds, trendReportRunId, target
   service/route relationship, evidence references, CMS duplicate check, active
   issue duplicate check, cannibalization assessment, CTA target, internal link
   targets, forbidden claims/tone constraints, content role, demand class, SERP
@@ -1374,13 +1489,20 @@ function agentSpecificInstructions(agent) {
 - If SERP evidence is not checked during refill, set
   \`serpGroupingStatus=not_checked\` and \`serpValueGapRequired=true\` instead
   of pretending the topic is fully brief-ready.
+- In \`waiting_evidence\`, one successful bounded Semantic Core check with no matching query/segment coverage is a terminal no-coverage result for that candidate, not an indefinite technical blocker. Persist the result and expire the candidate. Also expire it when another topic from the same repetitive family already occupies the current daily batch. A future source fingerprint may rediscover it; the canonical refill must continue to broader candidates now.
 - Do not invent broad topics when evidence tools are unavailable. Attach the exact typed runtime/plugin blocker to the affected native topic/refill case; unrelated topic and growth cases continue.
+
+## Trend Ingestion Result Projection
+
+- For every trend validation handoff, append exactly one \`## trendIngestionResult\` section with one fenced JSON object before setting the issue done. Do not use that exact heading for prose, checklists, or required-field notes. It must contain \`finalDisposition\`, \`acceptedSemanticCandidates\`, \`acceptedSemanticCandidateCount\`, \`createdSearchDemandCaseIds\`, \`eligibleReadyTopicCountAfter\`, \`primaryAudienceSegmentId\`, \`segmentEligibleTopicCountAfter\`, \`remainingUnusedClusters\`, \`validationWave\`, and \`layerValidationMatrix\`. Use \`accepted_for_search_demand_ingestion\` when accepted materialized rows still await native ingestion; use \`created_search_demand\` only when the listed native cases actually exist. Accepted candidate count is never a ready-topic count. Query ready counts from live lineage-valid topic cases at ready plus reserved; if that query is unavailable, write null and a typed blocker. Semantic-core agents do not need \`pipelines:write\`; if an issue body asks them to materialize native cases directly, treat that as superseded by this contract and return a handoff packet for SEO Blog Content Strategist. Other valid dispositions are \`covered_existing_owner\`, \`duplicate_or_cannibalizing\`, \`rejected\`, or \`blocked_typed_dependency\`. A comment-only result or terminal status without this projection is incomplete.
+- For focused trend continuations that originate from a native growth case, publish outcome evidence through the linked-case-output contract: write one source case document with \`## focusedContinuationResult\` or \`## trendIngestionResult\`, and link only the relevant child evidence issue as \`work\`. Do not PATCH source growth-case fields from the delegated worker unless your run has explicit \`pipelines:write\` on that pipeline. A \`pipeline_write_forbidden\` response on source-case fields is not a CTO blocker when the case document and work link exist; the source-case owner/monitor must read outputs and update its own fields or stage.
 
 ## Winning Structure Strategy Input Contract
 
 - Store one \`winning-structure-input\` case document as plain JSON that is directly valid for both \`validate_task_input\` and \`start_winning_structure_run\`. Do not wrap it in Markdown and do not create a separate internal shape.
 - Required top-level objects are \`task\` and \`market\`. Never use \`task_input\`, a string market, a nested \`namespace\`, \`run_id\`, \`decisions\`, or local heartbeat/session/issue identifiers in the payload.
 - The top level carries \`company_id\`, \`project_id\`, \`client_key=astrogen-ukraine\`, the stable \`idempotency_key\`, \`task\`, \`market\`, \`cache_policy\`, \`editorial_constraints\` and optional page, business, ownership and reader-value context.
+- For an existing CMS draft or refresh, \`task.page_mode\` is exactly \`existing\`; use \`new\` only when no page exists. \`editorial_constraints\` is always a list of strings. Use only the allowed \`reader_value_evidence.evidence_type\` and \`manual_value_commitments.asset_type\` values in \`taskInputContract\` from \`/companies/astrogen/reference/winning-structure-policy.yaml\`; never invent local enum names.
 - Merge evidence, commitments and product bridge targets into one \`business_context\`. A concrete future asset belongs in \`manual_value_commitments\`; an existing verified source belongs in \`reader_value_evidence\`.
 - Each \`reader_value_evidence\` object must have \`evidence_id\`, \`evidence_type\`, \`title\`, \`summary\`, \`reader_problem\`, and \`source\`. Each \`manual_value_commitments\` object must have \`commitment_id\`, \`asset_type\`, \`description\`, \`reader_problem\`, \`value_proposition\`, \`owner\`, \`target_content_units\`, \`validation_method\`, \`acceptance_criteria\`, and \`due_before_publication=true\`. Each \`product_bridge_targets\` object must have \`url\` and a human-facing \`label\`. Never use legacy aliases such as \`ref\`, \`route\`, \`relationship\`, \`bridge_role\`, \`claim_boundary\`, \`owner_role\`, \`commitment_type\`, \`reader_facing_asset\`, or \`verification_before_delivery\` in the MCP payload.
 - Persist \`winningStructureInputDocumentId=winning-structure-input\` and leave all MCP-owned runtime fields null. Only a plugin response can populate run ID, hashes, status, decisions, retention and result document fields.
@@ -1396,6 +1518,51 @@ function agentSpecificInstructions(agent) {
 - Do not propose refresh work as generic editorial insertion. FAQ, comparison,
   CTA, relatedPosts, internal links, metadata, or structured blocks are valid
   only when the SERP value-gap artifact justifies that exact element.
+
+## Content Portfolio And Curriculum Rule
+
+- Assign every future article exactly one \`contentPortfolioTrack\`: \`western_astrology_learning\`, \`audience_applied_questions\`, \`audience_trends\`, \`trust_expert_method_boundaries\`, or \`commercial_unmet_demand\`. The rolling targets are 12/5/3/3/2. Keep audience segments for diversity reporting, not hard quotas, and never create filler to satisfy a segment.
+- For \`western_astrology_learning\`, use an approved learning graph with roles \`pillar\`, \`prerequisite\`, \`deepening\`, or \`example\`. Introduce at most one or two new concepts per article, explain them at first use, and link prerequisites and next steps.
+- A curriculum prerequisite may proceed without accepted Semantic Core demand and without a classic SERP value gap only when SERP analysis is complete, the graph has a named missing node, no CMS owner or cannibalization conflict exists, incoming and outgoing prerequisite links are defined, and \`distinctTeachingContribution\` proves a unique teaching purpose. Winning Structure remains mandatory. Duplicate ownership, unsafe scope, or no distinct teaching role still rejects it.
+`;
+  }
+
+  if (agent.name === "SEO Semantic Core Strategist") {
+    return `
+
+## Local Semantic Inventory Contract
+
+- Read the latest accepted company/project semantic-core snapshot through \`paperclip.semantic-core-mcp-agent-tools:get-local-inventory\` before declaring inventory unavailable or requesting another agent handoff. Read candidates from \`acceptedKeywords\` and use \`geoSearchVolume\`; a migrated snapshot may correctly report \`clusters: 0\`.
+- This local read-only tool requires no external MCP token. Use \`limit<=50\`, page or filter by \`minimumGeoSearchVolume\`, and return compact candidate evidence rather than the raw import payload.
+- For search-demand handoffs, return a bounded batch of high-priority accepted keyword candidates or existing clusters with stable IDs and frequency for the campaign's one deficient primary audience segment. Do not claim \`uncovered\` from semantic-core alone: the content strategist must group intent and verify full CMS coverage, cannibalization and URL ownership. Do not create article or topic cases yourself.
+
+## Trend Topic Report Contract
+
+- Use \`paperclip.semantic-core-mcp-agent-tools:generate-trend-topic-report\` only under /companies/astrogen/reference/trend-topic-policy.yaml with \`project_id=astrogen-audience-trends-ukraine\`, required \`analysis_date=YYYY-MM-DD\` in Europe/Kiev, private-project cache isolation, and bounded live research. Do not send \`products\`; project/company/audience guidance must describe audience situations and reader problems without Astrogen product/service/modality terms, and every retained item needs a current temporal/behavioral audience signal. Use \`astrogen-ukraine\` only later for semantic validation of selected phrases.
+- For a focused segment, pass one configured \`audience_segments\` row. Do not send undeclared \`primary_audience_segment_id\` or \`reviewed_fingerprints\`; internal signals use \`title\` and \`description\`.
+- Preserve the complete report identity, warnings, evidence summary, cache telemetry, and cost events. A successful zero-cluster result is valid and must not be padded with model-memory topics.
+- Never call \`prepare_paperclip_import\` for a trend run, never classify its phrases as accepted semantic-core keywords, and never create search-demand, topic, or article work directly from raw trend output.
+- Return selected potentially useful phrases to the normal semantic-core validation workflow with the focused report's one primaryAudienceSegmentId and trendReportRunId. Only accepted demand may be handed to the content strategist for CMS ownership and cannibalization review; secondary audience relevance never creates a second quota row.
+- Treat \`candidate_review\` as nonterminal. Delegate one stable \`trend-review:{trendReportRunId}:wave:{validationWave}\` child to SEO Semantic Core Validator and keep the validation wave open until the reviewed phrases are accepted, parked or rejected through the materializing semantic rerun. Do not ask the owner to decide low-confidence or technical semantic classification. Validation child wording must not assign native search-demand case materialization to semantic-core roles; ask for a handoff packet instead.
+- After Validator returns final accepted evidence, delegate one bounded ingestion handoff to SEO Blog Content Strategist. The Validator and Semantic Core Strategist do not need \`pipelines:write\`, and a missing write permission on either role must not create a CTO permission task. If an older issue description asks you to create native cases directly from a semantic-core role, treat the AGENTS.md contract as authoritative and hand off ingestion instead.
+`;
+  }
+
+  if (agent.name === "SEO Semantic Core Validator") {
+    return `
+
+## Bounded Semantic Review Authority
+
+- Own nonterminal Semantic Core \`candidate_review\` resolution for Astrogen. This is an agent review lane, not an owner decision and not a reason to close trend discovery.
+- Semantic validation uses \`astrogen-ukraine\`; audience-first trend reports use \`astrogen-audience-trends-ukraine\`. Use only these two project IDs according to the task's policy. Never probe company slugs, domains, URLs, Paperclip UUIDs, legacy snapshot IDs, or other aliases. If an exact run-bound call fails, report that call; do not search for another project ID.
+- Read each exact live run's prepared \`paperclip_import.v1\` rows and decision trace. Review only the phrases named by the assigned \`trend-review:{trendReportRunId}:wave:{validationWave}\` fingerprint; never broaden the batch or invent alternatives.
+- You may choose only \`accept\`, \`park\`, or \`reject\`. Accept only a query-shaped Ukrainian phrase with supported locale, medium/high configured non-core audience-layer topic-domain match, clear Astrogen audience fit, evidence that the phrase came from an audience signal rather than a product/service seed, and a safe editorial or service pathway. Explicit product binding alone is not enough for a trend-derived phrase. Never accept a duplicate, unsupported locale, mixed-language noise, off-topic entity conflict, or a phrase lacking a defensible ownership boundary.
+- For \`audience_interest_intent\`, a defensible editorial bridge is a valid ownership boundary: direct product/service/entity anchoring is not required when current audience signal, configured topic-domain match, audience fit, SERP value potential and safety boundaries pass. Do not park solely for \`no_entity_anchor\` or \`owner_mismatch\`; record the bounded editorial bridge and let downstream ownership/cannibalization review decide the page action.
+- Low confidence alone is not an owner blocker. Record the evidence, uncertainty and downstream ownership boundary. Park when the phrase belongs to another semantic layer or lacks enough current support; reject only for durable mismatch/noise/duplicate evidence.
+- Submit decisions append-only through \`paperclip.semantic-core-mcp-agent-tools:submit-review-decisions\` using \`decision\` values \`accept\`, \`park\`, or \`reject\`. Partition reviewed phrases by original semantic run ID and intended non-core layer, then materialize each partition in exactly one \`run-layer-and-wait\` call with explicit \`mode=live\`, \`provider_cache_mode=read_write\`, the same partition phrases, matching review decisions, and matching \`force_re_review_keywords\` records. Never combine different intended layers in one materializing run and do not rely on old runs mutating.
+- Prepare the new run import and return a final accepted, parked or rejected disposition for every reviewed phrase. A partial review queue or a \`get-keywords\` failure is not completion; use the typed prepared import.
+- Accepted phrases go only to \`astrogen-search-demand-opportunities\`. They never create topic or article work directly. When geo frequency remains unavailable, preserve unknown as \`unavailable_not_zero\` and attach the live trend evidence required by /companies/astrogen/reference/search-demand-policy.yaml; never invent a volume.
+- Do not create or mutate native pipeline cases and do not request \`pipelines:write\`. Return the accepted evidence to the SEO Semantic Core Strategist, who delegates ingestion to SEO Blog Content Strategist. Your issue is complete when final materialized dispositions and the handoff packet are durable; downstream case proof belongs to the parent validation wave.
 `;
   }
 
@@ -1412,6 +1579,7 @@ function agentSpecificInstructions(agent) {
 - Reject or park topics that overlap existing service pages, CMS drafts,
   recently produced articles, active article parents, or accepted semantic-core
   items without a distinct intent.
+- Require guarded search-opportunity lineage, full CMS/live semantic coverage evidence, and demand eligibility under /companies/astrogen/reference/search-demand-policy.yaml. An exact-slug probe, a newest-post sample, or a micro GSC signal is not enough for \`ready\`.
 - If a topic is strategically promising but needs business direction, mark it
   \`needs_owner_direction\` with a short Ukrainian decision brief. Do not ask
   the owner to solve plugin/API/tooling failures.
@@ -1441,11 +1609,16 @@ function agentSpecificInstructions(agent) {
 - Strategy Input owns the payload, namespace and idempotency key only. It must leave MCP run ID, status, hashes, decision version, retention and result fields null; never place a heartbeat, session or issue ID in an MCP field. Only Winning Structure may populate those fields from plugin responses.
 - For every plugin operation, pass \`company_id\`, \`project_id\`, \`client_key\`, \`run_id\`, and \`decisions\` as top-level parameters exactly as declared by the tool schema. Never send a nested \`namespace\` object.
 - Include a trustworthy current-page snapshot for refreshes, CMS ownership candidates, GSC query-to-URL evidence, forbidden topics, CTA/product bridge targets, claim constraints and non-SERP reader-value evidence or a concrete deliverable commitment.
+- Follow /companies/astrogen/reference/winning-structure-policy.yaml. Normal production input sets top-level \`gist_enabled=true\` and maps the versioned project policy to \`cost_policy.currency\`, \`operation_rates_usd\`, \`pricing_source\`, and \`pricing_version\`; never invent rates for intentionally unpriced operations. A baseline comparison requires an explicitly authorized canary with a distinct task revision and idempotency key, and Paperclip review remains the winner authority.
 - Call validate before start. A valid response must be remote proof: \`valid=true\`, \`validation_source=remote_mcp\`, \`input_hash\`, and \`task_input_contract_version\`. Store the returned input hash, start only once, preserve run ID, poll the same run with bounded backoff and stop on paused or terminal status.
+- When the remote run remains active after the bounded poll, persist \`nextReviewAt\` in case fields and PATCH the current automation issue with a first-class \`executionPolicy.monitor\` using the same timestamp, \`scheduledBy=assignee\`, and notes containing the same run ID. Keep the issue \`in_progress\`; a case field alone is not a continuation path. Never exit a successful heartbeat with an active remote run and no issue monitor.
 - If validation rejects the stored schema before any remote run exists, persist \`validation_issues\` with their paths and return the case to \`strategy_input\` for payload repair. A repeated identical input-document digest and validation-issues fingerprint is a typed pre-start contract-repair state, not another retry or a new task. Never use this transition after a plugin-returned run ID or input hash exists.
 - When paused, copy the exact decision request, version, options and evidence to the case and transition to \`structure_decision\`. Never manufacture a decision or restart the run.
-- On completion, import the structured result, Markdown reference, effective hash, decision version, structure sections, quality requirements, publication requirements, cost/provenance and retention deadline into durable case documents before artifact expiry.
-- Keep imported MCP artifacts immutable. A selected value unit is valid strategy input only with 1-4 canonical \`targetIntentCovered\` values from the Astrogen article-value system; never use future remote \`targetSectionIds\` at strategy-input time. Approved Astrogen selected value units are durable strategy input: map them to generated sections through their canonical \`targetIntentCovered\` values and each section's \`intent_covered\`; persist \`mappedSectionIds\`. The remote MCP may add value plans but does not erase approved local units. If no generated section maps an approved unit, create a separate typed \`winning-structure-local-overlay\` from that selected unit instead of opening a CTO task. Each selected-unit overlay entry must name \`sourceKind=selected_value_unit\`, \`sourceValueUnitId\`, mapped support IDs, insertion point, evidence/commitment refs, purpose, writer instruction, examples to avoid, claim boundaries, and \`provenance=paperclip_normalization_from_selected_value_unit\`. An accepted remote plan may use \`sourcePlanId\` and \`provenance=paperclip_normalization_from_accepted_plan\`.
+- On completion, import the structured result, Markdown reference, effective hash, decision version, structure sections, quality requirements, publication requirements, cost/provenance and retention deadline into durable case documents before artifact expiry. Keep raw MCP JSON, section lists, requirements, value plans, provenance and cost objects out of case fields: fields are an index of IDs, hashes, statuses, counts and short summaries only. The combined field budget is 48 KiB, and no one field may exceed 8 KiB.
+- Persist the completed run as immutable result, content-selection-audit, meta-evidence-brief, provider-provenance and cost documents. Input, status and result \`gist_enabled\` values must agree. Selection audit and meta evidence are recommendations, never publishable prose, title, description or generated metadata.
+- Verify Phase 32 evidence routing from durable provenance: Serper SERP with geo/language/pagination/device; competitor text through DataForSEO Content Parsing, then Serper Scrape, LLMLayer standard and at most one eligible proxy fallback; Reddit only through Reddit API or .json. Preserve failed attempts. \`no_visual_conclusion\` blocks UX or rendered-page claims.
+- Write a complete Paperclip ledger amount only for numeric \`total_estimated\` with \`estimation_status=estimated\` and \`telemetry_status=complete\`. Partial \`priced_subtotal\` is a lower bound, null is unknown and zero requires proof that no paid operation occurred.
+- Keep imported MCP artifacts immutable. Read approved selected value units from \`winning-structure-input.business_context.selected_value_units\`; compact case fields intentionally contain only their IDs and are never the source of the mapping contract. A selected value unit is valid strategy input only with 1-4 canonical \`targetIntentCovered\` values from the Astrogen article-value system; never use future remote \`targetSectionIds\` at strategy-input time. Approved Astrogen selected value units are durable strategy input: map them to generated sections through their canonical \`targetIntentCovered\` values and each section's \`intent_covered\`; persist \`mappedSectionIds\`. The remote MCP may add value plans but does not erase approved local units. If no generated section maps an approved unit, create a separate typed \`winning-structure-local-overlay\` from that selected unit instead of opening a CTO task. Each selected-unit overlay entry must name \`sourceKind=selected_value_unit\`, \`sourceValueUnitId\`, mapped support IDs, insertion point, evidence/commitment refs, purpose, writer instruction, examples to avoid, claim boundaries, and \`provenance=paperclip_normalization_from_selected_value_unit\`. An accepted remote plan may use \`sourcePlanId\` and \`provenance=paperclip_normalization_from_accepted_plan\`.
 - The overlay may not introduce new evidence, claims, scope, keyword ownership, CTA routes or product capabilities. Set \`structureMappingStatus=normalized_with_overlay\` and persist its document ID; use \`raw_complete\` when every unit maps to a raw section. Anything requiring a new claim, scope, ownership, evidence, or plan interpretation is a manager-review blocker, not a technical task.
 - Never concatenate writer instructions into article prose and never expose raw MCP payloads, tokens or debug artifacts in issue comments.
 
@@ -1494,9 +1667,16 @@ function agentSpecificInstructions(agent) {
 ## Winning Structure Brief Contract
 
 - Create a brief only from an imported and accepted Winning Structure result. Preserve section IDs, hierarchy, purpose, writer instruction, evidence references, claim boundaries, examples to avoid, review flags and publication requirements as structured fields.
+- Read the imported content-selection audit and meta-evidence brief as evidence for section inclusion and factual boundaries only. Never paste their text into the article or treat the meta brief as a generated title or description.
 - Use the accepted Astrogen article type and two to four approved reader-value units. A table, FAQ, checklist, comparison or historical note is only presentation; it is not value unless it delivers the accepted evidence-backed contribution.
 - Do not add a universal block set. Prove that selected value units fit this reader problem and do not repeat the substantive role of recent sibling articles.
 - A committed but undelivered asset remains a publication blocker and must be visible in the brief. Do not let the writer simulate it.
+
+## CMS Category Policy
+
+- Resolve and persist \`cmsCategorySlug\` and \`cmsCategoryTitle\` in the brief. The approved v1 article-type defaults are: \`zodiac_profile=astrologiya\`, \`product_education=inshi\`, \`expert_method_selection=eksperty\`, \`life_situation_decision=inshi\`, \`concept_explainer=astrologiya\`, \`relationship_compatibility=stosunky\`, \`forecast_cycle=free-horoscope\`, and \`historical_cultural_explainer=inshi\`.
+- A topic/service-specific approved category overrides the default. Use stable slugs, never numeric Payload IDs, and never create taxonomy during article delivery.
+- This embedded mapping is an approved equivalent of \`/companies/astrogen/reference/cms-delivery-policy.yaml\`. Do not block only because that filesystem path is unavailable; block only when articleType is absent, no approved mapping exists, or two applicable mappings conflict.
 
 ## Phase 14 Brief Contract
 
@@ -1538,7 +1718,8 @@ function agentSpecificInstructions(agent) {
 ## Evidence-Backed Draft Contract
 
 - This is the shared writer-workspace contract. Claude is the primary writer. ChatGPT may execute only after the case records a Claude/provider/protocol blocker or an explicit CMO fallback decision; ChatGPT must never self-trigger or replace a healthy Claude path.
-- The Claude writer runs through the OpenRouter prompt adapter. It has no callable shell, browser, or Paperclip API tools: never emit \`<tool_call>\`, shell commands, or raw API instructions. Return the adapter's single JSON protocol response with the complete attachment artifact and, on completion, the typed \`pipelineTransition\` to the allowed next stage. Paperclip validates and performs that transition before it can close the stage task.
+- The Claude writer runs through the OpenRouter prompt adapter. It has no callable shell, browser, or Paperclip API tools: never emit \`<tool_call>\`, shell commands, or raw API instructions. Return the adapter's single JSON protocol response with the complete attachment artifact. Include typed \`pipelineTransition\` when the native state machine exposes multiple allowed next stages; when exactly one transition exists, it may be omitted and Paperclip selects that route deterministically. Never guess between multiple routes. Paperclip validates and performs the transition before it can close the stage task.
+- Write article prose only from brief sections typed \`readerFacing\`. Treat CMS/media fields, revision IDs, publication blocker notes, validation instructions, source/provenance notes, editorial signals, and any section titled \`Редакційні сигнали та медіа-поля\` as \`handoffOnly\`, even when an older immutable provider result numbered them as a section. On a validate-to-draft return, apply the latest content-validation case document before the older brief and never repeat a rejected operational section.
 - Treat the accepted Winning Structure and brief as requirements, not prose. Write original Ukrainian copy without copying competitor wording or concatenating section instructions.
 - Deliver the selected type-specific value units and cite or bound their evidence internally. Never invent expert observations, consultation cases, statistics, historical facts, tests, screenshots, product capabilities or personal experience.
 - Astrology, tarot, numerology, Human Design and related systems must be framed as interpretive practices, not scientific proof or guaranteed prediction. Do not make medical, legal, financial, diagnostic, deterministic or fatalistic claims.
@@ -1655,10 +1836,11 @@ function agentSpecificInstructions(agent) {
 - Normal Astrogen blog cover generation uses exactly one provider call for one image. Use the configured default model, candidateCount=1/n=1, aspectRatio=16:9, and request the preferred CMS target 1472x822.
 - Treat image generation as a visually sensitive, non-deterministic process: preserve a good result instead of degrading it through mechanical resizing or repeated generation.
 - After generation, calculate absolute width and height deviation separately against 1472x822. If both are at most 20 percent and visual QA passes, accept and preserve the original provider file. Do not upscale, stretch, destructively crop, convert only to satisfy a preferred format, or call the provider again solely for a within-tolerance dimension/format mismatch.
-- If either dimension differs by more than 20 percent, record a runtime contract blocker for CTO. That mismatch does not authorize an automatic second generation. A new provider call requires an actual visual-quality failure plus explicit CMO recovery authorization.
+- Persist \`coverImageProviderCallCount\` after each paid provider call. If either dimension differs by more than 20 percent, record a runtime contract blocker for CTO. That mismatch does not authorize an automatic second generation. A new provider call requires an actual visual-quality failure plus explicit CMO recovery authorization in native \`image_recovery_review\`.
 - Do not request three candidates, 2K/4K, or a premium model unless the issue contains an explicit owner/CMO recovery authorization with the reason.
 - The configured default model for normal article covers is google/gemini-2.5-flash-image. Do not override it to google/gemini-3.1-flash-image, Nano Banana 2, Pro, or another premium model during normal cadence work.
 - A corrected retry authorized after an \`image_quality_blocked\` comment is a new generation pass, not a re-review of the same rejected files. Dimension or output-format mismatch within the 20 percent tolerance is never \`image_quality_blocked\` and must not create a retry.
+- On a hard visual QA defect (readable text, numbers, language-like glyph clutter, fabricated screen content, or an explicit visual-policy violation), persist exact evidence and transition the native case to \`image_recovery_review\`. A familiar non-linguistic pictogram or decorative strokes that form no readable letters, words, numbers, controls, or fake interface are not pseudo-writing by themselves. Do not block the image issue, ask the owner, or self-authorize a paid retry. The CMO stage may authorize only one corrective retry by setting \`coverImageRetryAuthorizationCount=1\` and \`coverImageRetryAuthorizedAt\`, or accept the same durable candidate after false-positive visual review through \`accept_existing_after_visual_review\` without a provider call.
 - Before closing a retry as blocked, compare the latest operator/owner retry authorization timestamp with candidate file/work-product timestamps. If all candidates predate the authorization, generate fresh candidates with unique filenames.
 - Do not satisfy a retry by re-QAing previously rejected candidates unless the issue explicitly asks for a waiver or re-review.
 - Completion requires at least one accepted durable work product via \`POST /api/issues/$PAPERCLIP_TASK_ID/work-products/register-workspace-artifact\` when the accepted image is already in the execution workspace. Send \`relativePath\`, \`title\`, optional \`summary\`, \`contentType\`, \`status=ready_for_review\`, \`reviewState=approved\`, and \`isPrimary=true\`. Do not create raw \`provider=paperclip\` artifact JSON by hand for workspace files.
@@ -1677,8 +1859,10 @@ function agentSpecificInstructions(agent) {
 - Treat the article workflow as a typed handoff pipeline, not a retry loop. Each stage consumes durable evidence from the previous stage and either completes its own gate once or records one precise blocker.
 - Do not generate, repair, or re-QA cover images in the layout step. Consume the accepted cover image only from an approved Paperclip work product or CMS media evidence. If no accepted cover work product or explicit waiver exists, block as \`cover_image_missing\`.
 - For CMS delivery, required inputs are: canonical draft artifact, validator evidence, layout package or articleContent JSON, accepted cover work product or waiver, CTA route decision, and exactly 3 relatedPosts when suitable published/indexable posts exist.
+- For create delivery, the CMS-ready envelope also carries articleType plus cmsCategorySlug/cmsCategoryTitle from the accepted brief. These are stable policy keys, never numeric Payload relation IDs. A topic/service-specific category overrides the article-type default in /companies/astrogen/reference/cms-delivery-policy.yaml.
 - Produce CMS body only as canonical \`articleContent.v1\`: top-level \`schemaVersion="articleContent.v1"\` plus \`blocks\`. Do not use legacy aliases such as \`content\`, \`columns\`, \`body/linkText\` for CTA, or free-form icon objects.
 - Required articleContent block types are exactly: \`paragraph\`, \`heading\`, \`list\`, \`editorialCallout\`, \`iconList\`, \`twoColumnText\`, and \`quietCta\`. Use the Payload CMS tool schema as the source of truth before handoff.
+- Every \`paragraph\` block must include a string \`text\`. When linked \`spans\` are present, preserve them and set \`text\` to their exact concatenated visible text; a spans-only paragraph is invalid and must not leave layout validation.
 - CMS delivery is draft-only. Do not publish. After creating/updating the CMS draft, refetch it and verify status, workflowStatus, cover/ogImage, CTA, editorial inserts, and relatedPosts before marking the issue done. For CMS update/refresh of an existing article, create and verify \`before-after-diff\` on your own assigned CMS issue before closeout; the CMO aggregates it into the parent.
 - Do not guess Paperclip or CMS schemas by trying multiple malformed payloads. If the exact schema is unclear, inspect the relevant local schema once, perform one corrected attempt, and otherwise record a blocker with the exact missing contract.
 - When a dependency is already resolved, clear the blocker in the issue state and continue the current issue; do not create duplicate article parents or child tasks for the same title.
@@ -1693,7 +1877,10 @@ function agentSpecificInstructions(agent) {
 - CMS delivery is draft-only. Do not publish.
 - Use the \`Payload CMS Create Blog Post Draft\` and \`Payload CMS Update Blog Post Draft\` tool schemas as the source of truth. Their runtime schema is canonical; do not infer fields from previous failed attempts.
 - \`articleContent\` must be canonical \`articleContent.v1\`: \`schemaVersion\` plus \`blocks\`. Reject or return upstream payloads that use \`content\`, \`columns\`, \`body/linkText\` for CTA, or free-form icon objects.
+- Before the first CMS mutation, deterministically verify every \`paragraph.text\` is a string and equals the concatenated visible \`spans[].text\` when spans exist. Return a mismatch to layout validation; do not use the CMS create call as the schema validator.
 - Before a create/update call, verify the payload has: early \`editorialCallout\` titled \`Коротко\`, CTA as \`quietCta.title/text/linkLabel/linkUrl\`, exactly 3 \`relatedPosts\` when suitable published/indexable posts exist, accepted cover/OG image or explicit waiver, and draft workflow status.
+- For a general new article, pass \`articleType\` and the accepted \`cmsCategorySlug\`/\`cmsCategoryTitle\` to \`payload_cms_create_blog_post_draft\`. The company-scoped plugin resolves its configured editorial author and category relation idempotently inside that one typed operation. Do not pre-call raw CMS APIs, guess numeric author/category IDs, omit \`articleType\`, or build your own relation resolver. An explicitly scoped expert article passes its verified author relation instead.
+- If the typed relation resolver fails, record \`cms_relation_policy_missing\` with exact adapter evidence. Do not make multiple malformed writes and do not ask the owner to choose a technical Payload field; repair the company CMS delivery policy and resume this same case.
 - Do not trial-and-error Payload writes. If a schema validation or Payload response fails, capture the exact error, route it to the producing stage, and stop after one corrected attempt.
 - After create/update, refetch the CMS draft and verify status, workflowStatus, cover/ogImage, CTA, editorial inserts, relatedPosts, and CMS admin edit URL before reporting completion.
 - For CMS draft updates or refreshes of an existing article, create or update issue document key \`before-after-diff\` on \`$PAPERCLIP_TASK_ID\` with title \`Before/After Diff\`, format \`markdown\`, and a compact comparison of source CMS/admin URL, after/draft revision evidence, sections added/changed/unchanged, preserved fields, CMS admin review URL, and publish status. Verify it on your own issue. Mark the CMS child done when CMS and child-document gates pass. Never mutate another agent's parent issue and never block completed CMS delivery solely because parent mutation is unauthorized; CMO owns parent aggregation.
@@ -1705,6 +1892,7 @@ function agentSpecificInstructions(agent) {
 }
 
 function writeInstructionsFiles() {
+  assertUniqueAgentSlugs();
   for (const agent of agentDefs) {
     const dir = path.join(HOST_COMPANY_DIR, "agents", agent.slug);
     mkdirSync(dir, { recursive: true });
@@ -1922,6 +2110,33 @@ function upsertWinningStructureSecretBinding(secretIds, pluginIds) {
         ${qUuid(CLEAN_COMPANY_ID)}, ${qUuid(secretId)}, 'plugin',
         ${q(pluginId)}, 'winningStructureMcpTokenSecretRef', 'latest', true,
         'Winning Structure MCP bearer token for private Astrogen article analysis',
+        now(), now()
+      )
+      on conflict (company_id, target_type, target_id, config_path) do update set
+        secret_id=excluded.secret_id,
+        version_selector=excluded.version_selector,
+        required=excluded.required,
+        label=excluded.label,
+        updated_at=now();
+    `,
+  );
+}
+
+function upsertSemanticCoreSecretBinding(secretIds, pluginIds) {
+  const secretId = secretIds["semantic-core-mcp-token"];
+  const pluginId = pluginIds["paperclip.semantic-core-mcp-agent-tools"];
+  if (!secretId || !pluginId) return;
+
+  psql(
+    CLEAN_DB,
+    `
+      insert into company_secret_bindings (
+        company_id, secret_id, target_type, target_id, config_path,
+        version_selector, required, label, created_at, updated_at
+      ) values (
+        ${qUuid(CLEAN_COMPANY_ID)}, ${qUuid(secretId)}, 'plugin',
+        ${q(pluginId)}, 'semanticCoreMcpTokenSecretRef', 'latest', true,
+        'Semantic Core MCP bearer token for private Astrogen demand research',
         now(), now()
       )
       on conflict (company_id, target_type, target_id, config_path) do update set
@@ -2391,6 +2606,7 @@ function main() {
   upsertResendEmailSecretBindings(secrets.secretIds, plugins.pluginIds);
   upsertSerperAgentToolsSecretBindings(secrets.secretIds, plugins.pluginIds, agentIds);
   upsertWinningStructureSecretBinding(secrets.secretIds, plugins.pluginIds);
+  upsertSemanticCoreSecretBinding(secrets.secretIds, plugins.pluginIds);
   const { goalId, projectId } = ensureGoalAndProject(agentIds);
   const routines = upsertRoutines(agentIds, projectId, goalId);
   const transition = upsertTransitionPack(agentIds, projectId, goalId);

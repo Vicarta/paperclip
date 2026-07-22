@@ -11,17 +11,71 @@ import {
   TOOL_NAMES,
 } from "./constants.js";
 
-const looseObjectSchema = {
+export const looseObjectSchema = {
   type: "object",
   additionalProperties: true,
 } as const;
 
-const sessionSchema = {
+export const sessionSchema = {
   type: "object",
   properties: {
     sessionId: { type: "string" },
   },
   required: ["sessionId"],
+} as const;
+
+export const sessionsQuerySchema = {
+  type: "object",
+  properties: {
+    project_id: {
+      type: "string",
+      description:
+        "Optional CrawlObserver project ID. Omit it when the plugin has a company-scoped allowedProjectId; the plugin injects that value.",
+    },
+    limit: { type: "number" },
+    offset: { type: "number" },
+    search: { type: "string" },
+  },
+  additionalProperties: false,
+} as const;
+
+export const sessionPagedSchema = {
+  type: "object",
+  properties: {
+    sessionId: {
+      type: "string",
+      description: "Crawl session ID returned by list-sessions. Use this exact camelCase key.",
+    },
+    limit: { type: "number" },
+    offset: { type: "number" },
+    sort: { type: "string" },
+    order: { type: "string", enum: ["asc", "desc"] },
+    url: { type: "string" },
+    status_code: { oneOf: [{ type: "string" }, { type: "number" }] },
+    title: { type: "string" },
+    content_type: { type: "string" },
+    page_type: { type: "string" },
+    depth: { type: "number" },
+    word_count: { type: "number" },
+    is_indexable: { type: "boolean" },
+    canonical: { type: "string" },
+    meta_description: { type: "string" },
+    h1: { type: "string" },
+    h2: { type: "string" },
+    pagerank: { type: "number" },
+    source_url: { type: "string" },
+    target_url: { type: "string" },
+    anchor_text: { type: "string" },
+    rel: { type: "string" },
+    tag: { type: "string" },
+    resource_type: { type: "string" },
+    is_internal: { type: "boolean" },
+    error: { type: "string" },
+    severity: { type: "string" },
+    issue_type: { type: "string" },
+  },
+  required: ["sessionId"],
+  additionalProperties: true,
 } as const;
 
 const manifest: PaperclipPluginManifestV1 = {
@@ -63,8 +117,8 @@ const manifest: PaperclipPluginManifestV1 = {
       allowedProjectId: {
         type: "string",
         title: "Allowed CrawlObserver Project ID",
-        description:
-          "Optional project guardrail. When set, calls with another project_id are rejected before reaching CrawlObserver.",
+      description:
+          "Company-scoped project guardrail. When set, session inventory calls inject it when omitted and reject another project_id before reaching CrawlObserver.",
         default: "",
       },
       allowMutatingTools: {
@@ -142,7 +196,7 @@ const manifest: PaperclipPluginManifestV1 = {
       displayName: "CrawlObserver List Sessions",
       description:
         "Call `GET /api/sessions` with optional limit, offset, project_id, and search filters.",
-      parametersSchema: looseObjectSchema,
+      parametersSchema: sessionsQuerySchema,
     },
     {
       name: TOOL_NAMES.startCrawl,
@@ -207,20 +261,20 @@ const manifest: PaperclipPluginManifestV1 = {
       displayName: "CrawlObserver List Pages",
       description:
         "Call `GET /api/sessions/{id}/pages` with allowlisted pagination, sorting, and page filters. Use `page_type=html` for SEO page inventory; rows include `internal_links_in` and `internal_links_out` when the CrawlObserver API provides them.",
-      parametersSchema: looseObjectSchema,
+      parametersSchema: sessionPagedSchema,
     },
     {
       name: TOOL_NAMES.listLinks,
       displayName: "CrawlObserver List Links",
       description:
         "Call `GET /api/sessions/{id}/links` with allowlisted pagination, sorting, and link filters.",
-      parametersSchema: looseObjectSchema,
+      parametersSchema: sessionPagedSchema,
     },
     {
       name: TOOL_NAMES.listInternalLinks,
       displayName: "CrawlObserver List Internal Links",
       description: "Call `GET /api/sessions/{id}/internal-links`.",
-      parametersSchema: looseObjectSchema,
+      parametersSchema: sessionPagedSchema,
     },
     {
       name: TOOL_NAMES.getPageDetail,
@@ -245,7 +299,7 @@ const manifest: PaperclipPluginManifestV1 = {
       name: TOOL_NAMES.getSitemapUrls,
       displayName: "CrawlObserver Sitemap URLs",
       description: "Call `GET /api/sessions/{id}/sitemap-urls`.",
-      parametersSchema: looseObjectSchema,
+      parametersSchema: sessionPagedSchema,
     },
     {
       name: TOOL_NAMES.getResourceSummary,
@@ -258,32 +312,32 @@ const manifest: PaperclipPluginManifestV1 = {
       displayName: "CrawlObserver Resource Checks",
       description:
         "Call `GET /api/sessions/{id}/resource-checks` with allowlisted filters such as resource_type=image, status_code, url, is_internal, and error.",
-      parametersSchema: looseObjectSchema,
+      parametersSchema: sessionPagedSchema,
     },
     {
       name: TOOL_NAMES.getPageIssues,
       displayName: "CrawlObserver Page Issues",
       description:
         "Call `GET /api/sessions/{id}/page-issues` with allowlisted filters such as severity, issue_type, and url. Use for soft_404 and generic rendered/static metadata findings.",
-      parametersSchema: looseObjectSchema,
+      parametersSchema: sessionPagedSchema,
     },
     {
       name: TOOL_NAMES.getRedirectPages,
       displayName: "CrawlObserver Redirect Pages",
       description: "Call `GET /api/sessions/{id}/redirect-pages`.",
-      parametersSchema: looseObjectSchema,
+      parametersSchema: sessionPagedSchema,
     },
     {
       name: TOOL_NAMES.getNearDuplicates,
       displayName: "CrawlObserver Near Duplicates",
       description: "Call `GET /api/sessions/{id}/near-duplicates`.",
-      parametersSchema: looseObjectSchema,
+      parametersSchema: sessionPagedSchema,
     },
     {
       name: TOOL_NAMES.getStructuredData,
       displayName: "CrawlObserver Structured Data",
       description: "Call `GET /api/sessions/{id}/structured-data`.",
-      parametersSchema: looseObjectSchema,
+      parametersSchema: sessionPagedSchema,
     },
     {
       name: TOOL_NAMES.callReadEndpoint,
