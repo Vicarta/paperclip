@@ -1,0 +1,14 @@
+# syntax=docker/dockerfile:1.20
+ARG BASE_IMAGE=paperclip-app:v2026.626.0-vicarta.132-weekly-seo-crawl-evidence-20260722
+FROM ${BASE_IMAGE}
+
+USER root
+COPY --chown=node:node shared/pipeline.js /app/packages/shared/dist/validators/pipeline.js
+COPY --chown=node:node server/pipelines.js /app/server/dist/services/pipelines.js
+RUN grep -q 'requiredArrayLengths' /app/packages/shared/dist/validators/pipeline.js \
+  && grep -q 'pipeline_case_required_array_length_mismatch' /app/server/dist/services/pipelines.js \
+  && grep -q 'pipeline_case_required_field_value_mismatch' /app/server/dist/services/pipelines.js \
+  && grep -q 'pipeline_case_single_item_array_field_mismatch' /app/server/dist/services/pipelines.js \
+  && grep -q 'whenCaseFieldEquals' /app/server/dist/services/pipelines.js
+
+USER node

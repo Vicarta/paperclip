@@ -2,6 +2,68 @@ version: 1
 contract: astrogen-content-quality
 appliesTo: astrogen-article-production
 
+publishableArtifactBoundary:
+  sectionClassificationRequired: true
+  allowedClasses: [readerFacing, handoffOnly]
+  handoffOnlyAlwaysIncludes:
+    - CMS or media field inventories
+    - revision, run, issue, document or attachment identifiers
+    - publication blockers and stage instructions
+    - validation or recovery instructions
+    - source, provenance, cache or cost telemetry
+    - editorial signals and the section title Редакційні сигнали та медіа-поля
+  rules:
+    - only readerFacing sections may enter article main content
+    - handoffOnly material stays in case documents, artifact metadata or handoff notes outside the delimited article body
+    - a provider numbering an operational item as a section never makes it readerFacing
+    - on validate-to-draft return, the latest validation document overrides the older brief for named corrections
+
+cmsReadyEnvelope:
+  requiredNonEmptyFields:
+    - seoTitle
+    - metaDescription
+  producerStage: layout
+  validatorStage: layout_validate
+
+articleContentV1:
+  iconList:
+    allowedIcons:
+      - chinese-rat
+      - chinese-ox
+      - chinese-tiger
+      - chinese-rabbit
+      - chinese-dragon
+      - chinese-snake
+      - chinese-horse
+      - chinese-goat
+      - chinese-monkey
+      - chinese-rooster
+      - chinese-dog
+      - chinese-pig
+      - zodiac-aries
+      - zodiac-taurus
+      - zodiac-gemini
+      - zodiac-cancer
+      - zodiac-leo
+      - zodiac-virgo
+      - zodiac-libra
+      - zodiac-scorpio
+      - zodiac-sagittarius
+      - zodiac-capricorn
+      - zodiac-aquarius
+      - zodiac-pisces
+      - editorial-check
+      - editorial-info
+      - editorial-calendar
+      - editorial-money
+      - editorial-heart
+      - editorial-star
+      - editorial-people
+      - editorial-chat
+      - editorial-target
+      - editorial-book
+    unknownIconPolicy: reject_in_layout_before_cms
+
 mainContentAudit:
   stage: mc_quality
   runsAfter: humanize
@@ -105,6 +167,33 @@ naturalnessPolicy:
     - copying raw source-prompt language into the article or case artifact
   correctionRule: A revise_surface return is one finding-bounded correction, not another broad naturalness pass; it cannot repeat.
 
+westernAstrologyLearningPolicy:
+  appliesWhen:
+    field: contentPortfolioTrack
+    equals: western_astrology_learning
+  curriculumReference: /companies/astrogen/reference/western-astrology-curriculum.yaml
+  newConceptsPerArticle: 1
+  primaryRule: One article teaches exactly one new astrology concept from title through CMS delivery.
+  aliases:
+    countAsNewConcept: false
+    rule: A spelling or Ukrainian synonym may clarify the primary concept once but cannot create a second teaching subject.
+  allowedSupportingLanguage:
+    - ordinary non-astrological wording
+    - a brief linked mention of a concept already taught in a published prerequisite article
+    - the primary concept's accepted aliases
+  conceptIntroductionSignals:
+    - a definition or explanation of an astrology term
+    - a heading, table row, list item, FAQ answer, comparison, example or workflow that teaches how an astrology term works
+    - a catalogue of a term family such as twelve houses, twelve signs, planets or aspect types
+    - a supporting-context section that gives the reader operational knowledge of an untaught term
+  stageEvidence:
+    structureReview: curriculumStructureStatus
+    brief: curriculumBriefStatus
+    contentValidation: curriculumValidationStatus and detectedNewConceptKeys
+    mcQuality: curriculumMcQualityStatus and mcDetectedNewConceptKeys
+    cmsDelivery: curriculumDeliveryStatus and curriculumFinalReviewStatus
+  failureRoute: More than one new concept is a substantive content defect and returns to strategy or draft; it is never accepted as supporting context or corrected only during layout.
+
 geoRetrievabilityPolicy:
   defaultEnabled: false
   runOnlyWhen:
@@ -164,7 +253,8 @@ trendDiscoveryContract:
   inputs:
     - completed-period GSC and GA4 changes
     - semantic-core and site-search demand evidence
-    - current Astrogen product, expert, and service changes
+    - current audience segment situation changes, cultural signals, community questions, seasonal recurrences, and public-interest shifts
+    - Astrogen product, expert, and service changes only as business-fit or duplicate/ownership context, never as trend seeds
     - search-result and competitor shifts from approved tools
     - time-stamped public, community, or cultural signals with provenance
     - existing topic inventory, consumed history, and active growth cases
@@ -191,6 +281,10 @@ trendDiscoveryContract:
       - expired
   rules:
     - distinguish durable shifts, emerging signals, seasonal recurrence, and short-lived noise
+    - trend hypotheses start from audience segment changes, not Astrogen products, modalities, service pages, existing keyword families, or semantic-core seed catalogs
+    - trend-derived article titles, H1s, slugs, primary keywords and topic keys must stay audience-first and must not introduce Astrogen product/service/modality names; product bridges are allowed only as contextual body links when useful for the reader
+    - every trend hypothesis requires a current temporal, behavioral, seasonal, cultural, public-interest, search-behavior, or audience-language signal; evergreen how-to/checklist/explainer demand is not enough by itself
+    - clinical psychology or psychotherapy demand may be safety context, but it is not the primary Astrogen trend lane unless supplied as a scoped internal signal
     - one source or one traffic spike is not sufficient evidence by itself
     - current evidence is required; model memory is not a trend source
     - hypotheses require normal topic evidence and ownership validation before entering topic inventory

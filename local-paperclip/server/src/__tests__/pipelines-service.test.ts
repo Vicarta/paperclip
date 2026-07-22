@@ -6,6 +6,8 @@ import {
   agents,
   companies,
   createDb,
+  documents,
+  documentRevisions,
   executionWorkspaces,
   heartbeatRuns,
   instanceSettings,
@@ -15,6 +17,7 @@ import {
   pipelineCaseBlockers,
   pipelineCaseIssueLinks,
   pipelineCaseEvents,
+  pipelineCaseDocuments,
   pipelineCases,
   pipelineStages,
   pipelineTransitions,
@@ -60,12 +63,15 @@ describeEmbeddedPostgres("pipelineService", () => {
     await db.delete(pipelineCaseBlockers);
     await db.delete(pipelineCaseIssueLinks);
     await db.delete(pipelineCaseEvents);
+    await db.delete(pipelineCaseDocuments);
     await db.delete(pipelineCases);
     await db.delete(pipelineTransitions);
     await db.delete(pipelineStages);
     await db.delete(pipelines);
     await db.delete(issueComments);
     await db.delete(activityLog);
+    await db.delete(documentRevisions);
+    await db.delete(documents);
     await db.delete(routineRuns);
     await db.delete(heartbeatRuns);
     await db.delete(issues);
@@ -470,6 +476,321 @@ describeEmbeddedPostgres("pipelineService", () => {
     })).resolves.toMatchObject({ case: { terminalKind: "done" } });
   });
 
+  it("counts multiple eligible stages and enforces per-field inventory quotas", async () => {
+    const company = await seedCompany();
+    const topics = await svc.createPipeline({
+      companyId: company.id,
+      key: "segmented-topic-inventory",
+      name: "Segmented topic inventory",
+      actor: userActor,
+      stages: [
+        { key: "ready", name: "Ready", kind: "working" },
+        { key: "reserved", name: "Reserved", kind: "working" },
+        { key: "consumed", name: "Consumed", kind: "done" },
+        { key: "rejected", name: "Rejected", kind: "cancelled" },
+      ],
+    });
+    const growth = await svc.createPipeline({
+      companyId: company.id,
+      key: "segmented-growth-actions",
+      name: "Segmented growth actions",
+      actor: userActor,
+      stages: [
+        {
+          key: "verify",
+          name: "Verify",
+          kind: "working",
+          config: {
+            pipelineStageCountRequirements: [{
+              toStageKey: "measured",
+              pipelineKey: "segmented-topic-inventory",
+              stageKey: "ready",
+              additionalStageKeys: ["reserved"],
+              minimumCount: 5,
+              groupByField: "primaryAudienceSegmentId",
+              requiredGroupValues: ["segment-a", "segment-b"],
+              minimumCountByGroup: { "segment-a": 3, "segment-b": 2 },
+              activeOnly: true,
+              whenCaseField: "actionType",
+              whenCaseFieldEquals: "topic_inventory_refill",
+            }],
+          },
+        },
+        { key: "measured", name: "Measured", kind: "done" },
+        { key: "rejected", name: "Rejected", kind: "cancelled" },
+      ],
+    });
+
+    for (const [topicKey, stageKey, segment] of [
+      ["a-ready", "ready", "segment-a"],
+      ["a-reserved", "reserved", "segment-a"],
+      ["a-extra", "ready", "segment-a"],
+      ["b-ready", "ready", "segment-b"],
+    ] as const) {
+      await svc.ingestCase({
+        companyId: company.id,
+        pipelineId: topics.id,
+        stageKey,
+        caseKey: topicKey,
+        title: topicKey,
+        fields: { primaryAudienceSegmentId: segment },
+        actor: userActor,
+      });
+    }
+    const refill = await svc.ingestCase({
+      companyId: company.id,
+      pipelineId: growth.id,
+      stageKey: "verify",
+      caseKey: "segmented-refill",
+      title: "Refill segmented topics",
+      fields: { actionType: "topic_inventory_refill" },
+      actor: userActor,
+    });
+
+    await expect(svc.transitionCase({
+      companyId: company.id,
+      caseId: refill.case.id,
+      toStageKey: "measured",
+      expectedVersion: refill.case.version,
+      actor: userActor,
+    })).rejects.toMatchObject({
+      status: 409,
+      details: {
+        code: "pipeline_stage_group_quota_below_minimum",
+        groupByField: "primaryAudienceSegmentId",
+        deficits: [{ value: "segment-b", actualCount: 1, minimumCount: 2 }],
+      },
+    });
+
+    await svc.ingestCase({
+      companyId: company.id,
+      pipelineId: topics.id,
+      stageKey: "reserved",
+      caseKey: "b-reserved",
+      title: "b-reserved",
+      fields: { primaryAudienceSegmentId: "segment-b" },
+      actor: userActor,
+    });
+    await expect(svc.transitionCase({
+      companyId: company.id,
+      caseId: refill.case.id,
+      toStageKey: "measured",
+      expectedVersion: refill.case.version,
+      actor: userActor,
+    })).resolves.toMatchObject({ case: { terminalKind: "done" } });
+  });
+
+  it("blocks a transition until its required case fields are present", async () => {
+    const company = await seedCompany();
+    const pipeline = await svc.createPipeline({
+      companyId: company.id,
+      key: "clustered-search-demand",
+      name: "Clustered search demand",
+      actor: userActor,
+      stages: [
+        {
+          key: "discovered",
+          name: "Discovered",
+          kind: "working",
+          config: {
+            transitionFieldRequirements: [{
+              toStageKey: "evidence_ready",
+              requiredFields: ["intentClusterKey", "supportingQueries"],
+            }],
+          },
+        },
+        { key: "evidence_ready", name: "Evidence Ready", kind: "working" },
+        { key: "done", name: "Done", kind: "done" },
+        { key: "cancelled", name: "Cancelled", kind: "cancelled" },
+      ],
+    });
+    const created = await svc.ingestCase({
+      companyId: company.id,
+      pipelineId: pipeline.id,
+      stageKey: "discovered",
+      caseKey: "return-to-ukraine",
+      title: "Return to Ukraine",
+      fields: { supportingQueries: [] },
+      actor: userActor,
+    });
+
+    await expect(svc.transitionCase({
+      companyId: company.id,
+      caseId: created.case.id,
+      toStageKey: "evidence_ready",
+      expectedVersion: created.case.version,
+      actor: userActor,
+    })).rejects.toMatchObject({
+      status: 409,
+      details: {
+        code: "pipeline_case_required_fields_missing",
+        missingFields: ["intentClusterKey"],
+      },
+    });
+
+    const updated = await svc.patchCaseContent({
+      companyId: company.id,
+      caseId: created.case.id,
+      expectedVersion: created.case.version,
+      fieldPatch: { intentClusterKey: "life-decisions:return-or-stay" },
+      actor: userActor,
+    });
+    const evidenceReadyStage = (await svc.listStages(company.id, pipeline.id))
+      .find((stage) => stage.key === "evidence_ready");
+    await expect(svc.transitionCase({
+      companyId: company.id,
+      caseId: created.case.id,
+      toStageKey: "evidence_ready",
+      expectedVersion: updated.version,
+      actor: userActor,
+    })).resolves.toMatchObject({ case: { stageId: evidenceReadyStage?.id } });
+  });
+
+  it("conditionally enforces required fields and exact array lengths", async () => {
+    const company = await seedCompany();
+    const pipeline = await svc.createPipeline({
+      companyId: company.id,
+      key: "curriculum-topics",
+      name: "Curriculum topics",
+      actor: userActor,
+      stages: [
+        {
+          key: "candidate",
+          name: "Candidate",
+          kind: "working",
+          config: {
+            transitionFieldRequirements: [{
+              toStageKey: "ready",
+              requiredFields: ["primaryConceptKey", "introducedConceptKeys", "curriculumGateStatus"],
+              requiredArrayLengths: { introducedConceptKeys: 1 },
+              requiredFieldValues: { curriculumGateStatus: "passed" },
+              singleItemArrayMatchesField: { introducedConceptKeys: "primaryConceptKey" },
+              whenCaseField: "contentPortfolioTrack",
+              whenCaseFieldEquals: "western_astrology_learning",
+            }],
+          },
+        },
+        { key: "ready", name: "Ready", kind: "working" },
+        { key: "done", name: "Done", kind: "done" },
+        { key: "cancelled", name: "Cancelled", kind: "cancelled" },
+      ],
+    });
+    const created = await svc.ingestCase({
+      companyId: company.id,
+      pipelineId: pipeline.id,
+      stageKey: "candidate",
+      caseKey: "aspects",
+      title: "Aspects",
+      fields: {
+        contentPortfolioTrack: "western_astrology_learning",
+        primaryConceptKey: "aspect",
+        introducedConceptKeys: ["aspect", "house"],
+        curriculumGateStatus: "passed",
+      },
+      actor: userActor,
+    });
+
+    await expect(svc.transitionCase({
+      companyId: company.id,
+      caseId: created.case.id,
+      toStageKey: "ready",
+      expectedVersion: created.case.version,
+      actor: userActor,
+    })).rejects.toMatchObject({
+      status: 409,
+      details: {
+        code: "pipeline_case_required_array_length_mismatch",
+        invalidArrayLengths: [{ key: "introducedConceptKeys", expectedLength: 1, actualLength: 2 }],
+      },
+    });
+
+    const updated = await svc.patchCaseContent({
+      companyId: company.id,
+      caseId: created.case.id,
+      expectedVersion: created.case.version,
+      fieldPatch: { introducedConceptKeys: ["aspect"] },
+      actor: userActor,
+    });
+    await expect(svc.transitionCase({
+      companyId: company.id,
+      caseId: created.case.id,
+      toStageKey: "ready",
+      expectedVersion: updated.version,
+      actor: userActor,
+    })).resolves.toMatchObject({ case: { terminalKind: null } });
+
+    const wrongStatus = await svc.ingestCase({
+      companyId: company.id,
+      pipelineId: pipeline.id,
+      stageKey: "candidate",
+      caseKey: "house",
+      title: "House",
+      fields: {
+        contentPortfolioTrack: "western_astrology_learning",
+        primaryConceptKey: "house",
+        introducedConceptKeys: ["house"],
+        curriculumGateStatus: "failed",
+      },
+      actor: userActor,
+    });
+    await expect(svc.transitionCase({
+      companyId: company.id,
+      caseId: wrongStatus.case.id,
+      toStageKey: "ready",
+      expectedVersion: wrongStatus.case.version,
+      actor: userActor,
+    })).rejects.toMatchObject({
+      status: 409,
+      details: {
+        code: "pipeline_case_required_field_value_mismatch",
+      },
+    });
+
+    const wrongConcept = await svc.ingestCase({
+      companyId: company.id,
+      pipelineId: pipeline.id,
+      stageKey: "candidate",
+      caseKey: "planet",
+      title: "Planet",
+      fields: {
+        contentPortfolioTrack: "western_astrology_learning",
+        primaryConceptKey: "planet",
+        introducedConceptKeys: ["house"],
+        curriculumGateStatus: "passed",
+      },
+      actor: userActor,
+    });
+    await expect(svc.transitionCase({
+      companyId: company.id,
+      caseId: wrongConcept.case.id,
+      toStageKey: "ready",
+      expectedVersion: wrongConcept.case.version,
+      actor: userActor,
+    })).rejects.toMatchObject({
+      status: 409,
+      details: {
+        code: "pipeline_case_single_item_array_field_mismatch",
+      },
+    });
+
+    const nonCurriculum = await svc.ingestCase({
+      companyId: company.id,
+      pipelineId: pipeline.id,
+      stageKey: "candidate",
+      caseKey: "trend",
+      title: "Trend",
+      fields: { contentPortfolioTrack: "audience_trends" },
+      actor: userActor,
+    });
+    await expect(svc.transitionCase({
+      companyId: company.id,
+      caseId: nonCurriculum.case.id,
+      toStageKey: "ready",
+      expectedVersion: nonCurriculum.case.version,
+      actor: userActor,
+    })).resolves.toMatchObject({ case: { terminalKind: null } });
+  });
+
   it("persists workspaceRef during ingest", async () => {
     const { company, pipeline } = await seedPipeline();
     const workspaceRef = {
@@ -522,6 +843,55 @@ describeEmbeddedPostgres("pipelineService", () => {
       }),
     ).rejects.toMatchObject({ status: 409, details: { code: "version_conflict", version: 2 } });
     expect(await eventCount(created.case.id)).toBe(before);
+  });
+
+  it("merges fieldPatch without erasing existing case evidence", async () => {
+    const { company, pipeline } = await seedPipeline();
+    const created = await svc.ingestCase({
+      companyId: company.id,
+      pipelineId: pipeline.id,
+      caseKey: "field-patch",
+      title: "Field patch",
+      fields: { titleUk: "Збережена тема", evidenceStatus: "ready", attempt: 1 },
+      actor: userActor,
+    });
+
+    const patched = await svc.patchCaseContent({
+      companyId: company.id,
+      caseId: created.case.id,
+      fieldPatch: { attempt: 2, remoteRunId: "run-1" },
+      expectedVersion: 1,
+      actor: userActor,
+    });
+
+    expect(patched.version).toBe(2);
+    expect(patched.fields).toEqual({
+      titleUk: "Збережена тема",
+      evidenceStatus: "ready",
+      attempt: 2,
+      remoteRunId: "run-1",
+    });
+  });
+
+  it("rejects fields and fieldPatch in the same service mutation", async () => {
+    const { company, pipeline } = await seedPipeline();
+    const created = await svc.ingestCase({
+      companyId: company.id,
+      pipelineId: pipeline.id,
+      caseKey: "field-patch-conflict",
+      title: "Field patch conflict",
+      fields: { preserved: true },
+      actor: userActor,
+    });
+
+    await expect(svc.patchCaseContent({
+      companyId: company.id,
+      caseId: created.case.id,
+      fields: { replacement: true },
+      fieldPatch: { merged: true },
+      expectedVersion: 1,
+      actor: userActor,
+    })).rejects.toMatchObject({ status: 422, details: { code: "validation" } });
   });
 
   it("lets exactly one parallel transition with the same expectedVersion succeed", async () => {
@@ -1847,6 +2217,102 @@ describeEmbeddedPostgres("pipelineService", () => {
     expect(links.filter((link) => link.issueId === sharedLive.id).every((link) => link.retiredAt === null)).toBe(true);
   });
 
+  it("retires a blocked automation issue when a later active execution advances the case", async () => {
+    const company = await seedCompany();
+    const routine = await seedRoutine(company.id, "Recoverable CMS delivery");
+    const pipeline = await svc.createPipeline({
+      companyId: company.id,
+      key: "superseded-automation-reconciliation",
+      name: "Superseded automation reconciliation",
+      actor: userActor,
+      stages: [
+        { key: "cms", name: "CMS", kind: "working" },
+        { key: "delivery", name: "Delivery", kind: "working" },
+        { key: "done", name: "Done", kind: "done" },
+        { key: "cancelled", name: "Cancelled", kind: "cancelled" },
+      ],
+    });
+    const created = await svc.ingestCase({
+      companyId: company.id,
+      pipelineId: pipeline.id,
+      stageKey: "cms",
+      caseKey: "recovered-cms",
+      title: "Recovered CMS",
+      actor: userActor,
+    });
+    const stale = await seedLinkedIssue({
+      companyId: company.id,
+      caseId: created.case.id,
+      role: "automation",
+      status: "blocked",
+      title: "Blocked CMS attempt",
+    });
+    const successor = await seedLinkedIssue({
+      companyId: company.id,
+      caseId: created.case.id,
+      role: "automation",
+      status: "in_progress",
+      title: "Successful CMS recovery",
+    });
+    const [firstEvent] = await db.insert(pipelineCaseEvents).values({
+      companyId: company.id,
+      caseId: created.case.id,
+      type: "updated",
+      actorType: "system",
+      payload: { test: "stale" },
+    }).returning();
+    const [secondEvent] = await db.insert(pipelineCaseEvents).values({
+      companyId: company.id,
+      caseId: created.case.id,
+      type: "updated",
+      actorType: "system",
+      payload: { test: "successor" },
+    }).returning();
+    await db.insert(pipelineAutomationExecutions).values([
+      {
+        companyId: company.id,
+        caseId: created.case.id,
+        automationId: "cms:on_enter",
+        triggeringEventId: firstEvent!.id,
+        routineId: routine.id,
+        executionIssueId: stale.id,
+        status: "succeeded",
+        createdAt: new Date("2026-01-01T00:00:00.000Z"),
+        updatedAt: new Date("2026-01-01T00:00:00.000Z"),
+      },
+      {
+        companyId: company.id,
+        caseId: created.case.id,
+        automationId: "cms:on_enter",
+        triggeringEventId: secondEvent!.id,
+        routineId: routine.id,
+        executionIssueId: successor.id,
+        status: "succeeded",
+        createdAt: new Date("2026-01-01T00:00:01.000Z"),
+        updatedAt: new Date("2026-01-01T00:00:01.000Z"),
+      },
+    ]);
+
+    await svc.transitionCase({
+      companyId: company.id,
+      caseId: created.case.id,
+      toStageKey: "delivery",
+      expectedVersion: created.case.version,
+      actor: userActor,
+    });
+
+    const [staleIssue] = await db.select().from(issues).where(eq(issues.id, stale.id));
+    expect(staleIssue).toMatchObject({ status: "cancelled" });
+    const [staleLink] = await db
+      .select()
+      .from(pipelineCaseIssueLinks)
+      .where(eq(pipelineCaseIssueLinks.issueId, stale.id));
+    expect(staleLink!.retiredReason).toBe("superseded_by_later_successful_automation");
+    const events = await svc.listCaseEvents(company.id, created.case.id);
+    expect(events.some((event) => event.type === "automation_effects_retired"
+      && (event.payload as Record<string, unknown>).reason === "superseded_by_later_successful_automation")).toBe(true);
+  });
+
   it("keeps child completion committed when parent children-terminal auto-advance is gated", async () => {
     const company = await seedCompany();
     const pipeline = await svc.createPipeline({
@@ -2013,7 +2479,16 @@ describeEmbeddedPostgres("pipelineService", () => {
       actor: userActor,
       stages: [
         { key: "intake", name: "Intake", kind: "open" },
-        { key: "drafting", name: "Drafting", kind: "working", config: { onEnter: { type: "run_routine", routineId: routine.id } } },
+        {
+          key: "drafting",
+          name: "Drafting",
+          kind: "working",
+          config: {
+            inlineContextDocumentKeys: ["article-brief"],
+            inlineContextMaxChars: 8_000,
+            onEnter: { type: "run_routine", routineId: routine.id },
+          },
+        },
         { key: "done", name: "Done", kind: "done" },
         { key: "cancelled", name: "Cancelled", kind: "cancelled" },
       ],
@@ -2024,6 +2499,31 @@ describeEmbeddedPostgres("pipelineService", () => {
       caseKey: "automation",
       title: "Automation case",
       actor: userActor,
+    });
+    const [briefDocument] = await db.insert(documents).values({
+      companyId: company.id,
+      title: "Article brief",
+      format: "markdown",
+      latestBody: "# Article brief\n\nFULL_BRIEF_BODY_FOR_TOOLLESS_ADAPTER",
+      latestRevisionNumber: 1,
+      createdByUserId: "board-user",
+      updatedByUserId: "board-user",
+    }).returning();
+    const [briefRevision] = await db.insert(documentRevisions).values({
+      companyId: company.id,
+      documentId: briefDocument!.id,
+      revisionNumber: 1,
+      title: "Article brief",
+      format: "markdown",
+      body: briefDocument!.latestBody,
+      createdByUserId: "board-user",
+    }).returning();
+    await db.update(documents).set({ latestRevisionId: briefRevision!.id }).where(eq(documents.id, briefDocument!.id));
+    await db.insert(pipelineCaseDocuments).values({
+      companyId: company.id,
+      caseId: created.case.id,
+      documentId: briefDocument!.id,
+      key: "article-brief",
     });
 
     const moved = await svc.transitionCase({
@@ -2051,6 +2551,8 @@ describeEmbeddedPostgres("pipelineService", () => {
     expect(issue!.description).toContain("Do not search OpenAPI");
     expect(issue!.description).not.toContain("pipeline-case-operations");
     expect(issue!.description).toContain("untrustedContent");
+    expect(issue!.description).toContain("Inline Pipeline Documents");
+    expect(issue!.description).toContain("FULL_BRIEF_BODY_FOR_TOOLLESS_ADAPTER");
 
     const triggerEvent = await db.insert(pipelineCaseEvents).values({
       companyId: company.id,

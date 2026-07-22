@@ -111,7 +111,15 @@ export const pipelineStageCountRequirementSchema = z.object({
   toStageKey: z.string().trim().min(1).max(120),
   pipelineKey: z.string().trim().min(1).max(200),
   stageKey: z.string().trim().min(1).max(120),
+  additionalStageKeys: z.array(z.string().trim().min(1).max(120)).max(20).optional().default([]),
   minimumCount: z.number().int().min(0).max(100_000),
+  groupByField: routineVariableLikeNameSchema.optional(),
+  requiredGroupValues: z.array(z.string().trim().min(1).max(200)).max(50).optional().default([]),
+  minimumCountPerGroup: z.number().int().min(0).max(100_000).optional(),
+  minimumCountByGroup: z.record(
+    z.string().trim().min(1).max(200),
+    z.number().int().min(0).max(100_000),
+  ).optional().default({}),
   activeOnly: z.boolean().optional().default(true),
   whenCaseField: routineVariableLikeNameSchema.optional(),
   whenCaseFieldEquals: z.union([z.string(), z.number(), z.boolean()]).optional(),
@@ -121,6 +129,101 @@ export const pipelineStageCountRequirementSchema = z.object({
       code: z.ZodIssueCode.custom,
       message: "Pipeline stage-count requirements need both whenCaseField and whenCaseFieldEquals",
     });
+  }
+  const hasGroupConfig = value.groupByField !== undefined
+    || value.requiredGroupValues.length > 0
+    || value.minimumCountPerGroup !== undefined
+    || Object.keys(value.minimumCountByGroup).length > 0;
+  const hasUniformMinimum = value.minimumCountPerGroup !== undefined;
+  const hasPerGroupMinimum = Object.keys(value.minimumCountByGroup).length > 0;
+  if (hasGroupConfig && (
+    value.groupByField === undefined
+    || value.requiredGroupValues.length === 0
+    || hasUniformMinimum === hasPerGroupMinimum
+  )) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Pipeline grouped stage-count requirements need groupByField, requiredGroupValues, and exactly one of minimumCountPerGroup or minimumCountByGroup",
+    });
+  }
+  if (hasPerGroupMinimum) {
+    const required = new Set(value.requiredGroupValues);
+    const configured = new Set(Object.keys(value.minimumCountByGroup));
+    if (
+      required.size !== configured.size
+      || [...required].some((group) => !configured.has(group))
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "minimumCountByGroup keys must exactly match requiredGroupValues",
+      });
+    }
+  }
+  if (new Set([value.stageKey, ...value.additionalStageKeys]).size !== 1 + value.additionalStageKeys.length) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Pipeline stage-count requirement stage keys must be unique",
+    });
+  }
+});
+
+export const pipelineStageFieldRequirementSchema = z.object({
+  toStageKey: z.string().trim().min(1).max(120),
+  requiredFields: z.array(routineVariableLikeNameSchema).min(1).max(100),
+  requiredArrayLengths: z.record(
+    routineVariableLikeNameSchema,
+    z.number().int().min(0).max(10_000),
+  ).optional().default({}),
+  requiredFieldValues: z.record(
+    routineVariableLikeNameSchema,
+    z.union([z.string(), z.number(), z.boolean()]),
+  ).optional().default({}),
+  singleItemArrayMatchesField: z.record(
+    routineVariableLikeNameSchema,
+    routineVariableLikeNameSchema,
+  ).optional().default({}),
+  whenCaseField: routineVariableLikeNameSchema.optional(),
+  whenCaseFieldEquals: z.union([z.string(), z.number(), z.boolean()]).optional(),
+}).superRefine((value, ctx) => {
+  if ((value.whenCaseField === undefined) !== (value.whenCaseFieldEquals === undefined)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Pipeline transition field requirements need both whenCaseField and whenCaseFieldEquals",
+    });
+  }
+  if (new Set(value.requiredFields).size !== value.requiredFields.length) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["requiredFields"],
+      message: "Pipeline transition field requirements must be unique",
+    });
+  }
+  for (const field of Object.keys(value.requiredArrayLengths)) {
+    if (!value.requiredFields.includes(field)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["requiredArrayLengths", field],
+        message: "Array-length requirements must reference a required field",
+      });
+    }
+  }
+  for (const field of Object.keys(value.requiredFieldValues)) {
+    if (!value.requiredFields.includes(field)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["requiredFieldValues", field],
+        message: "Exact-value requirements must reference a required field",
+      });
+    }
+  }
+  for (const [arrayField, sourceField] of Object.entries(value.singleItemArrayMatchesField)) {
+    if (!value.requiredFields.includes(arrayField) || !value.requiredFields.includes(sourceField)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["singleItemArrayMatchesField", arrayField],
+        message: "Single-item array matches must reference two required fields",
+      });
+    }
   }
 });
 
@@ -163,6 +266,7 @@ export const pipelineStageConfigSchema = z.object({
   intakeGuard: pipelineStageIntakeGuardSchema.optional(),
   childrenTerminalOutcome: pipelineStageChildrenTerminalOutcomeSchema.optional(),
   pipelineStageCountRequirements: z.array(pipelineStageCountRequirementSchema).max(20).optional(),
+  transitionFieldRequirements: z.array(pipelineStageFieldRequirementSchema).max(20).optional(),
   approveToStageKey: z.string().trim().min(1).max(120).optional(),
   rejectToStageKey: z.string().trim().min(1).max(120).optional(),
   requestChangesToStageKey: z.string().trim().min(1).max(120).optional(),
@@ -170,6 +274,8 @@ export const pipelineStageConfigSchema = z.object({
   requireRequestChangesReason: z.boolean().optional(),
   requireChildrenTerminal: z.boolean().optional(),
   requireNoUnresolvedDrift: z.boolean().optional(),
+  inlineContextDocumentKeys: z.array(z.string().trim().min(1).max(120)).max(5).optional(),
+  inlineContextMaxChars: z.number().int().min(1_000).max(48_000).optional(),
 }).passthrough().superRefine((value, ctx) => {
   const keys = new Set<string>();
   value.variables.forEach((variable, index) => {
@@ -212,6 +318,7 @@ export type PipelineStageBreakdown = z.infer<typeof pipelineStageBreakdownSchema
 export type PipelineStageIntakeGuard = z.infer<typeof pipelineStageIntakeGuardSchema>;
 export type PipelineStageChildrenTerminalOutcome = z.infer<typeof pipelineStageChildrenTerminalOutcomeSchema>;
 export type PipelineStageCountRequirement = z.infer<typeof pipelineStageCountRequirementSchema>;
+export type PipelineStageFieldRequirement = z.infer<typeof pipelineStageFieldRequirementSchema>;
 export type PipelineStageVariable = z.infer<typeof pipelineStageVariableSchema>;
 export type PipelineStageConfig = z.infer<typeof pipelineStageConfigSchema>;
 export type PipelineAutomationRetryScope = z.infer<typeof pipelineAutomationRetryScopeSchema>;

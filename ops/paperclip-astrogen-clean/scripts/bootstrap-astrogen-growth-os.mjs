@@ -1524,8 +1524,9 @@ function agentSpecificInstructions(agent) {
 ## Content Portfolio And Curriculum Rule
 
 - Assign every future article exactly one \`contentPortfolioTrack\`: \`western_astrology_learning\`, \`audience_applied_questions\`, \`audience_trends\`, \`trust_expert_method_boundaries\`, or \`commercial_unmet_demand\`. The rolling targets are 12/5/3/3/2. Keep audience segments for diversity reporting, not hard quotas, and never create filler to satisfy a segment.
-- For \`western_astrology_learning\`, use an approved learning graph with roles \`pillar\`, \`prerequisite\`, \`deepening\`, or \`example\`. Introduce at most one or two new concepts per article, explain them at first use, and link prerequisites and next steps.
-- A curriculum prerequisite may proceed without accepted Semantic Core demand and without a classic SERP value gap only when SERP analysis is complete, the graph has a named missing node, no CMS owner or cannibalization conflict exists, incoming and outgoing prerequisite links are defined, and \`distinctTeachingContribution\` proves a unique teaching purpose. Winning Structure remains mandatory. Duplicate ownership, unsafe scope, or no distinct teaching role still rejects it.
+- For \`western_astrology_learning\`, use /companies/astrogen/reference/western-astrology-curriculum.yaml with roles \`pillar\`, \`prerequisite\`, \`deepening\`, or \`example\`. One article introduces exactly one new astrology concept. A synonym such as \`дім / будинок / дом\` is an alias of one concept; definitions, lists, comparisons, examples, FAQ answers, or workflows for adjacent terms count as additional concepts even when called supporting context.
+- Every curriculum topic and article must preserve \`curriculumNodeId\`, \`primaryConceptKey\`, exactly one matching item in \`introducedConceptKeys\`, prerequisite node/article links, excluded future concepts, and the distinct teaching contribution. Previously taught concepts may be mentioned briefly with a published prerequisite link but are not retaught.
+- A curriculum prerequisite may proceed without accepted Semantic Core demand and without a classic SERP value gap only when SERP analysis is complete, the graph has a named missing node, no CMS owner or cannibalization conflict exists, incoming and outgoing prerequisite links are defined, and \`distinctTeachingContribution\` proves a unique teaching purpose. Winning Structure remains mandatory. More than one new concept, a missing published prerequisite, duplicate ownership, unsafe scope, or no distinct teaching role rejects it.
 `;
   }
 
@@ -1573,6 +1574,7 @@ function agentSpecificInstructions(agent) {
 
 ## Topic Inventory Validation Gate
 
+- For \`western_astrology_learning\`, read /companies/astrogen/reference/western-astrology-curriculum.yaml and require one \`primaryConceptKey\` plus exactly one matching \`introducedConceptKeys\` item. A definition, list, comparison, FAQ answer, example, catalogue, or workflow for an adjacent astrology term is another concept even when labelled supporting context. Require published prerequisite article URLs before a dependent node reaches \`ready\`.
 - Validate \`topic_inventory_refill\` packets before the article allocator can
   consume them.
 - Accept only records whose status, evidence, duplicate check, cannibalization
@@ -1605,6 +1607,7 @@ function agentSpecificInstructions(agent) {
 
 ## Winning Structure MCP Contract
 
+- For \`western_astrology_learning\`, preserve the canonical curriculum node and constrain every remote section and local overlay to one \`primaryConceptKey\`. Multiple value units may deepen that concept but may not introduce adjacent astrology terminology, a twelve-item catalogue, or an interpretation workflow that needs untaught concepts. Reject the structure instead of accepting concept overload as bounded support.
 - For native article stages \`strategy_input\` and \`winning_structure\`, use Winning Structure MCP as the ownership, SERP and reader-value source of truth. Serper may supply caller evidence but never substitutes for a completed Winning Structure result.
 - Read the \`winning-structure-input\` case document, parse its plain JSON body and pass the exact object unchanged to both validation and start. Never reconstruct the payload or rename \`task\` to \`task_input\`.
 - Require the stable top-level namespace \`company_id\`, \`project_id\`, \`client_key=astrogen-ukraine\` and idempotency key \`winning-structure:{articleCaseId}:{revision}\`, plus object-valued \`task\` and \`market\`.
@@ -1668,6 +1671,7 @@ function agentSpecificInstructions(agent) {
 
 ## Winning Structure Brief Contract
 
+- For \`western_astrology_learning\`, add a typed \`curriculumScope\` with one \`primaryConceptKey\`, exactly one matching \`introducedConceptKeys\` item, published prerequisite URLs, allowed known concepts and excluded future concepts. Remove any provider section that teaches an untaught term; calling it context does not make it acceptable.
 - Create a brief only from an imported and accepted Winning Structure result. Preserve section IDs, hierarchy, purpose, writer instruction, evidence references, claim boundaries, examples to avoid, review flags and publication requirements as structured fields.
 - Read the imported content-selection audit and meta-evidence brief as evidence for section inclusion and factual boundaries only. Never paste their text into the article or treat the meta brief as a generated title or description.
 - Use the accepted Astrogen article type and two to four approved reader-value units. A table, FAQ, checklist, comparison or historical note is only presentation; it is not value unless it delivers the accepted evidence-backed contribution.
@@ -1719,6 +1723,7 @@ function agentSpecificInstructions(agent) {
 
 ## Evidence-Backed Draft Contract
 
+- For \`western_astrology_learning\`, teach exactly one new astrology concept. Do not define or compare adjacent terms, list twelve houses/signs, add a glossary or FAQ that introduces new terms, or use an interpretation workflow that depends on concepts the curriculum has not taught. Published prerequisites may be mentioned briefly with links but not retaught. Ukrainian aliases of the primary concept count as the same concept.
 - This is the shared writer-workspace contract. Claude is the primary writer. ChatGPT may execute only after the case records a Claude/provider/protocol blocker or an explicit CMO fallback decision; ChatGPT must never self-trigger or replace a healthy Claude path.
 - The Claude writer runs through the OpenRouter prompt adapter. It has no callable shell, browser, or Paperclip API tools: never emit \`<tool_call>\`, shell commands, or raw API instructions. Return the adapter's single JSON protocol response with the complete attachment artifact. Include typed \`pipelineTransition\` when the native state machine exposes multiple allowed next stages; when exactly one transition exists, it may be omitted and Paperclip selects that route deterministically. Never guess between multiple routes. Paperclip validates and performs the transition before it can close the stage task.
 - Write article prose only from brief sections typed \`readerFacing\`. Treat CMS/media fields, revision IDs, publication blocker notes, validation instructions, source/provenance notes, editorial signals, and any section titled \`Редакційні сигнали та медіа-поля\` as \`handoffOnly\`, even when an older immutable provider result numbered them as a section. On a validate-to-draft return, apply the latest content-validation case document before the older brief and never repeat a rejected operational section.
@@ -1776,6 +1781,7 @@ function agentSpecificInstructions(agent) {
 
 ## Final Main-Content Quality Gate
 
+- For \`western_astrology_learning\`, scan headings, definitions, tables, lists, examples, FAQ and workflows before both validation approval and MC pass. Persist the detected concept keys and pass only when exactly the declared primary concept is newly taught; concept overload is \`revise_substantive\`, not a style defect.
 - At native stage \`mc_quality\`, audit the post-humanizer draft independently against the imported Winning Structure, brief, evidence, commitments and relevant competitor baseline.
 - Return one typed outcome: \`pass\`, \`revise_surface\`, \`revise_substantive\`, or \`reject_unsafe\`. Route surface-only naturalness defects to humanize and substantive value/evidence defects to draft.
 - Passing requires reader-task completion, visible original contribution, specificity, useful depth, acceptable information density, fulfilled publication requirements, claim safety, sibling differentiation and no process residue.
@@ -1817,6 +1823,7 @@ function agentSpecificInstructions(agent) {
 
 ## Bounded Editorial Naturalness Contract
 
+- For \`western_astrology_learning\`, preserve the one-concept boundary. Do not add explanatory definitions, synonyms beyond the primary concept's aliases, examples, FAQ material or transitions that teach a second astrology concept.
 - Perform one minimal pass after factual/structural validation. Preserve every fact, evidence boundary, Winning Structure section purpose, SEO lock, CTA route and publication requirement.
 - Correct only observable editorial patterns: canned openings/closings, repeated sentence starts, uniform paragraph rhythm, generic transitions, abstract wording, unnecessary explanation and mechanical triads.
 - Do not produce an AI probability, name a supposed model family, optimize for detector evasion, invent first-person experience, add conversational filler or recursively rewrite the article.
@@ -1876,6 +1883,7 @@ function agentSpecificInstructions(agent) {
 
 ## Payload CMS Draft Contract
 
+- For \`western_astrology_learning\`, require passed curriculum validation and MC evidence before any CMS mutation. Refuse delivery when more than the declared primary concept is taught, even if layout and Payload schema are valid; never treat CMS as the place to repair concept scope.
 - CMS delivery is draft-only. Do not publish.
 - Use the \`Payload CMS Create Blog Post Draft\` and \`Payload CMS Update Blog Post Draft\` tool schemas as the source of truth. Their runtime schema is canonical; do not infer fields from previous failed attempts.
 - \`articleContent\` must be canonical \`articleContent.v1\`: \`schemaVersion\` plus \`blocks\`. Reject or return upstream payloads that use \`content\`, \`columns\`, \`body/linkText\` for CTA, or free-form icon objects.

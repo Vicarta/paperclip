@@ -1,0 +1,272 @@
+version: astrogen-search-demand-v8
+company: astrogen
+market:
+  geo: UA
+  language: uk
+
+candidatePriority:
+  primarySource: accepted_semantic_core
+  sourceOrder:
+    - accepted semantic-core keywords or clusters with Ukraine geo frequency
+    - GSC query-to-page gaps from a completed 28-day window
+    - trend-report search phrases after separate semantic-core provider validation
+  rankBy:
+    - uncovered demand before weak or conflicting owners
+    - higher geo search volume before micro-demand variants
+    - distinct intent and safe query-to-URL ownership
+    - useful internal-link role and target-audience fit
+    - audience-interest and adjacent-use-case breadth before another product variant
+
+newArticleEligibility:
+  semanticCore:
+    acceptedLifecycleRequired: true
+    geoFrequencyRequired: true
+    acceptedCandidateShapes: [keyword, cluster]
+    groupingRequiredBeforeActionSelected: true
+    cmsCoverageResolvedInOwnershipReview: true
+    allowedCoverageStates: [uncovered]
+  gscFallback:
+    completedWindowDays: 28
+    minimumImpressions: 20
+    requiresNoHigherPrioritySemanticCandidate: true
+  trendCandidates:
+    reportIsEvidenceOnly: true
+    semanticCoreProviderValidationRequired: true
+    acceptedLifecycleRequiredBeforeNewArticle: true
+    audienceFirstIntegrityRequired: true
+    productNarrowingContamination:
+      decision: reject_or_cancel
+      reason: product_narrowing_contamination
+      rule: Trend-derived demand must remain an audience situation, reader problem, cultural signal, seasonal recurrence, social behavior, decision context, or safety concern. It must not be narrowed into an Astrogen product, service, modality, route, existing article owner, or semantic-core product keyword family.
+      forbiddenIn:
+        - proposed search phrase
+        - primary keyword
+        - topicKey
+        - titleUk
+        - H1
+        - slug
+        - selectedAction reason
+      productBridgeAllowedOnlyIn:
+        - contextual body link
+        - supporting business_context.product_bridge_targets
+      refreshRestriction: A trend-derived opportunity may select refresh only when the existing owner page already covers the same audience discussion theme. Do not select refresh merely because a product/service page or modality article is related.
+      newArticleTitleRestriction: Trend-derived new_article titles must be written as discussion themes, not as Astrogen product/service/modality titles.
+    emergingDemandFallback:
+      enabled: true
+      purpose: allow evidence-backed emerging demand when keyword providers have no stable Ukraine frequency yet
+      requires:
+        - accepted semantic-core lifecycle after bounded validator review when the original result was candidate_review
+        - live trend_topic_report.v1 run identity and cluster or watch-item fingerprint
+        - at least two retained public evidence sources or one retained first-party internal signal plus one public source
+        - analysis date, expiry, falsifier, confidence band, warnings and exact source references
+        - full CMS ownership, duplicate, cannibalization and internal-link review
+      stores:
+        - demandEvidenceClass=trend_emerging
+        - geoFrequencyStatus=unavailable_not_zero
+        - trendReportRunId
+        - trendEvidenceFingerprint
+        - trendExpiresAt
+      forbidden:
+        - inventing or estimating search volume
+        - claiming provider frequency when geo search volume is null
+        - bypassing semantic acceptance, ownership review or action selection
+    directTopicCreationForbidden: true
+    preparePaperclipImportForTrendRunForbidden: true
+    zeroClusterReportIsValid: true
+    readStoredReportTool: paperclip.semantic-core-mcp-agent-tools:get-trend-topic-report
+    maxValidationWavesPerReport: 3
+    maxPhrasesPerWave: 5
+    concreteSearchPhraseRequired: true
+    entityOrProblemAnchorRequired: true
+    reusePhraseAfterParkedOrRejectedForbidden: true
+    continueUnusedClustersWhenInventoryLow: true
+  ownership:
+    fullCmsInventoryRequired: true
+    exactSlugCheckAloneIsInsufficient: true
+    currentOwnerAndCompetingUrlsRequired: true
+    internalLinkPlanRequired: true
+    rejectWhenIntentIsAlreadyOwned: true
+    productOwnerDoesNotOwnAudienceTrend: true
+    trendRefreshRequiresSameAudienceThemeOwner: true
+
+intentClusterIngestion:
+  unitOfWork: one search-demand opportunity per distinct reader intent cluster, never one opportunity per accepted phrase
+  requiredFields:
+    - intentClusterKey
+    - clusterDedupeKey
+    - queryFamilyFingerprint
+    - primaryQuery
+    - supportingQueries
+    - sourceSemanticCandidateIds
+    - sourceClusterIds
+    - portfolioLane
+  canonicalKeyRule: search-demand:<primaryAudienceSegmentId>:<stable-normalized-intent-cluster>
+  clusterBeforeCreate: true
+  clusterDecisionTests:
+    - the phrases seek the same reader outcome
+    - the phrases have the same search intent and expected page type
+    - one strong article could satisfy them without splitting ownership
+    - the SERP result families materially overlap or the source trend cluster is the same
+  splitOnlyWhen:
+    - SERP evidence proves materially different intent or page type
+    - different URL ownership is required
+    - one page cannot satisfy both reader outcomes without becoming unfocused
+  mergeBehavior:
+    - choose one primaryQuery and store all distinct variants as supportingQueries
+    - union semantic candidate IDs, source cluster IDs, trend evidence, frequency evidence and audience signals on the canonical opportunity
+    - update or reuse the canonical case by clusterDedupeKey before creating any case
+    - transition phrase-level duplicates to cancelled with actionReasonCode=merged_into_intent_cluster and canonicalOpportunityCaseId
+    - reject or release duplicate topic children before the allocator can reserve them
+  countingRule: quotas, content-plan rows and campaign progress count unique intentClusterKey values, not phrases, semantic rows or native case count
+
+contentPortfolio:
+  trackField: contentPortfolioTrack
+  targets:
+    western_astrology_learning: 12
+    audience_applied_questions: 5
+    audience_trends: 3
+    trust_expert_method_boundaries: 3
+    commercial_unmet_demand: 2
+  audienceSegments:
+    role: diversity_guardrail
+    hardQuota: false
+  westernAstrologyPrerequisiteException:
+    semanticCoreDemandRequired: false
+    serpAnalysisRequired: true
+    classicSerpValueGapRequired: false
+    curriculumReference: /companies/astrogen/reference/western-astrology-curriculum.yaml
+    exactlyOneNewConceptPerArticle: true
+    requiredProof:
+      - curriculumRole is pillar, prerequisite, deepening or example
+      - curriculumNodeId, primaryConceptKey, introducedConceptKeys and prerequisiteNodeIds belong to the approved learning graph
+      - introducedConceptKeys contains exactly one item equal to primaryConceptKey
+      - every other astrology term is either an already published prerequisite linked at first meaningful use or omitted
+      - CMS ownership and cannibalization checks prove one unique page intent
+      - incoming and outgoing internal-link plan connects the learning graph
+      - distinctTeachingContribution states what the reader learns here that no current owner teaches
+      - Winning Structure remains mandatory before brief creation
+    rule: No classic SERP gap is not a rejection by itself; more than one new concept, missing prerequisites, duplicate ownership, cannibalization, unsafe scope or no distinct teaching role rejects the topic.
+
+audienceInterestEditorialLane:
+  enabled: true
+  portfolioLaneValue: audience_interest_editorial
+  sourceLayer: audience_interest_intent
+  calendar: Europe/Kiev calendar month
+  targetArticlesPerMonth: 2
+  maximumArticlesPerMonth: 4
+  maximumPerDailyBatch: 1
+  directProductBindingRequired: false
+  directEntityAnchorRequired: false
+  eligibilityRequires:
+    - current time-bound or behavior-shift trend evidence relevant to one configured audience segment
+    - query-shaped Ukrainian demand accepted or explicitly approved through the audience_interest_intent review lane
+    - a clear reader problem, discussion question or cultural behavior, not generic lifestyle news
+    - a defensible Astrogen editorial perspective stated without claiming professional authority outside Astrogen competence
+    - SERP and competitor evidence plus a concrete information-gain angle
+    - full CMS duplicate, ownership and cannibalization review
+    - an incoming and outgoing internal-link plan that is useful to the reader
+    - claim boundaries and authoritative external sources for legal, medical, financial, safety, migration or public-policy facts
+  acceptanceRule: no_entity_anchor or owner_mismatch alone is not a rejection when audience fit, current evidence, editorial bridge, SERP value and safety boundaries pass
+  schedulingRule: prefer enough eligible material to reach two in a month, never exceed four, and never invent filler to meet the target
+  productBridgeRule: Astrogen products may appear only as an optional contextual body link when genuinely useful; no product or modality term may be introduced into title, H1, slug, primary query or topicKey
+  measurement:
+    countFrom: astrogen-article-production cases reserved or delivered in the current Europe/Kiev month with portfolioLane=audience_interest_editorial
+    readyInventoryDoesNotConsumeQuota: true
+    cancelledCasesDoNotConsumeQuota: true
+
+portfolioDiversity:
+  dailyBatch:
+    maxTopicsFromSameQueryFamily: 1
+    repetitiveFamilies:
+      - daily horoscope by zodiac sign
+      - horoscope for a calendar date
+      - zodiac sign for a birth date
+    preferredLayerOrder:
+      - audience_interest_intent
+      - adjacent_use_case_intent
+      - audience_need_intent
+      - core_product_intent
+    missingBroadCandidateAction: continue_refill_without_inventing_topic
+    audienceInterestEditorialMonthlyTarget: 2
+    audienceInterestEditorialMonthlyMaximum: 4
+  rationale:
+    - direct product binding is optional when the demand serves a verified Astrogen audience segment
+    - broad audience interest still requires search-demand, ownership and cannibalization evidence
+    - portfolio diversity never overrides evidence or creates filler
+
+excludedTopicFamilies:
+  calendarDateTopics:
+    enabled: true
+    decision: no_action
+    reason: owner_policy_calendar_date_topics_paused
+    appliesWhenPrimaryIntentIs:
+      - zodiac sign for a specific day and month
+      - horoscope for a specific calendar date
+      - birth-date zodiac profile centered on one day and month
+    examples:
+      - 22 травня знак зодіаку
+      - гороскоп на 7 травня
+      - 03.07 знак зодіаку
+    doesNotApplyTo:
+      - a publication or measurement date appearing only in evidence metadata
+      - historical context where the calendar date is not the target query intent
+    enforcementStages:
+      - search-demand discovered
+      - search-demand action_selected
+      - topic-inventory candidate and evidence_ready
+  ephemeralDailyHoroscopeTopics:
+    enabled: true
+    decision: no_action
+    reason: owner_policy_ephemeral_daily_horoscope_paused
+    appliesWhenPrimaryIntentIs:
+      - horoscope for today
+      - daily horoscope for one zodiac sign
+      - rolling current-day horoscope content
+    examples:
+      - гороскоп на сьогодні
+      - гороскоп Водолія на сьогодні
+      - щоденний гороскоп для Близнюків
+    doesNotApplyTo:
+      - analysis of horoscope methodology or media literacy where a daily prediction is not the target intent
+      - historical or cultural context where a quoted daily horoscope is not the target query intent
+    enforcementStages:
+      - trend candidate selection
+      - search-demand discovered
+      - search-demand action_selected
+      - topic-inventory candidate and evidence_ready
+
+lineage:
+  parentPipeline: astrogen-search-demand-opportunities
+  parentStage: delegated
+  requiredParentDecision:
+    field: selectedAction
+    value: new_article
+  legacyReadyWithoutLineage: expire
+
+completionBoundary:
+  searchDemandPipeline:
+    responsibility: classify evidence-backed demand, resolve ownership/cannibalization, select exactly one action, and prove delegation to the proper lane
+    newArticleCompletion: requires guarded topic-inventory and article-delivery proof before measured
+    nonArticleCompletion: requires delegatedCaseId, delegationProof and linked astrogen-growth-actions ownership only
+    nonArticleImplementationProofOwner: astrogen-growth-actions
+    mustNotBlockTopicRefillFor:
+      - refresh still executing
+      - merge still executing
+      - reposition still executing
+      - internal_link still executing
+      - technical fix still executing or externally waiting
+    rationale: trend discovery and content-plan refill must keep scanning audience demand after cannibalizing candidates are routed away from new_article
+
+forbiddenShortcuts:
+  - creating topic-inventory cases directly from a refill issue
+  - treating one to five weekly GSC impressions as sufficient new-article demand
+  - accepting a topic because an exact CMS slug is absent
+  - selecting a narrower variant when a stronger uncovered semantic cluster is available
+  - selecting more than one topic from the same repetitive query family in one daily batch
+  - treating a trend report cluster as accepted semantic-core demand
+  - narrowing a trend-derived audience signal into an Astrogen product, service, modality, route, existing article owner, or product keyword family
+  - selecting refresh for a trend-derived opportunity only because a related product/service/modality article exists
+  - rejecting accepted emerging trend demand solely because geo frequency is unavailable when the bounded trend fallback is fully evidenced
+  - creating or advancing a calendar-date topic while the owner pause is active
+  - creating or advancing an ephemeral daily-horoscope topic while the owner pause is active
+  - counting candidate, waiting, consumed, rejected, or lineage-invalid cases as ready inventory

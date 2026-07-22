@@ -1,0 +1,182 @@
+version: astrogen-western-astrology-curriculum-v1
+company: astrogen
+language: uk
+portfolioTrack: western_astrology_learning
+
+teachingContract:
+  newConceptsPerArticle: 1
+  rule: One article introduces and teaches exactly one new astrology concept.
+  aliasesDoNotCreateConcepts: true
+  aliasRule: A Ukrainian synonym or spelling variant may clarify the primary concept once, but it must not become a second teaching subject.
+  unfamiliarTerms:
+    allowedOnlyWhen:
+      - the term is the primary concept of this article
+      - the term has a published prerequisite article linked at first meaningful use
+      - the term is replaced with ordinary non-astrological language
+    forbiddenPatterns:
+      - glossary dump
+      - list of adjacent concepts with definitions
+      - overview of twelve houses or twelve signs inside a single beginner article
+      - interpretation workflow that requires concepts not yet taught
+      - treating adjacent terminology as bounded supporting context
+  titleRule: Title and H1 name only the primary concept and the reader question it resolves.
+  briefRule: The brief declares one primaryConceptKey, one introducedConceptKeys item, known prerequisite concepts, and excluded future concepts.
+  validationRule: Any unexplained astrology term outside the primary concept or published prerequisites returns the article for substantive revision.
+  deliveryRule: CMS draft delivery is forbidden until the one-concept gate passes after humanization.
+
+canonicalTerminology:
+  house:
+    preferredUk: дім
+    acceptedAliasesUk: [будинок, дом]
+    note: Treat all three words as aliases for one concept; use "дім" in the canonical title and explain an alias only when useful for search comprehension.
+
+learningGraph:
+  - order: 1
+    curriculumNodeId: wa-01-natal-chart
+    primaryConceptKey: natal_chart
+    primaryConceptLabelUk: натальна карта
+    workingTitleUk: Що таке натальна карта і для чого її читають
+    curriculumRole: pillar
+    prerequisiteNodeIds: []
+    nextNodeIds: [wa-02-planet, wa-03-zodiac-sign, wa-04-house]
+    teachingBoundary: Explain the chart as one symbolic map. Do not enumerate or define its components.
+    planningStatus: pending_cms_ownership_review
+
+  - order: 2
+    curriculumNodeId: wa-02-planet
+    primaryConceptKey: planet
+    primaryConceptLabelUk: планета в астрології
+    workingTitleUk: Що означає планета в натальній карті
+    curriculumRole: prerequisite
+    prerequisiteNodeIds: [wa-01-natal-chart]
+    nextNodeIds: [wa-06-sun, wa-07-moon, wa-08-mercury, wa-09-venus, wa-10-mars, wa-11-aspect]
+    teachingBoundary: Explain the role of a planet as one category. Do not teach individual planets, signs, houses, or aspects.
+    planningStatus: pending_cms_ownership_review
+
+  - order: 3
+    curriculumNodeId: wa-03-zodiac-sign
+    primaryConceptKey: zodiac_sign
+    primaryConceptLabelUk: знак зодіаку в натальній карті
+    workingTitleUk: Що означає знак зодіаку в натальній карті
+    curriculumRole: prerequisite
+    prerequisiteNodeIds: [wa-01-natal-chart]
+    nextNodeIds: [wa-05-ascendant, wa-06-sun, wa-07-moon]
+    teachingBoundary: Explain the role of a sign as one category. Do not teach twelve sign profiles or individual planets.
+    planningStatus: pending_cms_ownership_review
+
+  - order: 4
+    curriculumNodeId: wa-04-house
+    primaryConceptKey: house
+    primaryConceptLabelUk: дім у натальній карті
+    workingTitleUk: Що таке дім у натальній карті
+    curriculumRole: prerequisite
+    prerequisiteNodeIds: [wa-01-natal-chart]
+    nextNodeIds: [wa-05-ascendant]
+    teachingBoundary: Explain what one house concept represents. Do not list or interpret all twelve houses, rulers, cusps, empty houses, signs, planets, or aspects.
+    planningStatus: pending_cms_ownership_review
+
+  - order: 5
+    curriculumNodeId: wa-05-ascendant
+    primaryConceptKey: ascendant
+    primaryConceptLabelUk: асцендент
+    workingTitleUk: Що таке асцендент у натальній карті
+    curriculumRole: deepening
+    prerequisiteNodeIds: [wa-01-natal-chart, wa-03-zodiac-sign, wa-04-house]
+    nextNodeIds: []
+    teachingBoundary: Teach ascendant only. Refer to prerequisite concepts by link without redefining them.
+    planningStatus: pending_cms_ownership_review
+
+  - order: 6
+    curriculumNodeId: wa-06-sun
+    primaryConceptKey: sun
+    primaryConceptLabelUk: Сонце в натальній карті
+    workingTitleUk: Що означає Сонце в натальній карті
+    curriculumRole: deepening
+    prerequisiteNodeIds: [wa-01-natal-chart, wa-02-planet, wa-03-zodiac-sign]
+    nextNodeIds: [wa-07-moon]
+    teachingBoundary: Teach the Sun only. Do not compare all personal planets or introduce houses and aspects.
+    planningStatus: pending_cms_ownership_review
+
+  - order: 7
+    curriculumNodeId: wa-07-moon
+    primaryConceptKey: moon
+    primaryConceptLabelUk: Місяць у натальній карті
+    workingTitleUk: Що означає Місяць у натальній карті
+    curriculumRole: deepening
+    prerequisiteNodeIds: [wa-01-natal-chart, wa-02-planet, wa-03-zodiac-sign]
+    nextNodeIds: [wa-08-mercury]
+    teachingBoundary: Teach the Moon only. Do not turn the article into a Sun-Moon comparison or a guide to all planets.
+    planningStatus: pending_cms_ownership_review
+
+  - order: 8
+    curriculumNodeId: wa-08-mercury
+    primaryConceptKey: mercury
+    primaryConceptLabelUk: Меркурій у натальній карті
+    workingTitleUk: Що означає Меркурій у натальній карті
+    curriculumRole: deepening
+    prerequisiteNodeIds: [wa-01-natal-chart, wa-02-planet, wa-03-zodiac-sign]
+    nextNodeIds: [wa-09-venus]
+    teachingBoundary: Teach Mercury only. Other planets may appear only as links to already taught or future nodes.
+    planningStatus: pending_cms_ownership_review
+
+  - order: 9
+    curriculumNodeId: wa-09-venus
+    primaryConceptKey: venus
+    primaryConceptLabelUk: Венера в натальній карті
+    workingTitleUk: Що означає Венера в натальній карті
+    curriculumRole: deepening
+    prerequisiteNodeIds: [wa-01-natal-chart, wa-02-planet, wa-03-zodiac-sign]
+    nextNodeIds: [wa-10-mars]
+    teachingBoundary: Teach Venus only. Do not broaden into compatibility, synastry, houses, or aspects.
+    planningStatus: pending_cms_ownership_review
+
+  - order: 10
+    curriculumNodeId: wa-10-mars
+    primaryConceptKey: mars
+    primaryConceptLabelUk: Марс у натальній карті
+    workingTitleUk: Що означає Марс у натальній карті
+    curriculumRole: deepening
+    prerequisiteNodeIds: [wa-01-natal-chart, wa-02-planet, wa-03-zodiac-sign]
+    nextNodeIds: [wa-11-aspect]
+    teachingBoundary: Teach Mars only. Do not compare all planets or introduce aspect types.
+    planningStatus: pending_cms_ownership_review
+
+  - order: 11
+    curriculumNodeId: wa-11-aspect
+    primaryConceptKey: aspect
+    primaryConceptLabelUk: аспект у натальній карті
+    workingTitleUk: Що таке аспект у натальній карті
+    curriculumRole: deepening
+    prerequisiteNodeIds: [wa-01-natal-chart, wa-02-planet]
+    nextNodeIds: [wa-12-transit]
+    teachingBoundary: Explain the aspect as one relationship concept. Do not teach aspect types, houses, rulers, empty houses, or a full interpretation workflow.
+    planningStatus: pending_cms_ownership_review
+
+  - order: 12
+    curriculumNodeId: wa-12-transit
+    primaryConceptKey: transit
+    primaryConceptLabelUk: транзит в астрології
+    workingTitleUk: Що таке транзит в астрології
+    curriculumRole: deepening
+    prerequisiteNodeIds: [wa-01-natal-chart, wa-02-planet, wa-11-aspect]
+    nextNodeIds: []
+    teachingBoundary: Explain transit only. Do not introduce forecasting systems, progressions, returns, or event predictions.
+    planningStatus: pending_cms_ownership_review
+
+planningWorkflow:
+  - check the full CMS inventory for an existing owner of each node
+  - keep one canonical URL owner per primary concept and route overlaps to refresh, merge, or reposition
+  - validate SERP intent and a distinct teaching contribution without forcing a classic value gap for a missing prerequisite
+  - require published prerequisite links before scheduling a dependent node
+  - generate Winning Structure only after the concept scope is locked
+  - preserve the one-concept gate through brief, draft validation, MC quality, layout validation, and CMS delivery
+
+knownRejectedDrafts:
+  - cmsDraftId: 137
+    primaryConceptKey: aspect
+    reason: concept_overload
+    status: publication_blocked_needs_curriculum_rework
+  - cmsDraftId: 138
+    primaryConceptKey: house
+    reason: concept_overload
+    status: publication_blocked_needs_curriculum_rework
