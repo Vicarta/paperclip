@@ -55,10 +55,14 @@ requireText(pipelines, "- allocationFamily", "native allocation-family carryover
 
 requireText(routines, "allocationFamily=zodiac_compatibility is capped at one article per daily batch", "allocator compatibility cap");
 requireText(routines, "semantic_core_and_curriculum and audience_trends are independent refill source lanes", "routine independent refill lanes");
+requireText(routines, "owner: SEO Semantic Core Strategist", "specialist-owned trend routine");
 
 requireText(coexistenceRepair, "content-source-coexistence-v1", "live coexistence migration");
 requireText(coexistenceRepair, "allocationFamilyCaps: { zodiac_compatibility: 1 }", "live allocation cap migration");
 requireText(coexistenceRepair, "sourceLaneContinuations", "live source-lane state migration");
+
+requireText(bootstrap, "routine(\"Monthly Astrogen trend discovery\", \"SEO Semantic Core Strategist\"", "trend routine specialist owner");
+requireText(bootstrap, "This routine never waits in the CMO management queue", "CMO queue isolation");
 
 requireText(launcher, "CMO керує кампанією та делегує роботу", "manager boundary");
 requireText(launcher, "12 sign hubs", "first-wave hub scope");
@@ -70,5 +74,5 @@ requireText(launcher, "selectedAction=new_article", "native pipeline boundary");
 console.log(JSON.stringify({
   ok: true,
   policyVersion: "astrogen-zodiac-compatibility-cluster-v1",
-  checks: 37,
+  checks: 40,
 }, null, 2));

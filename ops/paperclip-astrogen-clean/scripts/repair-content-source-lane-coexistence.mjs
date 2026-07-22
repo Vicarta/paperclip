@@ -281,6 +281,48 @@ async function main() {
       }
     }
 
+    const trendRoutineRows = jsonRows(`
+      select json_build_object(
+        'routineId', r.id,
+        'strategistId', a.id
+      )::text
+      from routines r
+      join agents a on a.company_id=r.company_id
+        and a.name='SEO Semantic Core Strategist'
+        and a.status<>'terminated'
+      where r.company_id=${q(COMPANY_ID)}::uuid
+        and r.title='Monthly Astrogen trend discovery'
+      limit 1;
+    `);
+    const trendRoutine = trendRoutineRows[0] ?? null;
+    const reassignedTrendIssues = [];
+    if (trendRoutine) {
+      const trendIssues = jsonRows(`
+        select json_build_object(
+          'id', i.id,
+          'identifier', i.identifier,
+          'status', i.status,
+          'assigneeAgentId', i.assignee_agent_id,
+          'executionRunId', i.execution_run_id
+        )::text
+        from issues i
+        where i.company_id=${q(COMPANY_ID)}::uuid
+          and i.origin_kind='routine_execution'
+          and i.origin_id=${q(trendRoutine.routineId)}
+          and i.status in ('backlog','todo','blocked','in_review','in_progress')
+        order by i.created_at;
+      `);
+      for (const issue of trendIssues) {
+        if (issue.assigneeAgentId === trendRoutine.strategistId || issue.executionRunId) continue;
+        const updated = await request(token, "PATCH", `/issues/${issue.id}`, {
+          assigneeAgentId: trendRoutine.strategistId,
+          ...(issue.status === "backlog" ? { status: "todo" } : {}),
+          comment: "Trend research execution moved from the CMO management queue to SEO Semantic Core Strategist. CMO remains the downstream native portfolio/action reviewer.",
+        });
+        reassignedTrendIssues.push({ identifier: updated.identifier, status: updated.status });
+      }
+    }
+
     const after = compatibilityCases();
     const afterMissing = after.filter((pipelineCase) => !hasCompatibilityFields(pipelineCase));
     if (afterMissing.length > 0) throw new Error(`Compatibility field migration incomplete: ${afterMissing.length}`);
@@ -298,6 +340,7 @@ async function main() {
         identifier: compatibilityCampaign.identifier,
         status: compatibilityCampaign.status,
       } : null,
+      reassignedTrendIssues,
     }, null, 2));
   } finally {
     psql(`delete from board_api_keys where id=${q(keyId)}::uuid;`);

@@ -305,7 +305,7 @@ routines:
       completionGate: accepted actions delegated or linked, blockers classified, and unrelated lanes continue; content supply additionally requires 25 current eligible ready plus reserved topics satisfying contentPortfolioTrack targets 12/5/3/3/2, or the exact current-week refill with an accountable specialist and current active work or a future monitor; stage=executing and nextReviewAt alone are insufficient, and discovered, candidate, rejected, consumed or no-action records never satisfy future-plan readiness
 
   - title: Monthly Astrogen trend discovery
-    owner: Chief Marketing Officer
+    owner: SEO Semantic Core Strategist
     status: active
     triggerEnabled: true
     cron: "0 8 1 * *"
@@ -317,7 +317,7 @@ routines:
     processContract:
       purpose:
         - identify evidence-backed durable shifts, emerging demand, seasonal recurrences, and plausible early signals
-        - feed typed hypotheses into CMO portfolio review without creating article work
+        - feed typed hypotheses into native portfolio review without creating article work or occupying the CMO execution queue
       inputs:
         - completed-period GSC/GA4 and site-search changes
         - semantic-core evidence and current topic inventory
@@ -327,6 +327,7 @@ routines:
         - active growth cases and consumed topic history
         - /companies/astrogen/reference/trend-topic-policy.yaml
       bounds:
+        - SEO Semantic Core Strategist owns bounded trend research and delegates candidate review to SEO Semantic Core Validator; CMO joins only at native portfolio/action review and does not call trend or validation tools
         - call paperclip.semantic-core-mcp-agent-tools:generate-trend-topic-report once per focused report with project_id=astrogen-audience-trends-ukraine, analysis_date=YYYY-MM-DD in Europe/Kiev, the one deficient primary audience segment selected by the campaign, current existing_content as duplicate context only, six-month horizon and bounded private-project cache settings from trend-topic-policy.yaml
         - use only the declared tool fields; map CMS pages to existing_content, first-party metrics to internal_signals, and company context to project.business_context; never send top-level business_context, runtime_inputs, existing_content_inventory, topic_pipeline_snapshot or semantic_core_inventory
         - focus the report by sending exactly one configured row in audience_segments; primary_audience_segment_id and reviewed_fingerprints are not MCP fields, and internal_signals rows require title plus description rather than name/value
