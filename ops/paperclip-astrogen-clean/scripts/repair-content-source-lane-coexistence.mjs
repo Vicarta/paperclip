@@ -208,13 +208,33 @@ async function main() {
     await request(token, "PATCH", `/cases/${refill.id}`, {
       fieldPatch: {
         actionType: "topic_inventory_refill",
+        businessOutcome: "Maintain at least 25 eligible future topics across the approved 12/5/3/3/2 content portfolio while keeping trend and semantic/curriculum source lanes independently live.",
+        completionProof: "At least 25 lineage-valid ready or reserved native topic IDs satisfy western_astrology_learning=12, audience_applied_questions=5, audience_trends=3, trust_expert_method_boundaries=3, and commercial_unmet_demand=2, and next-content-plan lists the same IDs.",
         executionStatus: "active_multi_source_refill",
         blockerClass: null,
         ownerActionRequired: false,
         nextReviewAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
         contentPortfolioTrackTargets: TRACK_TARGETS,
         contentPortfolioTrackCounts: counts,
+        quotaStatus: {
+          snapshotAt: new Date().toISOString(),
+          totalFutureSupply: Object.values(counts).reduce((sum, count) => sum + count, 0),
+          contentPortfolioTrackTargets: TRACK_TARGETS,
+          contentPortfolioTrackCounts: counts,
+          audienceSegmentPolicy: "diversity_guardrail_not_hard_quota",
+        },
+        audienceSegmentPolicy: "diversity_guardrail_not_hard_quota",
+        minimumPerPrimaryAudienceSegment: null,
         sourceLanePolicyVersion: "content-source-coexistence-v1",
+        continuationPolicy: {
+          trigger: "portfolio_track_deficit",
+          independentSourceLanes: true,
+          maximumActiveContinuationsPerSourceLane: 1,
+          semanticCoreAndCurriculumLane: "semantic_core_and_curriculum",
+          audienceTrendLane: "audience_trends",
+          excludeCalendarDateTopics: true,
+          excludeEphemeralDailyHoroscopeTopics: true,
+        },
         sourceLaneContinuations: {
           semantic_core_and_curriculum: {
             status: Object.keys(semanticDeficits).length > 0 ? "refill_required" : "satisfied",
