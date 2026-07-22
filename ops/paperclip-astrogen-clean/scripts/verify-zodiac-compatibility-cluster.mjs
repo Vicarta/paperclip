@@ -34,6 +34,8 @@ requireText(policy, "winningStructureRequiredBeforeBrief: true", "Winning Struct
 requireText(policy, "allocationFamily: zodiac_compatibility", "shared allocation family");
 requireText(policy, "contentPortfolioTrack: audience_applied_questions", "portfolio track assignment");
 requireText(policy, "compatibilityNeverCountsAsAudienceTrend: true", "trend quota isolation");
+requireText(policy, "canonicalPageKeywordPacketField: pageKeywordPacket", "canonical keyword packet field");
+requireText(policy, "packetAliasesDoNotSatisfyReadyGate: true", "keyword packet alias rejection");
 
 requireText(searchDemandPolicy, "allocationFamilyCaps:", "allocation family caps");
 requireText(searchDemandPolicy, "zodiac_compatibility: 1", "daily compatibility cap");
@@ -51,6 +53,8 @@ requireText(bootstrap, "independent source lanes", "agent independent refill con
 
 requireText(pipelines, "whenCaseFieldEquals: compatibility_reference", "native compatibility transition gate");
 requireText(pipelines, "requiredFieldValues: { allocationFamily: zodiac_compatibility, contentPortfolioTrack: audience_applied_questions, portfolioLane: search_demand_core }", "native compatibility exact values");
+requireText(pipelines, "pageKeywordPacket, contentRole, demandClass, cooldownNotes, semanticAcceptedRunId", "native compatibility evidence gate");
+requireText(pipelines, "from: ready, to: waiting_evidence", "ready evidence recovery transition");
 requireText(pipelines, "- allocationFamily", "native allocation-family carryover");
 
 requireText(routines, "allocationFamily=zodiac_compatibility is capped at one article per daily batch", "allocator compatibility cap");
@@ -74,5 +78,5 @@ requireText(launcher, "selectedAction=new_article", "native pipeline boundary");
 console.log(JSON.stringify({
   ok: true,
   policyVersion: "astrogen-zodiac-compatibility-cluster-v1",
-  checks: 40,
+  checks: 44,
 }, null, 2));

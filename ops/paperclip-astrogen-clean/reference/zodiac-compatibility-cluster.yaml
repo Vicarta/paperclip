@@ -124,6 +124,14 @@ contentQuality:
 
 portfolioIntegration:
   rule: Compatibility pages remain distinct page-level query families for ownership and cannibalization, but share one allocationFamily so they cannot consume the whole daily article batch.
+  canonicalPageKeywordPacketField: pageKeywordPacket
+  packetAliasesDoNotSatisfyReadyGate: true
+  readyEvidenceRequiredFields:
+    - pageKeywordPacket
+    - contentRole
+    - demandClass
+    - cooldownNotes
+    - semanticAcceptedRunId
   requiredCaseFields:
     clusterLane: compatibility_reference
     allocationFamily: zodiac_compatibility

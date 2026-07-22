@@ -21,6 +21,13 @@ const COMPATIBILITY_FIELDS = {
   contentPortfolioTrack: "audience_applied_questions",
   portfolioLane: "search_demand_core",
 };
+const READY_COMPATIBILITY_REQUIRED_FIELDS = [
+  "pageKeywordPacket",
+  "contentRole",
+  "demandClass",
+  "cooldownNotes",
+  "semanticAcceptedRunId",
+];
 
 function run(command, args, input) {
   const result = spawnSync(command, args, {
@@ -140,6 +147,34 @@ function hasCompatibilityFields(pipelineCase) {
   return Object.entries(COMPATIBILITY_FIELDS).every(([key, value]) => pipelineCase.fields?.[key] === value);
 }
 
+function readyEvidencePatch(fields) {
+  const patch = {};
+  const packet = fields.pageKeywordPacket ?? fields.acceptedPageKeywordPacket ?? fields.finalPageKeywordPacket ?? null;
+  if (!fields.pageKeywordPacket && packet) patch.pageKeywordPacket = packet;
+  if (fields.intentClusterKey?.startsWith("zodiac-compatibility:sign:") && fields.contentRole !== "zodiac_compatibility_sign_hub") {
+    patch.contentRole = "zodiac_compatibility_sign_hub";
+  }
+  if (!fields.demandClass && fields.demandEvidenceClass) patch.demandClass = fields.demandEvidenceClass;
+  if (!fields.cooldownNotes && packet && fields.selectedAction === "new_article" && fields.duplicateVerdict) {
+    patch.cooldownNotes = "No active cooldown suppresses this accepted canonical compatibility owner. Daily consumption remains bounded by allocationFamily=zodiac_compatibility.";
+  }
+  if (!fields.semanticAcceptedRunId) {
+    const runId = fields.semanticCoreValidationRunId
+      ?? packet?.semanticRunIds?.[0]
+      ?? fields.sourceSemanticCandidateIds?.[0]?.split(":")[0]
+      ?? null;
+    if (runId) patch.semanticAcceptedRunId = runId;
+  }
+  return patch;
+}
+
+function missingReadyEvidence(fields) {
+  return READY_COMPATIBILITY_REQUIRED_FIELDS.filter((field) => {
+    const value = fields?.[field];
+    return value === null || value === undefined || value === "";
+  });
+}
+
 async function request(token, method, pathname, body) {
   const response = await fetch(`${API_BASE}${pathname}`, {
     method,
@@ -167,6 +202,14 @@ async function main() {
       mode: "dry-run",
       compatibilityCaseCount: before.length,
       missingCompatibilityFields: beforeMissing.map(({ id, caseKey, pipelineKey, stageKey }) => ({ id, caseKey, pipelineKey, stageKey })),
+      incompleteReadyEvidence: before
+        .filter((pipelineCase) => pipelineCase.pipelineKey === "astrogen-topic-inventory" && pipelineCase.stageKey === "ready")
+        .map((pipelineCase) => ({
+          id: pipelineCase.id,
+          caseKey: pipelineCase.caseKey,
+          missingFields: missingReadyEvidence({ ...pipelineCase.fields, ...readyEvidencePatch(pipelineCase.fields) }),
+        }))
+        .filter((pipelineCase) => pipelineCase.missingFields.length > 0),
       trackCounts: trackCounts(),
       refill: currentRefill(),
     }, null, 2));
@@ -196,6 +239,32 @@ async function main() {
         pipelineKey: pipelineCase.pipelineKey,
         version: updated.case?.version ?? updated.version ?? null,
       });
+    }
+
+    const normalizedReadyCases = [];
+    const returnedToWaitingEvidence = [];
+    for (const pipelineCase of compatibilityCases().filter((candidate) =>
+      candidate.pipelineKey === "astrogen-topic-inventory" && candidate.stageKey === "ready")) {
+      const patch = readyEvidencePatch(pipelineCase.fields);
+      if (Object.keys(patch).length > 0) {
+        const detail = await request(token, "GET", `/cases/${pipelineCase.id}`);
+        await request(token, "PATCH", `/cases/${pipelineCase.id}`, {
+          fieldPatch: patch,
+          expectedVersion: detail.case.version,
+        });
+        normalizedReadyCases.push({ caseKey: pipelineCase.caseKey, fields: Object.keys(patch) });
+      }
+
+      const refreshed = await request(token, "GET", `/cases/${pipelineCase.id}`);
+      const missingFields = missingReadyEvidence(refreshed.case.fields);
+      if (missingFields.length > 0) {
+        await request(token, "POST", `/cases/${pipelineCase.id}/transition`, {
+          toStageKey: "waiting_evidence",
+          expectedVersion: refreshed.case.version,
+          reason: `Compatibility ready gate repaired: missing canonical evidence fields ${missingFields.join(", ")}.`,
+        });
+        returnedToWaitingEvidence.push({ caseKey: pipelineCase.caseKey, missingFields });
+      }
     }
 
     const counts = trackCounts();
@@ -361,6 +430,8 @@ async function main() {
       mode: "apply",
       backup: { backupFile: backup.backupFile ?? null, sizeBytes: backup.sizeBytes ?? null },
       patchedCases,
+      normalizedReadyCases,
+      returnedToWaitingEvidence,
       compatibilityCaseCount: after.length,
       trackCounts: counts,
       sourceLaneDeficits: { semantic_core_and_curriculum: semanticDeficits, audience_trends: trendDeficit },
@@ -378,6 +449,11 @@ async function main() {
   if (VERIFY) {
     const missing = compatibilityCases().filter((pipelineCase) => !hasCompatibilityFields(pipelineCase));
     if (missing.length > 0) throw new Error(`Verification failed: ${missing.length} compatibility cases are incomplete`);
+    const incompleteReady = compatibilityCases().filter((pipelineCase) =>
+      pipelineCase.pipelineKey === "astrogen-topic-inventory"
+      && pipelineCase.stageKey === "ready"
+      && missingReadyEvidence(pipelineCase.fields).length > 0);
+    if (incompleteReady.length > 0) throw new Error(`Verification failed: ${incompleteReady.length} ready compatibility cases lack canonical evidence`);
     console.log(JSON.stringify({ verified: true, refillStage: currentRefill().stageKey, trackCounts: trackCounts() }));
   }
 }
