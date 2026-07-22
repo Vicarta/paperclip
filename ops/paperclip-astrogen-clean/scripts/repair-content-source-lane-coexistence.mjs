@@ -303,9 +303,12 @@ async function main() {
           'identifier', i.identifier,
           'status', i.status,
           'assigneeAgentId', i.assignee_agent_id,
-          'executionRunId', i.execution_run_id
+          'executionRunId', i.execution_run_id,
+          'executionRunStatus', h.status,
+          'executionRunAgentId', h.agent_id
         )::text
         from issues i
+        left join heartbeat_runs h on h.id=i.execution_run_id
         where i.company_id=${q(COMPANY_ID)}::uuid
           and i.origin_kind='routine_execution'
           and i.origin_id=${q(trendRoutine.routineId)}
@@ -313,13 +316,39 @@ async function main() {
         order by i.created_at;
       `);
       for (const issue of trendIssues) {
-        if (issue.assigneeAgentId === trendRoutine.strategistId || issue.executionRunId) continue;
-        const updated = await request(token, "PATCH", `/issues/${issue.id}`, {
-          assigneeAgentId: trendRoutine.strategistId,
-          ...(issue.status === "backlog" ? { status: "todo" } : {}),
-          comment: "Trend research execution moved from the CMO management queue to SEO Semantic Core Strategist. CMO remains the downstream native portfolio/action reviewer.",
-        });
-        reassignedTrendIssues.push({ identifier: updated.identifier, status: updated.status });
+        const staleExecution =
+          ["queued", "running"].includes(issue.executionRunStatus)
+          && issue.executionRunAgentId !== trendRoutine.strategistId;
+        if (staleExecution) {
+          await request(token, "POST", `/heartbeat-runs/${issue.executionRunId}/cancel`, {});
+          await request(token, "POST", `/issues/${issue.id}/admin/force-release`, {});
+        }
+
+        let updated = issue;
+        if (issue.assigneeAgentId !== trendRoutine.strategistId) {
+          updated = await request(token, "PATCH", `/issues/${issue.id}`, {
+            assigneeAgentId: trendRoutine.strategistId,
+            ...(issue.status === "backlog" ? { status: "todo" } : {}),
+            comment: "Trend research execution moved from the CMO management queue to SEO Semantic Core Strategist. CMO remains the downstream native portfolio/action reviewer.",
+          });
+        }
+
+        if (staleExecution) {
+          await request(token, "POST", `/agents/${trendRoutine.strategistId}/wakeup`, {
+            source: "assignment",
+            triggerDetail: "system",
+            reason: "Resume trend research after releasing an execution lock held by the previous routine owner.",
+            payload: { issueId: issue.id },
+            idempotencyKey: `trend-owner-repair:${issue.id}:${trendRoutine.strategistId}`,
+          });
+        }
+        if (issue.assigneeAgentId !== trendRoutine.strategistId || staleExecution) {
+          reassignedTrendIssues.push({
+            identifier: updated.identifier ?? issue.identifier,
+            status: updated.status ?? issue.status,
+            staleExecutionReleased: staleExecution,
+          });
+        }
       }
     }
 
