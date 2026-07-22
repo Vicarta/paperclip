@@ -1,0 +1,10 @@
+# syntax=docker/dockerfile:1.20
+ARG BASE_IMAGE=paperclip-app:v2026.626.0-vicarta.134-one-concept-exact-gates-20260722
+FROM ${BASE_IMAGE}
+
+USER root
+COPY --chown=node:node payload-cms/ /app/packages/plugins/plugin-payload-cms-agent-tools/dist/
+RUN grep -q 'must use variant' /app/packages/plugins/plugin-payload-cms-agent-tools/dist/article-content.js \
+  && grep -q 'REQUIRED_SUMMARY_CALLOUT_VARIANT' /app/packages/plugins/plugin-payload-cms-agent-tools/dist/article-content.js
+
+USER node

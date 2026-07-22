@@ -134,6 +134,7 @@ const INTERNAL_ROUTING_NOTE_PATTERN =
 const MAX_LINKS_PER_TEXT_BLOCK = 5;
 const MAX_LINKS_PER_ARTICLE = 20;
 const REQUIRED_SUMMARY_CALLOUT_TITLE = "Коротко";
+const REQUIRED_SUMMARY_CALLOUT_VARIANT = "soft";
 const MAX_REQUIRED_SUMMARY_CALLOUT_INDEX = 4;
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -251,6 +252,12 @@ function assertRequiredSummaryCallout(blocks: ArticleContentBlock[]) {
   if (summaryIndex > MAX_REQUIRED_SUMMARY_CALLOUT_INDEX) {
     throw new Error(
       `articleContent editorialCallout titled "${REQUIRED_SUMMARY_CALLOUT_TITLE}" must appear before block ${MAX_REQUIRED_SUMMARY_CALLOUT_INDEX + 1}`,
+    );
+  }
+  const summary = blocks[summaryIndex];
+  if (summary.type !== "editorialCallout" || summary.variant !== REQUIRED_SUMMARY_CALLOUT_VARIANT) {
+    throw new Error(
+      `articleContent editorialCallout titled "${REQUIRED_SUMMARY_CALLOUT_TITLE}" must use variant "${REQUIRED_SUMMARY_CALLOUT_VARIANT}"`,
     );
   }
 }

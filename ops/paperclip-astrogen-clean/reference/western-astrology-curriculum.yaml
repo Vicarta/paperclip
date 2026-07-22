@@ -19,6 +19,14 @@ teachingContract:
       - overview of twelve houses or twelve signs inside a single beginner article
       - interpretation workflow that requires concepts not yet taught
       - treating adjacent terminology as bounded supporting context
+  unavoidableSupportingTerm:
+    maximumPerArticle: 1
+    rule: If accurate explanation requires one adjacent technical word, define it immediately in ordinary language and stop there.
+    forbiddenDepth:
+      - own heading or subsection
+      - table, list, FAQ, comparison, worked example, or interpretation workflow
+      - treating the term as a second learning objective
+    evidence: Record the term, one-sentence definition, first-use section, and necessity in supportingTermGlossary; validators must set supportingTerminologyStatus=passed.
   titleRule: Title and H1 name only the primary concept and the reader question it resolves.
   briefRule: The brief declares one primaryConceptKey, one introducedConceptKeys item, known prerequisite concepts, and excluded future concepts.
   validationRule: Any unexplained astrology term outside the primary concept or published prerequisites returns the article for substantive revision.
@@ -72,7 +80,12 @@ learningGraph:
     curriculumRole: prerequisite
     prerequisiteNodeIds: [wa-01-natal-chart]
     nextNodeIds: [wa-05-ascendant]
-    teachingBoundary: Explain what one house concept represents. Do not list or interpret all twelve houses, rulers, cusps, empty houses, signs, planets, or aspects.
+    allowedSupportingTerm:
+      termKey: cusp
+      termUk: куспід
+      plainLanguageDefinitionUk: межа, від якої починається дім на схемі натальної карти
+      useBoundary: Define once at first use; do not teach how to calculate or interpret a cusp.
+    teachingBoundary: Explain what one house concept represents. Do not list or interpret all twelve houses, rulers, empty houses, signs, planets, or aspects; cusp is allowed only as the one inline supporting gloss declared above.
     planningStatus: pending_cms_ownership_review
 
   - order: 5

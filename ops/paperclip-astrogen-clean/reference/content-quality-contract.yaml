@@ -26,6 +26,11 @@ cmsReadyEnvelope:
   validatorStage: layout_validate
 
 articleContentV1:
+  summaryCallout:
+    title: Коротко
+    requiredVariant: soft
+    position: before_block_5
+    rule: The first summary is a neutral reader aid, never a branded or situation callout.
   iconList:
     allowedIcons:
       - chinese-rat
@@ -177,6 +182,15 @@ westernAstrologyLearningPolicy:
   aliases:
     countAsNewConcept: false
     rule: A spelling or Ukrainian synonym may clarify the primary concept once but cannot create a second teaching subject.
+  supportingTermPolicy:
+    maximumUnavoidableTerms: 1
+    rule: One unavoidable technical term may appear only when the primary concept cannot be explained accurately without naming it.
+    requiredEvidenceFields:
+      - supportingTermGlossary
+      - supportingTerminologyStatus
+    firstUseRule: Define the term immediately at its first reader-facing use in one plain-language sentence.
+    depthBoundary: The term gets no heading, table, list, FAQ, comparison, example set, interpretation workflow, or separate teaching objective.
+    validationRule: An unexplained term or a supporting term taught beyond its one-sentence gloss is a substantive curriculum failure.
   allowedSupportingLanguage:
     - ordinary non-astrological wording
     - a brief linked mention of a concept already taught in a published prerequisite article

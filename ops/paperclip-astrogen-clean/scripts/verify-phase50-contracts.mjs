@@ -77,6 +77,7 @@ requireText(trendPolicy, "maximumArticlesPerEuropeKievMonth: 4", "audience edito
 requireText(searchDemandPolicy, "version: astrogen-search-demand-v8", "search-demand policy version");
 requireText(curriculum, "version: astrogen-western-astrology-curriculum-v1", "curriculum version");
 requireText(curriculum, "newConceptsPerArticle: 1", "one-concept teaching contract");
+requireText(curriculum, "termKey: cusp", "house cusp supporting gloss");
 requireText(curriculum, "curriculumNodeId: wa-04-house", "house prerequisite node");
 requireText(curriculum, "cmsDraftId: 137", "rejected overloaded draft 137");
 requireText(curriculum, "cmsDraftId: 138", "rejected overloaded draft 138");
@@ -97,6 +98,8 @@ requireText(pipelines, "readyLowWaterMark: 25", "native topic refill threshold")
 requireText(pipelines, "additionalStageKeys: [reserved]", "ready plus reserved native gate");
 requireText(pipelines, "groupByField: contentPortfolioTrack", "native grouped quota field");
 requireText(pipelines, "transitionFieldRequirements:", "native transition field gate");
+requireText(pipelines, "supportingTerminologyFinalReviewStatus", "supporting-term final gate");
+requireText(pipelines, "variant exactly soft", "canonical Коротко pipeline style");
 requireText(pipelines, "requiredFields: [intentClusterKey, clusterDedupeKey", "native cluster field requirements");
 requireText(pipelines, "minimumCountByGroup:", "native per-track quota map");
 requireText(routines, "next-content-plan is a real case document", "routine content plan proof");

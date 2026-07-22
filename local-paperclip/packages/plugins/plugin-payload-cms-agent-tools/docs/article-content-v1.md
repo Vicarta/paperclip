@@ -16,6 +16,13 @@ classes, SVG, emoji, or image URLs as content blocks.
 - `twoColumnText`
 - `quietCta`
 
+## Required Summary
+
+The early `editorialCallout` titled `Коротко` always uses `variant: "soft"`.
+The `brand` and `situation` variants remain valid for later editorial callouts,
+but are rejected for the summary block so its visual treatment stays neutral
+and consistent across articles.
+
 ## Links
 
 `articleContent.v1` supports contextual inline links only through structured
