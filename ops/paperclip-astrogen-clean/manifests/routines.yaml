@@ -117,6 +117,8 @@ routines:
         - list ready topics with GET /api/pipelines/{topicPipelineId}/cases?stageKey=ready&terminal=false&limit=10&offset=0
         - an eligible ready topic is read from row.case, must have row.case.fields.selectedAction=new_article, and must have row.parentCase.pipeline.key=astrogen-search-demand-opportunities with row.parentCase.case.id equal to row.case.parentCaseId; legacy ready cases without that lineage are not counted or dispatched
         - list open article WIP with GET /api/pipelines/{articlePipelineId}/cases?terminal=false&limit=10&offset=0 and classify productive versus blocked from returned case/work evidence
+        - list current-day deliveries separately with GET /api/pipelines/{articlePipelineId}/cases?stageKey=delivered&terminal=true&limit=100&offset=0; daily accounting is the unique union of delivered and open create-operation rows whose reservationDateKyiv equals the current Europe/Kiev business date
+        - never calculate currentDayNewArticleBatchCount from terminal=false rows alone; a delivered terminal article still consumes its daily slot
         - find the canonical refill with exact caseKey growth:topic-inventory-refill:{ISO-week} through GET /api/pipelines/{growthPipelineId}/cases?caseKey={urlEncodedCaseKey}&terminal=false&limit=10
         - compute ISO-week from the current Europe/Kiev business date; a prior-week nonterminal refill is historical evidence and never the current canonical continuation
         - every /pipelines/{pipelineId}/cases response is a direct JSON array of wrapper rows shaped as {case, stage, parentCase, activeWork, descendantActiveWorkCount}; read case fields from row.case and guarded lineage from row.parentCase.pipeline, never from top-level row.fields or a guessed parentPipeline field
@@ -129,6 +131,7 @@ routines:
         - the same bounded allocator reconciles a current-day batch deficit when explicitly invoked; this is not broad scheduler catch-up
       bounds:
         - calculate availableSlots = min(3 - currentDayNewArticleBatchCount, 3 - productiveWipCount, eligibleReadyTopicCount); currentDayNewArticleBatchCount includes only today's new-article cases reserved or delivered by this allocator, never refreshes or cancelled cases
+        - count each current-day article case id once across delivered and open inventory reads
         - dispatch every selected topic sequentially in the same routine execution, up to availableSlots; each topic has its own breakdown request and idempotency key
         - never use broad catch-up outside the article cadence contract
         - use a productive WIP cap of 3 non-blocked article parents; blocked or externally waiting parents do not consume productive WIP capacity

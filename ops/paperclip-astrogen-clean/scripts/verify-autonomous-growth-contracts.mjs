@@ -76,6 +76,8 @@ function main() {
     "topic-inventory-refill:{ISO-week}",
     "Target three new CMS drafts per Europe/Kiev day",
     "availableSlots = min(3 - currentDayNewArticleBatchCount, 3 - productiveWipCount, eligibleReadyTopicCount)",
+    "stageKey=delivered&terminal=true&limit=100",
+    "Never derive the daily count from `terminal=false` rows alone",
     "Every `/pipelines/{pipelineId}/cases` response is a direct JSON array",
     "A single successful breakdown does not satisfy a remaining daily batch deficit",
     "A refill stage name is not liveness proof",
