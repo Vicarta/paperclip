@@ -176,6 +176,77 @@ async function assertPipelineAutomationCompletionProof(
   );
 }
 
+async function scheduleLatestCaseAutomationWakeForTerminalWork(
+  dbOrTx: any,
+  issue: typeof issues.$inferSelect,
+  terminalStatus: "done" | "cancelled",
+) {
+  const linkedCases = await dbOrTx
+    .selectDistinct({ caseId: pipelineCaseIssueLinks.caseId })
+    .from(pipelineCaseIssueLinks)
+    .where(and(
+      eq(pipelineCaseIssueLinks.companyId, issue.companyId),
+      eq(pipelineCaseIssueLinks.issueId, issue.id),
+      eq(pipelineCaseIssueLinks.role, "work"),
+      isNull(pipelineCaseIssueLinks.retiredAt),
+    ));
+  if (linkedCases.length === 0) return;
+
+  const now = new Date();
+  for (const linkedCase of linkedCases) {
+    const latestAutomation = await dbOrTx
+      .select({ issueId: issues.id })
+      .from(pipelineCaseIssueLinks)
+      .innerJoin(issues, and(
+        eq(pipelineCaseIssueLinks.issueId, issues.id),
+        eq(pipelineCaseIssueLinks.companyId, issues.companyId),
+      ))
+      .where(and(
+        eq(pipelineCaseIssueLinks.companyId, issue.companyId),
+        eq(pipelineCaseIssueLinks.caseId, linkedCase.caseId),
+        eq(pipelineCaseIssueLinks.role, "automation"),
+        isNull(pipelineCaseIssueLinks.retiredAt),
+        eq(issues.companyId, issue.companyId),
+        inArray(issues.status, ["in_progress", "in_review"]),
+        isNull(issues.hiddenAt),
+      ))
+      .orderBy(desc(pipelineCaseIssueLinks.createdAt), desc(pipelineCaseIssueLinks.id))
+      .limit(1)
+      .then((rows: Array<{ issueId: string }>) => rows[0] ?? null);
+    if (!latestAutomation) continue;
+
+    const [scheduled] = await dbOrTx
+      .update(issues)
+      .set({
+        monitorNextCheckAt: now,
+        monitorWakeRequestedAt: null,
+        monitorScheduledBy: "system:linked_work_terminal",
+        monitorNotes: `Linked work issue ${issue.identifier ?? issue.id} became ${terminalStatus}; re-read case-visible outputs and continue.`,
+        updatedAt: now,
+      })
+      .where(and(
+        eq(issues.id, latestAutomation.issueId),
+        eq(issues.companyId, issue.companyId),
+        inArray(issues.status, ["in_progress", "in_review"]),
+      ))
+      .returning({ id: issues.id });
+    if (!scheduled) continue;
+
+    await dbOrTx.insert(pipelineCaseEvents).values({
+      companyId: issue.companyId,
+      caseId: linkedCase.caseId,
+      type: "linked_work_terminal_wake_scheduled",
+      actorType: "system",
+      payload: {
+        workIssueId: issue.id,
+        workIssueIdentifier: issue.identifier,
+        workIssueStatus: terminalStatus,
+        automationIssueId: latestAutomation.issueId,
+      },
+    });
+  }
+}
+
 const ALL_ISSUE_STATUSES = ["backlog", "todo", "in_progress", "in_review", "blocked", "done", "cancelled"];
 const MAX_ISSUE_COMMENT_PAGE_LIMIT = 500;
 export const ISSUE_LIST_DEFAULT_LIMIT = 500;
@@ -5673,6 +5744,12 @@ export function issueService(db: Db) {
                 ),
               );
           }
+        }
+        if (
+          (issueData.status === "done" || issueData.status === "cancelled") &&
+          existing.status !== issueData.status
+        ) {
+          await scheduleLatestCaseAutomationWakeForTerminalWork(tx, existing, issueData.status);
         }
         return enriched;
       };
