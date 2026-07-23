@@ -30,6 +30,11 @@ Status: in_progress
   publication, deletion or image work was performed.
 - [x] The canonical refill case contains visible document
   `western-astrology-learning-plan` with the ordered 12-node curriculum.
+- [x] OpenAI OAuth reconnect was verified with a direct `gpt-5.5` Codex probe.
+- [x] All non-Claude agents use `codex_local`; only the primary Claude article
+  writer uses the Claude/OpenRouter harness.
+- [x] The two-minute OAuth guard is enabled, fail-closed and idempotent; the
+  legacy bulk OpenRouter/Claude fallback entry point is disabled.
 
 ## Safety
 

@@ -1,0 +1,8 @@
+[Unit]
+Description=Astrogen Paperclip Codex OAuth guard
+Requires=docker.service
+After=docker.service paperclip-astrogen-clean.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/node /home/paperclip/apps/paperclip-astrogen-clean/scripts/guard-codex-oauth.mjs --check

@@ -118,7 +118,15 @@ async function main() {
         adapterConfig: originalAdapterConfig,
         replaceAdapterConfig: true,
       });
-      changed.push({ id: agent.id, name: agent.name, restoredAdapterType: originalAdapterType });
+      if (agent.status === "error") {
+        await request(token, "POST", `/agents/${agent.id}/clear-error`, {});
+      }
+      changed.push({
+        id: agent.id,
+        name: agent.name,
+        restoredAdapterType: originalAdapterType,
+        errorCleared: agent.status === "error",
+      });
     }
     console.log(JSON.stringify({
       ok: true,
