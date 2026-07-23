@@ -47,9 +47,10 @@ const helper = `async function scheduleLatestCaseAutomationWakeForTerminalWork(d
         await dbOrTx.insert(pipelineCaseEvents).values({
             companyId: issue.companyId,
             caseId: linkedCase.caseId,
-            type: "linked_work_terminal_wake_scheduled",
+            type: "updated",
             actorType: "system",
             payload: {
+                kind: "linked_work_terminal_wake_scheduled",
                 workIssueId: issue.id,
                 workIssueIdentifier: issue.identifier,
                 workIssueStatus: terminalStatus,
@@ -78,13 +79,22 @@ if (!source.includes(callMarker)) {
   }
   source = source.replace(callAnchor, `${call}${callAnchor}`);
 }
+source = source.replace(
+  'type: "linked_work_terminal_wake_scheduled",\n            actorType: "system",',
+  'type: "updated",\n            actorType: "system",',
+);
+source = source.replace(
+  'payload: {\n                workIssueId: issue.id,\n                workIssueIdentifier: issue.identifier,\n                workIssueStatus: terminalStatus,\n                automationIssueId: latestAutomation.issueId,',
+  'payload: {\n                kind: "linked_work_terminal_wake_scheduled",\n                workIssueId: issue.id,\n                workIssueIdentifier: issue.identifier,\n                workIssueStatus: terminalStatus,\n                automationIssueId: latestAutomation.issueId,',
+);
 writeFileSync(target, source);
 
 const verified = readFileSync(target, "utf8");
 const markers = [
   "scheduleLatestCaseAutomationWakeForTerminalWork",
   "system:linked_work_terminal",
-  "linked_work_terminal_wake_scheduled",
+  'type: "updated"',
+  'kind: "linked_work_terminal_wake_scheduled"',
   "monitorNextCheckAt: now",
 ];
 for (const marker of markers) {

@@ -176,6 +176,29 @@ async function assertPipelineAutomationCompletionProof(
   );
 }
 
+export function buildLinkedWorkTerminalWakeEvent(input: {
+  companyId: string;
+  caseId: string;
+  workIssueId: string;
+  workIssueIdentifier: string | null;
+  workIssueStatus: "done" | "cancelled";
+  automationIssueId: string;
+}): typeof pipelineCaseEvents.$inferInsert {
+  return {
+    companyId: input.companyId,
+    caseId: input.caseId,
+    type: "updated",
+    actorType: "system",
+    payload: {
+      kind: "linked_work_terminal_wake_scheduled",
+      workIssueId: input.workIssueId,
+      workIssueIdentifier: input.workIssueIdentifier,
+      workIssueStatus: input.workIssueStatus,
+      automationIssueId: input.automationIssueId,
+    },
+  };
+}
+
 async function scheduleLatestCaseAutomationWakeForTerminalWork(
   dbOrTx: any,
   issue: typeof issues.$inferSelect,
@@ -232,18 +255,14 @@ async function scheduleLatestCaseAutomationWakeForTerminalWork(
       .returning({ id: issues.id });
     if (!scheduled) continue;
 
-    await dbOrTx.insert(pipelineCaseEvents).values({
+    await dbOrTx.insert(pipelineCaseEvents).values(buildLinkedWorkTerminalWakeEvent({
       companyId: issue.companyId,
       caseId: linkedCase.caseId,
-      type: "linked_work_terminal_wake_scheduled",
-      actorType: "system",
-      payload: {
-        workIssueId: issue.id,
-        workIssueIdentifier: issue.identifier,
-        workIssueStatus: terminalStatus,
-        automationIssueId: latestAutomation.issueId,
-      },
-    });
+      workIssueId: issue.id,
+      workIssueIdentifier: issue.identifier,
+      workIssueStatus: terminalStatus,
+      automationIssueId: latestAutomation.issueId,
+    }));
   }
 }
 
