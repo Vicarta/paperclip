@@ -1616,6 +1616,13 @@ function agentSpecificInstructions(agent) {
   if (agent.name === "MKT Competitive Intelligence Analyst") {
     return `
 
+## Semantic Core Trend Validation Boundary
+
+- \`audience_trends\` is a Paperclip content portfolio track, never a Semantic Core layer value. Never pass it as \`layer\` to \`run-layer\` or \`run-layer-and-wait\`.
+- Use \`audience_need_intent\` only for concrete audience problems, decisions, questions, or use cases. Use \`audience_interest_intent\` only for broader audience-first editorial interests that have a defensible Astrogen bridge without product narrowing.
+- Call a Semantic Core layer tool only when the assigned issue explicitly requires semantic validation. Otherwise return the retained trend evidence and candidate handoff to the semantic validation role.
+- Every bounded trend validation call must use \`project_id=astrogen-ukraine\`, 1-50 explicit \`candidate_keywords\`, one supported non-core layer, \`mode=live\`, and \`provider_cache_mode=read_write\`. If the intended layer is ambiguous, return a typed handoff naming the ambiguity; do not guess a layer, retry the same invalid payload, or treat a portfolio-track label as a plugin enum.
+
 ## Winning Structure MCP Contract
 
 - For \`western_astrology_learning\`, preserve the canonical curriculum node and constrain every remote section and local overlay to one \`primaryConceptKey\`. Multiple value units may deepen that concept but may not introduce adjacent astrology terminology, a twelve-item catalogue, or an interpretation workflow that needs untaught concepts. Reject the structure instead of accepting concept overload as bounded support.

@@ -98,6 +98,7 @@ function main() {
     "otherwise it delegates one bounded approval issue to the configured approver",
     "relies on the linked-work terminal wake",
     "A consumed topic or delivered article means that curriculum node is already fulfilled",
+    "audience_trends is a Paperclip portfolio track, never a Semantic Core layer or plugin enum",
     "delegate the first prerequisite-ready missing curriculum node instead",
   ], "Growth manager-only approval handoff");
   const growthExternalWaitInstructions = growth?.stageAutomation?.external_wait?.instructions ?? "";
