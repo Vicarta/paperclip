@@ -53,6 +53,7 @@ import {
 } from "./models.js";
 import { removeMaintainerOnlySkillSymlinks } from "@paperclipai/adapter-utils/server-utils";
 import { prepareOpenCodeRuntimeConfig } from "./runtime-config.js";
+import { prepareOpenCodeRuntimeHome } from "./runtime-home.js";
 import { SANDBOX_INSTALL_COMMAND } from "../index.js";
 
 const __moduleDir = path.dirname(fileURLToPath(import.meta.url));
@@ -151,17 +152,12 @@ export async function ensureRemoteOpenCodeModelConfiguredAndAvailable(input: {
   }
 }
 
-function claudeSkillsHome(): string {
-  return path.join(os.homedir(), ".claude", "skills");
-}
-
 async function ensureOpenCodeSkillsInjected(
   onLog: AdapterExecutionContext["onLog"],
+  skillsHome: string,
   skillsEntries: Array<{ key: string; runtimeName: string; source: string }>,
   desiredSkillNames?: string[],
 ) {
-  const skillsHome = claudeSkillsHome();
-  await fs.mkdir(skillsHome, { recursive: true });
   const desiredSet = new Set(desiredSkillNames ?? skillsEntries.map((entry) => entry.key));
   const selectedEntries = skillsEntries.filter((entry) => desiredSet.has(entry.key));
   const removedSkills = await removeMaintainerOnlySkillSymlinks(
@@ -242,9 +238,22 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
   await ensureAbsoluteDirectory(cwd, { createIfMissing: true });
   const openCodeSkillEntries = await readPaperclipRuntimeSkillEntries(config, __moduleDir);
   const desiredOpenCodeSkillNames = resolvePaperclipDesiredSkillNames(config, openCodeSkillEntries);
+  const localRuntimeHome = executionTargetIsRemote
+    ? null
+    : await prepareOpenCodeRuntimeHome(config);
   if (!executionTargetIsRemote) {
+    if (localRuntimeHome?.usedFallback) {
+      const rejected = localRuntimeHome.rejectedHomes
+        .map((entry) => `${entry.homeDir}: ${entry.reason}`)
+        .join("; ");
+      await onLog(
+        "stderr",
+        `[paperclip] OpenCode HOME was not writable; using managed runtime home ${localRuntimeHome.homeDir}. Rejected: ${rejected}\n`,
+      );
+    }
     await ensureOpenCodeSkillsInjected(
       onLog,
+      localRuntimeHome!.skillsHome,
       openCodeSkillEntries,
       desiredOpenCodeSkillNames,
     );
@@ -301,6 +310,11 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     executionTargetIsRemote,
     executionCwd: effectiveExecutionCwd,
   });
+  if (localRuntimeHome) {
+    // OpenCode discovers Paperclip skills under $HOME/.claude/skills. Keep the
+    // child process aligned with the exact writable home prepared above.
+    env.HOME = localRuntimeHome.homeDir;
+  }
   // Prevent OpenCode from writing an opencode.json config file into the
   // project working directory (which would pollute the git repo).  Model
   // selection is already handled via the --model CLI flag.  Set after the

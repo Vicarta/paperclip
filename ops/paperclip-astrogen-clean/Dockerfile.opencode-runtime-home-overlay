@@ -1,0 +1,14 @@
+# syntax=docker/dockerfile:1.20
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+
+USER root
+COPY --chown=node:node opencode-local/execute.ts /app/packages/adapters/opencode-local/src/server/execute.ts
+COPY --chown=node:node opencode-local/skills.ts /app/packages/adapters/opencode-local/src/server/skills.ts
+COPY --chown=node:node opencode-local/runtime-home.ts /app/packages/adapters/opencode-local/src/server/runtime-home.ts
+RUN grep -q 'prepareOpenCodeRuntimeHome' /app/packages/adapters/opencode-local/src/server/execute.ts \
+  && grep -q 'OpenCode HOME was not writable' /app/packages/adapters/opencode-local/src/server/execute.ts \
+  && grep -q 'instances.*runtime.*opencode-home' /app/packages/adapters/opencode-local/src/server/runtime-home.ts
+
+# The entrypoint drops privileges to node. Runtime HOME selection must therefore
+# happen inside the adapter instead of relying on root-owned volume repairs.
