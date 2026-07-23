@@ -141,6 +141,7 @@ routines:
         - count unique intentClusterKey values, not query phrases or native rows; never dispatch two topics that resolve to the same reader intent and expected owner page
         - portfolioLane=audience_interest_editorial is a bounded broad-audience lane: dispatch at most one per daily batch and at most four article cases reserved or delivered in the current Europe/Kiev calendar month; prefer enough eligible cases to reach two per month, but never invent or weaken evidence to fill the target
         - allocationFamily=zodiac_compatibility is capped at one article per daily batch even though every sign hub and pair page keeps its own queryFamilyFingerprint for ownership and cannibalization
+        - when ready inventory exists but every remaining row is excluded only by a repetitive-family or allocationFamily daily cap, treat the remaining daily slots as a portfolio-diversification deficit, not as durable owner-policy impossibility
         - calendar-date and ephemeral daily-horoscope topic families paused by owner policy are ineligible even when an old case is still at ready; never fill a deficit with either family
         - no-safe-topic is a canonical native growth-case refill trigger, not a successful terminal state
       topicInventoryRefill:
@@ -184,9 +185,11 @@ routines:
         - notification transport recovery affects only delivery for that article and never consumes productive article WIP or freezes unrelated SEO/content lanes
       deficitContinuation:
         - one successful article does not close a remaining same-day deficit
-        - when ready inventory is empty and the current-day count is below three, keep the same allocator issue in_progress with executionPolicy.monitor.nextCheckAt for a bounded inventory recheck
+        - when ready inventory is empty or contains no independently dispatchable family and the current-day count is below three, keep the same allocator issue in_progress with executionPolicy.monitor.nextCheckAt for a bounded inventory and refill-output recheck
         - at monitor wake, dispatch newly ready topics; close only after three slots, the productive WIP cap, or durable typed evidence that the remaining daily slots are impossible
         - a current-week refill in executing without active work or a future monitor is stranded and must be given one atomic native delegation before the allocator recheck
+        - a completed linked refill worker is case-visible output for the CMO source owner; the worker must not receive astrogen-growth-actions pipelines:write, and the allocator/CMO monitor must read the output, update the growth case, and continue the next deficient track
+        - a repetitive-family cap, an underfilled 12/5/3/3/2 track, or a worker pipelines:write rejection is never by itself durable evidence that the remaining daily slots are impossible
         - CMS specialists write delivery and before-after evidence on their own child issue; CMO aggregates verified child evidence into the parent it owns
         - ready_for_image_handoff, layout-ready, CMS-ready, or all-current-children-done is progress evidence, not parent completion
         - if no active child exists and delivery proof is missing, resume the same parent and route the next missing stage instead of creating a duplicate article parent
@@ -198,7 +201,7 @@ routines:
         - publish CMS content
         - send owner-facing Telegram from the allocator
         - create broad semantic-core or competitor-research batches
-      completionGate: all available current-day slots are dispatched or a typed capacity/inventory/API constraint is recorded; a parser/response-shape error is a shared protocol blocker and cannot be reported as zero eligible inventory; independently, if ready plus reserved plan inventory is below 25 or any contentPortfolioTrack is below its 12/5/3/3/2 target, one canonical refill growth case is live with current quota evidence, an accountable specialist, and a due nextReviewAt
+      completionGate: all available current-day slots are dispatched or a durable typed external/provider/explicit-owner-policy bound makes the remaining slots impossible for this business day; repetitive-family caps and underfilled portfolio tracks require a monitored refill continuation and are not terminal no-slot evidence; a parser/response-shape error is a shared protocol blocker and cannot be reported as zero eligible inventory; independently, if ready plus reserved plan inventory is below 25 or any contentPortfolioTrack is below its 12/5/3/3/2 target, one canonical refill growth case is live with current quota evidence, an accountable specialist, and a due nextReviewAt
     variables: []
 
   - title: Weekly Astrogen SEO/GEO action cycle

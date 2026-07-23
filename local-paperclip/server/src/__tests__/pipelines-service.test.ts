@@ -2469,6 +2469,110 @@ describeEmbeddedPostgres("pipelineService", () => {
     expect(await eventCount(created.case.id)).toBe(5);
   });
 
+  it("rejects a transition before dispatch when required inline context is missing or truncated", async () => {
+    const company = await seedCompany();
+    const routine = await seedRoutine(company.id, "Draft with complete context");
+    const pipeline = await svc.createPipeline({
+      companyId: company.id,
+      key: "complete-inline-context",
+      name: "Complete inline context",
+      actor: userActor,
+      stages: [
+        { key: "brief", name: "Brief", kind: "working" },
+        {
+          key: "draft",
+          name: "Draft",
+          kind: "working",
+          config: {
+            inlineContextDocumentKeys: ["writer-brief"],
+            inlineContextMaxChars: 1_000,
+            inlineContextRequireComplete: true,
+            onEnter: { type: "run_routine", routineId: routine.id },
+          },
+        },
+        { key: "done", name: "Done", kind: "done" },
+      ],
+    });
+    const created = await svc.ingestCase({
+      companyId: company.id,
+      pipelineId: pipeline.id,
+      caseKey: "complete-inline-context",
+      title: "Complete inline context",
+      actor: userActor,
+    });
+
+    await expect(svc.transitionCase({
+      companyId: company.id,
+      caseId: created.case.id,
+      toStageKey: "draft",
+      expectedVersion: 1,
+      actor: userActor,
+    })).rejects.toMatchObject({
+      status: 409,
+      details: {
+        code: "pipeline_inline_context_incomplete",
+        invalidDocuments: [{ key: "writer-brief", missing: true }],
+      },
+    });
+
+    const [briefDocument] = await db.insert(documents).values({
+      companyId: company.id,
+      title: "Writer brief",
+      format: "json",
+      latestBody: "x".repeat(1_001),
+      latestRevisionNumber: 1,
+      createdByUserId: "board-user",
+      updatedByUserId: "board-user",
+    }).returning();
+    const [briefRevision] = await db.insert(documentRevisions).values({
+      companyId: company.id,
+      documentId: briefDocument!.id,
+      revisionNumber: 1,
+      title: "Writer brief",
+      format: "json",
+      body: briefDocument!.latestBody,
+      createdByUserId: "board-user",
+    }).returning();
+    await db.update(documents)
+      .set({ latestRevisionId: briefRevision!.id })
+      .where(eq(documents.id, briefDocument!.id));
+    await db.insert(pipelineCaseDocuments).values({
+      companyId: company.id,
+      caseId: created.case.id,
+      documentId: briefDocument!.id,
+      key: "writer-brief",
+    });
+
+    await expect(svc.transitionCase({
+      companyId: company.id,
+      caseId: created.case.id,
+      toStageKey: "draft",
+      expectedVersion: 1,
+      actor: userActor,
+    })).rejects.toMatchObject({
+      status: 409,
+      details: {
+        code: "pipeline_inline_context_incomplete",
+        invalidDocuments: [{ key: "writer-brief", truncated: true }],
+      },
+    });
+
+    const compactBody = JSON.stringify({ readerFacingSectionIds: ["intro"] });
+    await db.update(documents)
+      .set({ latestBody: compactBody, updatedAt: new Date() })
+      .where(eq(documents.id, briefDocument!.id));
+
+    const moved = await svc.transitionCase({
+      companyId: company.id,
+      caseId: created.case.id,
+      toStageKey: "draft",
+      expectedVersion: 1,
+      actor: userActor,
+    });
+    expect(moved.case.version).toBe(2);
+    expect(moved.automationExecution.status).toBe("succeeded");
+  });
+
   it("fires a stage-entry automation routine once and keeps crash-retry idempotent", async () => {
     const company = await seedCompany();
     const routine = await seedRoutine(company.id, "Draft on enter");

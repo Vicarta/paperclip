@@ -276,6 +276,7 @@ export const pipelineStageConfigSchema = z.object({
   requireNoUnresolvedDrift: z.boolean().optional(),
   inlineContextDocumentKeys: z.array(z.string().trim().min(1).max(120)).max(5).optional(),
   inlineContextMaxChars: z.number().int().min(1_000).max(48_000).optional(),
+  inlineContextRequireComplete: z.boolean().optional(),
 }).passthrough().superRefine((value, ctx) => {
   const keys = new Set<string>();
   value.variables.forEach((variable, index) => {

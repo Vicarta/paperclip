@@ -207,6 +207,7 @@ export type PipelineStageConfig = Record<string, unknown> & {
   };
   inlineContextDocumentKeys?: string[];
   inlineContextMaxChars?: number;
+  inlineContextRequireComplete?: boolean;
 };
 
 export type PipelineReviewDecision = "approve" | "reject" | "request_changes";
@@ -1488,6 +1489,43 @@ async function loadInlinePipelineContextDocuments(
       bodyRedacted,
     };
   });
+}
+
+async function assertInlinePipelineContextComplete(
+  dbOrTx: PipelineDb,
+  input: {
+    companyId: string;
+    caseId: string;
+    stage: typeof pipelineStages.$inferSelect;
+  },
+) {
+  const config = stageConfig(input.stage);
+  if (config.inlineContextRequireComplete !== true) return;
+  const documents = await loadInlinePipelineContextDocuments(dbOrTx, {
+    companyId: input.companyId,
+    caseId: input.caseId,
+    config,
+  });
+  const invalidDocuments = (documents ?? [])
+    .filter((document) =>
+      document.format === "missing"
+      || document.truncated
+      || document.bodyRedacted
+    )
+    .map((document) => ({
+      key: document.key,
+      missing: document.format === "missing",
+      truncated: document.truncated,
+      bodyRedacted: document.bodyRedacted,
+      revisionId: document.revisionId,
+    }));
+  if (!documents?.length || invalidDocuments.length > 0) {
+    throw conflict("Pipeline inline context is incomplete for the destination stage", {
+      code: "pipeline_inline_context_incomplete",
+      stageKey: input.stage.key,
+      invalidDocuments,
+    });
+  }
 }
 
 function formatInlinePipelineContextDocuments(
@@ -4163,6 +4201,11 @@ export function pipelineService(db: Db, deps: { heartbeat?: IssueAssignmentWakeu
     if (toConfig.autonomy === "auto") {
       throw unprocessable("Pipeline auto autonomy is not enabled", { code: "autonomy_not_enabled" });
     }
+    await assertInlinePipelineContextComplete(tx, {
+      companyId: input.companyId,
+      caseId: current.id,
+      stage: toStage,
+    });
     let forcedTransition = false;
     if (pipeline.enforceTransitions) {
       const allowed = await tx

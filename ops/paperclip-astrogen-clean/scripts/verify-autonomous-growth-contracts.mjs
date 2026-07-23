@@ -53,6 +53,13 @@ function main() {
     "Proven duplicate reconciliation must be able to reject a released topic",
   );
   const article = manifest.pipelines.find((pipeline) => pipeline.key === "astrogen-article-production");
+  const draft = article?.stages?.find((stage) => stage.key === "draft");
+  assert(
+    JSON.stringify(draft?.config?.inlineContextDocumentKeys) === JSON.stringify(["writer-brief"]),
+    "Draft stage must inject only the compact writer-brief document",
+  );
+  assert(draft?.config?.inlineContextMaxChars === 48_000, "Draft writer-brief limit must be 48000 characters");
+  assert(draft?.config?.inlineContextRequireComplete === true, "Draft stage must reject incomplete inline context");
   const imageRecovery = article?.stages?.find((stage) => stage.key === "image_recovery_review");
   assert(imageRecovery?.position === 1350, "CMO image recovery review stage is missing");
   assert(
@@ -83,6 +90,8 @@ function main() {
     "A refill stage name is not liveness proof",
     "executionPolicy.monitor.nextCheckAt",
     "topic-inventory-refill:{ISO-week}:continuation:v{caseVersion}",
+    "portfolio-diversification deficit",
+    "The worker does not receive `astrogen-growth-actions` `pipelines:write`",
     "Never create a legacy article parent",
   ], "Article allocator contract");
   const routineSyncSource = readFileSync(resolve(SCRIPT_DIR, "sync-autonomous-growth-routines.mjs"), "utf8");
@@ -110,6 +119,7 @@ function main() {
       "ready breakdown to article opportunity",
       "outcome-aware topic consume/release",
       "no ready-stage automation",
+      "complete bounded writer-brief preflight",
       "allocator native dispatch and refill",
       "three-slot daily batch and deficit reconciliation",
       "CEO foreign-issue boundary",
