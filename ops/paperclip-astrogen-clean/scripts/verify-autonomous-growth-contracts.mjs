@@ -105,6 +105,8 @@ function main() {
     "needs_manager_action",
     "otherwise it delegates one bounded approval issue to the configured approver",
     "relies on the linked-work terminal wake",
+    "must receive the sourceCaseId and a stable resultDocumentKey",
+    "a terminal child summary is never a substitute for the document",
     "A consumed topic or delivered article means that curriculum node is already fulfilled",
     "audience_trends is a Paperclip portfolio track, never a Semantic Core layer or plugin enum",
     "delegate the first prerequisite-ready missing curriculum node instead",
