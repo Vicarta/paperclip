@@ -142,11 +142,11 @@ function outputSortGroup(item: PipelineCaseOutputItem) {
   return 30;
 }
 
-function sortOutputs(a: PipelineCaseOutputItem, b: PipelineCaseOutputItem) {
-  const groupDiff = outputSortGroup(a) - outputSortGroup(b);
-  if (groupDiff !== 0) return groupDiff;
+export function sortPipelineCaseOutputItems(a: PipelineCaseOutputItem, b: PipelineCaseOutputItem) {
   const dateDiff = Date.parse(String(b.updatedAt)) - Date.parse(String(a.updatedAt));
   if (dateDiff !== 0) return dateDiff;
+  const groupDiff = outputSortGroup(a) - outputSortGroup(b);
+  if (groupDiff !== 0) return groupDiff;
   return a.id.localeCompare(b.id);
 }
 
@@ -596,7 +596,7 @@ export function pipelineCaseOutputsService(db: Db) {
         pipelineId: caseRow.pipelineId,
         generatedAt: new Date().toISOString(),
         sources,
-        items: items.sort(sortOutputs),
+        items: items.sort(sortPipelineCaseOutputItems),
         counts,
       };
     },
