@@ -91,6 +91,14 @@ function main() {
       && transition.label === "accept_existing_after_visual_review"),
     "CMO recovery must accept a valid existing candidate without another provider call",
   );
+  const winningStructureInstructions = article?.stageAutomation?.winning_structure?.instructions ?? "";
+  includesAll(winningStructureInstructions, [
+    "mentioned only in evidenceRefs",
+    "upstream evidence, not proof that this article case started a run",
+    "exactly equals the current remote validation input_hash",
+    "start exactly one run for the current taskRevision/idempotency_key",
+    "preserve the old run as upstream provenance",
+  ], "Winning Structure current-article run lineage");
   const growth = manifest.pipelines.find((pipeline) => pipeline.key === "astrogen-growth-actions");
   const growthExecutingInstructions = growth?.stageAutomation?.executing?.instructions ?? "";
   includesAll(growthExecutingInstructions, [
