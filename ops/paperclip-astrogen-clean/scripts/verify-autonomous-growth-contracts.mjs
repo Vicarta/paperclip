@@ -95,9 +95,10 @@ function main() {
   const growthExecutingInstructions = growth?.stageAutomation?.executing?.instructions ?? "";
   includesAll(growthExecutingInstructions, [
     "needs_manager_action",
-    "The CMO performs that approval or transition in the same heartbeat",
-    "Never classify the CMO's own approval duty as an external blocker",
-    "never let a specialist issue block its manager solely because the specialist lacks manager-only approval authority",
+    "otherwise it delegates one bounded approval issue to the configured approver",
+    "relies on the linked-work terminal wake",
+    "A consumed topic or delivered article means that curriculum node is already fulfilled",
+    "delegate the first prerequisite-ready missing curriculum node instead",
   ], "Growth manager-only approval handoff");
   const growthExternalWaitInstructions = growth?.stageAutomation?.external_wait?.instructions ?? "";
   includesAll(growthExternalWaitInstructions, [
@@ -153,6 +154,7 @@ function main() {
       "canonical CMS admin URL transition gates",
       "manager-only approval handoff continuity",
       "manager-only approval external-wait exit",
+      "consumed curriculum-node selection guard",
       "allocator native dispatch and refill",
       "three-slot daily batch and deficit reconciliation",
       "CEO foreign-issue boundary",
