@@ -12,8 +12,9 @@ const CANONICAL_PREFIX = "https://cms.astrogen.com.ua/admin/collections/blogPost
 const args = process.argv.slice(2);
 const caseId = args[args.indexOf("--case-id") + 1];
 const apply = args.includes("--apply");
+const notify = args.includes("--notify");
 if (!caseId || !/^[0-9a-f-]{36}$/i.test(caseId)) {
-  throw new Error("Usage: repair-canonical-cms-admin-url.mjs --case-id <uuid> [--apply]");
+  throw new Error("Usage: repair-canonical-cms-admin-url.mjs --case-id <uuid> [--apply] [--notify]");
 }
 
 function run(command, commandArgs, input) {
@@ -91,7 +92,7 @@ async function main() {
     const currentUrl = pipelineCase.fields?.cmsAdminUrl ?? null;
     const previousCorrectionMessageId = pipelineCase.fields?.cmsAdminUrlCorrectionTelegramMessageId ?? null;
 
-    if (!apply || (currentUrl === canonicalUrl && previousCorrectionMessageId)) {
+    if (!apply || (currentUrl === canonicalUrl && (!notify || previousCorrectionMessageId))) {
       console.log(JSON.stringify({
         mode: apply ? "already-repaired" : "dry-run",
         caseId,
@@ -113,6 +114,19 @@ async function main() {
       },
     });
     pipelineCase = patched.case ?? patched;
+    if (!notify) {
+      console.log(JSON.stringify({
+        mode: "apply-without-notification",
+        caseId,
+        caseKey: pipelineCase.caseKey,
+        canonicalUrl,
+        backup: {
+          filename: backup.filename ?? null,
+          sizeBytes: backup.sizeBytes ?? null,
+        },
+      }, null, 2));
+      return;
+    }
 
     const cmoContext = latestCmoRunContext();
     const deliveryIssueId = psql(`
