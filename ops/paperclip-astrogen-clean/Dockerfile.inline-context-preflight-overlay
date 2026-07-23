@@ -1,7 +1,6 @@
-ARG BASE_IMAGE
+ARG BASE_IMAGE=paperclip-app:latest
 FROM ${BASE_IMAGE}
 
 COPY scripts/patch-inline-context-preflight-dist.mjs /tmp/patch-inline-context-preflight-dist.mjs
 RUN node /tmp/patch-inline-context-preflight-dist.mjs /app/server/dist/services/pipelines.js \
-  && node --check /app/server/dist/services/pipelines.js \
-  && rm /tmp/patch-inline-context-preflight-dist.mjs
+  && node --check /app/server/dist/services/pipelines.js
