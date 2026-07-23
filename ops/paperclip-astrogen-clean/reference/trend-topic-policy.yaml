@@ -298,7 +298,7 @@ handoff:
         - inspect the exact run decision_trace and prepared typed import
         - submit append-only decisions through paperclip.semantic-core-mcp-agent-tools:submit-review-decisions
         - partition reviewed phrases by original semanticRunId and intended non-core layer
-        - run each original partition once with explicit mode=live, provider cache, the same partition phrases, review_decisions and force_re_review_keywords
+        - run each original partition once with explicit mode=provider and provider_cache_mode=read_only, the same partition phrases, review_decisions and force_re_review_keywords; a cache miss or active provider lock becomes one monitored external_wait without autonomous retry
         - never combine phrases from different intended layers in one materializing run
         - prepare the new run import and require a final accepted, parked or rejected disposition for every reviewed phrase
       handoff:

@@ -14,6 +14,10 @@ function requireText(source, needle, label) {
   if (!source.includes(needle)) throw new Error(`${label} is missing: ${needle}`);
 }
 
+function forbidText(source, needle, label) {
+  if (source.includes(needle)) throw new Error(`${label} is forbidden: ${needle}`);
+}
+
 const trendPolicy = read("ops/paperclip-astrogen-clean/reference/trend-topic-policy.yaml");
 const searchDemandPolicy = read("ops/paperclip-astrogen-clean/reference/search-demand-policy.yaml");
 const curriculum = read("ops/paperclip-astrogen-clean/reference/western-astrology-curriculum.yaml");
@@ -93,6 +97,9 @@ requireText(trendPolicy, "productBridgeRule", "trend product bridge boundary");
 requireText(trendPolicy, "never infer from accepted candidates or search-demand cases", "native topic count source");
 requireText(routines, "project_id=astrogen-audience-trends-ukraine", "routine audience trend project id");
 requireText(routines, "do not send products", "routine products forbidden");
+requireText(routines, "explicit mode=provider", "routine canonical semantic provider mode");
+requireText(routines, "provider_cache_mode=read_only", "routine no-spend semantic cache mode");
+forbidText(routines, "run-layer-and-wait with explicit mode=live", "routine legacy semantic live mode");
 requireText(workflows, "productSeeds: forbidden", "workflow products forbidden");
 requireText(plugins, "trendProjectId: astrogen-audience-trends-ukraine", "plugin manifest trend project id");
 requireText(plugins, "trendProductSeeds: forbidden", "plugin manifest product seed guard");
@@ -117,6 +124,12 @@ requireText(workflows, "native case materialization belongs to the ingestion own
 requireText(workflows, "one canonical opportunity with supportingQueries", "workflow cluster grouping");
 requireText(outcomes, "ready plus reserved future-topic inventory is below 25", "outcome SLO");
 requireText(bootstrap, "secondary segments never satisfy another quota", "agent no-double-count contract");
+requireText(bootstrap, "1-10 explicit \\`candidate_keywords\\`", "agent bounded semantic batch");
+requireText(bootstrap, "\\`mode=provider\\`", "agent canonical semantic provider mode");
+requireText(bootstrap, "\\`provider_cache_mode=read_only\\`", "agent no-spend semantic cache mode");
+forbidText(bootstrap, "\\`mode=live\\`, \\`provider_cache_mode=read_write\\`", "agent legacy semantic execution contract");
+requireText(trendPolicy, "explicit mode=provider and provider_cache_mode=read_only", "review materialization no-spend contract");
+forbidText(trendPolicy, "original partition once with explicit mode=live", "review legacy semantic live mode");
 requireText(bootstrap, "linked-case-output contract", "linked case output writeback contract");
 requireText(bootstrap, "Do not PATCH source growth-case fields", "delegated source case field write guard");
 requireText(bootstrap, "project_id=astrogen-audience-trends-ukraine", "agent audience trend project id");
