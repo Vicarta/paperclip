@@ -23,7 +23,7 @@ const POLICIES = [
   },
   {
     name: "trend-topic-policy.yaml",
-    version: "version: astrogen-trend-topic-v12",
+    version: "version: astrogen-trend-topic-v13",
   },
   {
     name: "western-astrology-curriculum.yaml",

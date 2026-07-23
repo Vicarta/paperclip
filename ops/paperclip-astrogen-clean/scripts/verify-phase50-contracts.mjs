@@ -52,7 +52,9 @@ for (const [track, target] of Object.entries({
   requireText(pipelines, `${track}: ${target}`, `native grouped quota track ${track}`);
 }
 
-requireText(trendPolicy, "version: astrogen-trend-topic-v12", "trend policy version");
+requireText(trendPolicy, "version: astrogen-trend-topic-v13", "trend policy version");
+requireText(trendPolicy, "liveEnabled: false", "provider execution lock");
+requireText(trendPolicy, "providerCacheModeWhileLocked: read_only", "no-spend cache mode");
 requireText(trendPolicy, "currentSignalRequired: true", "trend current signal gate");
 requireText(trendPolicy, "everyCandidateRequiresCurrentSignal: true", "candidate current signal gate");
 requireText(trendPolicy, "clinical or psychotherapy terminology as the primary trend lane", "clinical primary lane guard");
@@ -64,8 +66,8 @@ requireText(trendPolicy, "minimumEligibleTopics: 25", "portfolio total target");
 requireText(trendPolicy, "hardQuota: false", "audience segments are diversity guardrails");
 requireText(trendPolicy, "contentPortfolioTrack: western_astrology_learning", "western astrology curriculum track");
 requireText(trendPolicy, "secondaryAudienceSegmentsDoNotCount: true", "no segment double count");
-requireText(trendPolicy, "maximumLiveRunsPerKyivDay: 5", "bounded focused report daily cap");
-requireText(trendPolicy, "maximumLiveRunsPerCampaign: 10", "bounded campaign cap");
+requireText(trendPolicy, "maximumLiveRunsPerKyivDay: 1", "bounded focused report daily cap");
+requireText(trendPolicy, "maximumLiveRunsPerCampaign: 3", "bounded campaign cap");
 requireText(trendPolicy, "contentPlanDocumentKey: next-content-plan", "durable content plan key");
 requireText(trendPolicy, "primary_audience_segment_id is not a tool field", "focused segment MCP mapping");
 requireText(trendPolicy, "reviewed_fingerprints is not a tool field", "reviewed fingerprint MCP mapping");

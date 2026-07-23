@@ -2,7 +2,7 @@
 
 Thin Paperclip adapter for a private Semantic Core MCP endpoint.
 
-The plugin does not generate semantic cores itself. It keeps endpoint credentials on the backend, calls the MCP server, validates `paperclip_import.v1`, and stores operational import candidates in plugin-owned Paperclip state/entities for downstream SEO agents.
+The plugin does not generate semantic cores itself. It keeps endpoint credentials on the backend, calls the MCP server, validates `paperclip_import.v1`, and stores operational import candidates in plugin-owned Paperclip state/entities for downstream SEO agents. Trend reports are stored separately as `semantic-core-trend-topic-report` entities and never become semantic imports.
 
 ## Project Config Compatibility
 
@@ -102,6 +102,11 @@ Agents must use `project_id`, `run_id`, and `job_id` as server-side identifiers.
 Do not pass local client filesystem paths to the remote MCP server during normal
 agent workflows.
 
+Configure `defaultProjectId` for a company-scoped deployment (Astrogen uses
+`astrogen-ukraine`). The plugin injects it when a project-bound agent call omits
+`project_id` and rejects a conflicting value before network access. This guard
+does not authorize agents to guess project aliases.
+
 ## Required Agent Workflow
 
 Normal agent flow:
@@ -109,20 +114,37 @@ Normal agent flow:
 1. Call `list-tools` or `smoke-test` to confirm connectivity.
 2. Call `register-project`.
 3. Call `validate-project` and continue only when validation returns `status = ok`.
-4. Use `mode: "mock"` for adapter smoke tests.
-5. Use `mode: "live"` with `provider_cache_mode: "read_write"` for production semantic-core runs.
+4. Omitted `run_layer.mode` defaults to `mock`; mock output is never production demand evidence.
+5. Provider execution is disabled by default. `read_only` permits cache-only no-spend runs. An operator may temporarily select `approved_candidate_batch` for 1-10 exact `candidate_keywords`; the adapter still forces Standard Queue and disables Search Intent, content parsing, refresh, and bypass.
 6. Poll with `get-job-status` or use `run-layer-and-wait`.
-7. Call `get-run-costs` before another live provider run.
+7. `run-layer-and-wait` fetches `get-run-costs` before completing and records provider-reported cost in Paperclip.
 8. Call `get-paperclip-import-schema` after MCP updates and before changing import behavior.
 9. Call `prepare-paperclip-import` and inspect import readiness before importing or using the run.
 10. Read keywords, clusters, SERP segments, review queue, and import payloads with pagination.
 11. Produce a human review workbook or portal review queue for the completed layer.
-12. Submit review decisions as append-only input; completed run artifacts are immutable.
-13. Rerun the layer when review decisions or policy changes should affect artifacts.
+12. Treat `candidate_review` as nonterminal in autonomous production workflows. Submit bounded review decisions as append-only input; completed run artifacts are immutable.
+13. Rerun the same layer once with the same `review_decisions`, matching `force_re_review_keywords`, and provider cache when decisions should affect artifacts.
 14. Pass `prior_final_keywords` when running later layers so previously accepted/rejected/deferred/removed terms are not returned as new client work unless explicitly forced for re-review.
 15. Import accepted output into Paperclip DB before downstream planning or monitoring.
 
 Do not generate content plans directly from MCP outputs. Content planning is downstream Paperclip work.
+
+## Trend Topic Reports
+
+Use `generate-trend-topic-report` for evidence-backed time-sensitive audience opportunities. It is a separate operation from semantic-core membership:
+
+1. Register the project with `register-project`.
+2. Call `generate-trend-topic-report` with `project_id`, project context, audience segments, analysis date, bounded constraints, private-project cache policy, and `mode`.
+3. Preserve `run_id`, clusters, watchlist, rejected signals, warnings, research/cache summaries, Markdown, and `cost.events` in the project-scoped trend entity.
+4. Reuse a stored report with `get-trend-topic-report`; pass the exact `runId` for a continuation. Without a run ID the reader defaults to the latest report recorded with `mode=live`, so a newer fixture smoke cannot displace production evidence. The tool returns a bounded project/company-scoped portfolio DTO and never calls the provider again.
+5. Never call `prepare-paperclip-import` for a trend run.
+6. Never create topic inventory from a trend cluster. A promising search phrase must pass the normal semantic-core provider-validation and search-demand ownership workflow first.
+
+For low inventory, validate at most five concrete entity-anchored search phrases per wave. Do not reuse parked or rejected phrases. A disabled provider gate or cache miss becomes a typed monitored wait; it must not trigger autonomous retries or another paid wave.
+
+The adapter prefers numeric USD `actual_cost` reported by the provider and falls back to `estimated_cost` only when actual cost is unavailable. Events with unknown monetary cost remain durable telemetry, including provider request counts and LLM token usage; they are not silently treated as zero-cost calls.
+
+A successful report may contain zero clusters. Agents must not invent replacement topics.
 
 ## Policy-Driven Layer Decisions
 
@@ -223,22 +245,21 @@ Live runs should normally use project-scoped DataForSEO cache:
 }
 ```
 
-Register this block inside `project_config`. Use
-`provider_cache_mode: "read_write"` on `run_layer` for normal production runs,
-`read_only` for no-spend reruns when enough cache is expected, `refresh` when
-provider data must be refreshed, and `bypass` only for provider debugging.
+Register this block inside `project_config`. Paperclip agents use
+`provider_cache_mode: "read_only"` by default. `read_write` is available only
+inside an operator-approved exact-candidate run. `refresh` and `bypass` are not
+available to autonomous agents.
 The adapter adds the default `provider_cache` block during `register-project`
-normalization when agents omit it, and defaults live `run-layer` calls to
-`provider_cache_mode: "read_write"` when no mode is supplied.
+normalization when agents omit it. Omitted mode is `mock`, never a paid run.
 Cache is scoped by `project_id`, not shared across companies or projects. Cache
 hits are not ranking, intent, or layer-membership acceptance evidence.
 Invalid cached provider responses are provider/cache telemetry, not keyword
 evidence. If MCP returns a provider or task error, the adapter must not pass that
 error text downstream as a keyword row.
 
-Normal agent live workflow uses `run-layer-and-wait` or `run-layer` with
-`async_job: true` and polling through `get-job-status`. After each live run,
-call `get-run-costs` before initiating another live provider run.
+An approved provider workflow uses `run-layer-and-wait` or `run-layer` with
+`async_job: true` and polling through `get-job-status`. The compound tool reads
+`get-run-costs` automatically before it returns completion.
 
 ## Reading Results
 
@@ -257,6 +278,13 @@ Read:
 Review decisions are append-only input through `submit-review-decisions`. They
 do not mutate completed run artifacts; rerun the layer when decisions should be
 reflected in a new artifact set.
+
+Decision rows use `decision: "accept" | "candidate_review" | "park" | "reject"`
+or `decision: "add_keyword"`; the field is not named `action`. An accepted
+decision still requires an entity anchor or explicit product binding. When a
+submitted final decision is materialized in a later run, include the same row
+in `review_decisions` and a matching `force_re_review_keywords` entry so the
+project final-keyword ledger does not suppress the intentional rerun.
 
 ## Security
 
@@ -278,6 +306,7 @@ reflected in a new artifact set.
 - `get-keywords`
 - `get-clusters`
 - `get-serp-segments`
+- `generate-trend-topic-report`
 - `prepare-paperclip-import`
 - `get-review-queue`
 - `submit-review-decisions`

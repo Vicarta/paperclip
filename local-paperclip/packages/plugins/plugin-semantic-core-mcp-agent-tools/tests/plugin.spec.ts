@@ -5,11 +5,13 @@ import plugin from "../src/worker.js";
 import { TOOL_NAMES } from "../src/constants.js";
 import {
   callSemanticCoreMcpTool,
+  createPerExecutionSecretResolver,
   listSemanticCoreMcpTools,
   prepareSemanticCoreMcpArguments,
   prepareSemanticCoreMcpFallbackArguments,
   runLayerAndWait,
   runSemanticCoreSmoke,
+  semanticCoreMcpRequestOptions,
   validateKeywordVolumeContract,
   validatePaperclipImportPayload,
 } from "../src/semantic-core-mcp-client.js";
@@ -46,6 +48,152 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
     listSemanticCoreMcpToolsMock.mockReset();
     runLayerAndWaitMock.mockReset();
     runSemanticCoreSmokeMock.mockReset();
+  });
+
+  it("resolves one secret ref once per compound tool execution", async () => {
+    const resolveSecret = vi.fn(async (secretRef: string) => `value:${secretRef}`);
+    const perExecution = createPerExecutionSecretResolver(resolveSecret);
+
+    await expect(Promise.all([
+      perExecution("11111111-1111-4111-8111-111111111111"),
+      perExecution("11111111-1111-4111-8111-111111111111"),
+      perExecution("11111111-1111-4111-8111-111111111111"),
+    ])).resolves.toEqual([
+      "value:11111111-1111-4111-8111-111111111111",
+      "value:11111111-1111-4111-8111-111111111111",
+      "value:11111111-1111-4111-8111-111111111111",
+    ]);
+    expect(resolveSecret).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not cache a failed secret resolution inside the execution", async () => {
+    const resolveSecret = vi.fn()
+      .mockRejectedValueOnce(new Error("temporary failure"))
+      .mockResolvedValueOnce("resolved");
+    const perExecution = createPerExecutionSecretResolver(resolveSecret);
+
+    await expect(perExecution("11111111-1111-4111-8111-111111111111")).rejects.toThrow("temporary failure");
+    await expect(perExecution("11111111-1111-4111-8111-111111111111")).resolves.toBe("resolved");
+    expect(resolveSecret).toHaveBeenCalledTimes(2);
+  });
+
+  it("declares bounded long-running trend RPC and an exact top-level input contract", () => {
+    const trendTool = manifest.tools?.find(
+      (tool) => tool.name === TOOL_NAMES.generateTrendTopicReport,
+    );
+    expect(trendTool?.executionTimeoutMs).toBe(360_000);
+    expect(trendTool?.parametersSchema).toMatchObject({
+      required: ["project_id", "project", "audience_segments", "analysis_date"],
+      additionalProperties: false,
+    });
+
+    const properties = (trendTool?.parametersSchema as { properties?: Record<string, unknown> })
+      .properties ?? {};
+    expect(properties).toHaveProperty("existing_content");
+    expect(properties).toHaveProperty("internal_signals");
+    expect(properties).not.toHaveProperty("runtime_inputs");
+    expect(properties).not.toHaveProperty("existing_content_inventory");
+    expect(properties).not.toHaveProperty("business_context");
+    expect(properties.project).toMatchObject({
+      properties: { business_context: { type: "string" } },
+    });
+    expect(properties.existing_content).toMatchObject({
+      items: {
+        required: ["title"],
+        additionalProperties: false,
+      },
+    });
+  });
+
+  it("overrides the MCP SDK hidden 60-second request timeout", () => {
+    expect(semanticCoreMcpRequestOptions(300_000)).toEqual({
+      timeout: 300_000,
+      maxTotalTimeout: 300_000,
+    });
+  });
+
+  it("documents the bounded candidate keyword validation contract", () => {
+    const validateProject = manifest.tools?.find((tool) => tool.name === TOOL_NAMES.validateProject);
+    const runLayer = manifest.tools?.find((tool) => tool.name === TOOL_NAMES.runLayer);
+    const runAndWait = manifest.tools?.find((tool) => tool.name === TOOL_NAMES.runLayerAndWait);
+    const getJobStatus = manifest.tools?.find((tool) => tool.name === TOOL_NAMES.getJobStatus);
+    expect(runAndWait?.description).toContain("candidate_keywords");
+    expect(runAndWait?.description).toContain("candidate_keyword_count");
+    expect(validateProject?.executionTimeoutMs).toBe(60_000);
+    expect(runLayer?.executionTimeoutMs).toBe(120_000);
+    expect(runAndWait?.executionTimeoutMs).toBe(360_000);
+    expect(getJobStatus?.executionTimeoutMs).toBe(60_000);
+    const getTrendReport = manifest.tools?.find(
+      (tool) => tool.name === TOOL_NAMES.getTrendTopicReport,
+    );
+    expect(getTrendReport?.parametersSchema).toMatchObject({
+      additionalProperties: false,
+      properties: {
+        maxClusters: { maximum: 8 },
+        mode: { enum: ["live", "fixture", "any"] },
+        maxIdeasPerCluster: { maximum: 3 },
+        maxEvidencePerCluster: { maximum: 5 },
+      },
+    });
+  });
+
+  it("normalizes legacy trend validation keywords alias to candidate_keywords", () => {
+    const prepared = prepareSemanticCoreMcpArguments({
+      toolName: "run_layer",
+      args: {
+        payload: {
+          project_id: "astrogen-ukraine",
+          layer: "audience_need_intent",
+          mode: "live",
+          keywords: ["  як підготуватися до першої консультації  ", "як підготуватися до першої консультації"],
+          metadata: {
+            fingerprint: "trend-validation:run_demo:wave:1",
+            trendReportRunId: "run_demo",
+            validationWave: 1,
+          },
+        },
+      },
+    }) as { payload: Record<string, unknown> };
+
+    expect(prepared.payload.candidate_keywords).toEqual(["як підготуватися до першої консультації"]);
+    expect(prepared.payload).not.toHaveProperty("keywords");
+  });
+
+  it("rejects trend validation without bounded candidate keywords", () => {
+    expect(() => prepareSemanticCoreMcpArguments({
+      toolName: "run_layer",
+      args: {
+        payload: {
+          project_id: "astrogen-ukraine",
+          layer: "audience_need_intent",
+          mode: "live",
+          metadata: {
+            fingerprint: "trend-validation:run_demo:wave:1",
+            trendReportRunId: "run_demo",
+            validationWave: 1,
+          },
+        },
+      },
+    })).toThrow("Semantic Core trend validation requires 1-50 explicit candidate_keywords");
+  });
+
+  it("rejects trend validation on core product layer", () => {
+    expect(() => prepareSemanticCoreMcpArguments({
+      toolName: "run_layer",
+      args: {
+        payload: {
+          project_id: "astrogen-ukraine",
+          layer: "core_product_intent",
+          mode: "live",
+          candidate_keywords: ["як підготуватися до першої консультації"],
+          metadata: {
+            fingerprint: "trend-validation:run_demo:wave:1",
+            trendReportRunId: "run_demo",
+            validationWave: 1,
+          },
+        },
+      },
+    })).toThrow("Semantic Core trend validation must use a non-core candidate layer");
   });
 
   it("registers list tools and exact MCP wrapper tools", async () => {
@@ -89,6 +237,7 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
       [TOOL_NAMES.getKeywords, "get_keywords"],
       [TOOL_NAMES.getClusters, "get_clusters"],
       [TOOL_NAMES.getSerpSegments, "get_serp_segments"],
+      [TOOL_NAMES.generateTrendTopicReport, "generate_trend_topic_report"],
       [TOOL_NAMES.getRunCosts, "get_run_costs"],
     ] as const;
     for (const [toolName, mcpToolName] of expectedWrappers) {
@@ -102,6 +251,330 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
         expect.objectContaining({ toolName: mcpToolName }),
       );
     }
+  });
+
+  it("returns a bounded project-scoped local semantic inventory without MCP access", async () => {
+    const harness = createTestHarness({ manifest });
+    await plugin.definition.setup(harness.ctx);
+    await harness.ctx.entities.upsert({
+      entityType: "semantic-core-import-candidate",
+      scopeKind: "project",
+      scopeId: toolRunCtx.projectId,
+      externalId: "snapshot-1",
+      title: "Semantic inventory",
+      status: "validated",
+      data: {
+        companyId: toolRunCtx.companyId,
+        projectId: toolRunCtx.projectId,
+        requestMode: "live",
+        importPayload: {
+          policy_version: "semantic-core-policy.v23",
+          import_readiness: "ready_after_review",
+          artifacts: {
+            accepted_keywords: [
+              { id: "k1", status: "accepted", display_keyword: "астрологія", geo_search_volume: 500 },
+              { id: "k2", status: "accepted", display_keyword: "натальна карта", geo_search_volume: 90 },
+              { id: "k3", status: "rejected", display_keyword: "шум", geo_search_volume: 900 },
+            ],
+            clusters: [],
+          },
+        },
+      },
+    });
+
+    const result = await harness.executeTool(
+      TOOL_NAMES.getLocalInventory,
+      { limit: 1, minimumGeoSearchVolume: 20 },
+      toolRunCtx,
+    );
+    const data = result.data as {
+      totals: { acceptedKeywords: number };
+      acceptedKeywords: Array<{ keyword: string }>;
+    };
+
+    expect(data.totals.acceptedKeywords).toBe(2);
+    expect(data.acceptedKeywords).toEqual([{ id: "k1", keyword: "астрологія", normalizedKeyword: null, layer: null, geoSearchVolume: 500, globalSearchVolume: null, domainTopicMatch: null, productBindingStatus: null, evidenceSummary: null, updatedAt: null }]);
+    expect(callSemanticCoreMcpToolMock).not.toHaveBeenCalled();
+  });
+
+  it("does not return a newer fixture report when the caller requests the latest live report", async () => {
+    const harness = createTestHarness({ manifest });
+    await plugin.definition.setup(harness.ctx);
+    for (const [externalId, requestMode] of [
+      ["run_live", "live"],
+      ["run_fixture", "fixture"],
+    ] as const) {
+      await harness.ctx.entities.upsert({
+        entityType: "semantic-core-trend-topic-report",
+        scopeKind: "project",
+        scopeId: toolRunCtx.projectId,
+        externalId,
+        title: externalId,
+        status: "completed",
+        data: {
+          companyId: toolRunCtx.companyId,
+          projectId: toolRunCtx.projectId,
+          requestMode,
+          result: {
+            status: "ok",
+            schema_version: "trend_topic_report.v1",
+            run_id: externalId,
+            project_id: "astrogen-ukraine",
+            clusters: [],
+          },
+        },
+      });
+    }
+
+    const result = await harness.executeTool(
+      TOOL_NAMES.getTrendTopicReport,
+      { mode: "live" },
+      toolRunCtx,
+    );
+    expect((result.data as { runId: string; requestMode: string }).runId).toBe("run_live");
+    expect((result.data as { requestMode: string }).requestMode).toBe("live");
+  });
+
+  it("returns a bounded project-scoped trend report without another provider call", async () => {
+    const harness = createTestHarness({ manifest });
+    await plugin.definition.setup(harness.ctx);
+    await harness.ctx.entities.upsert({
+      entityType: "semantic-core-trend-topic-report",
+      scopeKind: "project",
+      scopeId: toolRunCtx.projectId,
+      externalId: "run_trend_read_1",
+      title: "Trend report",
+      status: "completed",
+      data: {
+        companyId: toolRunCtx.companyId,
+        projectId: toolRunCtx.projectId,
+        result: {
+          status: "ok",
+          schema_version: "trend_topic_report.v1",
+          run_id: "run_trend_read_1",
+          project_id: "astrogen-ukraine",
+          clusters: [
+            {
+              id: "cluster-1",
+              title: "Career decisions",
+              recommendation: "prepare",
+              search_language: {
+                primary_intent: "informational",
+                alternative_terms: ["кар'єра і астрологія"],
+              },
+              topic_ideas: [
+                { title: "Idea 1", angle: "Angle 1", segment_ids: ["life_decisions"] },
+                { title: "Idea 2", angle: "Angle 2", segment_ids: [] },
+              ],
+              evidence: [
+                { source_id: "S1", title: "Source 1", url: "https://example.test/1" },
+                { source_id: "S2", title: "Source 2", url: "https://example.test/2" },
+              ],
+            },
+          ],
+          watchlist: [{}],
+          rejected_signals: [{}, {}],
+          warnings: [],
+        },
+      },
+    });
+
+    const result = await harness.executeTool(
+      TOOL_NAMES.getTrendTopicReport,
+      {
+        runId: "run_trend_read_1",
+        maxClusters: 1,
+        maxIdeasPerCluster: 1,
+        maxEvidencePerCluster: 1,
+      },
+      toolRunCtx,
+    );
+    const data = result.data as {
+      runId: string;
+      counts: { totalClusters: number; returnedClusters: number };
+      clusters: Array<{
+        topicIdeas: unknown[];
+        evidence: unknown[];
+        searchLanguage: { primaryIntent: string };
+      }>;
+    };
+
+    expect(data.runId).toBe("run_trend_read_1");
+    expect(data.counts).toMatchObject({ totalClusters: 1, returnedClusters: 1 });
+    expect(data.clusters[0]?.topicIdeas).toHaveLength(1);
+    expect(data.clusters[0]?.evidence).toHaveLength(1);
+    expect(data.clusters[0]?.searchLanguage.primaryIntent).toBe("informational");
+    expect(callSemanticCoreMcpToolMock).not.toHaveBeenCalled();
+  });
+
+  it("stores trend reports separately and records only numeric provider cost", async () => {
+    const harness = createTestHarness({
+      manifest,
+      config: {
+        semanticCoreMcpUrl: "https://semantic.example.test/mcp",
+        semanticCoreMcpTokenSecretRef: "secret-semantic",
+        allowedProjectIdsCsv: "astrogen-ukraine,astrogen-audience-trends-ukraine",
+      },
+    });
+    await plugin.definition.setup(harness.ctx);
+    const report = {
+      status: "ok",
+      schema_version: "trend_topic_report.v1",
+      run_id: "run_trend_1",
+      project_id: "astrogen-audience-trends-ukraine",
+      clusters: [],
+      watchlist: [],
+      rejected_signals: [],
+      warnings: [],
+      research_summary: { queries_used: 1, sources_reviewed: 2, sources_used: 1 },
+      cache_summary: { scope: "private_project", hits: 0, misses: 1 },
+      report_markdown: "# Trend Topic Report",
+      cost: {
+        events: [
+          {
+            provider: "openai-compatible",
+            endpoint: "chat/completions",
+            currency: "USD",
+            estimated_cost: 0.0123,
+            metadata: {
+              model: "trend-model",
+              usage: { input_tokens: 100, output_tokens: 40, total_tokens: 140 },
+            },
+          },
+          {
+            provider: "dataforseo",
+            endpoint: "search",
+            currency: "USD",
+            estimated_cost: null,
+          },
+        ],
+      },
+    };
+    callSemanticCoreMcpToolMock.mockResolvedValue({
+      content: JSON.stringify(report),
+      data: { structuredContent: report, content: [] },
+      isError: false,
+    });
+
+    const params = {
+      project_id: "astrogen-audience-trends-ukraine",
+      project: {
+        name: "Astrogen",
+        description: "Ukrainian audience research project for self-reflection and life-navigation readers",
+        market: "Ukraine",
+        geographies: ["Ukraine"],
+        output_language: "uk",
+      },
+      audience_segments: [{ id: "audience", name: "Audience", description: "Readers" }],
+      analysis_date: "2026-07-18",
+      mode: "fixture",
+    };
+    const result = await harness.executeTool(TOOL_NAMES.generateTrendTopicReport, params, toolRunCtx);
+    await harness.executeTool(TOOL_NAMES.generateTrendTopicReport, params, toolRunCtx);
+
+    expect(callSemanticCoreMcpToolMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({ toolName: "generate_trend_topic_report" }),
+    );
+    expect(result.data).toMatchObject({
+      status: "ok",
+      paperclip_persistence: {
+        semantic_import_allowed: false,
+        direct_topic_creation_allowed: false,
+        telemetryEventCount: 2,
+        ledgerEventCount: 1,
+      },
+    });
+    const trendEntities = await harness.ctx.entities.list({
+      entityType: "semantic-core-trend-topic-report",
+      scopeKind: "project",
+      scopeId: toolRunCtx.projectId,
+      limit: 10,
+      offset: 0,
+    });
+    const importEntities = await harness.ctx.entities.list({
+      entityType: "semantic-core-import-candidate",
+      scopeKind: "project",
+      scopeId: toolRunCtx.projectId,
+      limit: 10,
+      offset: 0,
+    });
+    expect(trendEntities).toHaveLength(1);
+    expect(trendEntities[0]?.data).toMatchObject({
+      semanticImportAllowed: false,
+      directTopicCreationAllowed: false,
+    });
+    expect(importEntities).toHaveLength(0);
+    expect(harness.costs).toHaveLength(1);
+    expect(harness.costs[0]).toMatchObject({
+      billingCode: "semantic-core-trend-topic",
+      inputTokens: 100,
+      outputTokens: 40,
+      costCents: 1,
+      amountMicros: 12300,
+    });
+  });
+
+  it("rejects Astrogen product-seeded trend requests before provider execution", async () => {
+    const harness = createTestHarness({
+      manifest,
+      config: {
+        semanticCoreMcpUrl: "https://semantic.example.test/mcp",
+        semanticCoreMcpTokenSecretRef: "secret-semantic",
+        allowedProjectIdsCsv: "astrogen-ukraine,astrogen-audience-trends-ukraine",
+      },
+    });
+    await plugin.definition.setup(harness.ctx);
+
+    await expect(harness.executeTool(TOOL_NAMES.generateTrendTopicReport, {
+      project_id: "astrogen-ukraine",
+      project: {
+        name: "Astrogen",
+        description: "Audience research",
+        market: "Ukraine",
+        geographies: ["Ukraine"],
+        output_language: "uk",
+      },
+      audience_segments: [{ id: "audience", name: "Audience", description: "Readers" }],
+      analysis_date: "2026-07-18",
+      mode: "live",
+    }, toolRunCtx)).rejects.toThrow("ASTROGEN_TREND_PROJECT_REQUIRED");
+
+    await expect(harness.executeTool(TOOL_NAMES.generateTrendTopicReport, {
+      project_id: "astrogen-audience-trends-ukraine",
+      project: {
+        name: "Astrogen",
+        description: "Audience research",
+        market: "Ukraine",
+        geographies: ["Ukraine"],
+        output_language: "uk",
+      },
+      audience_segments: [{ id: "audience", name: "Audience", description: "Readers" }],
+      analysis_date: "2026-07-18",
+      mode: "live",
+      products: [{ id: "tarology", name: "Тарологія" }],
+    }, toolRunCtx)).rejects.toThrow("ASTROGEN_AUDIENCE_TREND_PRODUCTS_FORBIDDEN");
+
+    await expect(harness.executeTool(TOOL_NAMES.generateTrendTopicReport, {
+      project_id: "astrogen-audience-trends-ukraine",
+      project: {
+        name: "Astrogen",
+        description: "Audience research",
+        market: "Ukraine",
+        geographies: ["Ukraine"],
+        output_language: "uk",
+      },
+      audience_segments: [
+        {
+          id: "relationships",
+          name: "Relationships",
+          description: "Readers comparing tarot options",
+        },
+      ],
+      analysis_date: "2026-07-18",
+      mode: "live",
+    }, toolRunCtx)).rejects.toThrow("ASTROGEN_AUDIENCE_TREND_PRODUCT_SEED_FORBIDDEN");
+
+    expect(callSemanticCoreMcpToolMock).not.toHaveBeenCalled();
   });
 
   it("allows only configured semantic layers", () => {
@@ -134,7 +607,24 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
     ).toThrow(/layer must be one of/);
   });
 
-  it("defaults live run_layer calls to DataForSEO provider cache read_write mode", () => {
+  it("defaults run_layer to mock and provider calls to cache read_only", () => {
+    expect(
+      prepareSemanticCoreMcpArguments({
+        toolName: "run_layer",
+        args: {
+          project_id: "astrogen-ukraine",
+          layer: "audience_need_intent",
+        },
+      }),
+    ).toEqual({
+      payload: {
+        project_id: "astrogen-ukraine",
+        layer: "audience_need_intent",
+        mode: "mock",
+      },
+      async_job: true,
+    });
+
     expect(
       prepareSemanticCoreMcpArguments({
         toolName: "run_layer",
@@ -149,7 +639,7 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
         project_id: "astrogen-ukraine",
         layer: "audience_need_intent",
         mode: "live",
-        provider_cache_mode: "read_write",
+        provider_cache_mode: "read_only",
       },
       async_job: true,
     });
@@ -171,6 +661,143 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
     });
   });
 
+  it("authorizes project-scoped candidate runs and strips auth-only project_id from job polling", () => {
+    const allowedProjectIds = new Set(["astrogen-ukraine"]);
+    expect(
+      prepareSemanticCoreMcpArguments({
+        toolName: "run_layer",
+        args: {
+          project_id: "astrogen-ukraine",
+          layer: "audience_need_intent",
+          mode: "live",
+          candidate_keywords: ["first phrase", "second phrase"],
+        },
+        allowedProjectIds,
+      }),
+    ).toMatchObject({
+      payload: {
+        project_id: "astrogen-ukraine",
+        candidate_keywords: ["first phrase", "second phrase"],
+      },
+    });
+
+    expect(
+      prepareSemanticCoreMcpArguments({
+        toolName: "get_job_status",
+        args: { project_id: "astrogen-ukraine", job_id: "job_123" },
+        allowedProjectIds,
+      }),
+    ).toEqual({ job_id: "job_123" });
+
+    expect(() =>
+      prepareSemanticCoreMcpArguments({
+        toolName: "get_job_status",
+        args: { job_id: "job_123" },
+        allowedProjectIds,
+      }),
+    ).toThrow(/project_id is required/);
+  });
+
+  it("injects one company-scoped default project and rejects guessed aliases", () => {
+    const allowedProjectIds = new Set(["astrogen-ukraine"]);
+    expect(
+      prepareSemanticCoreMcpArguments({
+        toolName: "get_review_queue",
+        args: { run_id: "run_1", page: 1, page_size: 10 },
+        defaultProjectId: "astrogen-ukraine",
+        allowedProjectIds,
+      }),
+    ).toEqual({
+      project_id: "astrogen-ukraine",
+      run_id: "run_1",
+      page: 1,
+      page_size: 10,
+    });
+
+    expect(
+      prepareSemanticCoreMcpArguments({
+        toolName: "get_keywords",
+        args: { filters: { run_id: "run_1" } },
+        defaultProjectId: "astrogen-ukraine",
+        allowedProjectIds,
+      }),
+    ).toEqual({
+      filters: { project_id: "astrogen-ukraine", run_id: "run_1" },
+    });
+
+    expect(
+      prepareSemanticCoreMcpArguments({
+        toolName: "generate_trend_topic_report",
+        args: {
+          payload: {
+            project_id: "astrogen-audience-trends-ukraine",
+            mode: "live",
+          },
+        },
+        defaultProjectId: "astrogen-ukraine",
+        allowedProjectIds: new Set([
+          "astrogen-ukraine",
+          "astrogen-audience-trends-ukraine",
+        ]),
+      }),
+    ).toEqual({
+      payload: {
+        project_id: "astrogen-audience-trends-ukraine",
+        mode: "live",
+      },
+    });
+
+    expect(
+      prepareSemanticCoreMcpArguments({
+        toolName: "generate_trend_topic_report",
+        args: {
+          project_id: "astrogen-audience-trends-ukraine",
+          project: {
+            name: "Astrogen",
+            description: "Audience research",
+            market: "Ukraine",
+            geographies: ["Ukraine"],
+            output_language: "uk",
+          },
+          audience_segments: [{ id: "audience", name: "Audience", description: "Readers" }],
+          analysis_date: "2026-07-20",
+          mode: "live",
+          payload: {
+            project_id: "astrogen-ukraine",
+          },
+        },
+        defaultProjectId: "astrogen-ukraine",
+        allowedProjectIds: new Set([
+          "astrogen-ukraine",
+          "astrogen-audience-trends-ukraine",
+        ]),
+      }),
+    ).toEqual({
+      payload: {
+        project_id: "astrogen-audience-trends-ukraine",
+        project: {
+          name: "Astrogen",
+          description: "Audience research",
+          market: "Ukraine",
+          geographies: ["Ukraine"],
+          output_language: "uk",
+        },
+        audience_segments: [{ id: "audience", name: "Audience", description: "Readers" }],
+        analysis_date: "2026-07-20",
+        mode: "live",
+      },
+    });
+
+    expect(() =>
+      prepareSemanticCoreMcpArguments({
+        toolName: "list_runs",
+        args: { project_id: "astrogen.com.ua" },
+        defaultProjectId: "astrogen-ukraine",
+        allowedProjectIds,
+      }),
+    ).toThrow(/must match the company-scoped default/);
+  });
+
   it("can fall back from legacy payload-wrapped run_layer args to direct MCP args", () => {
     const prepared = prepareSemanticCoreMcpArguments({
       toolName: "run_layer",
@@ -188,7 +815,7 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
         project_id: "diskinternals-us",
         layer: "core_product_intent",
         mode: "live",
-        provider_cache_mode: "read_write",
+        provider_cache_mode: "read_only",
       },
       async_job: true,
     });
@@ -201,7 +828,7 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
       project_id: "diskinternals-us",
       layer: "core_product_intent",
       mode: "live",
-      provider_cache_mode: "read_write",
+      provider_cache_mode: "read_only",
       async_job: true,
     });
   });
@@ -284,7 +911,6 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
         project_id: "diskinternals-us",
         inputs: {
           project_config: expect.objectContaining({
-            client_key: "diskinternals-us",
             site_id: "diskinternals-us",
             domain: "example.com",
             locale_matrix: expect.any(Array),
@@ -331,7 +957,6 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
         project_id: "paperclip-smoke",
         inputs: {
           project_config: expect.objectContaining({
-            site_domain: "example.com",
             site_id: "paperclip-smoke",
             domain: "example.com",
             locale_matrix: expect.any(Array),
@@ -345,6 +970,34 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
         },
       },
     });
+  });
+
+  it("strips project config fields rejected by the current MCP schema", () => {
+    const prepared = prepareSemanticCoreMcpArguments({
+      toolName: "register_project",
+      args: {
+        project_id: "astrogen-ukraine",
+        project_config: {
+          client_key: "astrogen-ukraine",
+          country: "UA",
+          language: "uk",
+          site_domain: "astrogen.com.ua",
+        },
+      },
+      allowedProjectIds: new Set(["astrogen-ukraine"]),
+      allowedClientKeys: new Set(["astrogen-ukraine"]),
+    });
+
+    const projectConfig = (
+      prepared.payload as { inputs: { project_config: Record<string, unknown> } }
+    ).inputs.project_config;
+    expect(projectConfig).toMatchObject({
+      site_id: "astrogen-ukraine",
+      domain: "astrogen.com.ua",
+    });
+    for (const field of ["client_key", "country", "language", "site_domain"]) {
+      expect(projectConfig).not.toHaveProperty(field);
+    }
   });
 
   it("nests flat register_project inputs and normalizes array seed catalogs", () => {
@@ -363,7 +1016,6 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
         project_id: "paperclip-smoke",
         inputs: {
           project_config: expect.objectContaining({
-            site_domain: "example.com",
             site_id: "paperclip-smoke",
             domain: "example.com",
             locale_matrix: expect.any(Array),
@@ -1363,11 +2015,13 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
         status: "completed",
         job_id: "job_1",
         run_id: "run_1",
+        candidate_keyword_count: 2,
       }),
       data: {
         status: "completed",
         job_id: "job_1",
         run_id: "run_1",
+        candidate_keyword_count: 2,
       },
     });
 
@@ -1382,6 +2036,7 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
     );
 
     expect(result.content).toContain("job_1");
+    expect(result.content).toContain("candidate_keyword_count");
   });
 
   it("runs smoke test through dedicated smoke helper", async () => {

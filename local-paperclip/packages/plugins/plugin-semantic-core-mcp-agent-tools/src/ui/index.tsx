@@ -122,7 +122,7 @@ export function SemanticCoreMcpSettingsPage({ context }: PluginSettingsPageProps
   const [mcpUrl, setMcpUrl] = useState(DEFAULT_SEMANTIC_CORE_MCP_URL);
   const [allowedProjectIdsCsv, setAllowedProjectIdsCsv] = useState("");
   const [allowedClientKeysCsv, setAllowedClientKeysCsv] = useState("");
-  const [requestTimeoutMs, setRequestTimeoutMs] = useState("180000");
+  const [requestTimeoutMs, setRequestTimeoutMs] = useState("300000");
   const [pollIntervalMs, setPollIntervalMs] = useState("2000");
   const [runWaitTimeoutMs, setRunWaitTimeoutMs] = useState("600000");
   const [replaceToken, setReplaceToken] = useState(false);
@@ -164,7 +164,7 @@ export function SemanticCoreMcpSettingsPage({ context }: PluginSettingsPageProps
         setRequestTimeoutMs(
           typeof nextConfig.requestTimeoutMs === "number"
             ? String(nextConfig.requestTimeoutMs)
-            : "180000",
+            : "300000",
         );
         setPollIntervalMs(
           typeof nextConfig.pollIntervalMs === "number"
@@ -238,7 +238,7 @@ export function SemanticCoreMcpSettingsPage({ context }: PluginSettingsPageProps
         semanticCoreMcpUrl: mcpUrl.trim(),
         allowedProjectIdsCsv: allowedProjectIdsCsv.trim(),
         allowedClientKeysCsv: allowedClientKeysCsv.trim(),
-        requestTimeoutMs: readPositiveNumber(requestTimeoutMs, 180_000),
+        requestTimeoutMs: readPositiveNumber(requestTimeoutMs, 300_000),
         pollIntervalMs: readPositiveNumber(pollIntervalMs, 2_000),
         runWaitTimeoutMs: readPositiveNumber(runWaitTimeoutMs, 600_000),
       };

@@ -1,0 +1,15 @@
+# syntax=docker/dockerfile:1.20
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+
+USER root
+COPY --chown=node:node semantic-core/package.json /app/packages/plugins/plugin-semantic-core-mcp-agent-tools/package.json
+COPY --chown=node:node semantic-core/dist/ /app/packages/plugins/plugin-semantic-core-mcp-agent-tools/dist/
+RUN test -f /app/packages/plugins/plugin-semantic-core-mcp-agent-tools/dist/worker.js \
+  && grep -q 'SEMANTIC_CORE_PROVIDER_EXECUTION_DISABLED' /app/packages/plugins/plugin-semantic-core-mcp-agent-tools/dist/execution-policy.js \
+  && grep -q 'SEMANTIC_CORE_TREND_LIVE_DISABLED' /app/packages/plugins/plugin-semantic-core-mcp-agent-tools/dist/execution-policy.js \
+  && grep -q 'approved_candidate_batch' /app/packages/plugins/plugin-semantic-core-mcp-agent-tools/dist/execution-policy.js \
+  && node -e "const p=require('/app/packages/plugins/plugin-semantic-core-mcp-agent-tools/package.json'); if(p.version!=='0.3.14') process.exit(1)"
+
+# Defense in depth for Semantic Core and Trend MCP costs. Provider-backed calls
+# remain disabled until an operator explicitly enables a bounded policy.

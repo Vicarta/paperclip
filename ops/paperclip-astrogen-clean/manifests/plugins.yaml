@@ -50,21 +50,47 @@ plugins:
     - key: paperclip.winning-structure-mcp-agent-tools
       packagePath: /app/packages/plugins/plugin-winning-structure-mcp-agent-tools
       owner: MKT Competitive Intelligence Analyst
-      verification: private MCP tools/list includes all five Phase 47 operations and validation smoke passes
+      verification: private MCP tools/list includes all five lifecycle operations; Phase 32/33 validation preserves gist_enabled and versioned project cost policy
       safety:
         endpointExposure: private Tailscale only
         clientKey: astrogen-ukraine
         tokenStorage: company-scoped Paperclip secret
         costAccountingMode: provider_reported
+        costLedgerEligibility: estimation_status=estimated and telemetry_status=complete only
+        partialCostHandling: persist lower bound in evidence, never ledger as total
+        gistDefaultEnabled: true
+        evidenceRoutingPolicy: /companies/astrogen/reference/winning-structure-policy.yaml
         publicationOutput: forbidden
+    - key: paperclip.semantic-core-mcp-agent-tools
+      packagePath: /app/packages/plugins/plugin-semantic-core-mcp-agent-tools
+      owner: SEO Blog Content Strategist
+      verification: authenticated list-tools, fixture trend report, local inventory and bounded SERP tool smoke
+      safety:
+        localInventoryReadOnly: true
+        maxRowsPerCall: 50
+        rawImportPayloadExposure: forbidden
+        endpointExposure: private Tailscale only
+        semanticValidationProjectId: astrogen-ukraine
+        trendProjectId: astrogen-audience-trends-ukraine
+        trendProductSeeds: forbidden
+        tokenStorage: company-scoped Paperclip secret
+        trendReportEntity: semantic-core-trend-topic-report
+        trendSemanticImport: forbidden
+        trendDirectTopicCreation: forbidden
+        providerExecutionPolicy: disabled by default; read_only or operator-approved exact candidate batch only
+        trendLiveExecution: disabled by default and independent of the remote server lock
+        paidCandidateBatchLimit: 10
+        providerQueue: standard
+        searchIntentEnrichment: forbidden in autonomous runs
+        contentParsingEnrichment: separate bounded evidence request only
+        providerCacheRefreshOrBypass: forbidden in autonomous runs
+        trendCostAccounting: prefer numeric USD actual_cost; estimated_cost only when provider actual is unavailable
+        trendExecutionTimeoutMs: 360000
 
   parked:
     - key: paperclip.collaborator-agent-tools
       packagePath: /app/packages/plugins/plugin-collaborator-agent-tools
       reason: backlink/provider workflow can create external obligations
-    - key: paperclip.semantic-core-mcp-agent-tools
-      packagePath: /app/packages/plugins/plugin-semantic-core-mcp-agent-tools
-      reason: old live row currently fails worker load; require packaging fix
     - key: paperclip.dataforseo-agent-tools
       packagePath: /app/packages/plugins/plugin-dataforseo-agent-tools
       reason: old live row currently fails worker load; require packaging fix

@@ -10,10 +10,15 @@ import {
   type SemanticCoreMcpToolName,
   type SemanticLayer,
 } from "./constants.js";
+import {
+  enforceSemanticCoreExecutionPolicy,
+  type SemanticCoreExecutionPolicyConfig,
+} from "./execution-policy.js";
 
-export type SemanticCoreMcpPluginConfig = {
+export type SemanticCoreMcpPluginConfig = SemanticCoreExecutionPolicyConfig & {
   semanticCoreMcpTokenSecretRef?: string;
   semanticCoreMcpUrl?: string;
+  defaultProjectId?: string;
   allowedProjectIdsCsv?: string;
   allowedClientKeysCsv?: string;
   requestTimeoutMs?: number;
@@ -100,9 +105,10 @@ function parseCsv(value: unknown) {
 export function normalizeConfig(config: SemanticCoreMcpPluginConfig) {
   return {
     mcpUrl: readNonEmptyString(config.semanticCoreMcpUrl) ?? DEFAULT_SEMANTIC_CORE_MCP_URL,
+    defaultProjectId: readNonEmptyString(config.defaultProjectId),
     allowedProjectIds: parseCsv(config.allowedProjectIdsCsv),
     allowedClientKeys: parseCsv(config.allowedClientKeysCsv),
-    requestTimeoutMs: readPositiveNumber(config.requestTimeoutMs) ?? 180_000,
+    requestTimeoutMs: readPositiveNumber(config.requestTimeoutMs) ?? 300_000,
     pollIntervalMs: readPositiveNumber(config.pollIntervalMs) ?? 2_000,
     runWaitTimeoutMs: readPositiveNumber(config.runWaitTimeoutMs) ?? 600_000,
   };
@@ -124,6 +130,32 @@ function normalizeArguments(args: unknown): Record<string, unknown> {
     throw new Error("Semantic Core MCP tool arguments must be an object");
   }
   return { ...args };
+}
+
+function bindDefaultProjectId(
+  args: Record<string, unknown>,
+  defaultProjectId: string | null,
+  allowedProjectIds: ReadonlySet<string>,
+) {
+  if (!defaultProjectId) return args;
+  const payload = isRecord(args.payload) ? args.payload : null;
+  const filters = isRecord(args.filters) ? args.filters : null;
+  const providedProjectId = readNonEmptyString(args.project_id)
+    ?? readNonEmptyString(payload?.project_id)
+    ?? readNonEmptyString(filters?.project_id);
+  if (
+    providedProjectId
+    && providedProjectId !== defaultProjectId
+    && !allowedProjectIds.has(providedProjectId)
+  ) {
+    throw new Error(
+      `Semantic Core MCP project_id must match the company-scoped default: ${defaultProjectId}`,
+    );
+  }
+  if (providedProjectId) return args;
+  if (payload) return { ...args, payload: { ...payload, project_id: defaultProjectId } };
+  if (filters) return { ...args, filters: { ...filters, project_id: defaultProjectId } };
+  return { ...args, project_id: defaultProjectId };
 }
 
 function normalizeLayer(layer: unknown): SemanticLayer {
@@ -164,8 +196,10 @@ function assertAllowlists(input: {
   allowedClientKeys: ReadonlySet<string>;
 }) {
   const payload = isRecord(input.args.payload) ? input.args.payload : null;
+  const filters = isRecord(input.args.filters) ? input.args.filters : null;
   const projectId = readNonEmptyString(input.args.project_id)
-    ?? readNonEmptyString(payload?.project_id);
+    ?? readNonEmptyString(payload?.project_id)
+    ?? readNonEmptyString(filters?.project_id);
   if (input.allowedProjectIds.size > 0) {
     if (!projectId) {
       throw new Error("Semantic Core MCP project_id is required by plugin allowlist");
@@ -189,11 +223,16 @@ function assertAllowlists(input: {
 function toolRequiresPayload(toolName: SemanticCoreMcpToolName) {
   return toolName === "register_project"
     || toolName === "run_layer"
+    || toolName === "generate_trend_topic_report"
     || toolName === "submit_review_decisions";
 }
 
 function toolRequiresFilters(toolName: SemanticCoreMcpToolName) {
   return toolName === "get_keywords";
+}
+
+function toolUsesProjectScope(toolName: SemanticCoreMcpToolName) {
+  return toolName !== "get_paperclip_import_schema";
 }
 
 function normalizeFilterArguments(args: Record<string, unknown>) {
@@ -228,7 +267,10 @@ export function prepareSemanticCoreMcpFallbackArguments(input: {
 const LEGACY_PROJECT_CONFIG_KEYS = new Set([
   "brand",
   "business_rules",
+  "client_key",
+  "country",
   "geo_targets",
+  "language",
   "language_code",
   "language_name",
   "language_targets",
@@ -238,6 +280,7 @@ const LEGACY_PROJECT_CONFIG_KEYS = new Set([
   "product_scope",
   "route_scope",
   "site_mode",
+  "site_domain",
   "target_domain",
 ]);
 
@@ -547,14 +590,72 @@ function seedProductId(value: string, index: number) {
   return slug || `seed-${index + 1}`;
 }
 
+function readStringArray(value: unknown) {
+  if (!Array.isArray(value)) return null;
+  const items = value
+    .map((entry) => typeof entry === "string" ? entry.trim() : "")
+    .filter(Boolean);
+  return items.length > 0 ? [...new Set(items)] : null;
+}
+
+function isTrendValidationPayload(payload: Record<string, unknown>) {
+  const metadata = isRecord(payload.metadata) ? payload.metadata : {};
+  const fingerprint = readNonEmptyString(metadata.fingerprint)
+    ?? readNonEmptyString(payload.fingerprint);
+  return Boolean(
+    readNonEmptyString(metadata.trendReportRunId)
+    ?? readNonEmptyString(payload.trendReportRunId)
+    ?? (typeof metadata.validationWave === "number" ? String(metadata.validationWave) : null)
+    ?? (typeof payload.validationWave === "number" ? String(payload.validationWave) : null)
+    ?? (fingerprint?.startsWith("trend-validation:") ? fingerprint : null),
+  );
+}
+
+function normalizeRunLayerPayload(payload: Record<string, unknown>) {
+  const trendValidation = isTrendValidationPayload(payload);
+  const layer = normalizeLayer(payload.layer);
+  const candidateKeywords = readStringArray(payload.candidate_keywords);
+  const keywordAlias = readStringArray(payload.keywords);
+  let normalizedPayload = { ...payload };
+
+  if (!candidateKeywords && keywordAlias && trendValidation) {
+    normalizedPayload = { ...normalizedPayload, candidate_keywords: keywordAlias };
+    delete normalizedPayload.keywords;
+  }
+
+  const normalizedCandidateKeywords = readStringArray(normalizedPayload.candidate_keywords);
+  if (trendValidation) {
+    if (layer === "core_product_intent") {
+      throw new Error("Semantic Core trend validation must use a non-core candidate layer");
+    }
+    if (!normalizedCandidateKeywords) {
+      throw new Error("Semantic Core trend validation requires 1-50 explicit candidate_keywords");
+    }
+    if (normalizedCandidateKeywords.length > 50) {
+      throw new Error("Semantic Core trend validation candidate_keywords is limited to 50 items");
+    }
+    normalizedPayload = { ...normalizedPayload, candidate_keywords: normalizedCandidateKeywords };
+  }
+
+  return { payload: normalizedPayload, layer };
+}
+
 export function prepareSemanticCoreMcpArguments(input: {
   toolName: string;
   args?: unknown;
+  defaultProjectId?: string | null;
   allowedProjectIds?: ReadonlySet<string>;
   allowedClientKeys?: ReadonlySet<string>;
 }) {
   assertAllowedTool(input.toolName);
-  const args = normalizeArguments(input.args);
+  const normalizedArgs = normalizeArguments(input.args);
+  const args = toolUsesProjectScope(input.toolName)
+    ? bindDefaultProjectId(
+      normalizedArgs,
+      readNonEmptyString(input.defaultProjectId),
+      input.allowedProjectIds ?? new Set<string>(),
+    )
+    : normalizedArgs;
   const payload = isRecord(args.payload) ? { ...args.payload } : { ...args };
   if (input.toolName === "run_layer") {
     for (const key of TOP_LEVEL_PROJECT_CONFIG_KEYS) {
@@ -564,25 +665,62 @@ export function prepareSemanticCoreMcpArguments(input: {
         );
       }
     }
-    const layer = normalizeLayer(payload.layer);
+    const { payload: runPayload, layer } = normalizeRunLayerPayload(payload);
+    const mode = readNonEmptyString(payload.mode) ?? "mock";
     const asyncJob = typeof args.async_job === "boolean" ? args.async_job : true;
     const providerCacheMode = readNonEmptyString(payload.provider_cache_mode)
-      ?? (payload.mode === "live" ? "read_write" : null);
-    return {
+      ?? (mode === "provider" || mode === "live" ? "read_only" : null);
+    const mcpArgs = {
       payload: {
-        ...payload,
+        ...runPayload,
         layer,
+        mode,
         ...(providerCacheMode ? { provider_cache_mode: providerCacheMode } : {}),
       },
       async_job: asyncJob,
     };
+    assertAllowlists({
+      args: mcpArgs,
+      allowedProjectIds: input.allowedProjectIds ?? new Set<string>(),
+      allowedClientKeys: input.allowedClientKeys ?? new Set<string>(),
+    });
+    return mcpArgs;
+  }
+
+  if (input.toolName === "get_job_status") {
+    assertAllowlists({
+      args,
+      allowedProjectIds: input.allowedProjectIds ?? new Set<string>(),
+      allowedClientKeys: input.allowedClientKeys ?? new Set<string>(),
+    });
+    const jobId = readNonEmptyString(args.job_id);
+    if (!jobId) throw new Error("Semantic Core MCP job_id is required");
+    return { job_id: jobId };
   }
 
   if (input.toolName === "register_project") {
+    // Enforce Paperclip's legacy client allowlist before removing fields that
+    // the current Semantic Core project schema no longer accepts.
+    assertAllowlists({
+      args,
+      allowedProjectIds: input.allowedProjectIds ?? new Set<string>(),
+      allowedClientKeys: input.allowedClientKeys ?? new Set<string>(),
+    });
     const registerPayload = normalizeRegisterProjectPayload(payload);
     const mcpArgs = isRecord(args.payload)
       ? { ...args, payload: registerPayload }
       : { payload: registerPayload };
+    return mcpArgs;
+  }
+
+  if (input.toolName === "generate_trend_topic_report") {
+    const mergedPayload = isRecord(args.payload)
+      ? Object.fromEntries(
+        Object.entries({ ...args.payload, ...args })
+          .filter(([key]) => key !== "payload"),
+      )
+      : payload;
+    const mcpArgs = { payload: mergedPayload };
     assertAllowlists({
       args: mcpArgs,
       allowedProjectIds: input.allowedProjectIds ?? new Set<string>(),
@@ -1091,6 +1229,11 @@ export async function callSemanticCoreMcpTool(input: {
 }) {
   assertAllowedTool(input.toolName);
   const toolName = input.toolName;
+  const guardedArgs = enforceSemanticCoreExecutionPolicy({
+    toolName,
+    args: input.args,
+    config: input.config,
+  });
   return await withClient({
     config: input.config,
     resolveSecret: input.resolveSecret,
@@ -1098,17 +1241,19 @@ export async function callSemanticCoreMcpTool(input: {
     async run(client, normalized) {
       const args = prepareSemanticCoreMcpArguments({
         toolName: input.toolName,
-        args: input.args,
+        args: guardedArgs,
+        defaultProjectId: normalized.defaultProjectId,
         allowedProjectIds: normalized.allowedProjectIds,
         allowedClientKeys: normalized.allowedClientKeys,
       }) as Record<string, unknown>;
 
       let result: unknown;
+      const requestOptions = semanticCoreMcpRequestOptions(normalized.requestTimeoutMs);
       try {
         result = await client.callTool({
           name: toolName,
           arguments: args,
-        });
+        }, undefined, requestOptions);
       } catch (err) {
         const fallbackArgs = prepareSemanticCoreMcpFallbackArguments({
           toolName,
@@ -1118,15 +1263,38 @@ export async function callSemanticCoreMcpTool(input: {
         result = await client.callTool({
           name: toolName,
           arguments: fallbackArgs,
-        });
+        }, undefined, requestOptions);
       }
       return normalizeSemanticCoreToolResult(result as McpCallToolResult);
     },
   });
 }
 
+export function semanticCoreMcpRequestOptions(requestTimeoutMs: number) {
+  return {
+    timeout: requestTimeoutMs,
+    maxTotalTimeout: requestTimeoutMs,
+  };
+}
+
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+export function createPerExecutionSecretResolver(
+  resolveSecret: (secretRef: string) => Promise<string>,
+) {
+  const pendingByRef = new Map<string, Promise<string>>();
+  return async (secretRef: string) => {
+    const existing = pendingByRef.get(secretRef);
+    if (existing) return existing;
+    const pending = resolveSecret(secretRef).catch((error) => {
+      pendingByRef.delete(secretRef);
+      throw error;
+    });
+    pendingByRef.set(secretRef, pending);
+    return pending;
+  };
 }
 
 function readResultString(record: Record<string, unknown>, keys: string[]) {
@@ -1144,6 +1312,13 @@ export async function runLayerAndWait(input: {
   fetchFn?: FetchLike;
 }) {
   const normalized = normalizeConfig(input.config);
+  const normalizedArgs = normalizeArguments(input.args);
+  const inputPayload = isRecord(normalizedArgs.payload) ? normalizedArgs.payload : normalizedArgs;
+  const projectId = readNonEmptyString(inputPayload.project_id);
+  if (!projectId) {
+    throw new Error("Semantic Core MCP project_id is required for run-layer-and-wait");
+  }
+  const resolveSecret = createPerExecutionSecretResolver(input.resolveSecret);
   const started = await callSemanticCoreMcpTool({
     toolName: "run_layer",
     args: {
@@ -1151,7 +1326,7 @@ export async function runLayerAndWait(input: {
       async_job: true,
     },
     config: input.config,
-    resolveSecret: input.resolveSecret,
+    resolveSecret,
     fetchFn: input.fetchFn,
   });
   const startedObject = extractResultObject(started);
@@ -1165,20 +1340,42 @@ export async function runLayerAndWait(input: {
   while (Date.now() <= deadline) {
     const statusResult = await callSemanticCoreMcpTool({
       toolName: "get_job_status",
-      args: { job_id: jobId },
+      args: { job_id: jobId, project_id: projectId },
       config: input.config,
-      resolveSecret: input.resolveSecret,
+      resolveSecret,
       fetchFn: input.fetchFn,
     });
     lastStatus = extractResultObject(statusResult);
     const status = readResultString(lastStatus, ["status"]);
     if (status === "completed") {
+      const completedResult = isRecord(lastStatus.result) ? lastStatus.result : null;
+      const runId = readResultString(lastStatus, ["run_id", "runId"]);
+      if (!runId) {
+        throw new Error("SEMANTIC_CORE_RUN_ID_REQUIRED: completed job did not return run_id");
+      }
+      const costResult = await callSemanticCoreMcpTool({
+        toolName: "get_run_costs",
+        args: { run_id: runId, project_id: projectId },
+        config: input.config,
+        resolveSecret,
+        fetchFn: input.fetchFn,
+      });
+      const cost = extractResultObject(costResult);
+      const candidateKeywordCount = typeof lastStatus.candidate_keyword_count === "number"
+        ? lastStatus.candidate_keyword_count
+        : typeof completedResult?.candidate_keyword_count === "number"
+          ? completedResult.candidate_keyword_count
+          : null;
       return {
         content: JSON.stringify(
           {
             job_id: jobId,
             status,
-            run_id: readResultString(lastStatus, ["run_id", "runId"]),
+            run_id: runId,
+            ...(candidateKeywordCount === null
+              ? {}
+              : { candidate_keyword_count: candidateKeywordCount }),
+            cost,
             started: startedObject,
             final_status: lastStatus,
           },
@@ -1188,7 +1385,11 @@ export async function runLayerAndWait(input: {
         data: {
           job_id: jobId,
           status,
-          run_id: readResultString(lastStatus, ["run_id", "runId"]),
+          run_id: runId,
+          ...(candidateKeywordCount === null
+            ? {}
+            : { candidate_keyword_count: candidateKeywordCount }),
+          cost,
           started: startedObject,
           final_status: lastStatus,
         },
@@ -1213,6 +1414,7 @@ export async function runSemanticCoreSmoke(input: {
   resolveSecret: (secretRef: string) => Promise<string>;
   fetchFn?: FetchLike;
 }) {
+  const resolveSecret = createPerExecutionSecretResolver(input.resolveSecret);
   const args = normalizeArguments(input.args);
   const projectId = readNonEmptyString(args.project_id)
     ?? `paperclip-semantic-smoke-${Date.now()}`;
@@ -1287,7 +1489,7 @@ export async function runSemanticCoreSmoke(input: {
     toolName: "get_paperclip_import_schema",
     args: {},
     config: input.config,
-    resolveSecret: input.resolveSecret,
+    resolveSecret,
     fetchFn: input.fetchFn,
   });
   const schemaObject = extractResultObject(schemaResult);
@@ -1311,7 +1513,7 @@ export async function runSemanticCoreSmoke(input: {
       },
     },
     config: input.config,
-    resolveSecret: input.resolveSecret,
+    resolveSecret,
     fetchFn: input.fetchFn,
   });
 
@@ -1319,7 +1521,7 @@ export async function runSemanticCoreSmoke(input: {
     toolName: "validate_project",
     args: { project_id: projectId },
     config: input.config,
-    resolveSecret: input.resolveSecret,
+    resolveSecret,
     fetchFn: input.fetchFn,
   });
 
@@ -1330,7 +1532,7 @@ export async function runSemanticCoreSmoke(input: {
       mode: args.mode ?? "mock",
     },
     config: input.config,
-    resolveSecret: input.resolveSecret,
+    resolveSecret,
     fetchFn: input.fetchFn,
   });
   const runData: Record<string, unknown> = isRecord(run.data) ? run.data : {};
@@ -1343,7 +1545,7 @@ export async function runSemanticCoreSmoke(input: {
     toolName: "get_keywords",
     args: { filters: { project_id: projectId, run_id: runId } },
     config: input.config,
-    resolveSecret: input.resolveSecret,
+    resolveSecret,
     fetchFn: input.fetchFn,
   });
   const keywordVolumeContract = validateKeywordVolumeContract(keywordsResult);
@@ -1352,7 +1554,7 @@ export async function runSemanticCoreSmoke(input: {
     toolName: "prepare_paperclip_import",
     args: { run_id: runId },
     config: input.config,
-    resolveSecret: input.resolveSecret,
+    resolveSecret,
     fetchFn: input.fetchFn,
   });
   const importPayload = extractResultObject(importResult);

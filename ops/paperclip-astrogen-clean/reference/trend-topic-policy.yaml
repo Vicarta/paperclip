@@ -1,0 +1,380 @@
+version: astrogen-trend-topic-v13
+company: astrogen
+tool: paperclip.semantic-core-mcp-agent-tools:generate-trend-topic-report
+trendSemanticProjectId: astrogen-audience-trends-ukraine
+semanticValidationProjectId: astrogen-ukraine
+
+executionPolicy:
+  liveEnabled: false
+  owner: server_operator
+  disabledReason: Provider-backed semantic and trend execution is temporarily locked while spend controls are verified.
+  disabledBehavior: Reuse durable reports and local inventory, continue independent portfolio tracks, and record a monitored external_wait with nextReviewAt. Do not retry, create a technical owner email, or substitute fixture output as production evidence.
+  providerCacheModeWhileLocked: read_only
+  paidCandidateBatchLimitWhenApproved: 10
+  autonomousRefreshOrBypassForbidden: true
+
+project:
+  name: Astrogen
+  description: Ukrainian audience research for people navigating current uncertainty, identity questions, relationships, family pressure, digital trust and choice overload.
+  market: Ukrainian-language audience demand around current life situations, decision pressure, relationships, family dynamics, digital culture, trust and self-reflection
+  geographies: [Ukraine]
+  output_language: uk
+
+trendDefinition:
+  audienceFirst: true
+  definition: A trend is a current or emerging shift in the situations, language, anxieties, questions, comparison behavior, culture, seasonality or information needs of a configured audience segment.
+  currentSignalRequired: true
+  currentSignalDefinition: A retained trend must be backed by a time-bound or behavior-shift signal from live evidence, such as a recent public/community/cultural change, seasonal recurrence, platform/search behavior shift, regulatory/social context, or newly visible audience language.
+  notATrend:
+    - a direct Astrogen product, service, modality, keyword family or existing semantic-core seed
+    - a reformulation of astrology, tarot, numerology, Human Design, zodiac, horoscope, natal-chart, synastry, solar-return or matrix-of-destiny terms
+    - an existing article/product cluster with a trend label attached
+    - an evergreen how-to, checklist or explainer without a current temporal or behavioral audience signal
+    - clinical psychology, psychotherapy or medical-help demand unless supplied as a scoped internal safety signal; these may be downstream context, not the primary Astrogen trend lane
+  generationSeedRules:
+    mcpProjectId: astrogen-audience-trends-ukraine
+    registeredProjectSeedCatalogProducts: []
+    productsFieldForbidden: true
+    productTermsForbiddenIn:
+      - project.description
+      - project.market
+      - project.business_context
+      - company_goal
+      - audience_segments.name
+      - audience_segments.description
+    existingContentMayContainProductTermsOnlyAsDuplicateContext: true
+    previousClustersMayContainProductTermsOnlyAsExclusionContext: true
+    coreProductSignalsRoute: separate semantic-core seed/core workflow, not trend discovery
+  candidateSelectionRules:
+    selectAudienceSignalsBeforeQueries: true
+    everyCandidateStartsFrom: audience situation, reader problem, cultural signal, seasonal recurrence, social behavior, decision context, or safety concern
+    everyCandidateRequiresCurrentSignal: true
+    evergreenAdviceRequiresCurrentSignal: true
+    queryPhraseIsDerivedAfterSignal: true
+    productOrServiceBridgeIsDownstreamOnly: true
+    productNarrowingForbidden: true
+    trendDerivedTitleRule: title, H1, slug, primary keyword and topicKey must preserve the audience situation or discussion theme; they must not introduce Astrogen product, service, modality, route or existing keyword-family terms.
+    productBridgeRule: Astrogen products or services may be mentioned only as contextual body links when they are a natural next step for the reader; they are never the title, H1, primary keyword, topicKey, trend search phrase, or action-selection reason.
+    actionSelectionMayMapTo: [new_article, refresh, merge, reposition, internal_link, technical, no_action]
+    onlyNewArticleCreatesTopicInventory: true
+
+audienceSegments:
+  - id: life_decisions
+    name: Люди в періоді життєвих рішень
+    description: У 2026 році стикаються з релокацією, поверненням або переїздом, змінами роботи, фінансовою невизначеністю, сімейними зобовʼязаннями, енергетичною нестабільністю й decision fatigue; шукають мову для структурування вибору без фаталістичних прогнозів.
+  - id: relationships
+    name: Люди, які осмислюють стосунки
+    description: У 2026 році переживають дистанційні стосунки, розділений побут, міграцію, мобілізаційний стрес, dating-app fatigue, цифрову недовіру, спільне планування бюджету й конфлікти очікувань; шукають ненавʼязливу мову для розуміння ситуації.
+  - id: self_reflection
+    name: Аудиторія самопізнання
+    description: Реагує на втому від швидких порад, AI-контенту й інформаційного шуму; шукає короткі письмові, візуальні або ритуалізовані практики самоспостереження, ідентичності й сенсотворення без детермінованих відповідей.
+  - id: family_and_parenting
+    name: Батьки та сімейна аудиторія
+    description: У 2026 році мають справу з навчальною нестабільністю, цифровими звичками дітей, підлітковою тривожністю в сімʼї, розділеними родинами, різними режимами догляду й потребою говорити про характер без діагнозів та ярликів.
+  - id: expert_selection
+    name: Люди, які обирають консультанта
+    description: Після хвилі онлайн-консультацій, AI-порад і шахрайських обіцянок перевіряють довіру, межі компетентності, прозорість профілю, формат першої взаємодії, червоні прапорці й власні очікування.
+
+schedule:
+  normalCadence: monthly
+  lowInventoryFallback:
+    enabled: true
+    minimumDaysBetweenLiveRuns: 1
+    normalMaximumLiveRunsPerKyivDay: 1
+    triggerWhenEligiblePlanTopicsBelow: 25
+    triggerWhenAnyPortfolioTrackBelowTarget: true
+    reuseCurrentReportBeforeNewLiveRun: true
+    reuseRequiresUnusedEligibleClusters: true
+    exhaustedReportAllowsFreshRunOnNextKyivDay: true
+    maximumConsecutiveExhaustedLowInventoryRuns: 3
+    cooldownDaysAfterConsecutiveExhaustedRuns: 7
+
+portfolioCampaign:
+  enabled: true
+  contentPlanDocumentKey: next-content-plan
+  minimumEligibleTopics: 25
+  eligibleTopicStages: [ready, reserved]
+  portfolioTrackField: contentPortfolioTrack
+  portfolioTrackTargets:
+    western_astrology_learning: 12
+    audience_applied_questions: 5
+    audience_trends: 3
+    trust_expert_method_boundaries: 3
+    commercial_unmet_demand: 2
+  audienceSegmentPolicy:
+    role: diversity_guardrail
+    hardQuota: false
+    rule: Track audience coverage and avoid repetitive concentration, but never generate filler merely to satisfy one segment.
+  countingRules:
+    exactlyOnePrimaryAudienceSegmentPerTopic: true
+    secondaryAudienceSegmentsDoNotCount: true
+    oneTopicCountsOnce: true
+    requireTrendReportRunId: true
+    requireAcceptedSemanticDemandOrApprovedCurriculumProof: true
+    requireSafeOwnershipAndCannibalizationVerdict: true
+    requireIncomingAndOutgoingInternalLinkPlan: true
+    countUniqueIntentClusterKeyOnly: true
+  refillOrder: most_deficient_portfolio_track_first
+  freshReportScope: audience_trends_track_only
+  maximumLiveRunsPerKyivDay: 1
+  maximumLiveRunsPerCampaign: 3
+  maximumFreshReportsPerAudienceSegmentPerKyivDay: 1
+  previousClustersRequiredAfterFirstReport: true
+  excludePreviouslyReviewedFingerprints: true
+  keepCanonicalRefillNonterminalUntilQuotaMet: true
+  boundedExhaustionAction: monitored_wait_for_next_research_window
+  dailyArticleProductionCapUnchanged: 3
+
+westernAstrologyCurriculum:
+  contentPortfolioTrack: western_astrology_learning
+  targetTopics: 12
+  structureRoles: [pillar, prerequisite, deepening, example]
+  conceptBudgetPerArticle: 2
+  requiredProgression:
+    - map purpose and method limits
+    - planets, signs, houses and aspects introduced gradually
+    - interaction of chart elements
+    - practical reading without fatalism
+    - uncertainty, interpretation mistakes and ethical limits
+  prerequisiteDemandPolicy:
+    semanticCoreDemandRequired: false
+    serpAnalysisRequired: true
+    classicSerpValueGapRequired: false
+    allowedOnlyWhen:
+      - the topic fills a named missing node in the approved curriculum graph
+      - one focused page-level intent is unique in the CMS inventory
+      - no current owner or cannibalization conflict exists
+      - incoming and outgoing prerequisite links are defined
+      - the article has a distinct teaching contribution and Winning Structure value plan
+    rejectionRule: A prerequisite cannot pass merely because the graph wants it; duplicate ownership, unsafe claims, or no distinct teaching role still reject it.
+
+audienceInterestEditorialLane:
+  enabled: true
+  portfolioLane: audience_interest_editorial
+  sourceLayer: audience_interest_intent
+  targetArticlesPerEuropeKievMonth: 2
+  maximumArticlesPerEuropeKievMonth: 4
+  maximumPerDailyArticleBatch: 1
+  directProductBindingRequired: false
+  directEntityAnchorRequired: false
+  acceptanceBoundary:
+    - audience fit, current signal and topic-domain evidence are high or review-approved
+    - the editorial bridge explains why Astrogen can discuss the subject without pretending to own the whole domain
+    - SERP value-gap, duplicate, cannibalization, safety and internal-link evidence pass downstream review
+    - no_entity_anchor or owner_mismatch alone cannot park a valid audience-interest candidate
+  productBoundary: products are optional contextual body links only and never part of the trend phrase, title, H1, slug, primary query or topicKey
+  targetIsNotQuotaPadding: true
+
+requestDefaults:
+  horizon_months: 6
+  constraints:
+    max_clusters: 8
+    topics_per_cluster: 3
+    content_lead_time_days: 14
+    excluded_topics:
+      - zodiac sign for a specific calendar day and month
+      - horoscope for a specific calendar date
+      - birth-date zodiac profile centered on one day and month
+      - horoscope for today
+      - daily horoscope for one zodiac sign
+      - rolling current-day horoscope content
+      - deterministic medical, legal, financial or relationship predictions
+      - evergreen how-to without current audience signal
+      - clinical psychology or psychotherapy as primary lane
+    max_research_queries: 6
+    max_sources: 20
+    request_timeout_ms: 300000
+  cache_policy:
+    scope: private_project
+    strategy: use_cache
+    search_ttl_seconds: 21600
+    source_ttl_seconds: 86400
+    llm_ttl_seconds: 21600
+    stale_if_provider_unavailable: true
+    cache_llm_outputs: false
+  mode: live
+
+runtimeInputs:
+  required:
+    - analysis_date in Europe/Kiev
+    - current Payload CMS existing_content inventory
+    - current active, ready, consumed and rejected topic fingerprints
+    - current audience segments from this policy
+    - current eligible ready and reserved topic counts by contentPortfolioTrack
+    - current audience_trends topics by primaryAudienceSegmentId for diversity review
+    - one underrepresented audience segment for a focused audience_trends report
+  optional:
+    - previous_clusters from the latest retained report
+    - completed-window GSC and GA4 internal_signals
+    - verified company_goal and business_context
+    - audience-only public/community/cultural/internal signals for the focused segment
+  forbidden:
+    - products field on generate-trend-topic-report
+    - semantic-core accepted keyword inventory as the starting source for trend discovery
+    - Astrogen product/service/modality names in project, company_goal or audience_segments trend-generation guidance
+    - clinical or psychotherapy terminology as the primary trend lane unless it is a supplied internal safety signal
+
+toolRequestMapping:
+  projectId: use astrogen-audience-trends-ukraine for trend reports; use astrogen-ukraine only after a candidate phrase is selected for normal semantic validation
+  focusedSegment: pass exactly one configured entry in audience_segments; primary_audience_segment_id is not a tool field
+  reviewedFingerprints: use locally to exclude candidate selection and summarize only as a title/description internal_signals row; reviewed_fingerprints is not a tool field
+  internalSignalsShape: each row has title and description, with optional observed_at and source; name/value rows are forbidden
+  previousClustersShape: each row has title and optional id and summary
+  undeclaredTopLevelFieldsForbidden: true
+
+durableOutput:
+  entityType: semantic-core-trend-topic-report
+  preserve:
+    - status
+    - schema_version
+    - run_id
+    - clusters
+    - watchlist
+    - rejected_signals
+    - warnings
+    - research_summary
+    - cache_summary
+    - cost.events
+    - report_markdown
+  costRule: record monetary ledger events only for numeric USD estimated_cost; preserve unknown-cost telemetry without treating it as zero
+
+handoff:
+  trendReportIsPortfolioEvidenceOnly: true
+  directSemanticImportForbidden: true
+  directTopicInventoryForbidden: true
+  directArticleProductionForbidden: true
+  candidateFlow:
+    - CMO reads the latest durable report through paperclip.semantic-core-mcp-agent-tools:get-trend-topic-report before considering another paid trend run
+    - CMO selects a bounded evidence-backed audience signal, cluster or watch item for validation; the signal must be a segment situation or reader problem before it becomes a query phrase
+    - CMO converts ideas into concrete Ukrainian search phrases with an explicit audience-situation or reader-problem anchor; an editorial title, product term or existing keyword family alone is not a candidate keyword
+    - CMO must not narrow an audience-first trend into an Astrogen product/service/modality phrase. If a proposed phrase, topic title, H1, slug, primary keyword or topicKey introduces terms such as astrology, tarot, natal chart, synastry, horoscope, numerology, Human Design, solar return, matrix of destiny, experts or consultation when the retained trend signal did not itself use that audience language, reject it as product_narrowing_contamination instead of routing it to search-demand.
+    - SEO Semantic Core Strategist validates proposed search phrases through the normal astrogen-ukraine semantic-core provider workflow only after audience-first trend selection and only when executionPolicy.liveEnabled is true
+    - candidate_review is nonterminal and must be delegated to SEO Semantic Core Validator for bounded append-only decisions and one materializing rerun per distinct original semantic-run/layer partition
+    - only accepted semantic-core demand can enter astrogen-search-demand-opportunities at discovered
+    - ownership and cannibalization review selects new_article, refresh, merge, reposition, internal_link, technical or no_action
+    - only new_article may create a guarded topic-inventory child
+    - every campaign candidate carries one primaryAudienceSegmentId, optional secondaryAudienceSegmentIds, and its trendReportRunId through search-demand and topic inventory
+    - every topic keeps one primaryAudienceSegmentId for diversity reporting, but audience segments do not carry hard portfolio quotas
+    - every topic contributes to exactly one contentPortfolioTrack quota
+  validationWaves:
+    maxWavesPerReport: 3
+    maxPhrasesPerWave: 5
+    productionMode: live
+    rejectMockOrFixtureAsEvidence: true
+    deduplicateAcrossWaves: true
+    reuseProviderCache: true
+    layerRouting:
+      onePreclassifiedLayerPerPhrase: true
+      allowedLayers:
+        adjacent_use_case_intent: decisions and situations served by Astrogen expertise
+        audience_need_intent: explicit audience problem, uncertainty, or safety need
+        audience_interest_intent: broader verified interest of an Astrogen audience segment
+      unsupportedCandidateLayers:
+        core_product_intent: retain as trend evidence for the separate semantic-core seed/core workflow; never submit to candidate-keyword validation
+      partitionWaveByLayer: true
+      maxTotalPhrasesAcrossPartitions: 5
+      blindLayerSweepForbidden: true
+      parkedOutsideLayerOrOwnerMismatchRequiresSameWaveCorrection: true
+      sameWaveCorrectionConsumesAnotherWave: false
+    continueWhenAllParked: true
+    childFingerprint: trend-validation:{trendReportRunId}:wave:{waveNumber}
+    oneNonterminalChildPerFingerprint: true
+    reuseExistingChildOnRetry: true
+    reviewResolution:
+      candidateReviewIsTerminal: false
+      reviewer: SEO Semantic Core Validator
+      childFingerprint: trend-review:{trendReportRunId}:wave:{validationWave}
+      oneNonterminalChildPerFingerprint: true
+      allowedDecisions: [accept, park, reject]
+      acceptRequires:
+        - query-shaped Ukrainian phrase with supported locale
+        - medium or high configured topic-domain match to a non-core audience layer; explicit canonized product binding is not enough for a trend-derived phrase
+        - clear Astrogen audience fit and safe editorial or service pathway
+        - evidence that the phrase derives from an audience signal, not from a product/service/modality seed
+        - no product_narrowing_contamination: product/service/modality terms are allowed only when they are part of the original retained audience signal, not added by Astrogen as a bridge
+        - no duplicate_cluster, unsupported_locale, mixed_language, noise_irrelevant or off_topic_entity_conflict reason
+        - review note names evidence, uncertainty and downstream ownership boundary
+      execution:
+        - inspect the exact run decision_trace and prepared typed import
+        - submit append-only decisions through paperclip.semantic-core-mcp-agent-tools:submit-review-decisions
+        - partition reviewed phrases by original semanticRunId and intended non-core layer
+        - run each original partition once with explicit mode=live, provider cache, the same partition phrases, review_decisions and force_re_review_keywords
+        - never combine phrases from different intended layers in one materializing run
+        - prepare the new run import and require a final accepted, parked or rejected disposition for every reviewed phrase
+      handoff:
+        validatorPipelineWriteForbidden: true
+        validatorCompletion: final materialized dispositions and a compact accepted-evidence packet
+        ingestionOwner: SEO Blog Content Strategist
+        parentWaveCompletion: accepted rows have native search-demand case proof
+        acceptedSemanticCandidatesAreNotReadyTopics: true
+        acceptedCandidateDisposition: accepted_for_search_demand_ingestion
+        clusterBeforeNativeIngestion: true
+        nativeOpportunityUnit: one intent cluster with one primary query and supporting queries
+        clusterCountRule: accepted phrases from one reader intent and one expected owner page count once
+        terminalIssueResultProjection:
+          location: ingestion child issue description
+          heading: "## trendIngestionResult"
+          headingUsage: reserved for one fenced machine-readable JSON object only; never use this exact heading for prose, checklists, or required-field notes
+          format: machine-readable fenced JSON
+          requiredFields:
+            - finalDisposition
+            - acceptedSemanticCandidates
+            - acceptedSemanticCandidateCount
+            - createdSearchDemandCaseIds
+            - eligibleReadyTopicCountAfter
+            - segmentEligibleTopicCountAfter
+            - remainingUnusedClusters
+            - validationWave
+            - layerValidationMatrix
+          countingRules:
+            acceptedSemanticCandidateCount: count only accepted materialized semantic rows in this child
+            createdSearchDemandCaseIds: list only native search-demand case IDs actually created or reused; never accepted phrase IDs
+            eligibleReadyTopicCountAfter: query live lineage-valid topic cases in ready plus reserved; never infer from accepted candidates or search-demand cases
+            segmentEligibleTopicCountAfter: query the same live ready plus reserved cases for the configured primary segment
+            unavailableNativeCount: use null plus a typed evidence-access blocker; never substitute accepted candidate count
+          terminalStatusAloneIsProof: false
+      ownerApprovalRequired: false
+      ownerEscalationForbiddenForTechnicalOrLowConfidenceReview: true
+    reportStopWhen:
+      - three bounded waves are exhausted with a final accepted, parked or rejected disposition for every phrase and no unresolved candidate_review
+      - no unused non-calendar and non-ephemeral cluster can produce a concrete audience-situation or reader-problem anchored search phrase for the report's configured primary audience segment
+    campaignStopWhen:
+      - at least 25 eligible native topics exist across ready and reserved and the five contentPortfolioTrack targets are 12/5/3/3/2
+      - the campaign live-run bound is exhausted and the canonical refill case has a first-class monitor for the next research window
+    allParkedRule: parked, rejected, duplicate, and covered-existing-owner phrases are excluded from later waves; continue unused eligible clusters only for the audience_trends track within campaign bounds, then enter monitored wait without fabricating filler
+    duplicateChildRule: before creating validation work, list existing direct children and reuse the child with the same childFingerprint; never create another validation child while that child is todo, in_progress, in_review or blocked
+  contentPlanDocument:
+    key: next-content-plan
+    owner: Chief Marketing Officer
+    updateWhen: an eligible topic enters ready, becomes reserved, is consumed, rejected, expired, changes primary segment, or a trend report/validation wave changes the visible trend opportunity queue
+    requiredRows: 25
+    requiredSections:
+      - verifiedTopicPlan: only live ready/reserved native topic cases counted toward quota
+      - trendOpportunityQueue: audience-first trend candidates and their status before or after validation, including parked/rejected/refresh/no_action/blocker reasons
+    requiredFields:
+      - topicCaseId
+      - topicKey
+      - titleUk
+      - primaryAudienceSegmentId
+      - contentPortfolioTrack
+      - primaryQuery
+      - frequencyAndSource
+      - ownershipVerdict
+      - duplicateVerdict
+      - incomingInternalLinks
+      - outgoingInternalLinks
+      - trendReportRunId
+      - nativeStage
+    trendQueueFields:
+      - trendReportRunId
+      - primaryAudienceSegmentId
+      - audienceSignal
+      - readerProblem
+      - proposedSearchPhrase
+      - sourceEvidenceRefs
+      - status
+      - notCountedReason
+      - nextActionOwner
+    commentsOrChatDoNotSatisfyDocument: true
+    verifyAgainstLiveNativeCases: true
+  zeroClusters: valid successful outcome; never invent replacements

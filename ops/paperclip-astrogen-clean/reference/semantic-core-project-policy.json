@@ -1,0 +1,308 @@
+{
+  "project_id": "astrogen-ukraine",
+  "display_name": "Astrogen Ukraine",
+  "project_config": {
+    "site_id": "astrogen-ukraine",
+    "domain": "astrogen.com.ua",
+    "locale_matrix": [
+      {
+        "language_code": "uk",
+        "location_code": 2804,
+        "location_name": "Ukraine",
+        "country_code": "UA",
+        "device_context": "desktop",
+        "device_priority": "desktop"
+      }
+    ],
+    "sections": [
+      {
+        "section_id": "blog",
+        "allowed_owner_types": ["blog"],
+        "allowed_page_types": ["blog_article"],
+        "forbidden_topics": []
+      }
+    ],
+    "owner_rules": {
+      "informational": "blog",
+      "transactional": "blog",
+      "commercial": "blog",
+      "navigational": "brand"
+    },
+    "thresholds": {
+      "intent_probability_min": 0.5,
+      "serp_official_vendor_dominance": 0.8
+    },
+    "intent_rules": {
+      "ambiguous_secondary_delta": 0.15
+    },
+    "title_meta_policy": {
+      "title_length_range": [45, 70],
+      "description_length_range": [120, 160],
+      "examples_are_editorial_only": true
+    },
+    "provider_cache": {
+      "enabled": true,
+      "mode": "read_only",
+      "default_ttl_days": 30
+    },
+    "semantic_expansion": {
+      "current_layer": "core_product_intent",
+      "allowed_layers": [
+        "core_product_intent",
+        "adjacent_use_case_intent",
+        "audience_need_intent",
+        "audience_interest_intent"
+      ],
+      "allowed_seed_source_types": [
+        "product",
+        "feature",
+        "use_case",
+        "category",
+        "support_theme",
+        "faq_theme",
+        "audience_segment",
+        "audience_need_query"
+      ],
+      "allowed_seed_roles": [
+        "product_name",
+        "product_variant",
+        "product_core_term",
+        "product_category_head_term",
+        "product_feature",
+        "product_use_case",
+        "product_problem",
+        "use_case",
+        "adjacent_term",
+        "support_theme",
+        "faq_theme",
+        "audience_segment",
+        "audience_problem",
+        "audience_desired_outcome"
+      ],
+      "use_audience_segments_as_seeds": true,
+      "dedupe_against_previous_core": true,
+      "recall_from_previous_parked": true,
+      "recall_allowed_reasons": [
+        "no_entity_anchor",
+        "layer_mismatch",
+        "owner_mismatch",
+        "low_confidence",
+        "ambiguous_intent"
+      ],
+      "recall_blocked_reasons": [
+        "duplicate_cluster",
+        "noise_irrelevant",
+        "competitor_only",
+        "unsupported_locale"
+      ],
+      "search_query_eligibility_policy": {
+        "enabled": true,
+        "audience_seed_min_query_shape_score": 0.72,
+        "allow_query_shaped_zero_volume_audience_seed_review": true
+      },
+      "audience_interest_markers": [
+        "самопізнання",
+        "життєві рішення",
+        "стосунки",
+        "кар'єра",
+        "батьківство",
+        "вибір фахівця",
+        "етика консультації",
+        "повернення в Україну",
+        "релокація",
+        "цифрова довіра",
+        "дистанційні стосунки",
+        "дейтингові застосунки",
+        "месенджери у стосунках",
+        "флірт у переписці",
+        "сленг у переписці",
+        "інформаційна втома",
+        "сімейні цифрові звички",
+        "перевірка онлайн-експерта"
+      ],
+      "layer_policies": {
+        "adjacent_use_case_intent": {
+          "requires_product_binding": false,
+          "requires_service_pathway": false,
+          "requires_topic_domain_match": true,
+          "requires_editorial_bridge": false,
+          "review_uncertain_topic_matches": true,
+          "allowed_topic_domains": [
+            {
+              "domain_id": "reflective_systems",
+              "labels": ["астрологія", "таро", "нумерологія", "Human Design"],
+              "include_terms": ["астрологія", "натальна карта", "таро", "тарологія", "нумерологія", "матриця долі", "дизайн людини", "Human Design"],
+              "exclude_terms": [],
+              "semantic_profiles": ["astrology"]
+            },
+            {
+              "domain_id": "life_navigation",
+              "labels": ["самопізнання", "життєві рішення", "стосунки", "кар'єра", "сім'я"],
+              "include_terms": ["самопізнання", "життєвий перехід", "невизначеність", "прийняття рішення", "стосунки", "особисті межі", "зміна роботи", "кар'єра", "батьківство", "сімейна взаємодія"],
+              "exclude_terms": [],
+              "semantic_profiles": []
+            },
+            {
+              "domain_id": "expert_selection_and_safety",
+              "labels": ["вибір консультанта", "підготовка до консультації", "етика і безпека"],
+              "include_terms": ["обрати фахівця", "обрати консультанта", "підготувати запит", "консультація онлайн", "етика консультації", "небезпечні обіцянки", "перевірити профіль", "перед оплатою"],
+              "exclude_terms": [],
+              "semantic_profiles": []
+            }
+          ],
+          "allowed_traffic_evidence_statuses": ["geo_demand", "global_demand", "gsc_supported", "serp_supported"],
+          "weak_traffic_evidence_membership": "candidate_review",
+          "auto_accept": false
+        },
+        "audience_need_intent": {
+          "requires_product_binding": false,
+          "requires_service_pathway": false,
+          "requires_topic_domain_match": true,
+          "requires_editorial_bridge": false,
+          "review_uncertain_topic_matches": true,
+          "allowed_topic_domains": [
+            {
+              "domain_id": "reflective_systems",
+              "labels": ["астрологія", "таро", "нумерологія", "Human Design"],
+              "include_terms": ["астрологія", "натальна карта", "таро", "тарологія", "нумерологія", "матриця долі", "дизайн людини", "Human Design"],
+              "exclude_terms": [],
+              "semantic_profiles": ["astrology"]
+            },
+            {
+              "domain_id": "life_navigation",
+              "labels": ["самопізнання", "життєві рішення", "стосунки", "кар'єра", "сім'я"],
+              "include_terms": ["самопізнання", "життєвий перехід", "невизначеність", "прийняття рішення", "стосунки", "особисті межі", "зміна роботи", "кар'єра", "батьківство", "сімейна взаємодія"],
+              "exclude_terms": [],
+              "semantic_profiles": []
+            },
+            {
+              "domain_id": "expert_selection_and_safety",
+              "labels": ["вибір консультанта", "підготовка до консультації", "етика і безпека"],
+              "include_terms": ["обрати фахівця", "обрати консультанта", "підготувати запит", "консультація онлайн", "етика консультації", "небезпечні обіцянки", "перевірити профіль", "перед оплатою"],
+              "exclude_terms": [],
+              "semantic_profiles": []
+            },
+            {
+              "domain_id": "digital_relationship_culture",
+              "labels": ["цифрова довіра", "стосунки на відстані", "дейтингові застосунки", "месенджери у стосунках"],
+              "include_terms": ["цифрова довіра", "стосунки на відстані", "дистанційні стосунки", "месенджери у стосунках", "месенджери", "telegram", "переписка", "флірт у переписці", "сленг у переписці", "знайомства онлайн", "дейтингові застосунки", "партнер онлайн"],
+              "exclude_terms": [],
+              "semantic_profiles": []
+            }
+          ],
+          "allowed_traffic_evidence_statuses": ["geo_demand", "global_demand", "gsc_supported", "serp_supported"],
+          "weak_traffic_evidence_membership": "candidate_review",
+          "auto_accept": false
+        },
+        "audience_interest_intent": {
+          "requires_product_binding": false,
+          "requires_service_pathway": false,
+          "requires_topic_domain_match": true,
+          "requires_editorial_bridge": true,
+          "review_uncertain_topic_matches": true,
+          "allowed_editorial_bridges": [
+            {
+              "bridge_id": "reflective_digital_relationship_literacy",
+              "labels": ["цифрові сигнали без фаталізму", "довіра і межі онлайн", "рефлексія над комунікацією"],
+              "include_terms": ["цифрова довіра", "стосунки на відстані", "месенджери", "telegram", "переписка", "флірт", "сленг", "знайомства онлайн", "партнер онлайн"],
+              "exclude_terms": ["стеження за партнером", "діагноз за перепискою", "гарантовані ознаки зради"]
+            }
+          ],
+          "allowed_topic_domains": [
+            {
+              "domain_id": "reflective_systems",
+              "labels": ["астрологія", "таро", "нумерологія", "Human Design"],
+              "include_terms": ["астрологія", "натальна карта", "таро", "тарологія", "нумерологія", "матриця долі", "дизайн людини", "Human Design", "навчання астрології"],
+              "exclude_terms": [],
+              "semantic_profiles": ["astrology"]
+            },
+            {
+              "domain_id": "life_navigation",
+              "labels": ["самопізнання", "життєві рішення", "стосунки", "кар'єра", "сім'я"],
+              "include_terms": ["самопізнання", "життєвий перехід", "невизначеність", "прийняття рішення", "стосунки", "особисті межі", "зміна роботи", "кар'єра", "батьківство", "сімейна взаємодія"],
+              "exclude_terms": [],
+              "semantic_profiles": []
+            },
+            {
+              "domain_id": "expert_selection_and_safety",
+              "labels": ["вибір консультанта", "підготовка до консультації", "етика і безпека"],
+              "include_terms": ["обрати фахівця", "обрати консультанта", "підготувати запит", "консультація онлайн", "етика консультації", "небезпечні обіцянки", "перевірити профіль", "перед оплатою"],
+              "exclude_terms": [],
+              "semantic_profiles": []
+            },
+            {
+              "domain_id": "migration_and_life_choices",
+              "labels": ["повернення", "релокація", "вибір країни", "адаптація"],
+              "include_terms": ["повернення в Україну", "залишитися за кордоном", "релокація", "переїзд", "адаптація після переїзду", "рішення про повернення"],
+              "exclude_terms": [],
+              "semantic_profiles": []
+            },
+            {
+              "domain_id": "digital_relationship_culture",
+              "labels": ["цифрова довіра", "стосунки на відстані", "дейтингові застосунки", "месенджери у стосунках"],
+              "include_terms": ["цифрова довіра", "стосунки на відстані", "дистанційні стосунки", "месенджери у стосунках", "месенджери", "telegram", "переписка", "флірт у переписці", "сленг у переписці", "знайомства онлайн", "дейтингові застосунки", "партнер онлайн", "гостинг"],
+              "exclude_terms": [],
+              "semantic_profiles": []
+            },
+            {
+              "domain_id": "digital_self_reflection",
+              "labels": ["інформаційна втома", "AI-контент", "самоспостереження", "медіаграмотність"],
+              "include_terms": ["інформаційна втома", "AI-контент", "самоспостереження", "щоденна рефлексія", "цифровий шум", "медіаграмотність", "ідентичність онлайн"],
+              "exclude_terms": [],
+              "semantic_profiles": []
+            },
+            {
+              "domain_id": "family_digital_life",
+              "labels": ["цифрові звички дітей", "розділені родини", "сімейні правила", "підлітки онлайн"],
+              "include_terms": ["цифрові звички дітей", "підлітки онлайн", "сімейні правила гаджетів", "розділена родина", "дистанційне батьківство", "сімейне спілкування онлайн"],
+              "exclude_terms": [],
+              "semantic_profiles": []
+            },
+            {
+              "domain_id": "online_expert_trust",
+              "labels": ["довіра до онлайн-експерта", "AI-поради", "шахрайські обіцянки", "прозорість профілю"],
+              "include_terms": ["перевірити онлайн-експерта", "довіра до консультанта", "AI-поради", "шахрайські обіцянки", "прозорість профілю", "червоні прапорці консультанта"],
+              "exclude_terms": [],
+              "semantic_profiles": []
+            }
+          ],
+          "allowed_traffic_evidence_statuses": ["geo_demand", "global_demand", "gsc_supported", "serp_supported"],
+          "weak_traffic_evidence_membership": "candidate_review",
+          "auto_accept": false
+        }
+      },
+      "review_escalation_policy": {
+        "enabled": true,
+        "geo_volume_threshold": 100,
+        "fallback_low_volume_threshold": 10,
+        "use_project_volume_percentile": true,
+        "percentile_threshold": 0.8,
+        "use_global_volume": true,
+        "use_gsc_impressions": true,
+        "blocked_reasons": ["duplicate_cluster", "unsupported_locale"]
+      }
+    }
+  },
+  "seed_catalog": {
+    "products": [
+      {"product_id": "astrology", "name": "Астрологія", "variants": ["астрологія", "натальна карта", "гороскоп"]},
+      {"product_id": "tarology", "name": "Тарологія", "variants": ["тарологія", "таро", "розклад таро"]},
+      {"product_id": "numerology", "name": "Нумерологія", "variants": ["нумерологія", "матриця долі"]},
+      {"product_id": "human-design", "name": "Дизайн людини", "variants": ["дизайн людини", "Human Design"]}
+    ],
+    "features": [],
+    "use_cases": [
+      "самопізнання без детермінованих обіцянок",
+      "підготовка до життєвого рішення",
+      "осмислення стосунків і особистих меж",
+      "підготовка до зміни роботи або кар'єрного переходу",
+      "розуміння сімейної взаємодії без діагностики та ярликів",
+      "безпечний вибір консультанта і підготовка запиту"
+    ],
+    "categories": ["астрологія", "тарологія", "нумерологія", "дизайн людини", "самопізнання", "життєві рішення"],
+    "support_themes": ["етика консультації", "межі інтерпретаційних практик", "ознаки небезпечних обіцянок"],
+    "faq_themes": ["як обрати фахівця", "як сформулювати запит", "чого очікувати від консультації"],
+    "competitor_domains": [],
+    "competitor_pages": []
+  }
+}
