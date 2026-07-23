@@ -136,6 +136,12 @@ function main() {
     "The worker does not receive `astrogen-growth-actions` `pipelines:write`",
     "Never create a legacy article parent",
   ], "Article allocator contract");
+  includesAll(routineContracts.monthlyTrendDiscovery, [
+    "sourceCaseId",
+    "resultDocumentKey=trend-ingestion-result-{childIssueIdentifierLower}",
+    "PUT the same complete projection into that source case document",
+    "never use a bounded child summary as the full handoff",
+  ], "Trend validation durable source-case handoff");
   const routineSyncSource = readFileSync(resolve(SCRIPT_DIR, "sync-autonomous-growth-routines.mjs"), "utf8");
   includesAll(routineSyncSource, [
     "env: null",
