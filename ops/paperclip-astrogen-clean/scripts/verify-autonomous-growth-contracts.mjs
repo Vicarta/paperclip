@@ -99,6 +99,16 @@ function main() {
     "start exactly one run for the current taskRevision/idempotency_key",
     "preserve the old run as upstream provenance",
   ], "Winning Structure current-article run lineage");
+  const structureReview = article?.stageAutomation?.structure_review;
+  assert(
+    structureReview?.review?.requestChangesTo === "strategy_input",
+    "Structure review content changes must return to strategy_input",
+  );
+  includesAll(structureReview?.instructions ?? "", [
+    "only for same-run re-import or verification of an incomplete import",
+    "requires request_changes to strategy_input",
+    "never send that class of defect back to the same completed run",
+  ], "Structure review loop prevention");
   const growth = manifest.pipelines.find((pipeline) => pipeline.key === "astrogen-growth-actions");
   const growthExecutingInstructions = growth?.stageAutomation?.executing?.instructions ?? "";
   includesAll(growthExecutingInstructions, [

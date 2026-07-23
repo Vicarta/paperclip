@@ -1610,6 +1610,11 @@ function agentSpecificInstructions(agent) {
 - Reject refresh packets that are only generic editorial, metadata,
   relatedPosts, internal-link, FAQ, CTA, or comparison-block checklists without
   SERP/user-value justification.
+
+## Winning Structure Review Routing
+
+- In native \`structure_review\`, send only an incomplete import or same-run verification defect back to \`winning_structure\` through the explicit re-import transition.
+- A reader-facing scope, section, concept, evidence, value-unit, claim-boundary, ownership, or intent defect requires \`request_changes\` to \`strategy_input\`, a new \`taskRevision\`, and a new idempotency key. Never return that class of defect to the same completed run.
 `;
   }
 
