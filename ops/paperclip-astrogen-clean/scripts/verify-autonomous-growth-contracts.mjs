@@ -99,6 +99,13 @@ function main() {
     "Never classify the CMO's own approval duty as an external blocker",
     "never let a specialist issue block its manager solely because the specialist lacks manager-only approval authority",
   ], "Growth manager-only approval handoff");
+  const growthExternalWaitInstructions = growth?.stageAutomation?.external_wait?.instructions ?? "";
+  includesAll(growthExternalWaitInstructions, [
+    "regardless of a worker's finalDisposition or blocker label",
+    "clear blockerClass/blockerOwner/blockerAction",
+    "transition this source case to executing in the same heartbeat",
+    "do not schedule a monitor or create recovery work",
+  ], "Growth manager-only approval external-wait exit");
 
   includesAll(routineContracts.articleSlotAllocator, [
     "POST /api/cases/{topicCaseId}/breakdown",
@@ -145,6 +152,7 @@ function main() {
       "complete bounded writer-brief preflight",
       "canonical CMS admin URL transition gates",
       "manager-only approval handoff continuity",
+      "manager-only approval external-wait exit",
       "allocator native dispatch and refill",
       "three-slot daily batch and deficit reconciliation",
       "CEO foreign-issue boundary",
