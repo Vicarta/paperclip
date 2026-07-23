@@ -29,7 +29,7 @@ function output(
     documentTitle: title,
     format: "markdown",
     latestRevisionId: null,
-    latestRevisionNumber: null,
+    latestRevisionNumber: 1,
     documentPath: `/issues/issue-${id}#document-${documentKey}`,
   };
 }

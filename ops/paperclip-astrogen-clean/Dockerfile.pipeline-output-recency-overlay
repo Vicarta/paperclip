@@ -1,6 +1,7 @@
 ARG BASE_IMAGE=paperclip-app:latest
 FROM ${BASE_IMAGE}
 
+COPY build-artifacts/pipeline-case-outputs.js /app/server/dist/services/pipeline-case-outputs.js
 COPY scripts/patch-pipeline-output-recency-dist.mjs /tmp/patch-pipeline-output-recency-dist.mjs
 RUN node /tmp/patch-pipeline-output-recency-dist.mjs /app/server/dist/services/pipeline-case-outputs.js \
   && node --check /app/server/dist/services/pipeline-case-outputs.js

@@ -11,6 +11,7 @@ import {
   issueDocuments,
   issues,
   issueWorkProducts,
+  pipelineCaseDocuments,
   pipelineCaseIssueLinks,
   pipelineCases,
 } from "@paperclipai/db";
@@ -77,6 +78,10 @@ function sourceIssuePath(companyPrefix: string, identifier: string | null, issue
 
 function sourceDocumentPath(companyPrefix: string, identifier: string | null, issueId: string, key: string) {
   return `${sourceIssuePath(companyPrefix, identifier, issueId)}#document-${encodeURIComponent(key)}`;
+}
+
+function sourceCaseDocumentPath(companyPrefix: string, pipelineId: string, caseId: string, key: string) {
+  return `/${companyPrefix}/pipelines/${pipelineId}/cases/${caseId}#document-${encodeURIComponent(key)}`;
 }
 
 function truncateContextExcerpt(value: string | null | undefined, maxLength = CONTEXT_OUTPUT_EXCERPT_MAX_LENGTH) {
@@ -318,7 +323,69 @@ export function pipelineCaseOutputsService(db: Db) {
         ))
         .limit(1)
         .then((rows) => rows[0] ?? null);
-      if (!row) throw notFound("Pipeline case output document not found");
+      if (!row) {
+        const directRevision = alias(documentRevisions, "case_output_direct_document_latest_revision");
+        const direct = await db
+          .select({
+            linkId: pipelineCaseDocuments.id,
+            documentKey: pipelineCaseDocuments.key,
+            documentId: documents.id,
+            documentTitle: documents.title,
+            format: documents.format,
+            latestBody: documents.latestBody,
+            latestRevisionId: documents.latestRevisionId,
+            latestRevisionNumber: documents.latestRevisionNumber,
+            sourceTrust: documents.sourceTrust,
+            sourceRunId: directRevision.createdByRunId,
+            createdAt: documents.createdAt,
+            updatedAt: documents.updatedAt,
+          })
+          .from(pipelineCaseDocuments)
+          .innerJoin(documents, and(
+            eq(pipelineCaseDocuments.documentId, documents.id),
+            eq(documents.companyId, pipelineCaseDocuments.companyId),
+          ))
+          .leftJoin(directRevision, and(
+            eq(directRevision.id, documents.latestRevisionId),
+            eq(directRevision.companyId, documents.companyId),
+          ))
+          .where(and(
+            eq(pipelineCaseDocuments.companyId, companyId),
+            eq(pipelineCaseDocuments.caseId, caseId),
+            eq(documents.id, documentId),
+            notInArray(pipelineCaseDocuments.key, [...SYSTEM_ISSUE_DOCUMENT_KEYS]),
+          ))
+          .limit(1)
+          .then((rows) => rows[0] ?? null);
+        if (!direct) throw notFound("Pipeline case output document not found");
+
+        const quarantined = isLowTrustQuarantined(direct.sourceTrust);
+        return {
+          caseId,
+          document: {
+            id: direct.documentId,
+            key: direct.documentKey,
+            title: direct.documentTitle,
+            format: direct.format,
+            body: quarantined ? LOW_TRUST_QUARANTINED_BODY : direct.latestBody,
+            latestRevisionId: direct.latestRevisionId,
+            latestRevisionNumber: direct.latestRevisionNumber,
+            sourceTrust: direct.sourceTrust,
+            bodyRedacted: quarantined,
+            createdAt: direct.createdAt,
+            updatedAt: direct.updatedAt,
+          },
+          source: {
+            linkId: direct.linkId,
+            role: "origin",
+            issueId: caseId,
+            issueIdentifier: null,
+            issueTitle: "Pipeline case document",
+            issueStatus: "case_document",
+            sourceRunId: direct.sourceRunId,
+          },
+        };
+      }
 
       const sourceTrust = row.documentSourceTrust ?? row.issueSourceTrust ?? null;
       const quarantined = isLowTrustQuarantined(sourceTrust);
@@ -579,6 +646,86 @@ export function pipelineCaseOutputsService(db: Db) {
             downloadPath: downloadPath(row.attachmentId),
           });
         }
+      }
+
+      const directRevision = alias(documentRevisions, "case_output_direct_latest_revision");
+      const directDocumentRows = await db
+        .select({
+          linkId: pipelineCaseDocuments.id,
+          key: pipelineCaseDocuments.key,
+          documentId: documents.id,
+          title: documents.title,
+          format: documents.format,
+          latestBody: documents.latestBody,
+          latestRevisionId: documents.latestRevisionId,
+          latestRevisionNumber: documents.latestRevisionNumber,
+          sourceTrust: documents.sourceTrust,
+          createdByAgentId: documents.createdByAgentId,
+          updatedByAgentId: documents.updatedByAgentId,
+          latestRevisionCreatedByRunId: directRevision.createdByRunId,
+          createdAt: documents.createdAt,
+          updatedAt: documents.updatedAt,
+        })
+        .from(pipelineCaseDocuments)
+        .innerJoin(documents, and(
+          eq(pipelineCaseDocuments.documentId, documents.id),
+          eq(documents.companyId, pipelineCaseDocuments.companyId),
+        ))
+        .leftJoin(directRevision, and(
+          eq(directRevision.id, documents.latestRevisionId),
+          eq(directRevision.companyId, documents.companyId),
+        ))
+        .where(and(
+          eq(pipelineCaseDocuments.companyId, companyId),
+          eq(pipelineCaseDocuments.caseId, caseId),
+          notInArray(pipelineCaseDocuments.key, [...SYSTEM_ISSUE_DOCUMENT_KEYS]),
+        ));
+      const existingDocumentIds = new Set(
+        items
+          .filter((item): item is Extract<PipelineCaseOutputItem, { kind: "document" }> => item.kind === "document")
+          .map((item) => item.documentId),
+      );
+      if (directDocumentRows.length > 0) {
+        sources.push({
+          linkId: `case:${caseId}`,
+          role: "origin",
+          issueId: caseId,
+          issueIdentifier: null,
+          issueTitle: "Pipeline case documents",
+          issueStatus: "case_document",
+          sourceTrust: null,
+          createdByRunId: null,
+          linkedAt: directDocumentRows[0]!.updatedAt,
+        });
+      }
+      for (const row of directDocumentRows) {
+        if (existingDocumentIds.has(row.documentId)) continue;
+        const sourceTrust = row.sourceTrust ?? null;
+        const title = row.title ?? row.key;
+        items.push({
+          id: `document:${row.documentId}`,
+          kind: "document",
+          title,
+          sourceIssueId: caseId,
+          sourceIssueIdentifier: null,
+          sourceIssuePath: sourceCaseDocumentPath(company.issuePrefix, caseRow.pipelineId, caseId, row.key),
+          sourceIssueTitle: "Pipeline case document",
+          sourceIssueStatus: "case_document",
+          sourceRole: "origin",
+          sourceTrust,
+          sourceRunId: row.latestRevisionCreatedByRunId,
+          sourceAgentId: row.updatedByAgentId ?? row.createdByAgentId,
+          preview: previewFor({ body: row.latestBody, sourceTrust }),
+          createdAt: row.createdAt,
+          updatedAt: row.updatedAt,
+          documentId: row.documentId,
+          documentKey: row.key,
+          documentTitle: row.title,
+          format: row.format,
+          latestRevisionId: row.latestRevisionId,
+          latestRevisionNumber: row.latestRevisionNumber,
+          documentPath: sourceCaseDocumentPath(company.issuePrefix, caseRow.pipelineId, caseId, row.key),
+        });
       }
 
       const counts: PipelineCaseOutputsResponse["counts"] = {
