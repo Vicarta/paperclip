@@ -92,7 +92,7 @@ async function main() {
     const response = await request(token, "GET", `/companies/${COMPANY_ID}/agents`);
     const agents = rows(response, ["items", "agents"]);
     const targets = agents.filter((agent) => {
-      if (agent.adapterType !== "openrouter" || !fallbackMarker(agent)) return false;
+      if (!fallbackMarker(agent)) return false;
       return options.all || options.names.has(agent.name);
     });
     if (!options.all) {

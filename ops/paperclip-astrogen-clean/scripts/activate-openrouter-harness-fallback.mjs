@@ -7,13 +7,15 @@ const USER_ID = "VetfGVba4HjRqdTiVfZNL4HsvXchKgLW";
 const DB_CONTAINER = "paperclip-astrogen-clean-db-1";
 const API_BASE = process.env.PAPERCLIP_API_BASE ?? "http://127.0.0.1:3210/api";
 const OPENROUTER_SECRET_ID = "18cfeaa8-7856-4999-99d3-3335aa7c35c3";
-const FALLBACK_MODEL = "anthropic/claude-sonnet-4.6";
+const PROMPT_ONLY_MODEL = "anthropic/claude-sonnet-4.6";
+const LOCAL_TOOLS_MODEL = "openrouter/anthropic/claude-sonnet-4.6";
 const FALLBACK_MARKER_KEY = "paperclipHarnessFallback";
 
 function parseArgs(argv) {
   const names = new Set();
   let all = false;
   let reason = "";
+  let runtime = "local-tools";
   for (let index = 0; index < argv.length; index += 1) {
     const value = argv[index];
     if (value === "--all") {
@@ -32,6 +34,11 @@ function parseArgs(argv) {
       index += 1;
       continue;
     }
+    if (value === "--runtime") {
+      runtime = argv[index + 1] ?? "";
+      index += 1;
+      continue;
+    }
     throw new Error(`Unknown argument: ${value}`);
   }
   if (!all && names.size === 0) {
@@ -43,7 +50,10 @@ function parseArgs(argv) {
   if (!reason.trim()) {
     throw new Error("--reason is required");
   }
-  return { all, names, reason: reason.trim() };
+  if (!["local-tools", "prompt-only"].includes(runtime)) {
+    throw new Error("--runtime must be local-tools or prompt-only");
+  }
+  return { all, names, reason: reason.trim(), runtime };
 }
 
 function run(command, args, input) {
@@ -89,9 +99,21 @@ async function request(token, method, pathname, body) {
   return text ? JSON.parse(text) : null;
 }
 
-function fallbackConfig(agent, reason) {
+function readFallbackMarker(agent) {
+  const marker = agent.adapterConfig?.[FALLBACK_MARKER_KEY];
+  return marker && typeof marker === "object" ? marker : null;
+}
+
+function fallbackConfig(agent, reason, runtime) {
   const previous = agent.adapterConfig ?? {};
-  return {
+  const existingMarker = readFallbackMarker(agent);
+  const marker = existingMarker ?? {
+    activatedAt: new Date().toISOString(),
+    reason,
+    originalAdapterType: agent.adapterType,
+    originalAdapterConfig: previous,
+  };
+  const shared = {
     env: {
       OPENROUTER_API_KEY: {
         type: "secret_ref",
@@ -99,19 +121,33 @@ function fallbackConfig(agent, reason) {
         secretId: OPENROUTER_SECRET_ID,
       },
     },
-    model: FALLBACK_MODEL,
-    timeoutSec: 1800,
-    maxCompletionTokens: 16000,
     instructionsFilePath: previous.instructionsFilePath,
     instructionsRootPath: previous.instructionsRootPath,
     instructionsEntryFile: previous.instructionsEntryFile ?? "AGENTS.md",
     instructionsBundleMode: previous.instructionsBundleMode ?? "external",
     [FALLBACK_MARKER_KEY]: {
-      activatedAt: new Date().toISOString(),
+      ...marker,
       reason,
-      originalAdapterType: agent.adapterType,
-      originalAdapterConfig: previous,
+      lastRoutedAt: new Date().toISOString(),
+      fallbackRuntime: runtime,
     },
+  };
+  if (runtime === "prompt-only") {
+    return {
+      ...shared,
+      model: PROMPT_ONLY_MODEL,
+      timeoutSec: 1800,
+      maxCompletionTokens: 16000,
+    };
+  }
+  return {
+    ...shared,
+    cwd: "/companies/astrogen",
+    model: LOCAL_TOOLS_MODEL,
+    timeoutSec: 0,
+    graceSec: 15,
+    outputInactivityTimeoutMs: 1800000,
+    dangerouslySkipPermissions: true,
   };
 }
 
@@ -130,32 +166,35 @@ async function main() {
     const response = await request(token, "GET", `/companies/${COMPANY_ID}/agents`);
     const agents = rows(response, ["items", "agents"]);
     const targets = agents.filter((agent) =>
-      agent.adapterType === "codex_local"
+      (agent.adapterType === "codex_local" || readFallbackMarker(agent))
       && (options.all || options.names.has(agent.name))
     );
     if (!options.all) {
       const found = new Set(targets.map((agent) => agent.name));
       const missing = [...options.names].filter((name) => !found.has(name));
       if (missing.length > 0) {
-        throw new Error(`Requested codex_local agents not found: ${missing.join(", ")}`);
+        throw new Error(`Requested codex_local/fallback agents not found: ${missing.join(", ")}`);
       }
     }
     if (targets.length === 0) {
-      throw new Error("No codex_local agents matched the requested scope");
+      throw new Error("No codex_local/fallback agents matched the requested scope");
     }
     const changed = [];
+    const adapterType = options.runtime === "local-tools" ? "opencode_local" : "openrouter";
+    const model = options.runtime === "local-tools" ? LOCAL_TOOLS_MODEL : PROMPT_ONLY_MODEL;
     for (const agent of targets) {
       await request(token, "PATCH", `/agents/${agent.id}`, {
-        adapterType: "openrouter",
-        adapterConfig: fallbackConfig(agent, options.reason),
+        adapterType,
+        adapterConfig: fallbackConfig(agent, options.reason, options.runtime),
         replaceAdapterConfig: true,
       });
-      changed.push({ id: agent.id, name: agent.name, from: "codex_local", to: "openrouter", model: FALLBACK_MODEL });
+      changed.push({ id: agent.id, name: agent.name, from: agent.adapterType, to: adapterType, model });
     }
     console.log(JSON.stringify({
       ok: true,
       backup: { backupDir: backup.backupDir, sizeBytes: backup.sizeBytes },
       fallbackReason: options.reason,
+      fallbackRuntime: options.runtime,
       changedCount: changed.length,
       changed,
     }, null, 2));
