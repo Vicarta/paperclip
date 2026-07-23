@@ -91,6 +91,14 @@ function main() {
       && transition.label === "accept_existing_after_visual_review"),
     "CMO recovery must accept a valid existing candidate without another provider call",
   );
+  const growth = manifest.pipelines.find((pipeline) => pipeline.key === "astrogen-growth-actions");
+  const growthExecutingInstructions = growth?.stageAutomation?.executing?.instructions ?? "";
+  includesAll(growthExecutingInstructions, [
+    "needs_manager_action",
+    "The CMO performs that approval or transition in the same heartbeat",
+    "Never classify the CMO's own approval duty as an external blocker",
+    "never let a specialist issue block its manager solely because the specialist lacks manager-only approval authority",
+  ], "Growth manager-only approval handoff");
 
   includesAll(routineContracts.articleSlotAllocator, [
     "POST /api/cases/{topicCaseId}/breakdown",
@@ -136,6 +144,7 @@ function main() {
       "no ready-stage automation",
       "complete bounded writer-brief preflight",
       "canonical CMS admin URL transition gates",
+      "manager-only approval handoff continuity",
       "allocator native dispatch and refill",
       "three-slot daily batch and deficit reconciliation",
       "CEO foreign-issue boundary",
