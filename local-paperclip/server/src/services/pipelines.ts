@@ -128,6 +128,7 @@ export type PipelineStageConfig = Record<string, unknown> & {
     requiredFields: string[];
     requiredArrayLengths?: Record<string, number>;
     requiredFieldValues?: Record<string, string | number | boolean>;
+    requiredStringPrefixes?: Record<string, string>;
     singleItemArrayMatchesField?: Record<string, string>;
     whenCaseField?: string;
     whenCaseFieldEquals?: string | number | boolean;
@@ -2371,6 +2372,21 @@ async function assertStageTransitionGates(
         fromStageKey: fromStage.key,
         toStageKey: toStage.key,
         invalidFieldValues,
+      });
+    }
+    const invalidStringPrefixes = Object.entries(requirement.requiredStringPrefixes ?? {})
+      .flatMap(([key, expectedPrefix]) => {
+        const actualValue = fields[key];
+        return typeof actualValue === "string" && actualValue.startsWith(expectedPrefix)
+          ? []
+          : [{ key, expectedPrefix, actualValue: actualValue ?? null }];
+      });
+    if (invalidStringPrefixes.length > 0) {
+      throw conflict("Pipeline case strings do not have the required prefixes for this transition", {
+        code: "pipeline_case_required_string_prefix_mismatch",
+        fromStageKey: fromStage.key,
+        toStageKey: toStage.key,
+        invalidStringPrefixes,
       });
     }
     const invalidSingleItemArrayMatches = Object.entries(requirement.singleItemArrayMatchesField ?? {})

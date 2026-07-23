@@ -178,6 +178,10 @@ export const pipelineStageFieldRequirementSchema = z.object({
     routineVariableLikeNameSchema,
     z.union([z.string(), z.number(), z.boolean()]),
   ).optional().default({}),
+  requiredStringPrefixes: z.record(
+    routineVariableLikeNameSchema,
+    z.string().trim().min(1).max(500),
+  ).optional().default({}),
   singleItemArrayMatchesField: z.record(
     routineVariableLikeNameSchema,
     routineVariableLikeNameSchema,
@@ -213,6 +217,15 @@ export const pipelineStageFieldRequirementSchema = z.object({
         code: z.ZodIssueCode.custom,
         path: ["requiredFieldValues", field],
         message: "Exact-value requirements must reference a required field",
+      });
+    }
+  }
+  for (const field of Object.keys(value.requiredStringPrefixes)) {
+    if (!value.requiredFields.includes(field)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["requiredStringPrefixes", field],
+        message: "String-prefix requirements must reference a required field",
       });
     }
   }

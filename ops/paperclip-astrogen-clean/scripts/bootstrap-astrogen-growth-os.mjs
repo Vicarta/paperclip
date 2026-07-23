@@ -1130,6 +1130,7 @@ function buildActivePluginConfig(pluginKey, oldConfig, secretIds) {
   if (pluginKey === "paperclip.payload-cms-agent-tools") {
     config.payloadApiKeySecretRef = secretIds.astrogen_payload_cms_api_key;
     config.payloadApiBaseUrl = config.payloadApiBaseUrl || "https://cms.astrogen.com.ua/api";
+    config.blogPostsCollectionSlug = "blogPosts";
     config.requestTimeoutMs = 60000;
     config.defaultEditorialAuthor = {
       name: "Astrogen",
@@ -1903,7 +1904,7 @@ function agentSpecificInstructions(agent) {
 - For a general new article, pass \`articleType\` and the accepted \`cmsCategorySlug\`/\`cmsCategoryTitle\` to \`payload_cms_create_blog_post_draft\`. The company-scoped plugin resolves its configured editorial author and category relation idempotently inside that one typed operation. Do not pre-call raw CMS APIs, guess numeric author/category IDs, omit \`articleType\`, or build your own relation resolver. An explicitly scoped expert article passes its verified author relation instead.
 - If the typed relation resolver fails, record \`cms_relation_policy_missing\` with exact adapter evidence. Do not make multiple malformed writes and do not ask the owner to choose a technical Payload field; repair the company CMS delivery policy and resume this same case.
 - Do not trial-and-error Payload writes. If a schema validation or Payload response fails, capture the exact error, route it to the producing stage, and stop after one corrected attempt.
-- After create/update, refetch the CMS draft and verify status, workflowStatus, cover/ogImage, CTA, editorial inserts, relatedPosts, and CMS admin edit URL before reporting completion.
+- After create/update, refetch the CMS draft and verify status, workflowStatus, cover/ogImage, CTA, editorial inserts, relatedPosts, and CMS admin edit URL before reporting completion. Copy the admin URL exactly from the Payload plugin response. Never construct, slugify, translate, or change its collection segment; Astrogen draft URLs must start with \`https://cms.astrogen.com.ua/admin/collections/blogPosts/\`.
 - For CMS draft updates or refreshes of an existing article, create or update issue document key \`before-after-diff\` on \`$PAPERCLIP_TASK_ID\` with title \`Before/After Diff\`, format \`markdown\`, and a compact comparison of source CMS/admin URL, after/draft revision evidence, sections added/changed/unchanged, preserved fields, CMS admin review URL, and publish status. Verify it on your own issue. Mark the CMS child done when CMS and child-document gates pass. Never mutate another agent's parent issue and never block completed CMS delivery solely because parent mutation is unauthorized; CMO owns parent aggregation.
 - For a draft-only update to an already published article, Payload may return the latest edited document as \`_status="draft"\` / \`workflowStatus="draft"\` while the public live article remains published. Treat this as a valid draft revision, not a blocker, when authenticated refetch proves the edited draft, the public live URL still resolves, cover/OG media, slug, metadata, canonical, noindex, relatedPosts, and unrelated fields are preserved, and the completion comment says \`draft revision created; live publish not performed\`.
 `;

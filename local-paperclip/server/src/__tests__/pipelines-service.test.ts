@@ -646,6 +646,81 @@ describeEmbeddedPostgres("pipelineService", () => {
     })).resolves.toMatchObject({ case: { stageId: evidenceReadyStage?.id } });
   });
 
+  it("blocks a transition when a required string has the wrong prefix", async () => {
+    const company = await seedCompany();
+    const pipeline = await svc.createPipeline({
+      companyId: company.id,
+      key: "cms-admin-url-gate",
+      name: "CMS admin URL gate",
+      actor: userActor,
+      stages: [
+        {
+          key: "cms",
+          name: "CMS",
+          kind: "working",
+          config: {
+            transitionFieldRequirements: [{
+              toStageKey: "delivery",
+              requiredFields: ["cmsAdminUrl"],
+              requiredStringPrefixes: {
+                cmsAdminUrl: "https://cms.example.test/admin/collections/blogPosts/",
+              },
+            }],
+          },
+        },
+        { key: "delivery", name: "Delivery", kind: "working" },
+        { key: "done", name: "Done", kind: "done" },
+        { key: "cancelled", name: "Cancelled", kind: "cancelled" },
+      ],
+    });
+    const created = await svc.ingestCase({
+      companyId: company.id,
+      pipelineId: pipeline.id,
+      stageKey: "cms",
+      caseKey: "draft-139",
+      title: "Draft 139",
+      fields: {
+        cmsAdminUrl: "https://cms.example.test/admin/collections/blog-posts/139",
+      },
+      actor: userActor,
+    });
+
+    await expect(svc.transitionCase({
+      companyId: company.id,
+      caseId: created.case.id,
+      toStageKey: "delivery",
+      expectedVersion: created.case.version,
+      actor: userActor,
+    })).rejects.toMatchObject({
+      status: 409,
+      details: {
+        code: "pipeline_case_required_string_prefix_mismatch",
+        invalidStringPrefixes: [{
+          key: "cmsAdminUrl",
+          expectedPrefix: "https://cms.example.test/admin/collections/blogPosts/",
+          actualValue: "https://cms.example.test/admin/collections/blog-posts/139",
+        }],
+      },
+    });
+
+    const updated = await svc.patchCaseContent({
+      companyId: company.id,
+      caseId: created.case.id,
+      expectedVersion: created.case.version,
+      fieldPatch: {
+        cmsAdminUrl: "https://cms.example.test/admin/collections/blogPosts/139",
+      },
+      actor: userActor,
+    });
+    await expect(svc.transitionCase({
+      companyId: company.id,
+      caseId: created.case.id,
+      toStageKey: "delivery",
+      expectedVersion: updated.version,
+      actor: userActor,
+    })).resolves.toMatchObject({ case: { terminalKind: null } });
+  });
+
   it("conditionally enforces required fields and exact array lengths", async () => {
     const company = await seedCompany();
     const pipeline = await svc.createPipeline({

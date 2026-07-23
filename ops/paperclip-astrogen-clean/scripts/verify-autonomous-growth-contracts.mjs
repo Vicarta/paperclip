@@ -60,6 +60,21 @@ function main() {
   );
   assert(draft?.config?.inlineContextMaxChars === 48_000, "Draft writer-brief limit must be 48000 characters");
   assert(draft?.config?.inlineContextRequireComplete === true, "Draft stage must reject incomplete inline context");
+  const canonicalCmsAdminPrefix = "https://cms.astrogen.com.ua/admin/collections/blogPosts/";
+  const cmsDraft = article.stages.find((stage) => stage.key === "cms_draft");
+  const cmoDelivery = article.stages.find((stage) => stage.key === "cmo_delivery");
+  assert(
+    cmsDraft?.config?.transitionFieldRequirements?.some((requirement) =>
+      requirement.toStageKey === "cmo_delivery"
+      && requirement.requiredStringPrefixes?.cmsAdminUrl === canonicalCmsAdminPrefix),
+    "CMS draft must reject non-canonical admin URLs",
+  );
+  assert(
+    cmoDelivery?.config?.transitionFieldRequirements?.some((requirement) =>
+      requirement.toStageKey === "delivered"
+      && requirement.requiredStringPrefixes?.cmsAdminUrl === canonicalCmsAdminPrefix),
+    "CMO delivery must reject non-canonical admin URLs",
+  );
   const imageRecovery = article?.stages?.find((stage) => stage.key === "image_recovery_review");
   assert(imageRecovery?.position === 1350, "CMO image recovery review stage is missing");
   assert(
@@ -120,6 +135,7 @@ function main() {
       "outcome-aware topic consume/release",
       "no ready-stage automation",
       "complete bounded writer-brief preflight",
+      "canonical CMS admin URL transition gates",
       "allocator native dispatch and refill",
       "three-slot daily batch and deficit reconciliation",
       "CEO foreign-issue boundary",

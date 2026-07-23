@@ -1,0 +1,9 @@
+ARG BASE_IMAGE=paperclip-app:latest
+FROM ${BASE_IMAGE}
+
+COPY scripts/patch-transition-string-prefix-gate-dist.mjs /tmp/patch-transition-string-prefix-gate-dist.mjs
+RUN node /tmp/patch-transition-string-prefix-gate-dist.mjs \
+    /app/server/dist/services/pipelines.js \
+    /app/packages/shared/dist/validators/pipeline.js \
+  && node --check /app/server/dist/services/pipelines.js \
+  && node --check /app/packages/shared/dist/validators/pipeline.js
