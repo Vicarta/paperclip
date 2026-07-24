@@ -2109,6 +2109,43 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
 
     expect(result.content).toContain("job_1");
     expect(result.content).toContain("candidate_keyword_count");
+    expect(harness.costs).toHaveLength(0);
+  });
+
+  it("records provider-reported sub-cent run costs without rounding them away", async () => {
+    const harness = createTestHarness({ manifest });
+    await plugin.definition.setup(harness.ctx);
+
+    runLayerAndWaitMock.mockResolvedValueOnce({
+      content: JSON.stringify({
+        status: "completed",
+        job_id: "job_cost_1",
+        run_id: "run_cost_1",
+        cost: { total_actual: 0.0012, events: [] },
+      }),
+      data: {
+        status: "completed",
+        job_id: "job_cost_1",
+        run_id: "run_cost_1",
+        cost: { total_actual: 0.0012, events: [] },
+      },
+    });
+
+    await harness.executeTool(
+      TOOL_NAMES.runLayerAndWait,
+      {
+        project_id: "diskinternals-us",
+        layer: "core_product_intent",
+        mode: "mock",
+      },
+      toolRunCtx,
+    );
+
+    expect(harness.costs).toContainEqual(expect.objectContaining({
+      billingCode: "semantic-core-mcp",
+      amountMicros: 1200,
+      costCents: 0,
+    }));
   });
 
   it("runs smoke test through dedicated smoke helper", async () => {

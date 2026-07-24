@@ -390,7 +390,27 @@ async function recordCompletedRunCost(input: {
     ?? readFiniteNumber(cost.totalEstimated)
     ?? readFiniteNumber(cost.total)
     ?? sumNumericEventField(events, ["estimated_cost", "estimatedCost"]);
-  const amount = actual ?? estimated ?? 0;
+  const amount = actual ?? estimated;
+  const accountingStatus = actual !== null
+    ? "provider_reported"
+    : estimated !== null
+      ? "estimated"
+      : "unknown";
+  if (amount === null) {
+    await input.ctx.state.set(
+      {
+        scopeKind: "project",
+        scopeId: input.runCtx.projectId,
+        namespace: "semantic-core",
+        stateKey,
+      },
+      {
+        recordedAt: nowIso(),
+        accountingStatus,
+      },
+    );
+    return { recorded: false, amountMicros: 0, accountingStatus };
+  }
   const amountMicros = Math.max(0, Math.round(amount * 1_000_000));
 
   await input.ctx.state.set(
@@ -403,7 +423,7 @@ async function recordCompletedRunCost(input: {
     {
       recordedAt: nowIso(),
       amountMicros,
-      accountingMode: actual === null ? "estimated" : "provider_reported",
+      accountingStatus,
     },
   );
   if (amountMicros === 0) return { recorded: false, amountMicros };
