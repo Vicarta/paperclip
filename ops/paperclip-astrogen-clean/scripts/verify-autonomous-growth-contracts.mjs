@@ -7,6 +7,9 @@ import { readFileSync } from "node:fs";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const PIPELINE_MANIFEST = resolve(SCRIPT_DIR, "../manifests/pipelines.yaml");
+const AGENT_MANIFEST = resolve(SCRIPT_DIR, "../manifests/agents.yaml");
+const SECRET_MANIFEST = resolve(SCRIPT_DIR, "../manifests/secrets.yaml");
+const ROUTINE_MANIFEST = resolve(SCRIPT_DIR, "../manifests/routines.yaml");
 
 function loadYaml(pathname) {
   const source = [
@@ -30,7 +33,45 @@ function includesAll(value, fragments, label) {
 
 function main() {
   const manifest = loadYaml(PIPELINE_MANIFEST);
+  const agentManifest = loadYaml(AGENT_MANIFEST);
+  const secretManifest = loadYaml(SECRET_MANIFEST);
+  const routineManifest = loadYaml(ROUTINE_MANIFEST);
   assert(manifest.mode === "active", "Native pipeline manifest must be active");
+  assert(
+    agentManifest.policy?.writerHarness?.adapterType === "claude_local",
+    "Primary article writer must use claude_local",
+  );
+  assert(
+    agentManifest.policy?.writerHarness?.openRouterTextGeneration === "disabled",
+    "OpenRouter text generation must be disabled",
+  );
+  assert(
+    !secretManifest.secrets?.requiredNow?.some((secret) => secret.key === "openrouter_api_key_4texts"),
+    "OpenRouter text key must not be a required clean secret",
+  );
+  assert(
+    secretManifest.secrets?.optionalParked?.some((secret) =>
+      secret.key === "openrouter_api_key_4texts"
+      && String(secret.activation).includes("disabled")),
+    "Legacy OpenRouter text key must be explicitly parked",
+  );
+  includesAll(JSON.stringify(routineManifest), [
+    "authenticated Claude CLI subscription",
+    "OpenRouter text generation is disabled",
+  ], "Routine writer harness contract");
+  const bootstrapSource = readFileSync(resolve(SCRIPT_DIR, "bootstrap-astrogen-growth-os.mjs"), "utf8");
+  includesAll(bootstrapSource, [
+    '"SEO Blog Article Writer (Claude)"',
+    '"claude_local"',
+    'model: "sonnet"',
+    "maxTurnsPerRun: 32",
+    "dangerouslySkipPermissions: true",
+    "authenticated \\`claude_local\\` subscription adapter",
+  ], "Bootstrap Claude CLI writer contract");
+  assert(
+    !bootstrapSource.includes("The Claude writer runs through the OpenRouter prompt adapter"),
+    "Legacy OpenRouter writer instructions must be absent",
+  );
 
   const topic = manifest.pipelines.find((pipeline) => pipeline.key === "astrogen-topic-inventory");
   assert(topic, "Topic inventory pipeline is missing");
@@ -174,6 +215,8 @@ function main() {
     ok: true,
     checks: [
       "active native manifest",
+      "Claude CLI subscription writer harness",
+      "OpenRouter text generation parked",
       "ready breakdown to article opportunity",
       "outcome-aware topic consume/release",
       "no ready-stage automation",

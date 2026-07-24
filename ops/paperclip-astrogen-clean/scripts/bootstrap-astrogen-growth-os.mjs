@@ -39,7 +39,7 @@ const secretDefs = [
   ["search-console-mcp-astrogen-token", "required"],
   ["telegram.bot_token.astrogen_ai_bot", "required"],
   ["resend-api-key", "required"],
-  ["openrouter_api_key_4texts", "required"],
+  ["openrouter_api_key_4texts", "parked"],
   ["openrouter_api_key_4images", "required"],
   ["dataforseo-api-login", "parked"],
   ["dataforseo-api-password", "parked"],
@@ -186,8 +186,8 @@ export const agentDefs = [
   role("SEO Blog Content Strategist", "cmo", "SEO Blog Content Strategist", "Chief Marketing Officer", "target", true, false, "Builds content plans from validated opportunities and business priority."),
   role("SEO Blog Content Plan Validator", "researcher", "SEO Blog Content Plan Validator", "SEO Blog Content Strategist", "eye", true, false, "Validates content plans before article production starts."),
   role("MKT Blog Brief Strategist", "cmo", "Blog Brief Strategist", "SEO Blog Content Strategist", "file-code", true, false, "Creates compact article briefs with locked title, route, keywords, scope, and CTA constraints."),
-  role("SEO Blog Article Writer (Claude)", "researcher", "SEO Blog Article Writer", "MKT Blog Brief Strategist", "brain", false, false, "Writes canonical Ukrainian article artifacts through OpenRouter from accepted briefs only.", "openrouter"),
-  role("SEO Blog Article Writer (ChatGPT)", "researcher", "Fallback SEO Blog Article Writer", "MKT Blog Brief Strategist", "brain", true, false, "Fallback writer used only for confirmed Claude/OpenRouter blockers or explicit CMO recovery.", "codex_local", "fallback-seo-blog-article-writer"),
+  role("SEO Blog Article Writer (Claude)", "researcher", "SEO Blog Article Writer", "MKT Blog Brief Strategist", "brain", false, false, "Writes canonical Ukrainian article artifacts through the authenticated Claude CLI subscription from accepted briefs only.", "claude_local"),
+  role("SEO Blog Article Writer (ChatGPT)", "researcher", "Fallback SEO Blog Article Writer", "MKT Blog Brief Strategist", "brain", true, false, "Fallback writer used only for confirmed Claude CLI blockers or explicit CMO recovery.", "codex_local", "fallback-seo-blog-article-writer"),
   role("SEO Blog Article Validator", "researcher", "SEO Blog Article Validator", "SEO Blog Content Plan Validator", "shield", false, false, "Validates drafts against brief lock, factual risk, Astrogen voice, and artifact protocol."),
   role("SEO Blog Humanizer", "researcher", "SEO Blog Humanizer", "SEO Blog Article Validator", "sparkles", false, false, "Improves accepted drafts for natural Ukrainian readability without changing SEO locks."),
   role("SEO Blog Article Layout Editor", "researcher", "SEO Blog Article Layout Editor", "SEO Blog Humanizer", "layout", false, false, "Creates articleContent layout JSON and CMS-ready body structure."),
@@ -1751,8 +1751,8 @@ function agentSpecificInstructions(agent) {
 ## Evidence-Backed Draft Contract
 
 - For \`western_astrology_learning\`, teach exactly one new astrology concept. Do not define or compare adjacent terms, list twelve houses/signs, add a glossary or FAQ that introduces new terms, or use an interpretation workflow that depends on concepts the curriculum has not taught. Published prerequisites may be mentioned briefly with links but not retaught. Ukrainian aliases of the primary concept count as the same concept. At most one curriculum-approved supporting term may be used when accuracy requires it: define it immediately in one plain-language sentence, record it in \`supportingTermGlossary\`, and do not give it a heading, table, list, FAQ, comparison, example set, workflow, or second teaching objective.
-- This is the shared writer-workspace contract. Claude is the primary writer. ChatGPT may execute only after the case records a Claude/provider/protocol blocker or an explicit CMO fallback decision; ChatGPT must never self-trigger or replace a healthy Claude path.
-- The Claude writer runs through the OpenRouter prompt adapter. It has no callable shell, browser, or Paperclip API tools: never emit \`<tool_call>\`, shell commands, or raw API instructions. Return the adapter's single JSON protocol response with the complete attachment artifact. Include typed \`pipelineTransition\` when the native state machine exposes multiple allowed next stages; when exactly one transition exists, it may be omitted and Paperclip selects that route deterministically. Never guess between multiple routes. Paperclip validates and performs the transition before it can close the stage task.
+- This is the shared writer-workspace contract. Claude is the primary writer through the authenticated \`claude_local\` subscription adapter. ChatGPT may execute only after the case records a Claude CLI/provider/protocol blocker or an explicit CMO fallback decision; ChatGPT must never self-trigger or replace a healthy Claude path.
+- Use Paperclip issue, document, artifact and typed pipeline tools only for the assigned draft stage. Local shell access is allowed only to read the accepted workspace inputs and create the canonical draft artifact; do not browse the web, call paid providers, modify CMS, generate images, publish content, or perform unrelated repository work. Register the complete artifact and apply the typed pipeline transition exposed by the native state machine. Never guess between multiple routes or mark the stage done without durable artifact and transition evidence.
 - Use only the complete injected \`writer-brief\` document for draft requirements. Never reconstruct it from compact case fields or continue from a missing, redacted, or truncated inline document.
 - Write article prose only from brief sections typed \`readerFacing\`. Treat CMS/media fields, revision IDs, publication blocker notes, validation instructions, source/provenance notes, editorial signals, and any section titled \`Редакційні сигнали та медіа-поля\` as \`handoffOnly\`, even when an older immutable provider result numbered them as a section. On a validate-to-draft return, apply the latest content-validation case document before the older brief and never repeat a rejected operational section.
 - Treat the accepted Winning Structure and brief as requirements, not prose. Write original Ukrainian copy without copying competitor wording or concatenating section instructions.
@@ -1951,6 +1951,24 @@ function baseRuntimeConfig() {
 
 function adapterConfigFor(agent, secretIds) {
   const instructionsRoot = `${CONTAINER_COMPANY_DIR}/agents/${agent.slug}`;
+  if (agent.adapterType === "claude_local") {
+    return {
+      cwd: CONTAINER_COMPANY_DIR,
+      env: {
+        PAPERCLIP_API_URL: { type: "plain", value: "http://127.0.0.1:3100" },
+      },
+      model: "sonnet",
+      graceSec: 15,
+      timeoutSec: 1800,
+      maxTurnsPerRun: 32,
+      instructionsFilePath: `${instructionsRoot}/AGENTS.md`,
+      instructionsRootPath: instructionsRoot,
+      instructionsEntryFile: "AGENTS.md",
+      instructionsBundleMode: "external",
+      dangerouslySkipPermissions: true,
+    };
+  }
+
   if (agent.adapterType === "openrouter") {
     return {
       env: {

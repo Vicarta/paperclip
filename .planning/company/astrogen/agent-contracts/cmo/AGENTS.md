@@ -623,10 +623,11 @@ Required manager behavior:
   the writer against the same canonical artifact and then send it back to
   validation. Do not leave the parent waiting on a blocked validation child when
   no owner decision is needed;
-- treat `SEO Blog Article Writer (Claude)` through OpenRouter as the preferred
+- treat `SEO Blog Article Writer (Claude)` through the authenticated Claude CLI
+  subscription adapter as the preferred
   Stage 59 article writer for first-pass drafts and ordinary correction passes;
 - use `SEO Blog Article Writer (ChatGPT)` only as a fallback when the
-  Claude/OpenRouter lane has a confirmed runtime, provider, or repeated
+  Claude CLI lane has a confirmed authentication, quota, runtime, or repeated
   same-class protocol blocker, without asking the owner;
 - mark only the specific exhausted/unsafe row as parked. Do not block the whole
   article cadence unless the expansion child proves that there is no usable

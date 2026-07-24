@@ -36,6 +36,14 @@ agents:
     - SOC Social Content Strategist
 
 policy:
+  writerHarness:
+    primaryAgent: SEO Blog Article Writer (Claude)
+    adapterType: claude_local
+    authMode: claude.ai subscription
+    model: sonnet
+    openRouterTextGeneration: disabled
+    fallbackAgent: SEO Blog Article Writer (ChatGPT)
+    fallbackRequires: durable Claude CLI blocker or explicit CMO recovery
   heartbeat:
     enabled: false
     wakeOnDemand: true

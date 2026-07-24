@@ -166,7 +166,8 @@ routines:
         - native requestKey and caseKey provide per-generation idempotency; do not create article, brief, writer, or recovery issue trees
       writerRecovery:
         - primary writer is SEO Blog Article Writer (Claude)
-        - ChatGPT fallback only after recorded Claude/OpenRouter blocker, missing canonical artifact, repeated same-class failure, or explicit CMO recovery
+        - primary writer runs through authenticated Claude CLI subscription; OpenRouter text generation is disabled
+        - ChatGPT fallback only after recorded Claude CLI blocker, missing canonical artifact, repeated same-class failure, or explicit CMO recovery
         - writer slot is incomplete without canonical draft artifact or explicit no-draft blocker
       imageGate:
         - normal new articles require accepted cover image unless owner explicitly waives image generation
