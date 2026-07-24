@@ -115,6 +115,9 @@ const ASTROGEN_AGENT_ERROR_NOISE_PATTERNS = [
   /cheap status-only recovery runs cannot update issue documents/i,
   /status-only recovery runs cannot update issue documents/i,
   /cannot update issue documents,\s*plans,\s*or deliverable artifacts/i,
+  /error_max_turns/i,
+  /max_turns_exhausted/i,
+  /reached maximum number of turns/i,
 ];
 
 const ASTROGEN_PIPELINE_TITLE_PATTERNS = [

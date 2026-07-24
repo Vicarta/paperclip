@@ -233,6 +233,13 @@ describe("Telegram agent error notification policy", () => {
       issueTitle: "Stage 59 draft AST56-1961-03: Терези знак зодіаку жінка /experts",
       errorMessage: "Paperclip issue artifact upload failed (403): Cheap status-only recovery runs cannot update issue documents, plans, or deliverable artifacts",
     })).toBe(true);
+
+    expect(shouldSuppressAgentErrorNotification({
+      companyName: "Astrogen",
+      issueIdentifier: "AST-1734",
+      issueTitle: "Claude Draft automation",
+      errorMessage: "Claude run failed: subtype=error_max_turns: Reached maximum number of turns (16)",
+    })).toBe(true);
   });
 
   it("keeps non-Astrogen agent errors visible", () => {
