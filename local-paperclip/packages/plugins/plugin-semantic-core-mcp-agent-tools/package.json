@@ -1,6 +1,6 @@
 {
   "name": "@paperclipai/plugin-semantic-core-mcp-agent-tools",
-  "version": "0.3.14",
+  "version": "0.3.15",
   "type": "module",
   "private": true,
   "description": "Paperclip agent tools backed by a Semantic Core MCP server",

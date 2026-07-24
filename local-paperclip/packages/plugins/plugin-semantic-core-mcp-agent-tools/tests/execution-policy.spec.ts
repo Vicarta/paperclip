@@ -130,4 +130,55 @@ describe("semantic core execution policy", () => {
       }),
     ).toThrow("SEMANTIC_CORE_TREND_CACHE_REFRESH_DISABLED");
   });
+
+  it("allows only explicit bounded standalone content parsing", () => {
+    expect(() =>
+      enforceSemanticCoreExecutionPolicy({
+        toolName: "request_content_parsing",
+        args: {
+          project_id: "astrogen-ukraine",
+          urls: ["https://example.com/one"],
+          language_code: "uk",
+          location_code: 2804,
+        },
+        config: {},
+      }),
+    ).toThrow("SEMANTIC_CORE_CONTENT_PARSING_DISABLED");
+
+    expect(
+      enforceSemanticCoreExecutionPolicy({
+        toolName: "request_content_parsing",
+        args: {
+          project_id: "astrogen-ukraine",
+          urls: ["https://example.com/one", "https://example.com/two"],
+          language_code: "uk",
+          location_code: 2804,
+        },
+        config: { contentParsingExecutionPolicy: "approved_bounded_evidence" },
+      }),
+    ).toMatchObject({
+      provider_queue: "standard",
+      max_content_terms_per_url: 50,
+      max_wait_seconds: 360,
+      markdown_view: false,
+    });
+
+    expect(() =>
+      enforceSemanticCoreExecutionPolicy({
+        toolName: "request_content_parsing",
+        args: {
+          project_id: "astrogen-ukraine",
+          urls: [
+            "https://example.com/one",
+            "https://example.com/two",
+            "https://example.com/three",
+            "https://example.com/four",
+          ],
+          language_code: "uk",
+          location_code: 2804,
+        },
+        config: { contentParsingExecutionPolicy: "approved_bounded_evidence" },
+      }),
+    ).toThrow("SEMANTIC_CORE_CONTENT_PARSING_URL_LIMIT");
+  });
 });

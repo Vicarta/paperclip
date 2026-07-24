@@ -233,6 +233,14 @@ const manifest: PaperclipPluginManifestV1 = {
           "Operator gate for bounded live trend research. Disabled by default even when the remote MCP server is enabled.",
         default: false,
       },
+      contentParsingExecutionPolicy: {
+        type: "string",
+        title: "Content Parsing Execution Policy",
+        description:
+          "Fail-closed policy for standalone competitor-page evidence. approved_bounded_evidence permits only 1-3 explicit public URLs, Standard queue, no Markdown/browser rendering, and at most 50 terms per URL.",
+        enum: ["disabled", "approved_bounded_evidence"],
+        default: "disabled",
+      },
     },
   },
   ui: {
@@ -291,6 +299,14 @@ const manifest: PaperclipPluginManifestV1 = {
       name: TOOL_NAMES.getJobStatus,
       displayName: "Semantic Core Get Job Status",
       description: "Call Semantic Core MCP `get_job_status`.",
+      parametersSchema: looseObjectSchema,
+      executionTimeoutMs: 60_000,
+    },
+    {
+      name: TOOL_NAMES.requestContentParsing,
+      displayName: "Semantic Core Request Content Parsing",
+      description:
+        "Queue a bounded, evidence-only competitor-page parsing job. It never changes semantic membership or creates Paperclip topics/articles.",
       parametersSchema: looseObjectSchema,
       executionTimeoutMs: 60_000,
     },

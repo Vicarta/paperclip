@@ -17,6 +17,7 @@ import {
   listSemanticCoreMcpTools,
   runLayerAndWait,
   runSemanticCoreSmoke,
+  type NormalizedMcpToolResult,
   type SemanticCoreMcpPluginConfig,
   validatePaperclipImportPayload,
 } from "./semantic-core-mcp-client.js";
@@ -60,6 +61,12 @@ const wrapperToolMap: Array<{
     mcpToolName: "get_job_status",
     displayName: "Semantic Core Get Job Status",
     description: "Poll a Semantic Core MCP async job.",
+  },
+  {
+    paperclipToolName: TOOL_NAMES.requestContentParsing,
+    mcpToolName: "request_content_parsing",
+    displayName: "Semantic Core Request Content Parsing",
+    description: "Queue bounded, evidence-only competitor-page parsing through Semantic Core MCP.",
   },
   {
     paperclipToolName: TOOL_NAMES.listRuns,
@@ -251,20 +258,15 @@ async function callMcpTool(input: {
   ctx: PluginSetupContext;
   toolName: SemanticCoreMcpToolName;
   args?: unknown;
-}): Promise<ToolResult> {
+}): Promise<NormalizedMcpToolResult> {
   const config = await getConfig(input.ctx);
-  const result = await callSemanticCoreMcpTool({
+  return await callSemanticCoreMcpTool({
     toolName: input.toolName,
     args: input.args,
     config,
     resolveSecret: (secretRef) => input.ctx.secrets.resolve(secretRef),
     fetchFn: input.ctx.http.fetch as typeof fetch,
   });
-
-  return {
-    content: result.content,
-    data: result.data,
-  };
 }
 
 async function storeEntity(input: {
@@ -509,6 +511,96 @@ async function recordTrendCostEvents(input: {
   }
 
   return { telemetryEventCount: events.length, ledgerEventCount: recorded };
+}
+
+async function recordContentParsingCostEvents(input: {
+  ctx: PluginContext;
+  runCtx: ToolRunContext;
+  jobId: string;
+  usage: unknown;
+}) {
+  const events = (readArray(input.usage) ?? []).filter(isRecord);
+  let ledgerEventCount = 0;
+  let unknownCostEventCount = 0;
+
+  for (const [index, event] of events.entries()) {
+    const stateKey = `content-parsing-cost-event:${input.jobId}:${index}`;
+    const previous = await input.ctx.state.get({
+      scopeKind: "project",
+      scopeId: input.runCtx.projectId,
+      namespace: "semantic-core",
+      stateKey,
+    });
+    if (previous) continue;
+
+    const currency = (readString(event.currency) ?? "USD").toUpperCase();
+    const actualAmount = readFiniteNumber(event.actual_cost)
+      ?? readFiniteNumber(event.actualCost);
+    const estimatedAmount = readFiniteNumber(event.estimated_cost)
+      ?? readFiniteNumber(event.estimatedCost);
+    const amount = actualAmount ?? estimatedAmount;
+    const endpoint = readString(event.endpoint) ?? "on_page/content_parsing/evidence";
+
+    if (currency !== "USD" || amount === null) {
+      await input.ctx.state.set(
+        {
+          scopeKind: "project",
+          scopeId: input.runCtx.projectId,
+          namespace: "semantic-core",
+          stateKey,
+        },
+        {
+          recordedAt: nowIso(),
+          accountingStatus: "unknown",
+          currency,
+          endpoint,
+        },
+      );
+      unknownCostEventCount += 1;
+      continue;
+    }
+
+    const amountMicros = Math.max(0, Math.round(amount * 1_000_000));
+    await input.ctx.state.set(
+      {
+        scopeKind: "project",
+        scopeId: input.runCtx.projectId,
+        namespace: "semantic-core",
+        stateKey,
+      },
+      {
+        recordedAt: nowIso(),
+        accountingStatus: actualAmount === null ? "estimated" : "provider_reported",
+        amountMicros,
+        currency,
+        endpoint,
+      },
+    );
+    if (amountMicros === 0) continue;
+
+    await input.ctx.costs.createEvent({
+      companyId: input.runCtx.companyId,
+      agentId: input.runCtx.agentId,
+      projectId: input.runCtx.projectId,
+      heartbeatRunId: input.runCtx.runId,
+      issueId: null,
+      goalId: null,
+      billingCode: "semantic-core-content-parsing",
+      provider: "semantic-core-builder",
+      biller: "semantic-core-builder",
+      billingType: "metered_api",
+      model: endpoint,
+      inputTokens: 0,
+      cachedInputTokens: 0,
+      outputTokens: 0,
+      costCents: Math.max(0, Math.round(amount * 100)),
+      amountMicros,
+      occurredAt: nowIso(),
+    });
+    ledgerEventCount += 1;
+  }
+
+  return { telemetryEventCount: events.length, ledgerEventCount, unknownCostEventCount };
 }
 
 async function handleTrendTopicReport(input: {
@@ -1045,6 +1137,58 @@ const plugin = definePlugin({
               status: "registered",
               data: { projectId, request: params },
             });
+          }
+
+          if (tool.mcpToolName === "request_content_parsing") {
+            const job = extractResultObject(result);
+            const jobId = readString(job.job_id) ?? "unknown-job";
+            await storeEntity({
+              ctx,
+              runCtx,
+              entityType: ENTITY_TYPES.contentParsing,
+              externalId: jobId,
+              title: `Semantic Core content parsing ${jobId}`,
+              status: readString(job.status) ?? "queued",
+              data: {
+                jobId,
+                evidenceOnly: true,
+                request: params,
+                result: job,
+              },
+            });
+          }
+
+          if (tool.mcpToolName === "get_job_status") {
+            const job = extractResultObject(result);
+            if (readString(job.job_type) === "content_parsing") {
+              const jobId = readString(job.job_id) ?? "unknown-job";
+              const status = readString(job.status) ?? "unknown";
+              const jobResult = isRecord(job.result) ? job.result : {};
+              const terminal = status === "completed" || status === "failed";
+              const costAccounting = terminal
+                ? await recordContentParsingCostEvents({
+                  ctx,
+                  runCtx,
+                  jobId,
+                  usage: jobResult.usage,
+                })
+                : null;
+              await storeEntity({
+                ctx,
+                runCtx,
+                entityType: ENTITY_TYPES.contentParsing,
+                externalId: jobId,
+                title: `Semantic Core content parsing ${jobId}`,
+                status,
+                data: {
+                  jobId,
+                  evidenceOnly: true,
+                  result: jobResult,
+                  error: readString(job.error),
+                  costAccounting,
+                },
+              });
+            }
           }
 
           if (tool.mcpToolName === "submit_review_decisions" && isRecord(params)) {

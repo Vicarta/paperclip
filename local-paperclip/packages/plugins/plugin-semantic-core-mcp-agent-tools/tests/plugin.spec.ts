@@ -577,6 +577,78 @@ describe("plugin-semantic-core-mcp-agent-tools", () => {
     expect(callSemanticCoreMcpToolMock).not.toHaveBeenCalled();
   });
 
+  it("persists standalone content-parsing evidence and provider-reported cost", async () => {
+    const harness = createTestHarness({
+      manifest,
+      config: {
+        semanticCoreMcpUrl: "https://semantic.example.test/mcp",
+        semanticCoreMcpTokenSecretRef: "secret-semantic",
+        allowedProjectIdsCsv: "astrogen-ukraine",
+        contentParsingExecutionPolicy: "approved_bounded_evidence",
+      },
+    });
+    await plugin.definition.setup(harness.ctx);
+
+    const queued = {
+      job_id: "job_content_1",
+      project_id: "astrogen-ukraine",
+      status: "queued",
+    };
+    const completed = {
+      job_id: "job_content_1",
+      project_id: "astrogen-ukraine",
+      job_type: "content_parsing",
+      status: "completed",
+      result: {
+        terms: [{ text: "приклад" }],
+        usage: [{
+          endpoint: "on_page/content_parsing/evidence",
+          actual_cost: 0.0012,
+          currency: "USD",
+        }],
+      },
+    };
+    callSemanticCoreMcpToolMock
+      .mockResolvedValueOnce({
+        content: JSON.stringify(queued),
+        data: { structuredContent: queued, content: [] },
+        isError: false,
+      })
+      .mockResolvedValueOnce({
+        content: JSON.stringify(completed),
+        data: { structuredContent: completed, content: [] },
+        isError: false,
+      });
+
+    await harness.executeTool(TOOL_NAMES.requestContentParsing, {
+      project_id: "astrogen-ukraine",
+      urls: ["https://example.com/competitor"],
+      language_code: "uk",
+      location_code: 2804,
+    }, toolRunCtx);
+    await harness.executeTool(TOOL_NAMES.getJobStatus, {
+      job_id: "job_content_1",
+    }, toolRunCtx);
+
+    const entities = await harness.ctx.entities.list({
+      entityType: "semantic-core-content-parsing",
+      scopeKind: "project",
+      scopeId: toolRunCtx.projectId,
+      limit: 10,
+      offset: 0,
+    });
+    expect(entities).toHaveLength(1);
+    expect(entities[0]?.data).toMatchObject({
+      jobId: "job_content_1",
+      evidenceOnly: true,
+      costAccounting: { ledgerEventCount: 1, unknownCostEventCount: 0 },
+    });
+    expect(harness.costs).toContainEqual(expect.objectContaining({
+      billingCode: "semantic-core-content-parsing",
+      amountMicros: 1200,
+    }));
+  });
+
   it("allows only configured semantic layers", () => {
     expect(
       prepareSemanticCoreMcpArguments({

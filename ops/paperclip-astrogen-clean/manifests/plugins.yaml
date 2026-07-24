@@ -77,12 +77,12 @@ plugins:
         trendReportEntity: semantic-core-trend-topic-report
         trendSemanticImport: forbidden
         trendDirectTopicCreation: forbidden
-        providerExecutionPolicy: disabled by default; read_only or operator-approved exact candidate batch only
-        trendLiveExecution: disabled by default and independent of the remote server lock
+        providerExecutionPolicy: explicitly approved_candidate_batch; 1-10 exact phrases only, Standard queue, no Search Intent or inline parsing
+        trendLiveExecution: explicitly enabled with private-project use_cache and independent remote server gate
         paidCandidateBatchLimit: 10
         providerQueue: standard
         searchIntentEnrichment: forbidden in autonomous runs
-        contentParsingEnrichment: separate bounded evidence request only
+        contentParsingEnrichment: separate explicitly approved evidence request only; 1-3 public URLs, Standard queue, max 50 terms per URL, no Markdown/browser rendering
         providerCacheRefreshOrBypass: forbidden in autonomous runs
         trendCostAccounting: prefer numeric USD actual_cost; estimated_cost only when provider actual is unavailable
         trendExecutionTimeoutMs: 360000

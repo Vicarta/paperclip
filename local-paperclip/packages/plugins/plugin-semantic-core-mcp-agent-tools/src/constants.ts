@@ -27,6 +27,7 @@ export const MCP_TOOL_NAMES = [
   "validate_project",
   "run_layer",
   "get_job_status",
+  "request_content_parsing",
   "list_runs",
   "get_keywords",
   "get_clusters",
@@ -48,6 +49,7 @@ export const TOOL_NAMES = {
   runLayer: "run-layer",
   runLayerAndWait: "run-layer-and-wait",
   getJobStatus: "get-job-status",
+  requestContentParsing: "request-content-parsing",
   listRuns: "list-runs",
   getKeywords: "get-keywords",
   getClusters: "get-clusters",
@@ -65,6 +67,7 @@ export const TOOL_NAMES = {
 export const ENTITY_TYPES = {
   projectRegistration: "semantic-core-project-registration",
   layerRun: "semantic-core-layer-run",
+  contentParsing: "semantic-core-content-parsing",
   importCandidate: "semantic-core-import-candidate",
   trendTopicReport: "semantic-core-trend-topic-report",
   runCost: "semantic-core-run-cost",

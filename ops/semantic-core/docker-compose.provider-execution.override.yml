@@ -1,0 +1,5 @@
+services:
+  semantic-core-mcp:
+    environment:
+      # Server-side gate only. Credentials remain in the server-owned env file.
+      SEMANTIC_CORE_ENABLE_PROVIDER_EXECUTION: "true"

@@ -1,6 +1,7 @@
 export type SemanticCoreExecutionPolicyConfig = {
   providerExecutionPolicy?: "disabled" | "read_only" | "approved_candidate_batch";
   trendLiveExecutionEnabled?: boolean;
+  contentParsingExecutionPolicy?: "disabled" | "approved_bounded_evidence";
 };
 
 type ExecutionPolicyInput = {
@@ -23,6 +24,10 @@ function readBoolean(value: unknown) {
 
 function readInteger(value: unknown) {
   return typeof value === "number" && Number.isInteger(value) ? value : null;
+}
+
+function readArray(value: unknown) {
+  return Array.isArray(value) ? value : null;
 }
 
 function mergedPayload(args: unknown) {
@@ -151,8 +156,71 @@ function enforceTrend(input: ExecutionPolicyInput) {
   });
 }
 
+function enforceContentParsing(input: ExecutionPolicyInput) {
+  const payload = mergedPayload(input.args);
+  if (input.config.contentParsingExecutionPolicy !== "approved_bounded_evidence") {
+    throw new Error(
+      "SEMANTIC_CORE_CONTENT_PARSING_DISABLED: standalone content parsing requires an operator-approved bounded evidence policy.",
+    );
+  }
+
+  const urls = readArray(payload.urls);
+  if (!urls || urls.length < 1 || urls.length > 3 || !urls.every((url) => typeof url === "string")) {
+    throw new Error("SEMANTIC_CORE_CONTENT_PARSING_URL_LIMIT: content parsing requires 1-3 explicit public URLs.");
+  }
+  const normalizedUrls = urls.map((url) => url.trim());
+  if (normalizedUrls.some((url) => !url)) {
+    throw new Error("SEMANTIC_CORE_CONTENT_PARSING_URL_INVALID: content parsing URLs must be non-empty.");
+  }
+  if (new Set(normalizedUrls).size !== normalizedUrls.length) {
+    throw new Error("SEMANTIC_CORE_CONTENT_PARSING_URL_DUPLICATE: content parsing URLs must be unique.");
+  }
+  for (const url of normalizedUrls) {
+    let parsed: URL;
+    try {
+      parsed = new URL(url);
+    } catch {
+      throw new Error("SEMANTIC_CORE_CONTENT_PARSING_URL_INVALID: content parsing URLs must be absolute http(s) URLs.");
+    }
+    if (
+      !["http:", "https:"].includes(parsed.protocol)
+      || parsed.username
+      || parsed.password
+      || ["localhost", "127.0.0.1", "::1"].includes(parsed.hostname)
+    ) {
+      throw new Error("SEMANTIC_CORE_CONTENT_PARSING_URL_INVALID: content parsing URLs must be public http(s) URLs without credentials.");
+    }
+  }
+
+  const providerQueue = readString(payload.provider_queue) ?? "standard";
+  if (providerQueue !== "standard") {
+    throw new Error("SEMANTIC_CORE_CONTENT_PARSING_QUEUE_FORBIDDEN: content parsing must use provider_queue=standard.");
+  }
+  const maxContentTermsPerUrl = readInteger(payload.max_content_terms_per_url) ?? 50;
+  if (maxContentTermsPerUrl < 1 || maxContentTermsPerUrl > 50) {
+    throw new Error("SEMANTIC_CORE_CONTENT_PARSING_TERM_LIMIT: max_content_terms_per_url must be 1-50.");
+  }
+  if (readBoolean(payload.markdown_view) === true) {
+    throw new Error("SEMANTIC_CORE_CONTENT_PARSING_MARKDOWN_FORBIDDEN: markdown_view is not allowed for bounded evidence requests.");
+  }
+  const maxWaitSeconds = readInteger(payload.max_wait_seconds) ?? 360;
+  if (maxWaitSeconds < 10 || maxWaitSeconds > 360) {
+    throw new Error("SEMANTIC_CORE_CONTENT_PARSING_WAIT_LIMIT: max_wait_seconds must be 10-360.");
+  }
+
+  return withPayload(input.args, {
+    ...payload,
+    urls: normalizedUrls,
+    provider_queue: "standard",
+    max_content_terms_per_url: maxContentTermsPerUrl,
+    max_wait_seconds: maxWaitSeconds,
+    markdown_view: false,
+  });
+}
+
 export function enforceSemanticCoreExecutionPolicy(input: ExecutionPolicyInput) {
   if (input.toolName === "run_layer") return enforceRunLayer(input);
   if (input.toolName === "generate_trend_topic_report") return enforceTrend(input);
+  if (input.toolName === "request_content_parsing") return enforceContentParsing(input);
   return input.args;
 }

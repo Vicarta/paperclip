@@ -223,6 +223,7 @@ function assertAllowlists(input: {
 function toolRequiresPayload(toolName: SemanticCoreMcpToolName) {
   return toolName === "register_project"
     || toolName === "run_layer"
+    || toolName === "request_content_parsing"
     || toolName === "generate_trend_topic_report"
     || toolName === "submit_review_decisions";
 }
@@ -257,7 +258,11 @@ export function prepareSemanticCoreMcpFallbackArguments(input: {
     };
   }
 
-  if (input.toolName === "register_project" || input.toolName === "submit_review_decisions") {
+  if (
+    input.toolName === "register_project"
+    || input.toolName === "request_content_parsing"
+    || input.toolName === "submit_review_decisions"
+  ) {
     return { ...input.preparedArgs.payload };
   }
 

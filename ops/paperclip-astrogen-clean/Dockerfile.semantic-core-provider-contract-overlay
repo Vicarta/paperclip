@@ -1,0 +1,13 @@
+# syntax=docker/dockerfile:1.20
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+
+USER root
+COPY --chown=node:node semantic-core/package.json /app/packages/plugins/plugin-semantic-core-mcp-agent-tools/package.json
+COPY --chown=node:node semantic-core/dist/ /app/packages/plugins/plugin-semantic-core-mcp-agent-tools/dist/
+RUN test -f /app/packages/plugins/plugin-semantic-core-mcp-agent-tools/dist/worker.js \
+  && test -f /app/packages/plugins/plugin-semantic-core-mcp-agent-tools/dist/execution-policy.js \
+  && grep -q 'request_content_parsing' /app/packages/plugins/plugin-semantic-core-mcp-agent-tools/dist/constants.js \
+  && grep -q 'SEMANTIC_CORE_CONTENT_PARSING_DISABLED' /app/packages/plugins/plugin-semantic-core-mcp-agent-tools/dist/execution-policy.js \
+  && grep -q 'semantic-core-content-parsing' /app/packages/plugins/plugin-semantic-core-mcp-agent-tools/dist/worker.js \
+  && node -e "const p=require('/app/packages/plugins/plugin-semantic-core-mcp-agent-tools/package.json'); if(p.version!=='0.3.15') process.exit(1)"
