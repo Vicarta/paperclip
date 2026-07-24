@@ -78,7 +78,7 @@ plugins:
         trendSemanticImport: forbidden
         trendDirectTopicCreation: forbidden
         providerExecutionPolicy: explicitly approved_candidate_batch; 1-10 exact phrases only, Standard queue, no Search Intent or inline parsing
-        trendLiveExecution: explicitly enabled with private-project use_cache and independent remote server gate
+        trendLiveExecution: explicitly enabled with private-project use_cache; MCP mode=provider remains intentional and bounded by this plugin policy
         paidCandidateBatchLimit: 10
         providerQueue: standard
         searchIntentEnrichment: forbidden in autonomous runs

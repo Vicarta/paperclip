@@ -6,8 +6,8 @@ semanticValidationProjectId: astrogen-ukraine
 
 executionPolicy:
   liveEnabled: true
-  owner: server_operator
-  enabledBehavior: Use only the bounded Paperclip plugin policies; omitted modes remain mock/fixture and an inactive server or plugin gate still produces one monitored external_wait without retries or fixture substitution.
+  owner: Paperclip company policy
+  enabledBehavior: Use only the bounded Paperclip plugin policies; omitted modes remain mock/fixture and an inactive Paperclip policy still produces one monitored external_wait without retries or fixture substitution.
   providerCacheModeForApprovedCandidateBatch: read_write
   providerCacheModeForNoSpendReread: read_only
   paidCandidateBatchLimit: 10
@@ -298,7 +298,7 @@ handoff:
         - inspect the exact run decision_trace and prepared typed import
         - submit append-only decisions through paperclip.semantic-core-mcp-agent-tools:submit-review-decisions
         - partition reviewed phrases by original semanticRunId and intended non-core layer
-        - run each original partition once with explicit mode=provider and provider_cache_mode=read_write only under the approved exact-candidate policy, with the same partition phrases, review_decisions and force_re_review_keywords; use read_only only for no-spend rereads, and treat a disabled gate as one monitored external_wait without autonomous retry
+        - run each original partition once with explicit mode=provider and provider_cache_mode=read_write only under the approved exact-candidate policy, with the same partition phrases, review_decisions and force_re_review_keywords; use read_only only for no-spend rereads, and treat a disabled Paperclip policy as one monitored external_wait without autonomous retry
         - never combine phrases from different intended layers in one materializing run
         - prepare the new run import and require a final accepted, parked or rejected disposition for every reviewed phrase
       handoff:

@@ -1,12 +1,10 @@
 # Semantic Core Operations
 
-`docker-compose.provider-execution.override.yml` is the non-secret, persistent
-server override that permits explicitly approved external provider operations.
+Semantic Core no longer has a global provider-execution environment toggle.
+The MCP accepts provider-backed work only when a caller explicitly sends
+`mode=provider`; credentials remain server-owned.
 
-Install it on the Semantic Core host as
-`/opt/semantic-core/seo-semantic-core/docker-compose.override.yml`, then recreate
-only `semantic-core-mcp`. It deliberately contains no provider credentials.
-
-Paperclip remains independently constrained by its company-scoped Semantic Core
-plugin settings. Enabling this server gate alone does not allow unbounded agent
-calls.
+Paperclip independently constrains those calls through its company-scoped
+Semantic Core plugin policy: exact bounded candidate batches, Standard queue,
+and separate evidence-only parsing. Do not add a Compose override merely to
+enable provider execution.
