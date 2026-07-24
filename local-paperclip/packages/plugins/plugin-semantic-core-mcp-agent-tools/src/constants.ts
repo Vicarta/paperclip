@@ -1,5 +1,5 @@
 export const PLUGIN_ID = "paperclip.semantic-core-mcp-agent-tools";
-export const PLUGIN_VERSION = "0.3.14";
+export const PLUGIN_VERSION = "0.3.15";
 
 export const DEFAULT_SEMANTIC_CORE_MCP_URL = "http://100.98.5.50:8001/mcp";
 export const PAPERCLIP_IMPORT_SCHEMA_VERSION = "paperclip_import.v1";
