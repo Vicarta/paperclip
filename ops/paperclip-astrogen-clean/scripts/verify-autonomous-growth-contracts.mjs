@@ -12,6 +12,8 @@ const SECRET_MANIFEST = resolve(SCRIPT_DIR, "../manifests/secrets.yaml");
 const ROUTINE_MANIFEST = resolve(SCRIPT_DIR, "../manifests/routines.yaml");
 const WORKFLOW_MANIFEST = resolve(SCRIPT_DIR, "../manifests/workflows.yaml");
 const TREND_POLICY = resolve(SCRIPT_DIR, "../reference/trend-topic-policy.yaml");
+const CURRICULUM_POLICY = resolve(SCRIPT_DIR, "../reference/western-astrology-curriculum.yaml");
+const SEARCH_DEMAND_POLICY = resolve(SCRIPT_DIR, "../reference/search-demand-policy.yaml");
 
 function loadYaml(pathname) {
   const source = [
@@ -40,6 +42,8 @@ function main() {
   const routineManifest = loadYaml(ROUTINE_MANIFEST);
   const workflowManifest = loadYaml(WORKFLOW_MANIFEST);
   const trendPolicy = loadYaml(TREND_POLICY);
+  const curriculumPolicy = loadYaml(CURRICULUM_POLICY);
+  const searchDemandPolicy = loadYaml(SEARCH_DEMAND_POLICY);
   assert(manifest.mode === "active", "Native pipeline manifest must be active");
   assert(
     agentManifest.policy?.writerHarness?.adapterType === "claude_local",
@@ -128,6 +132,26 @@ function main() {
     "payload_cms_find_blog_post",
     "never create a second post",
   ], "CMS draft idempotent-replay contract");
+  const curriculumDraftSequencing = curriculumPolicy?.teachingContract?.draftSequencing;
+  assert(
+    curriculumDraftSequencing?.rule?.includes("verified earlier CMS draft")
+      && curriculumDraftSequencing?.publicReleaseBoundary?.includes("must not be published"),
+    "Curriculum must distinguish CMS-draft sequencing from public-release prerequisites",
+  );
+  assert(
+    searchDemandPolicy?.contentPortfolio?.westernAstrologyPrerequisiteException?.draftSequencing
+      ?.allowVerifiedEarlierDraft === true,
+    "Search-demand policy must allow verified earlier curriculum drafts only for draft sequencing",
+  );
+  includesAll(article?.stageAutomation?.draft?.instructions ?? "", [
+    "planned canonical public URL",
+    "cannot be published before that prerequisite",
+  ], "Curriculum draft sequencing writer contract");
+  includesAll(article?.stageAutomation?.cmo_delivery?.instructions ?? "", [
+    "curriculumPublicationOrder",
+    "prerequisitePublicationPlan",
+    "blocked_until_prerequisites_published",
+  ], "Curriculum draft delivery sequencing contract");
   const imageRecovery = article?.stages?.find((stage) => stage.key === "image_recovery_review");
   assert(imageRecovery?.position === 1350, "CMO image recovery review stage is missing");
   assert(
@@ -210,6 +234,11 @@ function main() {
     "keep the canonical refill case in \\`executing\\` with typed lane-local cooldown fields",
     "An inactive Paperclip policy is a lane-local monitor inside the canonical refill's executing path",
   ], "Curriculum refill continuation contract");
+  includesAll(bootstrapSource, [
+    "verified earlier prerequisite drafts",
+    "curriculumPublicationOrder",
+    "public release still requires published prerequisites",
+  ], "Curriculum draft-capacity contract");
   assert(
     !bootstrapSource.includes("move the canonical refill case to \\`external_wait\\` with typed bounded-cooldown fields"),
     "A source-lane cooldown must not move the canonical refill to external_wait",
@@ -321,6 +350,7 @@ function main() {
       "CEO foreign-issue boundary",
       "weekly native topic supply",
       "collector growth-case dedup",
+      "curriculum draft sequencing",
     ],
   }, null, 2));
 }

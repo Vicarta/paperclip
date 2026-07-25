@@ -11,7 +11,7 @@ teachingContract:
   unfamiliarTerms:
     allowedOnlyWhen:
       - the term is the primary concept of this article
-      - the term has a published prerequisite article linked at first meaningful use
+      - the term has a published prerequisite article linked at first meaningful use, or the article is only a CMS draft and the prerequisite has a verified earlier draft with a lower publication order
       - the term is replaced with ordinary non-astrological language
     forbiddenPatterns:
       - glossary dump
@@ -29,8 +29,13 @@ teachingContract:
     evidence: Record the term, one-sentence definition, first-use section, and necessity in supportingTermGlossary; validators must set supportingTerminologyStatus=passed.
   titleRule: Title and H1 name only the primary concept and the reader question it resolves.
   briefRule: The brief declares one primaryConceptKey, one introducedConceptKeys item, known prerequisite concepts, and excluded future concepts.
-  validationRule: Any unexplained astrology term outside the primary concept or published prerequisites returns the article for substantive revision.
+  validationRule: Any unexplained astrology term outside the primary concept, a published prerequisite, or an explicitly planned earlier prerequisite draft returns the article for substantive revision; planned prerequisites never permit an out-of-order public release.
   deliveryRule: CMS draft delivery is forbidden until the one-concept gate passes after humanization.
+  draftSequencing:
+    rule: A dependent curriculum article may be prepared as a CMS draft when every prerequisite is either published or has a verified earlier CMS draft with its canonical future public URL and a lower curriculum publication order.
+    requiredEvidence: [curriculumNodeId, curriculumPublicationOrder, prerequisitePublicationPlan]
+    draftBoundary: A planned prerequisite may be linked by its canonical future URL, but may not be re-taught or defined in the dependent draft.
+    publicReleaseBoundary: A dependent article must not be published until every prerequisite URL resolves to its published predecessor. Paperclip creates drafts only and never performs that publication.
 
 canonicalTerminology:
   house:
@@ -180,7 +185,7 @@ planningWorkflow:
   - check the full CMS inventory for an existing owner of each node
   - keep one canonical URL owner per primary concept and route overlaps to refresh, merge, or reposition
   - validate SERP intent and a distinct teaching contribution without forcing a classic value gap for a missing prerequisite
-  - require published prerequisite links before scheduling a dependent node
+  - require either published prerequisite links or a verified earlier-draft publication plan before scheduling a dependent node; require published prerequisites before public release
   - generate Winning Structure only after the concept scope is locked
   - preserve the one-concept gate through brief, draft validation, MC quality, layout validation, and CMS delivery
 

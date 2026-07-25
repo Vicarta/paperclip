@@ -193,7 +193,7 @@ westernAstrologyLearningPolicy:
     validationRule: An unexplained term or a supporting term taught beyond its one-sentence gloss is a substantive curriculum failure.
   allowedSupportingLanguage:
     - ordinary non-astrological wording
-    - a brief linked mention of a concept already taught in a published prerequisite article
+    - a brief non-teaching linked mention of a concept from a published prerequisite, or during CMS-draft preparation from a verified earlier draft with a lower curriculum publication order; the dependent article cannot be published before that prerequisite
     - the primary concept's accepted aliases
   conceptIntroductionSignals:
     - a definition or explanation of an astrology term

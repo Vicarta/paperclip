@@ -140,12 +140,16 @@ contentPortfolio:
       - curriculumRole is pillar, prerequisite, deepening or example
       - curriculumNodeId, primaryConceptKey, introducedConceptKeys and prerequisiteNodeIds belong to the approved learning graph
       - introducedConceptKeys contains exactly one item equal to primaryConceptKey
-      - every other astrology term is either an already published prerequisite linked at first meaningful use or omitted
+      - every other astrology term is either omitted, an already published prerequisite linked at first meaningful use, or a non-teaching planned prerequisite link permitted only for a CMS draft with a lower curriculum publication order
       - CMS ownership and cannibalization checks prove one unique page intent
       - incoming and outgoing internal-link plan connects the learning graph
       - distinctTeachingContribution states what the reader learns here that no current owner teaches
       - Winning Structure remains mandatory before brief creation
-    rule: No classic SERP gap is not a rejection by itself; more than one new concept, missing prerequisites, duplicate ownership, cannibalization, unsafe scope or no distinct teaching role rejects the topic.
+    draftSequencing:
+      allowVerifiedEarlierDraft: true
+      requiredFields: [curriculumPublicationOrder, prerequisitePublicationPlan]
+      publicReleaseRequiresPublishedPrerequisites: true
+    rule: No classic SERP gap is not a rejection by itself; more than one new concept, a missing eligible prerequisite plan, duplicate ownership, cannibalization, unsafe scope or no distinct teaching role rejects the topic.
 
 audienceInterestEditorialLane:
   enabled: true
