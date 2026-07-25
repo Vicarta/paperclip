@@ -11,6 +11,7 @@ const DB_CONTAINER = "paperclip-astrogen-clean-db-1";
 const API_BASE = process.env.PAPERCLIP_API_BASE ?? "http://127.0.0.1:3210/api";
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const DEFAULT_MANIFEST = resolve(SCRIPT_DIR, "../manifests/pipelines.yaml");
+const CURRICULUM_DRAFT_SEQUENCING_POLICY_VERSION = "v1";
 
 function run(command, args, input) {
   const result = spawnSync(command, args, {
@@ -389,6 +390,12 @@ function findStrandedAllocatorDeficitIssues() {
         and i.title='Astrogen article slot allocator'
         and a.name='Chief Marketing Officer'
         and i.description like '%A repetitive-family cap or underfilled 12/5/3/3/2 track is not such a bound.%'
+        and not exists (
+          select 1
+          from issue_comments recovery
+          where recovery.issue_id=i.id
+            and recovery.body like 'System recovery: the current canonical topic refill is executing and does not require an owner decision.%'
+        )
         and exists (
           select 1
           from pipeline_cases refill
@@ -402,6 +409,46 @@ function findStrandedAllocatorDeficitIssues() {
             and ps.key='executing'
             and refill.fields->>'actionType'='topic_inventory_refill'
             and coalesce((refill.fields->>'ownerActionRequired')::boolean, false)=false
+        )
+    ) candidate;
+  `);
+  return JSON.parse(raw || '[]');
+}
+
+function findCurriculumDraftSequencingRefreshes() {
+  const currentWeek = kyivIsoWeekKey();
+  const raw = psql(`
+    select coalesce(json_agg(row_to_json(candidate) order by candidate."caseId"), '[]'::json)::text
+    from (
+      select distinct
+        refill.id as "caseId",
+        i.id as "issueId",
+        i.identifier as "issueIdentifier"
+      from pipeline_cases refill
+      join pipelines p on p.id=refill.pipeline_id
+      join pipeline_stages ps on ps.id=refill.stage_id
+      join pipeline_case_issue_links l on l.case_id=refill.id
+        and l.company_id=refill.company_id
+        and l.role='work'
+        and l.retired_at is null
+      join issues i on i.id=l.issue_id
+        and i.company_id=refill.company_id
+      where refill.company_id=${sqlLiteral(COMPANY_ID)}::uuid
+        and p.key='astrogen-growth-actions'
+        and refill.case_key=${sqlLiteral(`growth:topic-inventory-refill:${currentWeek}`)}
+        and refill.terminal_kind is null
+        and refill.retired_at is null
+        and ps.key='executing'
+        and refill.fields->>'actionType'='topic_inventory_refill'
+        and coalesce((refill.fields->>'ownerActionRequired')::boolean, false)=false
+        and coalesce(refill.fields->>'curriculumDraftSequencingPolicyVersion', '') <> ${sqlLiteral(CURRICULUM_DRAFT_SEQUENCING_POLICY_VERSION)}
+        and i.status='done'
+        and i.title='Continue W30 non-trend topic inventory refill'
+        and not exists (
+          select 1
+          from issue_comments recovery
+          where recovery.issue_id=i.id
+            and recovery.body like 'System recovery: curriculum draft sequencing policy v1 is now active.%'
         )
     ) candidate;
   `);
@@ -460,6 +507,41 @@ async function resumeStrandedAllocatorDeficits(token) {
     });
     resumed.push({
       ...candidate,
+      resumedIssueStatus: restored.status ?? restored.issue?.status ?? null,
+    });
+  }
+  return { candidates, resumed };
+}
+
+async function resumeCurriculumDraftSequencingRefreshes(token) {
+  const candidates = findCurriculumDraftSequencingRefreshes();
+  const resumed = [];
+  for (const candidate of candidates) {
+    const detail = await request(token, 'GET', `/cases/${candidate.caseId}`);
+    if (detail.stage?.key !== 'executing') continue;
+    const refill = detail.case ?? detail;
+    const refreshed = await request(token, 'PATCH', `/cases/${candidate.caseId}`, {
+      expectedVersion: refill.version,
+      fieldPatch: {
+        curriculumDraftSequencingPolicyVersion: CURRICULUM_DRAFT_SEQUENCING_POLICY_VERSION,
+        curriculumDraftSequencingPolicyAppliedAt: new Date().toISOString(),
+        sourceLane: 'semantic_core_and_curriculum',
+        sourceLaneReason: 'Curriculum draft sequencing now permits a verified earlier prerequisite CMS draft with lower publication order; public release remains ordered after published prerequisites.',
+        nextReviewAt: null,
+      },
+    });
+    const restored = await request(token, 'PATCH', `/issues/${candidate.issueId}`, {
+      status: 'todo',
+      blockedByIssueIds: [],
+      comment: [
+        'System recovery: curriculum draft sequencing policy v1 is now active.',
+        '',
+        'Resume this same continuation and inspect the approved learning graph for the first missing node whose prerequisites are published or verified earlier CMS drafts with lower publication order. Materialize only the normal guarded search-demand/topic path; do not create a CMS record directly and do not publish anything.',
+      ].join('\n'),
+    });
+    resumed.push({
+      ...candidate,
+      caseVersion: refreshed.version ?? refreshed.case?.version ?? null,
       resumedIssueStatus: restored.status ?? restored.issue?.status ?? null,
     });
   }
@@ -631,6 +713,7 @@ async function main() {
     grantPipelinePermissions(manifest.pipelines, pipelineByKey, agentByName);
     const restoredPermissionAutomations = await resumeRestoredPermissionAutomationIssues(token);
     const restoredAllocatorDeficits = await resumeStrandedAllocatorDeficits(token);
+    const restoredCurriculumDraftSequencing = await resumeCurriculumDraftSequencingRefreshes(token);
 
     const unhealthy = results.filter((result) => !result.health.ok);
     console.log(JSON.stringify({
@@ -652,6 +735,7 @@ async function main() {
       })),
       restoredPermissionAutomations,
       restoredAllocatorDeficits,
+      restoredCurriculumDraftSequencing,
     }, null, 2));
     if (unhealthy.length) process.exitCode = 2;
   } finally {

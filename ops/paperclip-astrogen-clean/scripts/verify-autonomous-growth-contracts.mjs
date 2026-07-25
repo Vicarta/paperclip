@@ -254,6 +254,12 @@ function main() {
     "resumeRestoredPermissionAutomationIssues",
     "Do not repeat a provider, image, CMS, or Telegram side effect",
   ], "Restored pipeline permission automation recovery");
+  includesAll(pipelineSyncSource, [
+    "CURRICULUM_DRAFT_SEQUENCING_POLICY_VERSION",
+    "curriculumDraftSequencingPolicyAppliedAt",
+    "Continue W30 non-trend topic inventory refill",
+    "do not create a CMS record directly",
+  ], "Curriculum draft-sequencing recovery");
 
   includesAll(routineContracts.articleSlotAllocator, [
     "POST /api/cases/{topicCaseId}/breakdown",
