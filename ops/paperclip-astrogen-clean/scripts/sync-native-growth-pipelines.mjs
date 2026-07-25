@@ -36,6 +36,24 @@ function sqlLiteral(value) {
   return `'${String(value).replaceAll("'", "''")}'`;
 }
 
+function kyivIsoWeekKey(now = new Date()) {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Kyiv",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(now).filter((part) => part.type !== "literal").map((part) => [part.type, part.value]));
+  const date = new Date(Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day)));
+  const weekday = (date.getUTCDay() + 6) % 7;
+  date.setUTCDate(date.getUTCDate() + 3 - weekday);
+  const isoYear = date.getUTCFullYear();
+  const firstThursday = new Date(Date.UTC(isoYear, 0, 4));
+  const firstWeekday = (firstThursday.getUTCDay() + 6) % 7;
+  firstThursday.setUTCDate(firstThursday.getUTCDate() + 3 - firstWeekday);
+  const week = 1 + Math.round((date.getTime() - firstThursday.getTime()) / 604800000);
+  return `${isoYear}-W${String(week).padStart(2, "0")}`;
+}
+
 function loadManifest(pathname) {
   const source = [
     "import json, pathlib, sys, yaml",
@@ -355,6 +373,41 @@ function findRestoredPermissionAutomationCases() {
   return JSON.parse(raw || '[]');
 }
 
+function findStrandedAllocatorDeficitIssues() {
+  const currentWeek = kyivIsoWeekKey();
+  const raw = psql(`
+    select coalesce(json_agg(row_to_json(candidate) order by candidate."issueId"), '[]'::json)::text
+    from (
+      select distinct
+        i.id as "issueId",
+        i.identifier as "issueIdentifier"
+      from issues i
+      join agents a on a.id=i.assignee_agent_id
+        and a.company_id=i.company_id
+      where i.company_id=${sqlLiteral(COMPANY_ID)}::uuid
+        and i.status='blocked'
+        and i.title='Astrogen article slot allocator'
+        and a.name='Chief Marketing Officer'
+        and i.description like '%A repetitive-family cap or underfilled 12/5/3/3/2 track is not such a bound.%'
+        and exists (
+          select 1
+          from pipeline_cases refill
+          join pipelines p on p.id=refill.pipeline_id
+          join pipeline_stages ps on ps.id=refill.stage_id
+          where p.company_id=i.company_id
+            and p.key='astrogen-growth-actions'
+            and refill.case_key=${sqlLiteral(`growth:topic-inventory-refill:${currentWeek}`)}
+            and refill.terminal_kind is null
+            and refill.retired_at is null
+            and ps.key='executing'
+            and refill.fields->>'actionType'='topic_inventory_refill'
+            and coalesce((refill.fields->>'ownerActionRequired')::boolean, false)=false
+        )
+    ) candidate;
+  `);
+  return JSON.parse(raw || '[]');
+}
+
 function permissionRecoveryComment(candidate) {
   const common = [
     "System recovery: scoped pipelines:write is restored for this current native stage.",
@@ -383,6 +436,27 @@ async function resumeRestoredPermissionAutomationIssues(token) {
       // stage's routine agent is the only identity with its scoped case grant.
       assigneeAgentId: candidate.routineAssigneeAgentId,
       comment: permissionRecoveryComment(candidate),
+    });
+    resumed.push({
+      ...candidate,
+      resumedIssueStatus: restored.status ?? restored.issue?.status ?? null,
+    });
+  }
+  return { candidates, resumed };
+}
+
+async function resumeStrandedAllocatorDeficits(token) {
+  const candidates = findStrandedAllocatorDeficitIssues();
+  const resumed = [];
+  for (const candidate of candidates) {
+    const restored = await request(token, 'PATCH', `/issues/${candidate.issueId}`, {
+      status: 'todo',
+      blockedByIssueIds: [],
+      comment: [
+        'System recovery: the current canonical topic refill is executing and does not require an owner decision.',
+        '',
+        'A family-cap or portfolio-diversification deficit is not a blocker. Resume this same allocator issue, re-read the independent refill source lanes, and keep a bounded native monitor only if live source work remains. Do not create articles manually or relax editorial eligibility.',
+      ].join('\n'),
     });
     resumed.push({
       ...candidate,
@@ -556,6 +630,7 @@ async function main() {
     const pipelineByKey = new Map(results.map((result) => [result.pipeline.key, result.pipeline]));
     grantPipelinePermissions(manifest.pipelines, pipelineByKey, agentByName);
     const restoredPermissionAutomations = await resumeRestoredPermissionAutomationIssues(token);
+    const restoredAllocatorDeficits = await resumeStrandedAllocatorDeficits(token);
 
     const unhealthy = results.filter((result) => !result.health.ok);
     console.log(JSON.stringify({
@@ -576,6 +651,7 @@ async function main() {
         warnings: result.health.warnings,
       })),
       restoredPermissionAutomations,
+      restoredAllocatorDeficits,
     }, null, 2));
     if (unhealthy.length) process.exitCode = 2;
   } finally {
