@@ -163,18 +163,33 @@ function main() {
     "A consumed topic or delivered article means that curriculum node is already fulfilled",
     "audience_trends is a Paperclip portfolio track, never a Semantic Core layer or plugin enum",
     "delegate the first prerequisite-ready missing curriculum node instead",
+    "empty Semantic Core snapshot is not evidence exhaustion",
   ], "Growth manager-only approval handoff");
+  const growthExecuting = growth?.stages?.find((stage) => stage.key === "executing");
+  assert(
+    growthExecuting?.config?.transitionFieldRequirements?.some((requirement) =>
+      requirement.toStageKey === "external_wait"
+      && requirement.whenCaseField === "actionType"
+      && requirement.whenCaseFieldEquals === "topic_inventory_refill"
+      && requirement.requiredFieldValues?.ownerActionRequired === true),
+    "Topic-inventory refill must not enter external_wait without a real owner action",
+  );
   const growthExternalWaitInstructions = growth?.stageAutomation?.external_wait?.instructions ?? "";
   includesAll(growthExternalWaitInstructions, [
     "regardless of a worker's finalDisposition or blocker label",
     "clear blockerClass/blockerOwner/blockerAction",
     "transition this source case to executing in the same heartbeat",
     "do not schedule a monitor or create recovery work",
-    "For every typed external cooldown with ownerActionRequired=false",
-    "a case field, comment, or completed automation alone is never a continuation path",
-    "An external wait belongs only to the named lane",
-    "A cooldown for audience_trends never parks other portfolio deficits",
+    "ownerActionRequired=false is never a valid external_wait state",
+    "A zero accepted-keyword snapshot is not evidence that this curriculum lane is exhausted",
+    "first prerequisite-ready missing node",
   ], "Growth manager-only approval external-wait exit");
+
+  includesAll(bootstrapSource, [
+    "A local Semantic Core snapshot with zero accepted keywords or clusters is not a no-topic result",
+    "first prerequisite-ready missing node",
+    "never justifies",
+  ], "Curriculum refill continuation contract");
 
   includesAll(routineContracts.articleSlotAllocator, [
     "POST /api/cases/{topicCaseId}/breakdown",

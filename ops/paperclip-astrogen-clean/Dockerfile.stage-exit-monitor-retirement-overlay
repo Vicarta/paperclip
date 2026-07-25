@@ -1,0 +1,11 @@
+# syntax=docker/dockerfile:1.20
+ARG BASE_IMAGE=paperclip-app:v2026.626.0-vicarta.146-stage-exit-monitor-20260725T1851Z
+FROM ${BASE_IMAGE}
+
+USER root
+COPY --chown=node:node pipelines.js /app/server/dist/services/pipelines.js
+RUN node --check /app/server/dist/services/pipelines.js \
+  && grep -q 'stage_exited_future_monitor' /app/server/dist/services/pipelines.js \
+  && grep -q 'retireFutureStageAutomationMonitorsForExitedStage' /app/server/dist/services/pipelines.js
+
+USER node

@@ -2388,6 +2388,79 @@ describeEmbeddedPostgres("pipelineService", () => {
       && (event.payload as Record<string, unknown>).reason === "superseded_by_later_successful_automation")).toBe(true);
   });
 
+  it("retires a dormant legacy future monitor when a case exits its automation stage", async () => {
+    const company = await seedCompany();
+    const routine = await seedRoutine(company.id, "External wait monitor");
+    const pipeline = await svc.createPipeline({
+      companyId: company.id,
+      key: "stage-exited-future-monitor",
+      name: "Stage exited future monitor",
+      actor: userActor,
+      stages: [
+        {
+          key: "external_wait",
+          name: "External wait",
+          kind: "working",
+          config: { onEnter: { type: "run_routine", id: "external-wait:on-enter", routineId: routine.id } },
+        },
+        { key: "executing", name: "Executing", kind: "working" },
+        { key: "done", name: "Done", kind: "done" },
+        { key: "cancelled", name: "Cancelled", kind: "cancelled" },
+      ],
+    });
+    const created = await svc.ingestCase({
+      companyId: company.id,
+      pipelineId: pipeline.id,
+      stageKey: "external_wait",
+      caseKey: "refill",
+      title: "Topic refill",
+      actor: userActor,
+    });
+    const monitor = await seedLinkedIssue({
+      companyId: company.id,
+      caseId: created.case.id,
+      role: "automation",
+      status: "in_progress",
+      title: "External wait automation",
+    });
+    const [event] = await db.insert(pipelineCaseEvents).values({
+      companyId: company.id,
+      caseId: created.case.id,
+      type: "transitioned",
+      actorType: "system",
+      toStageId: created.case.stageId,
+      payload: { test: "future monitor" },
+    }).returning();
+    await db.insert(pipelineAutomationExecutions).values({
+      companyId: company.id,
+      caseId: created.case.id,
+      automationId: "external-wait:on-enter",
+      triggeringEventId: event!.id,
+      routineId: routine.id,
+      executionIssueId: monitor.id,
+      status: "succeeded",
+    });
+    await db.update(issues)
+      .set({ monitorNextCheckAt: new Date(Date.now() + 60_000), monitorScheduledBy: "test" })
+      .where(eq(issues.id, monitor.id));
+
+    await svc.transitionCase({
+      companyId: company.id,
+      caseId: created.case.id,
+      toStageKey: "executing",
+      expectedVersion: created.case.version,
+      actor: userActor,
+    });
+
+    const [monitorIssue] = await db.select().from(issues).where(eq(issues.id, monitor.id));
+    expect(monitorIssue).toMatchObject({ status: "cancelled", monitorNextCheckAt: null, monitorWakeRequestedAt: null });
+    const [monitorLink] = await db.select().from(pipelineCaseIssueLinks).where(eq(pipelineCaseIssueLinks.issueId, monitor.id));
+    expect(monitorLink!.retiredReason).toBe("stage_exited_future_monitor");
+    const events = await svc.listCaseEvents(company.id, created.case.id);
+    expect(events.some((pipelineEvent) => pipelineEvent.type === "automation_effects_retired"
+      && (pipelineEvent.payload as Record<string, unknown>).reason === "stage_exited_future_monitor")).toBe(true);
+  });
+
   it("keeps child completion committed when parent children-terminal auto-advance is gated", async () => {
     const company = await seedCompany();
     const pipeline = await svc.createPipeline({

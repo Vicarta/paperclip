@@ -2928,6 +2928,135 @@ async function reconcileSupersededBlockedAutomationIssues(
   return issueIds;
 }
 
+/**
+ * A stage monitor is a continuation for that stage, not a general case
+ * watchdog. If a case leaves the stage before the monitor is due, retaining
+ * it can wake an obsolete agent with stale instructions and reintroduce a
+ * decision that the transition has already superseded.
+ *
+ * An issue with an active heartbeat run is left open so that its current run
+ * can finish normally; only its future monitor is removed. A dormant,
+ * stage-owned monitor is cancelled and its automation link retired.
+ */
+async function retireFutureStageAutomationMonitorsForExitedStage(
+  db: PipelineDb,
+  input: {
+    companyId: string;
+    caseId: string;
+    fromStage: typeof pipelineStages.$inferSelect;
+  },
+) {
+  const automation = stageAutomation(input.fromStage);
+  if (!automation) return [];
+
+  const now = nowDate();
+  const candidates = await db
+    .select({
+      issueId: issues.id,
+      linkId: pipelineCaseIssueLinks.id,
+      executionRunId: issues.executionRunId,
+      checkoutRunId: issues.checkoutRunId,
+    })
+    .from(pipelineCaseIssueLinks)
+    .innerJoin(
+      pipelineAutomationExecutions,
+      and(
+        or(
+          eq(pipelineCaseIssueLinks.automationAttemptId, pipelineAutomationExecutions.id),
+          and(
+            isNull(pipelineCaseIssueLinks.automationAttemptId),
+            eq(pipelineAutomationExecutions.executionIssueId, pipelineCaseIssueLinks.issueId),
+          ),
+        ),
+        eq(pipelineCaseIssueLinks.companyId, pipelineAutomationExecutions.companyId),
+      ),
+    )
+    .innerJoin(
+      issues,
+      and(
+        eq(pipelineCaseIssueLinks.issueId, issues.id),
+        eq(pipelineCaseIssueLinks.companyId, issues.companyId),
+      ),
+    )
+    .where(and(
+      eq(pipelineCaseIssueLinks.companyId, input.companyId),
+      eq(pipelineCaseIssueLinks.caseId, input.caseId),
+      eq(pipelineCaseIssueLinks.role, "automation"),
+      isNull(pipelineCaseIssueLinks.retiredAt),
+      eq(pipelineAutomationExecutions.companyId, input.companyId),
+      eq(pipelineAutomationExecutions.caseId, input.caseId),
+      eq(pipelineAutomationExecutions.automationId, automation.id),
+      eq(issues.companyId, input.companyId),
+      inArray(issues.status, ["in_progress", "in_review"]),
+      sql`${issues.monitorNextCheckAt} > ${now}`,
+    ));
+  if (candidates.length === 0) return [];
+
+  const issueIds = [...new Set(candidates.map((candidate) => candidate.issueId))];
+  await db
+    .update(issues)
+    .set({
+      monitorNextCheckAt: null,
+      monitorWakeRequestedAt: null,
+      monitorNotes: null,
+      monitorScheduledBy: null,
+      updatedAt: now,
+    })
+    .where(and(
+      eq(issues.companyId, input.companyId),
+      inArray(issues.id, issueIds),
+      inArray(issues.status, ["in_progress", "in_review"]),
+    ));
+
+  const dormant = candidates.filter((candidate) => !candidate.executionRunId && !candidate.checkoutRunId);
+  const dormantIssueIds = [...new Set(dormant.map((candidate) => candidate.issueId))];
+  const dormantLinkIds = dormant.map((candidate) => candidate.linkId);
+  if (dormantIssueIds.length > 0) {
+    await db
+      .update(issues)
+      .set({
+        status: "cancelled",
+        cancelledAt: now,
+        completedAt: null,
+        updatedAt: now,
+      })
+      .where(and(
+        eq(issues.companyId, input.companyId),
+        inArray(issues.id, dormantIssueIds),
+        inArray(issues.status, ["in_progress", "in_review"]),
+        isNull(issues.executionRunId),
+        isNull(issues.checkoutRunId),
+      ));
+    await db
+      .update(pipelineCaseIssueLinks)
+      .set({
+        retiredAt: now,
+        retiredReason: "stage_exited_future_monitor",
+        updatedAt: now,
+      })
+      .where(and(
+        eq(pipelineCaseIssueLinks.companyId, input.companyId),
+        inArray(pipelineCaseIssueLinks.id, dormantLinkIds),
+        isNull(pipelineCaseIssueLinks.retiredAt),
+      ));
+  }
+  await writeCaseEvent(db, {
+    companyId: input.companyId,
+    caseId: input.caseId,
+    type: "automation_effects_retired",
+    actor: { type: "system" },
+    fromStageId: input.fromStage.id,
+    payload: {
+      reason: "stage_exited_future_monitor",
+      automationId: automation.id,
+      clearedMonitorIssueIds: issueIds,
+      cancelledIssueIds: dormantIssueIds,
+      retiredLinkIds: dormantLinkIds,
+    },
+  });
+  return issueIds;
+}
+
 async function notifyDependentWorkIssuesOfUpstreamContentChange(
   db: PipelineDb,
   input: {
@@ -4310,6 +4439,11 @@ export function pipelineService(db: Db, deps: { heartbeat?: IssueAssignmentWakeu
         },
       });
     }
+    await retireFutureStageAutomationMonitorsForExitedStage(tx, {
+      companyId: input.companyId,
+      caseId: current.id,
+      fromStage,
+    });
     await reconcileSupersededBlockedAutomationIssues(tx, {
       companyId: input.companyId,
       caseId: current.id,
