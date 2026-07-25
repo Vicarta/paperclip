@@ -100,7 +100,7 @@ routines:
     owner: Chief Marketing Officer
     status: active
     triggerEnabled: true
-    cron: "0 10 * * *"
+    cron: "0 10,14,18 * * *"
     timezone: Europe/Kiev
     concurrencyPolicy: skip_if_active
     catchUpPolicy: enqueue_missed_with_cap
@@ -127,8 +127,9 @@ routines:
         - generic /api/cases and guessed /api/pipelines/{pipelineKey}/cases aliases are forbidden; a failed guessed alias is a caller-contract error, not a platform blocker
       activationMode:
         - target 3 new CMS drafts per Europe/Kiev day
-        - schedule daily at 10:00 Europe/Kiev
-        - the same bounded allocator reconciles a current-day batch deficit when explicitly invoked; this is not broad scheduler catch-up
+        - schedule bounded same-day slot checks at 10:00, 14:00, and 18:00 Europe/Kiev
+        - the first check dispatches the available daily batch; later checks fill only a still-open current-day deficit from newly ready, independently eligible topics
+        - a later check is not broad scheduler catch-up and must not exceed the same daily target, productive-WIP cap, or repetitive-family caps
       bounds:
         - calculate availableSlots = min(3 - currentDayNewArticleBatchCount, 3 - productiveWipCount, eligibleReadyTopicCount); currentDayNewArticleBatchCount includes only today's new-article cases reserved or delivered by this allocator, never refreshes or cancelled cases
         - count each current-day article case id once across delivered and open inventory reads

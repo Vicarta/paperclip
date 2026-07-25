@@ -694,7 +694,7 @@ export const routineDefs = [
     activation: "active_three_day_article_buffer",
     catchUpPolicy: "skip_missed",
   }),
-  routine("Astrogen article slot allocator", "Chief Marketing Officer", "0 10 * * *", routineContracts.articleSlotAllocator, "skip_if_active", "article_cadence", {
+  routine("Astrogen article slot allocator", "Chief Marketing Officer", "0 10,14,18 * * *", routineContracts.articleSlotAllocator, "skip_if_active", "article_cadence", {
     status: "active",
     triggerEnabled: true,
     activation: "active_daily_batch_3",

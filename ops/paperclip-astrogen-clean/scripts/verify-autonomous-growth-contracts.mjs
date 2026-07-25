@@ -337,6 +337,17 @@ function main() {
   const cadenceWorkflow = workflowManifest.workflows?.article_cadence;
   assert(cadenceWorkflow?.capacityPlanning?.planningWindowDays === 3, "Article cadence capacity planning window must be three days");
   assert(cadenceWorkflow?.capacityPlanning?.healthyDispatchableBuffer === 9, "Article cadence capacity buffer must be nine topics");
+  assert(
+    routineManifest.routines?.some((routine) =>
+      routine.title === "Astrogen article slot allocator"
+      && routine.cron === "0 10,14,18 * * *"
+      && routine.triggerEnabled === true
+      && routine.processContract?.activationMode?.some((line) =>
+        String(line).includes("later checks fill only a still-open current-day deficit"),
+      ),
+    ),
+    "Article slot allocator must have bounded 10:00/14:00/18:00 same-day deficit checks",
+  );
   includesAll(String(workflowManifest.workflows?.topic_inventory_refill?.outputContract ?? ""), [
     "never counts as future topic supply",
     "next prerequisite-ready missing curriculum node",
