@@ -534,8 +534,7 @@ function findCurriculumExistingOwnerContinuations() {
         and continuation_issue.company_id=refill.company_id
       where search_demand.company_id=${sqlLiteral(COMPANY_ID)}::uuid
         and search_pipeline.key='astrogen-search-demand-opportunities'
-        and search_stage.key='delegated'
-        and search_demand.terminal_kind is null
+        and search_stage.key in ('delegated', 'verified', 'measured')
         and search_demand.retired_at is null
         and search_demand.fields->>'contentPortfolioTrack'='western_astrology_learning'
         and search_demand.fields->>'ownershipVerdict' like 'covered_existing%'
@@ -716,7 +715,7 @@ async function resumeCurriculumAfterExistingOwnerRoute(token) {
       request(token, 'GET', `/cases/${candidate.searchDemandCaseId}`),
       request(token, 'GET', `/cases/${candidate.refillCaseId}`),
     ]);
-    if (searchDemandDetail.stage?.key !== 'delegated' || refillDetail.stage?.key !== 'executing') continue;
+    if (!['delegated', 'verified', 'measured'].includes(searchDemandDetail.stage?.key) || refillDetail.stage?.key !== 'executing') continue;
     const searchDemand = searchDemandDetail.case ?? searchDemandDetail;
     const refill = refillDetail.case ?? refillDetail;
     if (searchDemand.fields?.contentPortfolioTrack !== 'western_astrology_learning') continue;
