@@ -115,6 +115,8 @@ async function main() {
         concurrencyPolicy: item.concurrencyPolicy,
         catchUpPolicy: item.catchUpPolicy,
         variables: [],
+        // Keep activation policy in the revisioned contract, not stale env flags.
+        env: null,
       };
       let current = routines.find((routine) => routine.title === item.title) ?? null;
       let changed = false;
@@ -160,6 +162,9 @@ async function main() {
       detail = await request(token, "GET", `/routines/${current.id}`);
       const verifiedTriggers = asArray(detail.triggers, ["items", "triggers"]);
       const verifiedTrigger = verifiedTriggers.find((candidate) => candidate.kind === "schedule");
+      if (stableJson(detail.env ?? null) !== stableJson(desired.env)) {
+        throw new Error(`Routine env drift remains after sync: ${item.title}`);
+      }
       results.push({
         title: item.title,
         changed,
@@ -168,6 +173,7 @@ async function main() {
         cron: verifiedTrigger?.cronExpression ?? null,
         timezone: verifiedTrigger?.timezone ?? null,
         triggerEnabled: verifiedTrigger?.enabled ?? false,
+        env: detail.env ?? null,
       });
     }
 
