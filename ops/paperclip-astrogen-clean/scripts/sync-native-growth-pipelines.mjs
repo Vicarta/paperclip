@@ -304,6 +304,7 @@ function findRestoredPermissionAutomationCases() {
       select distinct
         pc.id as "caseId",
         ps.key as "stageKey",
+        i.id as "blockedIssueId",
         i.identifier as "blockedIssueIdentifier"
       from pipeline_cases pc
       join pipeline_stages ps on ps.id=pc.stage_id
@@ -314,11 +315,13 @@ function findRestoredPermissionAutomationCases() {
       join pipeline_automation_executions pae on pae.id=l.automation_attempt_id
         and pae.case_id=pc.id
         and pae.company_id=pc.company_id
+      join routines r on r.id=pae.routine_id
+        and r.company_id=pc.company_id
       join issues i on i.id=l.issue_id
         and i.company_id=pc.company_id
       join principal_permission_grants pg on pg.company_id=pc.company_id
         and pg.principal_type='agent'
-        and pg.principal_id=(ps.config->'automation'->>'assigneeAgentId')
+        and pg.principal_id=r.assignee_agent_id
         and pg.permission_key='pipelines:write'
       where pc.company_id=${sqlLiteral(COMPANY_ID)}::uuid
         and pc.terminal_kind is null
@@ -351,20 +354,35 @@ function findRestoredPermissionAutomationCases() {
   return JSON.parse(raw || '[]');
 }
 
-async function rerunRestoredPermissionAutomations(token) {
+function permissionRecoveryComment(candidate) {
+  const common = [
+    "System recovery: scoped pipelines:write is restored for this current native stage.",
+    "",
+    "Resume this same issue and consume the durable case evidence first. Do not repeat a provider, image, CMS, or Telegram side effect when matching durable proof already exists; write only the missing case fields or native transition.",
+  ];
+  if (candidate.stageKey === "cms_draft") {
+    common.push(
+      "",
+      "Before any CMS create call, use payload_cms_find_blog_post with the accepted expected slug. When it returns the matching draft, refetch and verify that draft, then write its CMS proof to this case instead of creating another post. Create only when no matching draft exists.",
+    );
+  }
+  return common.join("\n");
+}
+
+async function resumeRestoredPermissionAutomationIssues(token) {
   const candidates = findRestoredPermissionAutomationCases();
   const resumed = [];
   for (const candidate of candidates) {
     const detail = await request(token, 'GET', `/cases/${candidate.caseId}`);
-    const currentCase = detail.case ?? detail;
     if (detail.stage?.key !== candidate.stageKey) continue;
-    const rerun = await request(token, 'POST', `/cases/${candidate.caseId}/automation/current-stage/rerun`, {
-      expectedVersion: currentCase.version,
+    const restored = await request(token, 'PATCH', `/issues/${candidate.blockedIssueId}`, {
+      status: 'todo',
+      blockedByIssueIds: [],
+      comment: permissionRecoveryComment(candidate),
     });
     resumed.push({
       ...candidate,
-      automationIssueId: rerun.issueId ?? rerun.automation?.issueId ?? null,
-      automationStatus: rerun.status ?? rerun.automation?.status ?? null,
+      resumedIssueStatus: restored.status ?? restored.issue?.status ?? null,
     });
   }
   return { candidates, resumed };
@@ -533,7 +551,7 @@ async function main() {
     }
     const pipelineByKey = new Map(results.map((result) => [result.pipeline.key, result.pipeline]));
     grantPipelinePermissions(manifest.pipelines, pipelineByKey, agentByName);
-    const restoredPermissionAutomations = await rerunRestoredPermissionAutomations(token);
+    const restoredPermissionAutomations = await resumeRestoredPermissionAutomationIssues(token);
 
     const unhealthy = results.filter((result) => !result.health.ok);
     console.log(JSON.stringify({

@@ -72,6 +72,10 @@ function main() {
     "dangerouslySkipPermissions: true",
     "authenticated \\`claude_local\\` subscription adapter",
   ], "Bootstrap Claude CLI writer contract");
+  includesAll(bootstrapSource, [
+    "payload_cms_find_blog_post",
+    "Do not create a second post merely because Paperclip lost a post-write field mutation",
+  ], "CMS fixer idempotent-replay harness");
   assert(
     !bootstrapSource.includes("The Claude writer runs through the OpenRouter prompt adapter"),
     "Legacy OpenRouter writer instructions must be absent",
@@ -120,6 +124,10 @@ function main() {
       && requirement.requiredStringPrefixes?.cmsAdminUrl === canonicalCmsAdminPrefix),
     "CMO delivery must reject non-canonical admin URLs",
   );
+  includesAll(article?.stageAutomation?.cms_draft?.instructions ?? "", [
+    "payload_cms_find_blog_post",
+    "never create a second post",
+  ], "CMS draft idempotent-replay contract");
   const imageRecovery = article?.stages?.find((stage) => stage.key === "image_recovery_review");
   assert(imageRecovery?.position === 1350, "CMO image recovery review stage is missing");
   assert(
@@ -214,8 +222,8 @@ function main() {
   includesAll(pipelineSyncSource, [
     "findRestoredPermissionAutomationCases",
     "pipeline_write_forbidden",
-    "rerunRestoredPermissionAutomations",
-    "/automation/current-stage/rerun",
+    "resumeRestoredPermissionAutomationIssues",
+    "Do not repeat a provider, image, CMS, or Telegram side effect",
   ], "Restored pipeline permission automation recovery");
 
   includesAll(routineContracts.articleSlotAllocator, [
