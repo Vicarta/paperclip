@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.20
-ARG BASE_IMAGE=paperclip-app:v2026.626.0-vicarta.146-stage-exit-monitor-20260725T1851Z
+ARG BASE_IMAGE=paperclip-app:v2026.626.0-vicarta.147-stage-exit-monitor-legacy-20260725T1855Z
 FROM ${BASE_IMAGE}
 
 USER root
