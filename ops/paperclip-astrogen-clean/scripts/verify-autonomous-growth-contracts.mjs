@@ -175,6 +175,8 @@ function main() {
     "{topicKey}:reservation-v{topicCaseVersion}",
     "topic-inventory-refill:{ISO-week}",
     "Target three new CMS drafts per Europe/Kiev day",
+    "Classify an open article case as productive only",
+    "A nonterminal article case with no live work wrapper is `idle_or_blocked`",
     "availableSlots = min(3 - currentDayNewArticleBatchCount, 3 - productiveWipCount, eligibleReadyTopicCount)",
     "stageKey=delivered&terminal=true&limit=100",
     "Never derive the daily count from `terminal=false` rows alone",

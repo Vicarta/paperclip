@@ -496,22 +496,24 @@ The recurring Astrogen article cadence must not stop just because the current
 accepted article backlog is exhausted, consumed, duplicated, or has a
 row-specific query-center conflict.
 
-CMO owns the cadence result. The default target is 1 new Astrogen SEO blog CMS
-draft per Europe/Kyiv calendar day. A bounded catch-up run may target up to 3
-drafts only when the routine variables or active issue explicitly authorize
-that catch-up scope. A draft counts toward the target only
+CMO owns the cadence result. The default target is 3 new Astrogen SEO blog CMS
+drafts per Europe/Kyiv calendar day. This is the normal bounded daily batch, not
+a broad catch-up. A draft counts toward the target only
 when the CMS/admin URL is known, the intended cover image is attached, the draft
 is tied to its intended product/content cluster, and Telegram/admin delivery
 proof exists or is explicitly blocked on a real Telegram runtime issue.
 
 Article production uses a portfolio WIP cap, not a company-wide single-article
-lock. Keep at most three non-blocked article parents in `todo`, `in_progress`,
-or `in_review`. A parent in `blocked` or an explicit external-wait state remains
-visible for recovery but does not consume productive WIP and must not freeze an
-unrelated `ready_for_brief_creation` topic. The one-per-topic
+lock. Keep at most three productive article parents. A case is productive only
+when it has no `blockerClass`, is not in `external_wait`, and its native wrapper
+has a live `activeWork` or positive `descendantActiveWorkCount`. Never count a
+case from its stage name, reservation, historic CMS draft, or past linked issue.
+A nonterminal case without live work is `idle_or_blocked`: preserve and repair
+the same canonical case through its existing owner/automation path, but do not
+let it consume productive WIP or create a replacement article. The one-per-topic
 `articleParentKey` guard remains strict across every status. Each normal
-allocator run may reserve at most one new topic; catch-up still respects its
-configured cap.
+allocator run may reserve up to its calculated available slots, bounded by the
+daily target, productive-WIP cap, and portfolio/family limits.
 
 For every canonical article parent, completion requires terminal delivery
 evidence, not merely completion of the children that currently exist. The parent
