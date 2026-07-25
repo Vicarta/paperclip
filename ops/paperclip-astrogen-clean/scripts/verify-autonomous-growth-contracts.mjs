@@ -132,6 +132,15 @@ function main() {
     "payload_cms_find_blog_post",
     "never create a second post",
   ], "CMS draft idempotent-replay contract");
+  const searchDemand = manifest.pipelines.find((pipeline) => pipeline.key === "astrogen-search-demand-opportunities");
+  includesAll(searchDemand?.stageAutomation?.ownership_review?.instructions ?? "", [
+    "do not request evidence changes merely to search for a duplicate new article",
+    "approve to action_selected",
+  ], "Existing-owner action-selection contract");
+  includesAll(searchDemand?.stageAutomation?.action_selected?.instructions ?? "", [
+    "new_article is forbidden",
+    "never send the case back to evidence_ready solely because the owner exists",
+  ], "Existing-owner CMO routing contract");
   const curriculumDraftSequencing = curriculumPolicy?.teachingContract?.draftSequencing;
   assert(
     curriculumDraftSequencing?.rule?.includes("verified earlier CMS draft")
