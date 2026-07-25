@@ -580,6 +580,61 @@ describeEmbeddedPostgres("pipelineService", () => {
     })).resolves.toMatchObject({ case: { terminalKind: "done" } });
   });
 
+  it("prevents an agent from assigning a stage-protected field value", async () => {
+    const company = await seedCompany();
+    const [agent] = await db.insert(agents).values({
+      companyId: company.id,
+      name: "CMO",
+      role: "manager",
+      adapterType: "codex_local",
+      adapterConfig: {},
+      runtimeConfig: {},
+      permissions: {},
+    }).returning();
+    const pipeline = await svc.createPipeline({
+      companyId: company.id,
+      key: "owner-decision-protection",
+      name: "Owner decision protection",
+      actor: userActor,
+      stages: [
+        {
+          key: "executing",
+          name: "Executing",
+          kind: "working",
+          config: { agentFieldAllowedValues: { ownerActionRequired: [false] } },
+        },
+        { key: "done", name: "Done", kind: "done" },
+        { key: "cancelled", name: "Cancelled", kind: "cancelled" },
+      ],
+    });
+    const created = await svc.ingestCase({
+      companyId: company.id,
+      pipelineId: pipeline.id,
+      stageKey: "executing",
+      caseKey: "refill",
+      title: "Topic refill",
+      fields: { ownerActionRequired: false },
+      actor: userActor,
+    });
+    const agentActor: PipelineActor = { type: "agent", agentId: agent!.id, runId: randomUUID() };
+
+    await expect(svc.patchCaseContent({
+      companyId: company.id,
+      caseId: created.case.id,
+      expectedVersion: created.case.version,
+      fieldPatch: { ownerActionRequired: true },
+      actor: agentActor,
+    })).rejects.toMatchObject({ status: 403 });
+
+    await expect(svc.patchCaseContent({
+      companyId: company.id,
+      caseId: created.case.id,
+      expectedVersion: created.case.version,
+      fieldPatch: { ownerActionRequired: false, executionStatus: "continuing" },
+      actor: agentActor,
+    })).resolves.toMatchObject({ case: { fields: { ownerActionRequired: false } } });
+  });
+
   it("blocks a transition until its required case fields are present", async () => {
     const company = await seedCompany();
     const pipeline = await svc.createPipeline({

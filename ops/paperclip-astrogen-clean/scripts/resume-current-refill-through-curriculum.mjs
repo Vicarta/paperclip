@@ -2,8 +2,11 @@
 /**
  * Moves only the current canonical topic refill from a legacy non-owner
  * external wait into its native executing stage after the curriculum-first
- * contracts are live. The stage transition creates the normal CMO automation;
- * this script never creates issues, topics, articles, CMS records, or runs.
+ * contracts are live. With --repair-agent-owner-flag it can additionally
+ * correct the one explicitly identified misclassification where a CMO agent
+ * marked its own low-inventory cooldown as an owner decision. The stage
+ * transition creates the normal CMO automation; this script never creates
+ * issues, topics, articles, CMS records, or runs.
  */
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { spawnSync } from "node:child_process";
@@ -13,6 +16,7 @@ const USER_ID = "VetfGVba4HjRqdTiVfZNL4HsvXchKgLW";
 const DB_CONTAINER = "paperclip-astrogen-clean-db-1";
 const API_BASE = process.env.PAPERCLIP_API_BASE ?? "http://127.0.0.1:3210/api";
 const APPLY = process.argv.includes("--apply");
+const REPAIR_AGENT_OWNER_FLAG = process.argv.includes("--repair-agent-owner-flag");
 
 function run(command, args, input) {
   const result = spawnSync(command, args, { encoding: "utf8", input, maxBuffer: 16 * 1024 * 1024 });
@@ -85,8 +89,17 @@ async function main() {
     let detail = await request(token, "GET", `/cases/${rows[0].case.id}`);
     let refill = caseRow(detail);
     const stage = detail.stage?.key ?? null;
-    const valid = refill.fields?.actionType === "topic_inventory_refill" && refill.fields?.ownerActionRequired !== true;
-    if (!valid) throw new Error("Current refill is not a non-owner topic_inventory_refill case");
+    const nonOwnerRefill = refill.fields?.actionType === "topic_inventory_refill"
+      && refill.fields?.ownerActionRequired !== true;
+    const repairEligible = REPAIR_AGENT_OWNER_FLAG
+      && stage === "external_wait"
+      && refill.fields?.actionType === "topic_inventory_refill"
+      && refill.fields?.ownerActionRequired === true
+      && refill.fields?.executionStatus === "external_wait_bounded_source_lanes_exhausted_low_inventory"
+      && refill.fields?.blockerOwner === "Chief Marketing Officer";
+    if (!nonOwnerRefill && !repairEligible) {
+      throw new Error("Current refill is not a non-owner topic_inventory_refill case or the explicitly repairable agent-owned external wait");
+    }
     if (stage === "executing") {
       console.log(JSON.stringify({ ok: true, mode: "no-op", reason: "already_executing", caseKey, caseId: refill.id }, null, 2));
       return;
@@ -101,6 +114,7 @@ async function main() {
         stage,
         executionStatus: refill.fields?.executionStatus ?? null,
         blockerClass: refill.fields?.blockerClass ?? null,
+        repairEligible,
       }, null, 2));
       return;
     }
@@ -117,6 +131,7 @@ async function main() {
         nextReviewAt: null,
         sourceLane: "western_astrology_curriculum",
         sourceLaneReason: "Portfolio deficit requires the first prerequisite-ready missing curriculum node; an empty semantic snapshot is not source exhaustion.",
+        repairedAgentOwnedExternalWaitAt: repairEligible ? new Date().toISOString() : refill.fields?.repairedAgentOwnedExternalWaitAt ?? null,
         resumedAt: new Date().toISOString(),
       },
     });

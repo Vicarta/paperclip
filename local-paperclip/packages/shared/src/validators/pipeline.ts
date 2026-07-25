@@ -280,6 +280,10 @@ export const pipelineStageConfigSchema = z.object({
   childrenTerminalOutcome: pipelineStageChildrenTerminalOutcomeSchema.optional(),
   pipelineStageCountRequirements: z.array(pipelineStageCountRequirementSchema).max(20).optional(),
   transitionFieldRequirements: z.array(pipelineStageFieldRequirementSchema).max(20).optional(),
+  agentFieldAllowedValues: z.record(
+    routineVariableLikeNameSchema,
+    z.array(z.union([z.string(), z.number(), z.boolean()])).min(1).max(20),
+  ).optional(),
   approveToStageKey: z.string().trim().min(1).max(120).optional(),
   rejectToStageKey: z.string().trim().min(1).max(120).optional(),
   requestChangesToStageKey: z.string().trim().min(1).max(120).optional(),

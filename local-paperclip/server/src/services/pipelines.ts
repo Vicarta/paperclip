@@ -41,7 +41,7 @@ import {
   type RoutineVariable,
   type RoutineRevisionSnapshotV1,
 } from "@paperclipai/shared";
-import { conflict, HttpError, notFound, unprocessable } from "../errors.js";
+import { conflict, forbidden, HttpError, notFound, unprocessable } from "../errors.js";
 import { routineService } from "./routines.js";
 import { secretService } from "./secrets.js";
 import type { IssueAssignmentWakeupDeps } from "./issue-assignment-wakeup.js";
@@ -133,6 +133,8 @@ export type PipelineStageConfig = Record<string, unknown> & {
     whenCaseField?: string;
     whenCaseFieldEquals?: string | number | boolean;
   }>;
+  /** Values an agent may assign when it changes a protected case field. */
+  agentFieldAllowedValues?: Record<string, Array<string | number | boolean>>;
   approveToStageKey?: string;
   rejectToStageKey?: string;
   requestChangesToStageKey?: string;
@@ -4220,6 +4222,16 @@ export function pipelineService(db: Db, deps: { heartbeat?: IssueAssignmentWakeu
       ? { ...(current.fields ?? {}), ...input.fieldPatch }
       : input.fields;
     if (nextFields !== undefined) assertJsonSize(nextFields, "fields");
+    if (nextFields !== undefined && input.actor.type === "agent") {
+      const allowedValues = stageConfig(stage).agentFieldAllowedValues ?? {};
+      const violations = Object.entries(allowedValues)
+        .filter(([field]) => !isDeepStrictEqual(current.fields?.[field], nextFields[field]))
+        .filter(([field, values]) => !values.some((value) => isDeepStrictEqual(value, nextFields[field])))
+        .map(([field]) => field);
+      if (violations.length > 0) {
+        throw forbidden(`Agent is not permitted to assign the requested pipeline case field values: ${violations.join(", ")}`);
+      }
+    }
     const titleChanged = input.title !== undefined && input.title !== current.title;
     const summaryChanged = input.summary !== undefined && input.summary !== current.summary;
     const fieldsChanged = nextFields !== undefined && !isDeepStrictEqual(nextFields, current.fields);

@@ -174,6 +174,14 @@ function main() {
       && requirement.requiredFieldValues?.ownerActionRequired === true),
     "Topic-inventory refill must not enter external_wait without a real owner action",
   );
+  assert(
+    JSON.stringify(growthExecuting?.config?.agentFieldAllowedValues?.ownerActionRequired) === JSON.stringify([false]),
+    "An agent must not be able to declare a topic refill owner action",
+  );
+  includesAll(growthExecutingInstructions, [
+    "The CMO is a manager, not the external owner",
+    "must never change ownerActionRequired from false to true",
+  ], "Growth owner-decision authority boundary");
   const growthExternalWaitInstructions = growth?.stageAutomation?.external_wait?.instructions ?? "";
   includesAll(growthExternalWaitInstructions, [
     "regardless of a worker's finalDisposition or blocker label",
@@ -278,6 +286,7 @@ function main() {
       "canonical CMS admin URL transition gates",
       "manager-only approval handoff continuity",
       "manager-only approval external-wait exit",
+      "agent owner-decision write protection",
       "consumed curriculum-node selection guard",
       "allocator native dispatch and refill",
       "three-slot daily batch and deficit reconciliation",
