@@ -94,10 +94,19 @@ const casePatchSchema = z.object({
   title: z.string().trim().min(1).max(500).optional(),
   summary: z.string().max(8_000).nullable().optional(),
   fields: jsonObjectSchema.optional(),
+  fieldPatch: jsonObjectSchema.optional(),
   workspaceRef: jsonObjectSchema.nullable().optional(),
   parentCaseId: z.string().uuid().nullable().optional(),
   expectedVersion: z.number().int().positive().optional(),
   leaseToken: z.string().uuid().nullable().optional(),
+}).superRefine((value, ctx) => {
+  if (value.fields !== undefined && value.fieldPatch !== undefined) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Send either fields or fieldPatch, not both",
+      path: ["fieldPatch"],
+    });
+  }
 });
 const ingestCaseSchema = z.object({
   caseKey: z.string().max(1_024).nullable().optional(),
@@ -506,6 +515,121 @@ async function assertCaseWriteAccess(
   return pipelineId;
 }
 
+async function resolveAgentRunIssueId(
+  dbOrTx: Db | any,
+  input: { companyId: string; agentId: string; runId: string },
+) {
+  return dbOrTx
+    .select({ contextSnapshot: heartbeatRuns.contextSnapshot })
+    .from(heartbeatRuns)
+    .where(and(
+      eq(heartbeatRuns.companyId, input.companyId),
+      eq(heartbeatRuns.id, input.runId),
+      eq(heartbeatRuns.agentId, input.agentId),
+    ))
+    .limit(1)
+    .then((rows: Array<{ contextSnapshot: unknown }>) =>
+      issueIdFromPipelineRouteRunContext(rows[0]?.contextSnapshot),
+    );
+}
+
+async function resolveLinkedCaseOutputSourceIssue(
+  dbOrTx: Db | any,
+  input: { companyId: string; caseId: string; agentId: string; runId: string },
+) {
+  const runIssueId = await resolveAgentRunIssueId(dbOrTx, input);
+  if (!runIssueId) return null;
+  return dbOrTx
+    .select({
+      id: issueRows.id,
+      status: issueRows.status,
+      assigneeAgentId: issueRows.assigneeAgentId,
+      linkRole: pipelineCaseIssueLinks.role,
+    })
+    .from(pipelineCaseIssueLinks)
+    .innerJoin(issueRows, eq(pipelineCaseIssueLinks.issueId, issueRows.id))
+    .where(and(
+      eq(pipelineCaseIssueLinks.companyId, input.companyId),
+      eq(pipelineCaseIssueLinks.caseId, input.caseId),
+      eq(pipelineCaseIssueLinks.issueId, runIssueId),
+      isNull(pipelineCaseIssueLinks.retiredAt),
+      inArray(pipelineCaseIssueLinks.role, ["work", "automation"]),
+      eq(issueRows.companyId, input.companyId),
+      eq(issueRows.assigneeAgentId, input.agentId),
+    ))
+    .limit(1)
+    .then((rows: Array<{
+      id: string;
+      status: string;
+      assigneeAgentId: string | null;
+      linkRole: string;
+    }>) => rows[0] ?? null);
+}
+
+async function resolveLinkedCaseOutputWriteAccess(
+  dbOrTx: Db | any,
+  req: Request,
+  input: {
+    companyId: string;
+    caseId: string;
+    targetIssue?: NonNullable<Awaited<ReturnType<typeof getIssueMutationTarget>>>;
+  },
+) {
+  if (req.actor.type !== "agent") return null;
+  const agentId = req.actor.agentId;
+  const runId = req.actor.runId;
+  if (!agentId || !runId) return null;
+
+  const sourceIssue = await resolveLinkedCaseOutputSourceIssue(dbOrTx, {
+    companyId: input.companyId,
+    caseId: input.caseId,
+    agentId,
+    runId,
+  });
+  if (!sourceIssue) return null;
+
+  if (!input.targetIssue) return { sourceIssueId: sourceIssue.id };
+  if (input.targetIssue.id === sourceIssue.id) return { sourceIssueId: sourceIssue.id };
+  if (
+    input.targetIssue.parentId === sourceIssue.id &&
+    input.targetIssue.createdByAgentId === agentId
+  ) {
+    return { sourceIssueId: sourceIssue.id };
+  }
+  return null;
+}
+
+async function assertCaseWriteOrLinkedOutputAccess(
+  db: Db,
+  req: Request,
+  input: {
+    access: ReturnType<typeof accessService>;
+    companyId: string;
+    caseId: string;
+    targetIssue?: NonNullable<Awaited<ReturnType<typeof getIssueMutationTarget>>>;
+  },
+) {
+  const pipelineId = await resolveCasePipelineId(db, input);
+  const decision = await input.access.decide({
+    actor: req.actor,
+    action: "pipelines:write",
+    resource: { type: "company", companyId: input.companyId },
+    scope: { pipelineId },
+  });
+  if (decision.allowed) return { pipelineId, mode: "pipeline_write" as const };
+
+  const linkedOutputAccess = await resolveLinkedCaseOutputWriteAccess(db, req, input);
+  if (linkedOutputAccess) {
+    return { pipelineId, mode: "linked_case_output" as const, ...linkedOutputAccess };
+  }
+
+  throw new HttpError(403, decision.explanation, {
+    code: "pipeline_write_forbidden",
+    reason: decision.reason,
+    pipelineId,
+  });
+}
+
 function mapPipelineDocumentRevision(row: {
   id: string;
   companyId: string;
@@ -765,6 +889,7 @@ async function getIssueMutationTarget(db: Db, input: { companyId: string; issueI
       companyId: issueRows.companyId,
       projectId: issueRows.projectId,
       parentId: issueRows.parentId,
+      createdByAgentId: issueRows.createdByAgentId,
       assigneeAgentId: issueRows.assigneeAgentId,
       assigneeUserId: issueRows.assigneeUserId,
       status: issueRows.status,
@@ -834,10 +959,25 @@ async function assertIssueLinkCreateAllowed(
     issuesSvc: ReturnType<typeof issueService>;
     issue: NonNullable<Awaited<ReturnType<typeof getIssueMutationTarget>>>;
     role: z.infer<typeof issueLinkRoleSchema>;
+    linkedOutputSourceIssueId?: string;
   },
 ) {
   if (input.role !== "work") {
     await assertIssueLinkMutationAllowed(req, input);
+    return;
+  }
+  if (
+    input.linkedOutputSourceIssueId &&
+    req.actor.type === "agent" &&
+    req.actor.agentId &&
+    (
+      input.issue.id === input.linkedOutputSourceIssueId ||
+      (
+        input.issue.parentId === input.linkedOutputSourceIssueId &&
+        input.issue.createdByAgentId === req.actor.agentId
+      )
+    )
+  ) {
     return;
   }
 
@@ -1074,6 +1214,7 @@ export function pipelineRoutes(db: Db, options: Parameters<typeof pipelineServic
   router.get("/pipelines/:pipelineId/health", async (req, res) => {
     const pipelineId = req.params.pipelineId as string;
     const companyId = await assertPipelineAccess(db, req, pipelineId);
+    const newerAutomation = alias(pipelineAutomationExecutions, "newer_pipeline_automation");
     const [pipeline, stages, instructionDocs, companyAgents, companyPipelines, companyStages, failedAutomationRows] = await Promise.all([
       db.select().from(pipelines)
         .where(and(eq(pipelines.id, pipelineId), eq(pipelines.companyId, companyId)))
@@ -1116,11 +1257,26 @@ export function pipelineRoutes(db: Db, options: Parameters<typeof pipelineServic
         .from(pipelineAutomationExecutions)
         .innerJoin(pipelineCases, eq(pipelineAutomationExecutions.caseId, pipelineCases.id))
         .innerJoin(pipelineStages, eq(pipelineCases.stageId, pipelineStages.id))
+        .innerJoin(pipelineCaseEvents, eq(pipelineAutomationExecutions.triggeringEventId, pipelineCaseEvents.id))
         .where(and(
           eq(pipelineAutomationExecutions.companyId, companyId),
           eq(pipelineCases.pipelineId, pipelineId),
           eq(pipelineAutomationExecutions.status, "failed"),
           isNull(pipelineCases.terminalKind),
+          eq(pipelineCaseEvents.toStageId, pipelineCases.stageId),
+          sql`not exists (
+            select 1
+            from ${newerAutomation}
+            where ${newerAutomation.companyId} = ${pipelineAutomationExecutions.companyId}
+              and ${newerAutomation.caseId} = ${pipelineAutomationExecutions.caseId}
+              and (
+                ${newerAutomation.updatedAt} > ${pipelineAutomationExecutions.updatedAt}
+                or (
+                  ${newerAutomation.updatedAt} = ${pipelineAutomationExecutions.updatedAt}
+                  and ${newerAutomation.id} > ${pipelineAutomationExecutions.id}
+                )
+              )
+          )`,
         ))
         .orderBy(desc(pipelineAutomationExecutions.updatedAt))
         .limit(50),
@@ -1660,8 +1816,7 @@ export function pipelineRoutes(db: Db, options: Parameters<typeof pipelineServic
     const caseId = req.params.caseId as string;
     const key = parseDocumentKey(req.params.key);
     const companyId = await assertCaseAccess(db, req, caseId);
-    const pipelineId = await resolveCasePipelineId(db, { companyId, caseId });
-    await assertPipelineWriteAccess(req, { access, companyId, pipelineId });
+    await assertCaseWriteOrLinkedOutputAccess(db, req, { access, companyId, caseId });
     const actor = actorForMutation(req);
     const sourceTrust = await sourceTrustForPipelineCaseDocumentWrite(db, { companyId, caseId, actor });
 
@@ -2177,15 +2332,26 @@ export function pipelineRoutes(db: Db, options: Parameters<typeof pipelineServic
   router.post("/cases/:caseId/issue-links", validate(createIssueLinkSchema), async (req, res) => {
     const caseId = req.params.caseId as string;
     const companyId = await assertCaseAccess(db, req, caseId);
-    await assertCaseWriteAccess(db, req, { access, companyId, caseId });
     const actor = actorForMutation(req);
     const targetIssue = await getIssueMutationTarget(db, { companyId, issueId: req.body.issueId });
     if (!targetIssue) throw notFound("Issue not found");
+    const writeAccess = await assertCaseWriteOrLinkedOutputAccess(db, req, {
+      access,
+      companyId,
+      caseId,
+      targetIssue,
+    });
+    if (writeAccess.mode === "linked_case_output" && req.body.role !== "work") {
+      throw forbidden("Linked case output writes can only publish work links");
+    }
     await assertIssueLinkCreateAllowed(req, {
       access,
       issuesSvc,
       issue: targetIssue,
       role: req.body.role,
+      linkedOutputSourceIssueId: writeAccess.mode === "linked_case_output"
+        ? writeAccess.sourceIssueId
+        : undefined,
     });
     try {
       const link = await db.transaction(async (tx) => {
