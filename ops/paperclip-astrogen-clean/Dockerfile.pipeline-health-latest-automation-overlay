@@ -1,0 +1,9 @@
+ARG BASE_IMAGE=paperclip-app:v2026.626.0-vicarta.149-owner-decision-guard-20260725T1930Z
+FROM ${BASE_IMAGE}
+
+USER root
+COPY --chown=node:node pipelines-routes.js /app/server/dist/routes/pipelines.js
+RUN grep -q 'newer_pipeline_automation' /app/server/dist/routes/pipelines.js \
+  && grep -q 'eq(pipelineCaseEvents.toStageId, pipelineCases.stageId)' /app/server/dist/routes/pipelines.js
+
+USER node
