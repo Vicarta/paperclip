@@ -1,0 +1,13 @@
+# syntax=docker/dockerfile:1.20
+ARG BASE_IMAGE=paperclip-app:v2026.626.0-vicarta.144-semantic-provider-contract-20260724T1410Z
+FROM ${BASE_IMAGE}
+
+USER root
+COPY issues.js /app/server/dist/routes/issues.js
+RUN node --check /app/server/dist/routes/issues.js \
+  && grep -q 'if (req.actor.type === "agent" && req.actor.agentId && req.actor.agentId === assigneeAgentId) return;' /app/server/dist/routes/issues.js \
+  && grep -q 'Only the assignee agent or a board user can manage issue monitors' /app/server/dist/routes/issues.js
+
+# The base image entrypoint and command remain unchanged. This overlay lets an
+# assignee schedule bounded monitoring on their own issue without runtime-wide
+# management permission.

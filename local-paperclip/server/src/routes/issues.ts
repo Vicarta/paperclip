@@ -819,6 +819,7 @@ async function assertCanManageIssueMonitor(
 ) {
   if (!monitorChanged) return;
   if (req.actor.type === "board") return;
+  if (req.actor.type === "agent" && req.actor.agentId && req.actor.agentId === assigneeAgentId) return;
   const runtimeDecision = await accessSvc.decide({
     actor: req.actor,
     action: "runtime:manage",
@@ -827,7 +828,6 @@ async function assertCanManageIssueMonitor(
   if (!runtimeDecision.allowed) {
     throw forbidden(runtimeDecision.explanation);
   }
-  if (req.actor.type === "agent" && req.actor.agentId && req.actor.agentId === assigneeAgentId) return;
   throw forbidden("Only the assignee agent or a board user can manage issue monitors");
 }
 

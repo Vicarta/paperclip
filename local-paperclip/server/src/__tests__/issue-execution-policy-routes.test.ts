@@ -600,8 +600,16 @@ describe("issue execution policy routes", () => {
     expect(mockIssueService.createChild).not.toHaveBeenCalled();
   });
 
-  it("normalizes spoofed child monitor scheduledBy to the assignee actor", async () => {
+  it("lets an assignee agent schedule its own child monitor without runtime management", async () => {
     mockAccessService.hasPermission.mockResolvedValue(true);
+    mockAccessService.decide.mockImplementation(async (input: { action?: string }) => ({
+      allowed: input.action !== "runtime:manage",
+      action: input.action,
+      reason: input.action === "runtime:manage" ? "deny_missing_grant" : "allow_explicit_grant",
+      explanation: input.action === "runtime:manage"
+        ? "Missing permission: runtime:manage"
+        : "Allowed by test grant.",
+    }));
     mockIssueService.getById.mockResolvedValue({
       id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
       companyId: "company-1",
