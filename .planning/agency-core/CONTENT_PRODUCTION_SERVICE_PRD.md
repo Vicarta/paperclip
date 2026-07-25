@@ -4,7 +4,7 @@ Status: Draft for architecture review
 
 Product type: Standalone multi-tenant service
 
-Primary interfaces: REST API and MCP server
+Primary interfaces: Administrative GUI, REST API, and MCP server
 
 Storage: Service-owned PostgreSQL and artifact storage
 
@@ -49,6 +49,11 @@ configurable per project, content type, pipeline, and job. It can be disabled,
 required, selected by deterministic rules, supplied as an existing validated
 result, or explicitly started by an API/MCP client.
 
+An authenticated Administrative GUI provides project, configuration, access,
+content-plan, scheduling, job, artifact, cost, integration, and audit
+management. The GUI is an API client and never reads the service database or
+calls providers directly.
+
 ## 2. Product Decisions
 
 This PRD establishes the following boundaries:
@@ -65,6 +70,9 @@ This PRD establishes the following boundaries:
 10. SERP Winning Structure is optional and policy-controlled.
 11. Operational logs rotate and expire after seven days.
 12. Sentry error and performance monitoring is included from the first release.
+13. An Administrative GUI is a first-party client included in the product.
+14. The GUI uses only public, versioned REST contracts and receives live state
+    through the authenticated event stream.
 
 ## 3. Problem
 
@@ -112,6 +120,9 @@ The product must separate:
 9. Expose typed decision requests without communicating with humans directly.
 10. Attribute tokens and monetary costs to tenant, project, job, stage,
     provider, and model.
+11. Allow authorized users to manage projects, access, configuration, content
+    plans, schedules, jobs, integrations, artifacts, and costs through an
+    Administrative GUI.
 
 ### 4.2 Reusability Goals
 
@@ -152,7 +163,9 @@ The same service must support, without code changes:
   related-content count.
 - Making Payload CMS mandatory.
 - Automatically publishing content by default.
-- Providing a public browser CMS or editorial UI in the first release.
+- Providing a public CMS or WYSIWYG article editor in the first release. The
+  authenticated Administrative GUI is included, but content-body changes create
+  explicit job revisions rather than silently editing generated artifacts.
 - Storing plaintext provider credentials in project configuration.
 
 ## 6. Terminology
@@ -231,11 +244,23 @@ not publishable prose.
 - configure infrastructure, Sentry, storage, authentication, and system limits;
 - do not manually advance normal production jobs.
 
+### Administrative GUI Users
+
+- tenant owners and tenant administrators;
+- project administrators;
+- content planners and editors;
+- operations users;
+- billing viewers;
+- read-only auditors.
+
+Each user sees only actions permitted by tenant/project role bindings.
+
 ## 8. Architecture
 
 ```mermaid
 flowchart LR
-    Clients["Clients: Paperclip, UI, scripts, agents"] --> Gateway["REST API and MCP Gateway"]
+    Admin["Administrative GUI"] --> Gateway["REST API and MCP Gateway"]
+    Clients["Clients: Paperclip, scripts, agents"] --> Gateway
     Gateway --> Core["Content Production Core"]
     Core --> DB["PostgreSQL"]
     Core --> Artifacts["Artifact Storage"]
@@ -254,14 +279,22 @@ flowchart LR
 
 ### 8.1 Deployable Components
 
-1. **API/MCP Gateway**
+1. **Administrative GUI**
+   - authenticated multi-tenant web application;
+   - project and configuration management;
+   - access-token and secret-binding management;
+   - task pool, content plan, calendar, and schedule management;
+   - job, artifact, cost, integration, and audit views;
+   - no direct database or provider access.
+
+2. **API/MCP Gateway**
    - authentication and authorization;
    - tenant resolution;
    - request validation;
    - rate limiting;
    - REST, MCP, artifact download, and event-stream endpoints.
 
-2. **Workflow Orchestrator**
+3. **Workflow Orchestrator**
    - durable job state machine;
    - queues and leases;
    - stage transitions;
@@ -269,7 +302,7 @@ flowchart LR
    - policy evaluation;
    - idempotency and completion gates.
 
-3. **Workers**
+4. **Workers**
    - context and evidence preparation;
    - LLM execution;
    - SERP Winning Structure lifecycle;
@@ -278,18 +311,18 @@ flowchart LR
    - package creation;
    - optional delivery.
 
-4. **PostgreSQL**
+5. **PostgreSQL**
    - canonical domain state;
    - configuration and policy versions;
    - content plans;
    - jobs, attempts, decisions, costs, and audit events.
 
-5. **Artifact Storage**
+6. **Artifact Storage**
    - content inputs and outputs;
    - Markdown, HTML, structured content, media, evidence, and reports;
    - local S3-compatible storage or configured object store.
 
-6. **Observability**
+7. **Observability**
    - structured logs with seven-day retention;
    - Sentry errors and performance traces;
    - metrics and health endpoints.
@@ -1152,26 +1185,55 @@ Base path: `/v1`
 - `POST /tenants`
 - `GET /tenants/:tenantId`
 - `POST /tenants/:tenantId/projects`
+- `GET /tenants/:tenantId/projects`
 - `GET /projects/:projectId`
 - `PATCH /projects/:projectId`
+- `POST /projects/:projectId/archive`
+- `POST /projects/:projectId/restore`
 
-### 22.2 Context And Policies
+### 22.2 Users, Roles, And Access Tokens
+
+- `GET /tenants/:tenantId/members`
+- `POST /tenants/:tenantId/members`
+- `PATCH /tenants/:tenantId/members/:memberId`
+- `DELETE /tenants/:tenantId/members/:memberId`
+- `GET /tenants/:tenantId/role-bindings`
+- `POST /tenants/:tenantId/role-bindings`
+- `DELETE /tenants/:tenantId/role-bindings/:bindingId`
+- `GET /tenants/:tenantId/access-tokens`
+- `POST /tenants/:tenantId/access-tokens`
+- `GET /tenants/:tenantId/access-tokens/:tokenId`
+- `PATCH /tenants/:tenantId/access-tokens/:tokenId`
+- `POST /tenants/:tenantId/access-tokens/:tokenId/rotate`
+- `DELETE /tenants/:tenantId/access-tokens/:tokenId`
+
+The token secret is returned only by create or rotate and only once.
+`DELETE` revokes the token immediately while retaining audit metadata.
+
+### 22.3 Context And Policies
 
 - `POST /projects/:projectId/context-versions`
 - `GET /projects/:projectId/context-versions`
 - `POST /projects/:projectId/policies/:policyType`
 - `POST /projects/:projectId/policies/:policyType/:version/validate`
 - `POST /projects/:projectId/policies/:policyType/:version/activate`
+- `POST /projects/:projectId/policies/:policyType/:version/archive`
+- `POST /projects/:projectId/policies/:policyType/:version/restore`
+- `GET /projects/:projectId/configuration-diff`
+- `POST /projects/:projectId/configuration-rollback`
 - `GET /projects/:projectId/effective-configuration`
 
-### 22.3 Provider And Delivery Configuration
+### 22.4 Provider And Delivery Configuration
 
 - `POST /projects/:projectId/provider-profiles`
 - `POST /projects/:projectId/delivery-profiles`
 - `POST /projects/:projectId/secret-bindings`
+- `GET /projects/:projectId/secret-bindings`
+- `POST /projects/:projectId/secret-bindings/:bindingId/rotate`
+- `DELETE /projects/:projectId/secret-bindings/:bindingId`
 - `POST /projects/:projectId/integrations/:integrationId/validate`
 
-### 22.4 Content Plans
+### 22.5 Content Plans
 
 - `POST /projects/:projectId/content-plans`
 - `GET /content-plans/:planId`
@@ -1179,10 +1241,13 @@ Base path: `/v1`
 - `PATCH /topics/:topicId`
 - `POST /topics/:topicId/transitions`
 - `GET /projects/:projectId/content-calendar`
+- `POST /content-plans/:planId/import`
+- `GET /content-plans/:planId/export`
 
-### 22.5 Jobs
+### 22.6 Jobs
 
 - `POST /projects/:projectId/jobs`
+- `GET /projects/:projectId/jobs`
 - `GET /jobs/:jobId`
 - `GET /jobs/:jobId/attempts`
 - `GET /jobs/:jobId/artifacts`
@@ -1190,27 +1255,44 @@ Base path: `/v1`
 - `POST /jobs/:jobId/retry`
 - `POST /jobs/:jobId/revise`
 - `POST /jobs/:jobId/decisions`
+- `POST /projects/:projectId/jobs/bulk-actions`
 
-### 22.6 SERP Winning Structure
+### 22.7 Schedules
+
+- `GET /projects/:projectId/schedules`
+- `POST /projects/:projectId/schedules`
+- `GET /schedules/:scheduleId`
+- `PATCH /schedules/:scheduleId`
+- `POST /schedules/:scheduleId/validate`
+- `POST /schedules/:scheduleId/preview`
+- `POST /schedules/:scheduleId/enable`
+- `POST /schedules/:scheduleId/disable`
+- `DELETE /schedules/:scheduleId`
+- `GET /schedules/:scheduleId/runs`
+
+### 22.8 SERP Winning Structure
 
 - `POST /jobs/:jobId/serp-winning-structure/start`
 - `POST /jobs/:jobId/serp-winning-structure/skip`
 - `POST /jobs/:jobId/serp-winning-structure/results`
 - `GET /jobs/:jobId/serp-winning-structure`
 
-### 22.7 Packages And Delivery
+### 22.9 Packages And Delivery
 
 - `GET /jobs/:jobId/package`
 - `POST /jobs/:jobId/deliveries`
 - `GET /deliveries/:deliveryId`
 - `POST /deliveries/:deliveryId/approve`
 
-### 22.8 Costs And Events
+### 22.10 Costs And Events
 
 - `GET /jobs/:jobId/costs`
 - `GET /projects/:projectId/costs`
 - `GET /projects/:projectId/events`
 - `GET /projects/:projectId/event-stream`
+- `GET /tenants/:tenantId/audit-events`
+- `GET /projects/:projectId/audit-events`
+- `GET /projects/:projectId/diagnostics`
 
 All mutations require:
 
@@ -1240,6 +1322,13 @@ Default exposure: private network or authenticated server-to-server
 - `get_effective_configuration`
 - `bind_secret_reference`
 - `validate_integration`
+- `list_access_tokens`
+- `update_access_token_metadata`
+- `revoke_access_token`
+
+Access-token creation, rotation, and any operation returning secret material are
+REST/GUI-only. They are intentionally unavailable to MCP clients so a token
+secret cannot enter model context.
 
 ### 23.2 Content Plan Tools
 
@@ -1249,6 +1338,12 @@ Default exposure: private network or authenticated server-to-server
 - `transition_topic`
 - `get_content_calendar`
 - `list_ready_topics`
+- `create_generation_schedule`
+- `update_generation_schedule`
+- `preview_generation_schedule`
+- `enable_generation_schedule`
+- `disable_generation_schedule`
+- `list_generation_schedules`
 
 ### 23.3 Job Tools
 
@@ -1286,12 +1381,17 @@ Default exposure: private network or authenticated server-to-server
 - no tool exposes another tenant's identifiers or data;
 - configuration tools validate JSON Schema before persistence;
 - every mutating tool requires an idempotency key.
+- no tool can issue or reveal an access-token or provider-secret value.
 
 ## 24. Data Model
 
 Primary tables:
 
 - `tenants`
+- `users`
+- `tenant_members`
+- `role_bindings`
+- `access_tokens`
 - `projects`
 - `project_context_versions`
 - `audience_profiles`
@@ -1303,6 +1403,8 @@ Primary tables:
 - `provider_profiles`
 - `delivery_profiles`
 - `secret_bindings`
+- `generation_schedules`
+- `schedule_runs`
 - `content_plans`
 - `topics`
 - `topic_dependencies`
@@ -1460,6 +1562,7 @@ operators. Clients receive typed job errors and events rather than raw logs.
 
 Sentry is required in the first release for:
 
+- Administrative GUI exceptions and performance;
 - API errors;
 - MCP gateway errors;
 - worker exceptions;
@@ -1482,6 +1585,10 @@ Sentry is required in the first release for:
 - higher sampling allowed for failed or slow jobs;
 - source maps/debug symbols uploaded during release;
 - trace context propagated through queues and adapters.
+- browser session replay disabled by default;
+- browser breadcrumbs scrubbed of article content, form values, tokens, and
+  secret-binding metadata;
+- frontend and backend releases use the same deploy correlation identifier.
 
 ### 28.2 Error Classification
 
@@ -1518,6 +1625,11 @@ Sentry is not the primary log store.
 
 Audit events record business and configuration actions:
 
+- administrative login and security-sensitive session events;
+- member and role-binding changes;
+- access-token creation, metadata/scopes changes, rotation, and revocation;
+- provider-secret binding creation, replacement, and removal without recording
+  the secret value;
 - policy creation and activation;
 - project-context changes;
 - topic decisions;
@@ -1594,8 +1706,17 @@ The service does not contact a human.
 ## 31. Security
 
 - TLS for all API and MCP traffic;
+- OIDC/OAuth2 or an equivalent secure administrative login;
+- optional tenant-enforced MFA, with step-up authentication for credential and
+  access-token operations;
 - tenant-scoped service credentials;
 - short-lived tokens where supported;
+- access-token values generated with a cryptographically secure random source;
+- only a salted hash and non-secret fingerprint stored after one-time reveal;
+- access-token scope, project restriction, expiry, last-used time, IP allowlist,
+  status, creator, and rotation lineage recorded;
+- access-token deletion implemented as immediate revocation, with immutable
+  audit history;
 - encrypted secret store;
 - encryption at rest for database and artifact storage where available;
 - strict outbound allowlist for provider/connector endpoints;
@@ -1603,6 +1724,10 @@ The service does not contact a human.
 - content-type and size validation for uploads;
 - malware scanning for untrusted binary uploads when enabled;
 - audit trail for privileged changes;
+- CSRF protection for browser mutations;
+- secure, `HttpOnly`, `SameSite` administrative sessions;
+- explicit confirmation and re-authentication for destructive or
+  credential-sensitive actions;
 - configurable artifact retention and deletion;
 - no raw secrets in logs, Sentry, artifacts, or prompts.
 
@@ -1694,12 +1819,15 @@ loaded from the source tree by the running service.
 ### Phase 1: Core Domain
 
 - tenant/project model;
+- users, role bindings, access tokens, and administrative authentication;
 - policy and context versioning;
 - content plans;
+- schedules and schedule runs;
 - jobs and workflow engine;
 - artifact store;
 - cost ledger;
 - REST API and MCP gateway;
+- Administrative GUI foundation and project switcher;
 - seven-day structured logging;
 - Sentry.
 
@@ -1764,6 +1892,22 @@ loaded from the source tree by the running service.
     project, job, and attempt correlation but no prompt, article, or secret.
 20. Astrogen behavior can be reproduced entirely from project configuration and
     external adapter bindings.
+21. An authorized administrator can inspect every effective project setting and
+    its source version through the GUI.
+22. Access-token create and rotate reveal the secret exactly once; list and
+    detail views never return it.
+23. Access-token metadata, scopes, expiry, restrictions, rotation, and
+    revocation are manageable through the GUI with complete audit evidence.
+24. Project policies can be drafted, validated, diffed, activated, archived,
+    and rolled back without mutating a version used by an active job.
+25. The GUI provides task-pool, content-plan table/board/calendar, schedule,
+    job, artifact, integration, cost, event, and audit views.
+26. A user can create and edit a timezone-aware recurring generation schedule,
+    preview its next runs, pause it, and inspect its execution history.
+27. Destructive, credential, activation, and bulk actions require the declared
+    confirmation, permission, and version checks.
+28. The GUI has no direct database, MCP-provider, LLM-provider, image-provider,
+    or CMS credentials.
 
 ## 38. Required Verification Scenarios
 
@@ -1787,3 +1931,884 @@ loaded from the source tree by the running service.
 18. Sentry redaction of prompts, content, credentials, and provider payloads.
 19. Paperclip unavailable while direct API production continues.
 20. Paperclip adapter reconnect and state projection without duplicated work.
+21. Tenant owner and read-only auditor see different allowed GUI actions.
+22. Project administrator cannot access another project without a role binding.
+23. Token creation, one-time reveal, metadata edit, scope reduction, rotation,
+    expiry, and revocation.
+24. Concurrent policy edits produce a version conflict rather than silent
+    overwrite.
+25. Policy diff, validation failure, activation, and rollback.
+26. Content-plan topic create/edit/archive, dependency validation, and calendar
+    rescheduling.
+27. Schedule preview across daylight-saving and timezone boundaries.
+28. Missed-run policies for skip, one bounded catch-up, and disabled schedule.
+29. Bulk job retry excludes non-retryable jobs and reports each result.
+30. Frontend Sentry event contains route and trace correlation but no token,
+    secret, article body, or policy form value.
+
+## 39. Administrative GUI
+
+### 39.1 Purpose
+
+The Administrative GUI is the first-party operational interface for configuring
+and supervising Content Production Service without direct database access or
+manual API construction.
+
+It must allow authorized users to:
+
+- see all tenants and projects permitted by their role;
+- inspect the complete effective configuration of each project;
+- create and manage access tokens securely;
+- bind and rotate external-provider credentials;
+- create, validate, activate, archive, and roll back project settings;
+- manage content plans and topic lifecycle;
+- manage the task pool and typed decisions;
+- configure generation times, recurrence, quotas, and catch-up behavior;
+- inspect jobs, attempts, artifacts, deliveries, costs, and audit history;
+- diagnose integrations without exposing secrets or raw operational logs.
+
+### 39.2 Product Boundary
+
+The GUI:
+
+- is a separately built web application;
+- uses only versioned REST API endpoints;
+- consumes live updates through the authenticated event stream;
+- never reads PostgreSQL directly;
+- never invokes LLM, MCP research, image, or CMS providers directly;
+- never stores service access tokens or provider credentials in browser local
+  storage;
+- never performs hidden workflow transitions;
+- never sends owner notifications.
+
+The GUI may invoke the service's API operations that in turn call configured
+providers or connectors.
+
+### 39.3 Information Architecture
+
+Primary navigation:
+
+1. Overview
+2. Projects
+3. Task Pool
+4. Content Plans
+5. Calendar
+6. Schedules
+7. Jobs
+8. Artifacts
+9. Integrations
+10. Access
+11. Costs
+12. Audit
+13. Diagnostics
+
+The current tenant and project are always visible. Project-specific screens
+must not silently retain a previous project's filter or mutation target after
+the user switches projects.
+
+### 39.4 Overview
+
+Tenant overview:
+
+- active and archived projects;
+- jobs by state;
+- jobs awaiting decisions;
+- upcoming schedules;
+- token and monetary use;
+- provider and connector health;
+- recent failed or slow jobs;
+- content-plan coverage;
+- active access-token count and expiring-token warnings.
+
+Project overview:
+
+- effective configuration version;
+- active pipeline templates;
+- content-plan status;
+- ready and scheduled topics;
+- current productive jobs;
+- jobs in retry, decision, budget, or failure states;
+- next scheduled generations;
+- throughput and latency;
+- current daily/monthly budgets;
+- integration health;
+- recent Content Packages and deliveries.
+
+Overview metrics are navigational and must link to the filtered underlying
+records. A summary card is not completion evidence by itself.
+
+### 39.5 Project Management
+
+Authorized users can:
+
+- create a project;
+- edit project name, key, description, timezone, default language, and status;
+- archive and restore a project;
+- clone selected configuration into a new project;
+- inspect configuration completeness;
+- validate required integration bindings;
+- export a non-secret configuration manifest;
+- bootstrap from an approved project template.
+
+Project deletion semantics:
+
+- unused draft projects may be permanently deleted by a tenant owner;
+- a project with jobs, costs, artifacts, deliveries, or audit history is
+  archived, not physically deleted;
+- permanent data erasure follows a separate retention/deletion workflow;
+- archiving disables schedules and new jobs but preserves read access according
+  to role.
+
+### 39.6 Access Tokens
+
+The GUI distinguishes service access tokens from external-provider secrets.
+
+Long-lived service access tokens are opaque bearer credentials backed by a
+server-side hash record. They are not self-contained long-lived JWTs. This
+allows scope, expiry, IP restrictions, and revocation to take effect
+immediately without changing or exposing the token secret.
+
+#### Service Access Token List
+
+Show:
+
+- token name;
+- non-secret fingerprint;
+- status;
+- tenant/project scope;
+- permission scopes;
+- creator;
+- created time;
+- expiry;
+- last-used time and source IP when policy permits;
+- IP allowlist;
+- rotation lineage;
+- revocation time and actor.
+
+Never show:
+
+- token secret after the one-time creation/rotation response;
+- token hash;
+- authentication headers;
+- full historical source IP when privacy policy forbids it.
+
+#### Create Token
+
+Required input:
+
+- name;
+- tenant or project restriction;
+- permission scopes;
+- expiry;
+- optional IP allowlist;
+- optional usage description.
+
+Security behavior:
+
+- require `credentials:manage`;
+- require step-up authentication;
+- use least-privilege scope presets;
+- warn for broad or non-expiring tokens;
+- return the secret exactly once;
+- require explicit acknowledgement before dismissing the reveal dialog;
+- do not place the secret in URL, logs, analytics, Sentry, or browser storage.
+
+#### Edit Token
+
+Editable fields:
+
+- name and description;
+- scopes;
+- expiry;
+- IP allowlist;
+- enabled/disabled state where policy permits.
+
+Changing metadata does not change the secret value.
+
+Security rules:
+
+- scope reduction applies immediately;
+- scope expansion requires step-up authentication;
+- changing tenant ownership is forbidden;
+- changing a token to another project requires rotation or a new token;
+- expired or revoked tokens cannot be re-enabled.
+
+#### Rotate Token
+
+Rotation:
+
+- creates a new secret and hash;
+- retains token identity or creates a linked successor according to API policy;
+- allows zero or bounded grace period;
+- reveals the new secret once;
+- records old/new fingerprints and actor;
+- revokes the old secret after the selected grace period.
+
+#### Delete Token
+
+In the GUI, Delete means immediate revocation.
+
+- require explicit confirmation;
+- show affected integration metadata when known;
+- never remove immutable audit evidence;
+- allow filtering revoked tokens;
+- permanent purge follows system retention policy only.
+
+### 39.7 Provider Credentials And Secret Bindings
+
+External-provider credentials are managed separately from service access
+tokens.
+
+The GUI shows:
+
+- binding name;
+- provider/connector;
+- project scope;
+- secret status;
+- masked fingerprint or last four safe characters when supported;
+- created and last-rotated time;
+- last successful validation;
+- last failure class;
+- projects/policies that reference the binding.
+
+Allowed actions:
+
+- create secret binding;
+- replace/rotate secret value;
+- validate connection;
+- change safe metadata;
+- detach from an unused profile;
+- revoke/remove binding when no active job depends on it.
+
+The GUI never retrieves an existing provider secret value. Replacement writes a
+new value through the protected secrets endpoint.
+
+Removing a referenced secret requires:
+
+- dependency preview;
+- explicit confirmation;
+- no active external attempt using it;
+- resulting configuration-validation warning or block.
+
+### 39.8 Project Configuration Center
+
+The configuration center shows all effective project settings and where each
+value originates:
+
+```text
+system default
+-> tenant default
+-> project setting
+-> pipeline template
+-> job override
+```
+
+Configuration categories:
+
+- project context;
+- audiences and brand;
+- editorial policy;
+- SEO policy;
+- SERP Winning Structure policy;
+- formatting and layout;
+- image generation;
+- quality gates;
+- providers and model routing;
+- budgets;
+- pipeline templates;
+- delivery profiles;
+- retention;
+- schedules.
+
+#### Editors
+
+Each configuration type provides:
+
+- schema-generated form view;
+- advanced JSON view for authorized users;
+- documentation and field descriptions;
+- validation errors linked to exact fields;
+- references to affected pipelines;
+- current active version;
+- draft versions;
+- effective-value preview;
+- before/after diff;
+- activation history;
+- rollback action.
+
+The form and JSON views edit the same draft and must remain synchronized.
+
+#### Version Lifecycle
+
+```text
+draft
+-> validated
+-> active
+-> superseded
+-> archived
+```
+
+Rules:
+
+- active versions are immutable;
+- versions referenced by jobs cannot be deleted;
+- draft versions may be deleted by authorized users;
+- activation requires validation and optimistic version match;
+- rollback activates a new version derived from a previous one;
+- rollback never mutates historical job snapshots;
+- activation previews which schedules and future jobs will use the change.
+
+#### Policy Testing
+
+Before activation, users can run:
+
+- schema validation;
+- deterministic rule simulation;
+- sample job effective-configuration preview;
+- SERP Winning Structure conditional-rule evaluation;
+- provider/connector binding checks;
+- budget checks;
+- optional dry-run that performs no paid provider call.
+
+### 39.9 Task Pool
+
+The task pool is the operational view of content jobs and typed work waiting to
+be executed.
+
+Views:
+
+- compact table;
+- stage board;
+- saved filters.
+
+Filters:
+
+- tenant/project;
+- content plan;
+- topic;
+- operation;
+- pipeline template/version;
+- job state;
+- current stage;
+- priority;
+- schedule;
+- created/updated time;
+- provider;
+- decision required;
+- retryable/non-retryable;
+- budget status;
+- delivery status.
+
+Columns:
+
+- job/title;
+- operation;
+- project;
+- topic and plan;
+- state/stage;
+- priority;
+- progress;
+- next action;
+- attempt count;
+- created/updated;
+- next retry;
+- estimated and actual cost;
+- schedule source;
+- configuration snapshot.
+
+Allowed single-job actions:
+
+- inspect;
+- change priority before restricted stages;
+- pause when the state supports it;
+- resume;
+- cancel;
+- retry retryable stage;
+- create revision;
+- submit typed decision;
+- start or skip on-demand SERP Winning Structure;
+- start configured delivery.
+
+Bulk actions:
+
+- change priority;
+- pause/resume;
+- retry eligible jobs;
+- cancel selected jobs;
+- add or remove schedule assignment before execution.
+
+Every bulk action:
+
+- previews eligible and ineligible records;
+- states why each ineligible job is excluded;
+- requires one idempotency key;
+- returns per-job results;
+- never bypasses stage invariants.
+
+Directly dragging a card may request a valid transition but cannot force an
+arbitrary state.
+
+### 39.10 Content Plan Management
+
+Views:
+
+- hierarchical cluster outline;
+- table;
+- lifecycle board;
+- editorial calendar;
+- dependency graph.
+
+Topic fields:
+
+- title and stable key;
+- cluster;
+- audience;
+- content intent;
+- primary/supporting queries when applicable;
+- operation;
+- content type;
+- priority;
+- status;
+- planned date;
+- prerequisites;
+- ownership and cannibalization decision;
+- internal-link requirements;
+- source/evidence lineage;
+- pipeline template;
+- SERP Winning Structure policy override when allowed;
+- image and delivery overrides when allowed;
+- related jobs and packages.
+
+Allowed actions:
+
+- create and edit topic drafts;
+- import and export;
+- move between clusters;
+- set dependencies;
+- schedule/reschedule;
+- approve/reject/archive;
+- merge or mark duplicate through a typed decision;
+- reserve for a job;
+- release valid reservations;
+- inspect generation and publication history.
+
+Validation:
+
+- stable key uniqueness;
+- dependency-cycle detection;
+- duplicate candidates;
+- conflicting schedules;
+- missing required context;
+- unsupported policy override;
+- quota/capacity warnings;
+- cannibalization requirements.
+
+Edits to topics already in production create a new topic revision and do not
+silently alter the active job snapshot.
+
+### 39.11 Calendar
+
+Calendar views:
+
+- day;
+- week;
+- month;
+- agenda.
+
+Display:
+
+- planned topics;
+- generation schedules;
+- generated jobs;
+- delivery targets;
+- published dates when imported;
+- blocked or missed slots;
+- project timezone and viewer timezone.
+
+Calendar actions:
+
+- reschedule a topic;
+- assign/remove a schedule;
+- inspect capacity;
+- open job or schedule;
+- create a one-time generation;
+- preview dependency or quota conflicts.
+
+Drag-and-drop rescheduling requires a server-side validation response before
+the UI commits the change.
+
+### 39.12 Generation Schedules
+
+Schedules control when and how content jobs are created from eligible plan
+topics.
+
+```ts
+type GenerationSchedule = {
+  id: string;
+  tenantId: string;
+  projectId: string;
+  name: string;
+  enabled: boolean;
+  timezone: string;
+  recurrence:
+    | { kind: "rrule"; value: string }
+    | { kind: "cron"; value: string }
+    | { kind: "interval"; seconds: number };
+  startsAt?: string;
+  endsAt?: string;
+  blackoutWindows: TimeWindow[];
+  topicSelector: TopicSelector;
+  batchSize: number;
+  pipelineTemplateVersionId: string;
+  providerProfileRef?: string;
+  deliveryProfileRef?: string;
+  concurrencyPolicy: "skip" | "queue" | "bounded_parallel";
+  maxConcurrentJobs: number;
+  missedRunPolicy: "skip" | "run_once" | "bounded_catch_up";
+  maxCatchUpRuns: number;
+  jitterSeconds: number;
+  budgetPolicyRef: string;
+  version: number;
+};
+```
+
+Schedule editor requirements:
+
+- human-readable recurrence builder;
+- advanced cron/RRULE view;
+- explicit timezone;
+- next 20 run preview;
+- daylight-saving preview;
+- start/end dates;
+- blackout windows;
+- batch size;
+- topic filters and ordering;
+- pipeline and delivery profile;
+- concurrency and catch-up behavior;
+- budget preflight;
+- enable/disable;
+- execution history.
+
+Deletion semantics:
+
+- a schedule with no runs may be deleted;
+- a schedule with history is archived;
+- disabling stops future runs but does not cancel active jobs;
+- changing an active schedule creates a new version;
+- missed-run catch-up is bounded and cannot create an unlimited backlog.
+
+### 39.13 Job Detail
+
+Job detail tabs:
+
+- Summary
+- Timeline
+- Stages and attempts
+- Context snapshot
+- Decisions
+- Artifacts
+- Quality
+- Costs
+- Delivery
+- Audit
+
+Summary shows:
+
+- operation and objective;
+- topic and plan;
+- effective configuration;
+- current state/stage;
+- next deterministic action;
+- retry/decision/budget status;
+- package and delivery state.
+
+Timeline shows domain events, not raw process logs.
+
+Stage attempts show:
+
+- adapter/provider/model;
+- input/output artifact references;
+- start/end/duration;
+- retry classification;
+- token and cost summary;
+- typed error;
+- Sentry issue link for authorized operators.
+
+Article artifacts may be previewed and downloaded. Editing a completed artifact
+creates a job revision or a specifically scoped repair; it never mutates an
+immutable artifact.
+
+### 39.14 Artifacts And Content Packages
+
+Artifact browser supports:
+
+- filtering by project, job, type, producer, date, and status;
+- safe previews for Markdown, sanitized HTML, JSON, images, and reports;
+- provenance and content hash;
+- revision lineage;
+- download;
+- retention status;
+- delivery references.
+
+Raw private provider artifacts require elevated permission and must never be
+rendered as executable HTML.
+
+The Content Package view shows:
+
+- Markdown;
+- HTML;
+- structured content;
+- metadata and optional SEO;
+- media;
+- link plan;
+- quality and evidence reports;
+- effective configuration;
+- costs;
+- delivery receipts.
+
+### 39.15 Integrations
+
+Integration views cover:
+
+- LLM providers;
+- SERP Winning Structure;
+- research/analytics MCP services;
+- image providers;
+- artifact storage;
+- delivery connectors;
+- Sentry status.
+
+Each integration shows:
+
+- adapter/connector ID and version;
+- capabilities;
+- project profile;
+- secret binding status;
+- configuration validation;
+- last health check;
+- circuit-breaker state;
+- recent failure class;
+- recent costs;
+- dependent schedules and pipelines.
+
+Allowed actions:
+
+- configure safe fields;
+- bind/replace secret;
+- validate;
+- run an explicitly labeled no-cost smoke when available;
+- run a paid smoke only after cost preview and confirmation;
+- enable/disable for future jobs;
+- inspect dependency impact.
+
+The GUI must distinguish configuration validation from a real paid provider
+call.
+
+### 39.16 Costs And Budgets
+
+Views:
+
+- tenant/project summary;
+- daily/monthly trend;
+- provider/model breakdown;
+- stage breakdown;
+- job-level detail;
+- actual/estimated/partial/unavailable classification;
+- cached/uncached token breakdown;
+- budget usage and forecast;
+- unsuccessful paid attempts.
+
+Users with budget permission can:
+
+- create budget-policy drafts;
+- set tenant/project/job/stage/provider limits;
+- configure warning thresholds;
+- activate or roll back policy versions;
+- submit typed budget decisions.
+
+Cost exports contain no prompts, article bodies, or secret values.
+
+### 39.17 Audit
+
+Audit view supports:
+
+- time range;
+- actor;
+- tenant/project;
+- resource;
+- action;
+- outcome;
+- request and trace ID;
+- before/after references.
+
+Sensitive before/after values are redacted. Token and secret events include
+metadata and fingerprint only.
+
+Audit records are immutable. The GUI cannot edit or delete them.
+
+### 39.18 Diagnostics
+
+Diagnostics show bounded operational state:
+
+- API, queue, database, artifact store, and optional dependency health;
+- open circuit breakers;
+- queue depth and oldest job age;
+- schedule drift;
+- failed retention cleanup;
+- current release;
+- Sentry issue links;
+- typed recent incident summaries.
+
+The GUI does not expose raw seven-day logs to normal project users. Authorized
+operators may follow an external log-system link or request a bounded sanitized
+diagnostic extract.
+
+### 39.19 Roles And Permissions
+
+Default roles:
+
+| Role | Primary permissions |
+|---|---|
+| Tenant owner | All tenant actions, owners, credentials, deletion workflows |
+| Tenant admin | Projects, users, policies, tokens, integrations, schedules |
+| Project admin | One project's settings, access, plans, jobs, integrations |
+| Content planner | Content plans, topics, calendar, schedules |
+| Editor | Jobs, decisions, revisions, artifacts, packages |
+| Operator | Retry, diagnostics, integrations, schedules, Sentry links |
+| Billing viewer | Costs and budgets read-only |
+| Auditor | Configuration, jobs, costs, and audit read-only |
+
+Permissions are capability scopes, not role-name checks. Custom roles may
+combine scopes.
+
+Critical scopes:
+
+- `tenants:manage`
+- `projects:manage`
+- `members:manage`
+- `credentials:manage`
+- `policies:write`
+- `policies:activate`
+- `plans:write`
+- `schedules:write`
+- `jobs:write`
+- `jobs:decide`
+- `deliveries:approve`
+- `costs:read`
+- `budgets:write`
+- `audit:read`
+- `diagnostics:read`
+
+### 39.20 Concurrency And Conflict Handling
+
+All editable resources use version/ETag checks.
+
+When another user changes a resource:
+
+- do not overwrite silently;
+- show the current server version;
+- show the user's unsaved version;
+- offer reload or create a new draft revision;
+- allow field-level merge only for schemas that explicitly support it.
+
+Policy activation, schedule editing, topic rescheduling, and bulk task actions
+must be idempotent.
+
+### 39.21 Destructive And High-Risk Actions
+
+High-risk actions include:
+
+- token create/rotate/revoke;
+- provider-secret replacement/removal;
+- policy activation/rollback;
+- schedule enablement with paid providers;
+- bulk cancellation;
+- project archival/deletion;
+- CMS publication approval.
+
+Requirements:
+
+- clear impact preview;
+- named resource and project;
+- explicit confirmation;
+- step-up authentication where configured;
+- no preselected destructive option;
+- audit event;
+- idempotent API request;
+- post-action result and affected-resource list.
+
+### 39.22 UX Requirements
+
+The Administrative GUI is an operational application, not a marketing site.
+
+Requirements:
+
+- dense but readable tables and side panels;
+- persistent project context;
+- predictable navigation;
+- icons for familiar actions;
+- tooltips for unfamiliar controls;
+- tabs for project settings and job detail;
+- segmented controls for modes;
+- toggles for enabled/disabled state;
+- explicit save/validate/activate actions;
+- no nested decorative cards;
+- no feature-description text inside the working interface;
+- responsive desktop and tablet support;
+- no incoherent overlap or truncated identifiers;
+- accessible keyboard navigation;
+- WCAG 2.2 AA target;
+- locale-ready interface strings;
+- UTC storage with explicit project/viewer timezone rendering.
+
+### 39.23 Frontend Architecture
+
+Recommended implementation:
+
+- TypeScript web application;
+- generated typed client from OpenAPI;
+- server-state query/cache library;
+- schema-driven forms;
+- authenticated SSE client;
+- route-level authorization guards plus server enforcement;
+- Content Security Policy;
+- no secret persistence in frontend state beyond the one-time reveal screen;
+- Sentry browser SDK with strict redaction;
+- release/version endpoint shown in Diagnostics.
+
+Frontend authorization is a usability layer only. The API remains the source of
+permission enforcement.
+
+### 39.24 GUI-Specific Sentry Requirements
+
+- capture unhandled frontend errors;
+- capture failed API transactions with request/trace ID;
+- capture route performance;
+- tag release, environment, tenant ID, project ID, and route;
+- never tag topic title, article title, policy value, token name, or secret
+  fingerprint;
+- disable default PII;
+- disable session replay by default;
+- scrub form values and response bodies;
+- expose Sentry issue links only to users with `diagnostics:read`.
+
+### 39.25 Administrative GUI Acceptance Criteria
+
+1. The GUI can configure a new project from empty state to validated active
+   configuration without database or CLI access.
+2. Every effective setting shows its source level and active version.
+3. Access-token secret material is visible once and absent from every later API
+   response, browser state, log, audit record, and Sentry event.
+4. Provider secrets can be replaced but never read back.
+5. Policy edits use drafts, validation, diff, activation, and rollback.
+6. A referenced active policy version cannot be edited or physically deleted.
+7. Task pool actions preserve workflow invariants and report per-job results.
+8. Content-plan edits preserve topic/job revision history.
+9. Schedule preview correctly renders timezone and daylight-saving behavior.
+10. Disabling a schedule prevents future runs without cancelling active jobs.
+11. Cost views reconcile to the cost ledger.
+12. Audit view records every high-risk action without secret values.
+13. Read-only users cannot cause mutations through UI or direct API calls.
+14. Frontend Sentry captures a forced exception with trace correlation and no
+    content or credential data.
+15. GUI remains usable when an optional provider or delivery connector is down.
