@@ -3,7 +3,7 @@ import { spawnSync } from "node:child_process";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { routineContracts } from "./bootstrap-astrogen-growth-os.mjs";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const PIPELINE_MANIFEST = resolve(SCRIPT_DIR, "../manifests/pipelines.yaml");
@@ -230,6 +230,13 @@ function main() {
     "env: null",
     "Routine env drift remains after sync",
   ], "Routine synchronization contract");
+  const capacityReconcilePath = resolve(SCRIPT_DIR, "reconcile-current-topic-refill-capacity-lanes.mjs");
+  assert(existsSync(capacityReconcilePath), "Capacity-lane reconciliation helper is missing");
+  includesAll(readFileSync(capacityReconcilePath, "utf8"), [
+    "capacity_refill_requires_non_trend_lane",
+    "A trend cooldown cannot park separate non-trend portfolio deficits",
+    "nonTrendDeficits",
+  ], "Capacity-lane reconciliation helper");
   includesAll(routineContracts.leadershipBacklogTriage, [
     "already assigned, blocked, in-progress, or foreign-owned issue",
     "A 403 while attempting to mutate a foreign issue is a routing error",
