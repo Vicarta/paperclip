@@ -151,6 +151,10 @@ function main() {
     "new_article is forbidden",
     "never send the case back to evidence_ready solely because the owner exists",
   ], "Existing-owner CMO routing contract");
+  includesAll(searchDemand?.stageAutomation?.delegated?.instructions ?? "", [
+    "mark that node as non-supply",
+    "next prerequisite-ready missing curriculum node",
+  ], "Existing-owner curriculum supply continuity contract");
   const curriculumDraftSequencing = curriculumPolicy?.teachingContract?.draftSequencing;
   assert(
     curriculumDraftSequencing?.rule?.includes("verified earlier CMS draft")
@@ -258,6 +262,10 @@ function main() {
     "curriculumPublicationOrder",
     "public release still requires published prerequisites",
   ], "Curriculum draft-capacity contract");
+  includesAll(bootstrapSource, [
+    "An existing owner route is not fulfilled or future supply",
+    "mark the node as non-supply and resume the current canonical topic-inventory refill",
+  ], "Curriculum existing-owner continuation contract");
   assert(
     !bootstrapSource.includes("move the canonical refill case to \\`external_wait\\` with typed bounded-cooldown fields"),
     "A source-lane cooldown must not move the canonical refill to external_wait",
@@ -282,6 +290,8 @@ function main() {
     "select_non_article_action_for_existing_owner",
     "OWNED_DEMAND_ACTION_ENUM_POLICY_VERSION",
     "normalizeInvalidOwnedDemandActions",
+    "CURRICULUM_EXISTING_OWNER_CONTINUATION_POLICY_VERSION",
+    "resumeCurriculumAfterExistingOwnerRoute",
   ], "Curriculum draft-sequencing recovery");
 
   includesAll(routineContracts.articleSlotAllocator, [
@@ -327,6 +337,10 @@ function main() {
   const cadenceWorkflow = workflowManifest.workflows?.article_cadence;
   assert(cadenceWorkflow?.capacityPlanning?.planningWindowDays === 3, "Article cadence capacity planning window must be three days");
   assert(cadenceWorkflow?.capacityPlanning?.healthyDispatchableBuffer === 9, "Article cadence capacity buffer must be nine topics");
+  includesAll(String(workflowManifest.workflows?.topic_inventory_refill?.outputContract ?? ""), [
+    "never counts as future topic supply",
+    "next prerequisite-ready missing curriculum node",
+  ], "Topic refill existing-owner continuity contract");
   includesAll(routineContracts.monthlyTrendDiscovery, [
     "sourceCaseId",
     "resultDocumentKey=trend-ingestion-result-{childIssueIdentifierLower}",

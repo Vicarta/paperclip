@@ -388,6 +388,7 @@ workflows:
       - consumed topic ledger
     outputContract:
       - continue the appropriate source lane until 25 eligible ready plus reserved topics exist and contentPortfolioTrack counts satisfy 12/5/3/3/2; trend discovery may fill only audience_trends
+      - a curriculum node routed to refresh, reposition, merge, internal_link, technical, or no_action because an existing owner already serves its intent never counts as future topic supply; after durable non-article delegation, the canonical refill continues with the next prerequisite-ready missing curriculum node without waiting for that implementation
       - maintain a three-day dispatchability matrix from live native ready/reserved rows after existing family caps; the matrix is an operational buffer check and does not change topic selection or portfolio targets
       - every counted topic has exactly one contentPortfolioTrack; primaryAudienceSegmentId is retained for diversity reporting, not quota accounting
       - every counted topic has one unique intentClusterKey; query variants and semantic rows inside that cluster never satisfy additional quota rows

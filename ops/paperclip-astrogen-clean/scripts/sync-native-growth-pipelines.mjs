@@ -14,6 +14,7 @@ const DEFAULT_MANIFEST = resolve(SCRIPT_DIR, "../manifests/pipelines.yaml");
 const CURRICULUM_DRAFT_SEQUENCING_POLICY_VERSION = "v1";
 const OWNED_DEMAND_ROUTING_POLICY_VERSION = "v1";
 const OWNED_DEMAND_ACTION_ENUM_POLICY_VERSION = "v1";
+const CURRICULUM_EXISTING_OWNER_CONTINUATION_POLICY_VERSION = "v1";
 
 function run(command, args, input) {
   const result = spawnSync(command, args, {
@@ -509,6 +510,54 @@ function findInvalidOwnedDemandActions() {
   return JSON.parse(raw || '[]');
 }
 
+function findCurriculumExistingOwnerContinuations() {
+  const currentWeek = kyivIsoWeekKey();
+  const raw = psql(`
+    select coalesce(json_agg(row_to_json(candidate) order by candidate."searchDemandCaseId"), '[]'::json)::text
+    from (
+      select distinct on (search_demand.id)
+        search_demand.id as "searchDemandCaseId",
+        refill.id as "refillCaseId",
+        continuation_issue.id as "continuationIssueId",
+        continuation_issue.identifier as "continuationIssueIdentifier"
+      from pipeline_cases search_demand
+      join pipelines search_pipeline on search_pipeline.id=search_demand.pipeline_id
+      join pipeline_stages search_stage on search_stage.id=search_demand.stage_id
+      join pipeline_cases refill on refill.company_id=search_demand.company_id
+      join pipelines refill_pipeline on refill_pipeline.id=refill.pipeline_id
+      join pipeline_stages refill_stage on refill_stage.id=refill.stage_id
+      join pipeline_case_issue_links refill_work on refill_work.case_id=refill.id
+        and refill_work.company_id=refill.company_id
+        and refill_work.role='work'
+        and refill_work.retired_at is null
+      join issues continuation_issue on continuation_issue.id=refill_work.issue_id
+        and continuation_issue.company_id=refill.company_id
+      where search_demand.company_id=${sqlLiteral(COMPANY_ID)}::uuid
+        and search_pipeline.key='astrogen-search-demand-opportunities'
+        and search_stage.key='delegated'
+        and search_demand.terminal_kind is null
+        and search_demand.retired_at is null
+        and search_demand.fields->>'contentPortfolioTrack'='western_astrology_learning'
+        and search_demand.fields->>'ownershipVerdict' like 'covered_existing%'
+        and search_demand.fields->>'selectedAction' in ('refresh', 'merge', 'reposition', 'internal_link', 'technical')
+        and nullif(search_demand.fields->>'delegatedGrowthActionCaseId', '') is not null
+        and coalesce(search_demand.fields->>'curriculumExistingOwnerContinuationPolicyVersion', '') <> ${sqlLiteral(CURRICULUM_EXISTING_OWNER_CONTINUATION_POLICY_VERSION)}
+        and refill_pipeline.key='astrogen-growth-actions'
+        and refill.case_key=${sqlLiteral(`growth:topic-inventory-refill:${currentWeek}`)}
+        and refill.terminal_kind is null
+        and refill.retired_at is null
+        and refill_stage.key='executing'
+        and refill.fields->>'actionType'='topic_inventory_refill'
+        and coalesce((refill.fields->>'ownerActionRequired')::boolean, false)=false
+        and continuation_issue.status='done'
+        and continuation_issue.title like 'Continue % non-trend topic inventory refill'
+      order by search_demand.id, continuation_issue.updated_at desc
+      limit 1
+    ) candidate;
+  `);
+  return JSON.parse(raw || '[]');
+}
+
 function permissionRecoveryComment(candidate) {
   const common = [
     "System recovery: scoped pipelines:write is restored for this current native stage.",
@@ -657,6 +706,57 @@ async function normalizeInvalidOwnedDemandActions(token) {
     });
   }
   return { candidates, normalized };
+}
+
+async function resumeCurriculumAfterExistingOwnerRoute(token) {
+  const candidates = findCurriculumExistingOwnerContinuations();
+  const resumed = [];
+  for (const candidate of candidates) {
+    const [searchDemandDetail, refillDetail] = await Promise.all([
+      request(token, 'GET', `/cases/${candidate.searchDemandCaseId}`),
+      request(token, 'GET', `/cases/${candidate.refillCaseId}`),
+    ]);
+    if (searchDemandDetail.stage?.key !== 'delegated' || refillDetail.stage?.key !== 'executing') continue;
+    const searchDemand = searchDemandDetail.case ?? searchDemandDetail;
+    const refill = refillDetail.case ?? refillDetail;
+    if (searchDemand.fields?.contentPortfolioTrack !== 'western_astrology_learning') continue;
+    if (!String(searchDemand.fields?.ownershipVerdict ?? '').startsWith('covered_existing')) continue;
+    if (!searchDemand.fields?.delegatedGrowthActionCaseId) continue;
+
+    const marked = await request(token, 'PATCH', `/cases/${candidate.searchDemandCaseId}`, {
+      expectedVersion: searchDemand.version,
+      fieldPatch: {
+        curriculumExistingOwnerContinuationPolicyVersion: CURRICULUM_EXISTING_OWNER_CONTINUATION_POLICY_VERSION,
+        curriculumExistingOwnerContinuationAppliedAt: new Date().toISOString(),
+        curriculumSupplyDisposition: 'existing_owner_routed_non_article_not_future_supply',
+      },
+    });
+    const updatedRefill = await request(token, 'PATCH', `/cases/${candidate.refillCaseId}`, {
+      expectedVersion: refill.version,
+      fieldPatch: {
+        sourceLane: 'semantic_core_and_curriculum',
+        sourceLaneReason: 'An existing curriculum owner was routed to a non-article growth action. Continue with the next prerequisite-ready missing curriculum node; the implementation is not future topic supply.',
+        lastCurriculumExistingOwnerCaseId: candidate.searchDemandCaseId,
+        nextReviewAt: null,
+      },
+    });
+    const restored = await request(token, 'PATCH', `/issues/${candidate.continuationIssueId}`, {
+      status: 'todo',
+      blockedByIssueIds: [],
+      comment: [
+        'System continuation: an existing-owner curriculum node was safely routed to a non-article growth action and does not count as future topic supply.',
+        '',
+        'Resume this same native refill continuation. Select exactly one next prerequisite-ready missing curriculum node, create or reuse only its guarded search-demand case, and do not wait for the refresh implementation or create a duplicate article.',
+      ].join('\n'),
+    });
+    resumed.push({
+      ...candidate,
+      searchDemandVersion: marked.version ?? marked.case?.version ?? null,
+      refillVersion: updatedRefill.version ?? updatedRefill.case?.version ?? null,
+      resumedIssueStatus: restored.status ?? restored.issue?.status ?? null,
+    });
+  }
+  return { candidates, resumed };
 }
 
 async function syncPipeline(token, definition, pipelines, agentByName) {
@@ -827,6 +927,7 @@ async function main() {
     const restoredCurriculumDraftSequencing = await resumeCurriculumDraftSequencingRefreshes(token);
     const restoredOwnedDemandEvidenceLoops = await resumeOwnedDemandEvidenceLoops(token);
     const normalizedInvalidOwnedDemandActions = await normalizeInvalidOwnedDemandActions(token);
+    const resumedCurriculumExistingOwnerContinuations = await resumeCurriculumAfterExistingOwnerRoute(token);
 
     const unhealthy = results.filter((result) => !result.health.ok);
     console.log(JSON.stringify({
@@ -851,6 +952,7 @@ async function main() {
       restoredCurriculumDraftSequencing,
       restoredOwnedDemandEvidenceLoops,
       normalizedInvalidOwnedDemandActions,
+      resumedCurriculumExistingOwnerContinuations,
     }, null, 2));
     if (unhealthy.length) process.exitCode = 2;
   } finally {
