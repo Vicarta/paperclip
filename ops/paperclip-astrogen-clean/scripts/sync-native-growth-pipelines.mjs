@@ -12,6 +12,7 @@ const API_BASE = process.env.PAPERCLIP_API_BASE ?? "http://127.0.0.1:3210/api";
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const DEFAULT_MANIFEST = resolve(SCRIPT_DIR, "../manifests/pipelines.yaml");
 const CURRICULUM_DRAFT_SEQUENCING_POLICY_VERSION = "v1";
+const OWNED_DEMAND_ROUTING_POLICY_VERSION = "v1";
 
 function run(command, args, input) {
   const result = spawnSync(command, args, {
@@ -455,6 +456,28 @@ function findCurriculumDraftSequencingRefreshes() {
   return JSON.parse(raw || '[]');
 }
 
+function findOwnedDemandEvidenceLoops() {
+  const raw = psql(`
+    select coalesce(json_agg(row_to_json(candidate) order by candidate."caseId"), '[]'::json)::text
+    from (
+      select pc.id as "caseId"
+      from pipeline_cases pc
+      join pipelines p on p.id=pc.pipeline_id
+      join pipeline_stages ps on ps.id=pc.stage_id
+      where pc.company_id=${sqlLiteral(COMPANY_ID)}::uuid
+        and p.key='astrogen-search-demand-opportunities'
+        and ps.key='evidence_ready'
+        and pc.terminal_kind is null
+        and pc.retired_at is null
+        and pc.fields->>'ownershipVerdict' like 'covered_existing%'
+        and nullif(pc.fields->>'currentOwnerUrl', '') is not null
+        and nullif(pc.fields->>'selectedAction', '') is null
+        and coalesce(pc.fields->>'ownershipRoutingPolicyVersion', '') <> ${sqlLiteral(OWNED_DEMAND_ROUTING_POLICY_VERSION)}
+    ) candidate;
+  `);
+  return JSON.parse(raw || '[]');
+}
+
 function permissionRecoveryComment(candidate) {
   const common = [
     "System recovery: scoped pipelines:write is restored for this current native stage.",
@@ -543,6 +566,35 @@ async function resumeCurriculumDraftSequencingRefreshes(token) {
       ...candidate,
       caseVersion: refreshed.version ?? refreshed.case?.version ?? null,
       resumedIssueStatus: restored.status ?? restored.issue?.status ?? null,
+    });
+  }
+  return { candidates, resumed };
+}
+
+async function resumeOwnedDemandEvidenceLoops(token) {
+  const candidates = findOwnedDemandEvidenceLoops();
+  const resumed = [];
+  for (const candidate of candidates) {
+    const detail = await request(token, 'GET', `/cases/${candidate.caseId}`);
+    if (detail.stage?.key !== 'evidence_ready') continue;
+    const current = detail.case ?? detail;
+    const patched = await request(token, 'PATCH', `/cases/${candidate.caseId}`, {
+      expectedVersion: current.version,
+      fieldPatch: {
+        ownershipRoutingPolicyVersion: OWNED_DEMAND_ROUTING_POLICY_VERSION,
+        ownershipRoutingPolicyAppliedAt: new Date().toISOString(),
+        ownershipRoutingRequired: 'select_non_article_action_for_existing_owner',
+      },
+    });
+    const patchedCase = patched.case ?? patched;
+    const transitioned = await request(token, 'POST', `/cases/${candidate.caseId}/transition`, {
+      toStageKey: 'ownership_review',
+      expectedVersion: patchedCase.version,
+      reason: 'Existing Astrogen owner is already proven. Apply the current non-article action-selection contract instead of repeating evidence collection.',
+    });
+    resumed.push({
+      ...candidate,
+      stage: transitioned.stage?.key ?? transitioned.case?.stage?.key ?? null,
     });
   }
   return { candidates, resumed };
@@ -714,6 +766,7 @@ async function main() {
     const restoredPermissionAutomations = await resumeRestoredPermissionAutomationIssues(token);
     const restoredAllocatorDeficits = await resumeStrandedAllocatorDeficits(token);
     const restoredCurriculumDraftSequencing = await resumeCurriculumDraftSequencingRefreshes(token);
+    const restoredOwnedDemandEvidenceLoops = await resumeOwnedDemandEvidenceLoops(token);
 
     const unhealthy = results.filter((result) => !result.health.ok);
     console.log(JSON.stringify({
@@ -736,6 +789,7 @@ async function main() {
       restoredPermissionAutomations,
       restoredAllocatorDeficits,
       restoredCurriculumDraftSequencing,
+      restoredOwnedDemandEvidenceLoops,
     }, null, 2));
     if (unhealthy.length) process.exitCode = 2;
   } finally {

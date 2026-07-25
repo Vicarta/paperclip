@@ -268,6 +268,8 @@ function main() {
     "curriculumDraftSequencingPolicyAppliedAt",
     "Continue W30 non-trend topic inventory refill",
     "do not create a CMS record directly",
+    "OWNED_DEMAND_ROUTING_POLICY_VERSION",
+    "select_non_article_action_for_existing_owner",
   ], "Curriculum draft-sequencing recovery");
 
   includesAll(routineContracts.articleSlotAllocator, [
