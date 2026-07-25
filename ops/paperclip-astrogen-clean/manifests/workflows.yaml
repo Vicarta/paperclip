@@ -388,6 +388,7 @@ workflows:
       - consumed topic ledger
     outputContract:
       - continue the appropriate source lane until 25 eligible ready plus reserved topics exist and contentPortfolioTrack counts satisfy 12/5/3/3/2; trend discovery may fill only audience_trends
+      - maintain a three-day dispatchability matrix from live native ready/reserved rows after existing family caps; the matrix is an operational buffer check and does not change topic selection or portfolio targets
       - every counted topic has exactly one contentPortfolioTrack; primaryAudienceSegmentId is retained for diversity reporting, not quota accounting
       - every counted topic has one unique intentClusterKey; query variants and semantic rows inside that cluster never satisfy additional quota rows
       - rejected and parked records must carry explicit reasons
@@ -396,7 +397,7 @@ workflows:
       - audience_interest_editorial rows are visibly marked and production scheduling remains bounded to 2-4 per Europe/Kiev month, maximum one per daily batch
     failureContract:
       - unavailable evidence tools create or reuse one CTO-owned technical blocker
-      - allocator remains blocked by refill/blocker and does not close as done
+      - a lane-specific provider or trend cooldown retains its own monitor but cannot block the allocator or another actionable deficient source lane
       - owner communication is required only for business/product decisions, not tool failures
 
   winning_structure_content_refresh:
@@ -534,6 +535,15 @@ workflows:
         - recovery resumes the same article case and stage; it never creates a duplicate parent
         - delivered requires direct Telegram tool delivery with messageId and delivery-proof writeback; notification-contract alone is not terminal
         - Telegram transport failure parks only the notification stage and leaves unrelated productive capacity available
+        - a family-cap or inventory-diversification deficit keeps the allocator in_progress with an assignee-owned native monitor; it never becomes a blocked allocator issue
+    capacityPlanning:
+      planningWindowDays: 3
+      healthyDispatchableBuffer: 9
+      sourceOfTruth: lineage-valid native ready/reserved topic rows after current family caps
+      rules:
+        - the planner records current-day and next-two-day dispatchability without reserving future topics or changing editorial priority
+        - each deficient source lane has one bounded continuation or lane-specific future monitor on the canonical current-week refill case
+        - a cooldown in one source lane never parks another actionable deficit
     writerRecovery:
       primary: SEO Blog Article Writer (Claude)
       fallback: SEO Blog Article Writer (ChatGPT)

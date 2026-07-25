@@ -191,6 +191,7 @@ routines:
         - a current-week refill in executing without active work or a future monitor is stranded and must be given one atomic native delegation before the allocator recheck
         - a completed linked refill worker is case-visible output for the CMO source owner; the worker must not receive astrogen-growth-actions pipelines:write, and the allocator/CMO monitor must read the output, update the growth case, and continue the next deficient track
         - a repetitive-family cap, an underfilled 12/5/3/3/2 track, or a worker pipelines:write rejection is never by itself durable evidence that the remaining daily slots are impossible
+        - a family-cap or inventory-diversification deficit keeps this same allocator execution issue in_progress with an assignee-owned native monitor; it never becomes a blocked allocator issue
         - CMS specialists write delivery and before-after evidence on their own child issue; CMO aggregates verified child evidence into the parent it owns
         - ready_for_image_handoff, layout-ready, CMS-ready, or all-current-children-done is progress evidence, not parent completion
         - if no active child exists and delivery proof is missing, resume the same parent and route the next missing stage instead of creating a duplicate article parent
@@ -203,6 +204,31 @@ routines:
         - send owner-facing Telegram from the allocator
         - create broad semantic-core or competitor-research batches
       completionGate: all available current-day slots are dispatched or a durable typed external/provider/explicit-owner-policy bound makes the remaining slots impossible for this business day; repetitive-family caps and underfilled portfolio tracks require a monitored refill continuation and are not terminal no-slot evidence; a parser/response-shape error is a shared protocol blocker and cannot be reported as zero eligible inventory; independently, if ready plus reserved plan inventory is below 25 or any contentPortfolioTrack is below its 12/5/3/3/2 target, one canonical refill growth case is live with current quota evidence, an accountable specialist, and a due nextReviewAt
+    variables: []
+
+  - title: Daily Astrogen article capacity planner
+    owner: Chief Marketing Officer
+    status: active
+    triggerEnabled: true
+    cron: "30 8 * * *"
+    timezone: Europe/Kiev
+    concurrencyPolicy: coalesce_if_active
+    catchUpPolicy: skip_missed
+    workflow: article_capacity_planning
+    activationGate: controlled three-day article buffer planning without future topic reservation
+    processContract:
+      scope:
+        - CMO portfolio control only; do not write, reserve, publish, or reprioritize articles
+        - preserve all existing editorial policy, family caps, track targets, curriculum and quality gates
+      capacityMatrix:
+        - model today and the next two Europe/Kiev calendar days from lineage-valid ready/reserved native rows after current daily caps
+        - record dispatchable count, occupied slots, excluded family counts, track deficits and source-lane continuation state in canonical next-content-plan
+        - healthy buffer is nine independently dispatchable topics across the three-day window; this is an operational scheduling threshold, not a change to the 25-topic plan
+      deficitHandling:
+        - ensure exactly one bounded live continuation or lane-specific future monitor per deficient source lane on the canonical current-week refill case
+        - a trend/provider cooldown waits only for its named lane and never parks another actionable curriculum, semantic, trust, commercial, or audience deficit
+        - allocator family-cap deficits use an assignee-owned monitor, never blocked status or blockedByIssueIds
+      completionGate: matrix and each deficit's live continuation or lane-specific monitor are visible on the canonical refill case; no manual article task, CMS publication, Telegram delivery, or provider spend was created
     variables: []
 
   - title: Weekly Astrogen SEO/GEO action cycle

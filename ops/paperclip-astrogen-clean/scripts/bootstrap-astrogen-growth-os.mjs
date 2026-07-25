@@ -354,6 +354,7 @@ Capacity and selection:
 - For \`portfolioLane=audience_interest_editorial\`, dispatch at most one topic per daily batch and at most four article cases reserved or delivered in the current Europe/Kiev calendar month. Prefer enough evidence-backed cases to reach two per month, but never invent or weaken a topic to meet that target.
 - For \`allocationFamily=zodiac_compatibility\`, dispatch at most one topic per daily batch. Keep page-specific \`queryFamilyFingerprint\` values for ownership and cannibalization; allocationFamily exists only to prevent one cluster from consuming all three slots.
 - When ready inventory exists but every remaining row is excluded only by a repetitive-family or allocationFamily daily cap, treat the remaining slots as a portfolio-diversification deficit, not as durable owner-policy impossibility.
+- The daily capacity planner owns the current day plus next two Europe/Kyiv calendar-day dispatchability matrix. It models current live ready/reserved rows after the existing family caps, but never reserves a future topic or changes priority. A healthy buffer is nine independently dispatchable lineage-valid topics across that three-day window; this operational buffer does not change the 12/5/3/3/2 editorial portfolio.
 - Dispatch the selected topics sequentially. A duplicate, blocked, or topic-specific breakdown failure records typed evidence for that topic and continues with the next independently ready topic. Stop the batch only for a shared API/authentication failure.
 
 Atomic dispatch:
@@ -370,6 +371,7 @@ Inventory refill:
 - Before native search-demand ingestion, group accepted phrases by reader outcome, search intent, expected owner page and SERP family. One \`intentClusterKey\` creates one canonical opportunity and one plan row; variants remain \`supportingQueries\`.
 - Prioritize portfolio breadth across audience-interest, adjacent-use-case, audience-need, and core-product demand. When accepted semantic inventory cannot supply enough broad candidates, reuse the latest valid trend report or run the bounded low-inventory fallback under /companies/astrogen/reference/trend-topic-policy.yaml. Trend output is evidence only: every proposed phrase must pass normal semantic-core validation before it can enter search-demand intake.
 - Treat \`semantic_core_and_curriculum\` and \`audience_trends\` as independent refill source lanes with at most one live continuation per lane. A live, blocked, or compatibility-focused semantic continuation never satisfies or freezes a deficient audience-trends track; while audience_trends ready plus reserved supply is below three, reuse or create its stable bounded trend continuation.
+- A cooldown or external wait belongs only to its named source lane. It cannot park the canonical refill while another deficient portfolio track has no current live continuation or can advance through its approved curriculum, semantic, trust, commercial, or audience source. Return the same refill case to executing, delegate or reuse exactly one bounded continuation for that next lane, and retain the lane-specific monitor only for the lane that is truly waiting.
 - If the portfolio-track matrix is incomplete, the allocator creates or updates that refill growth case and verifies its real work/monitor path. \`no-safe-topic\` is never terminal success by itself.
 - Missing Payload, GSC/GA4, semantic-core, CrawlObserver, or pipeline access becomes a typed blocker on the refill growth case. It does not stop other growth or article cases and is not sent to the owner as a topic-choice request.
 
@@ -382,8 +384,33 @@ Article delivery invariants:
 Completion gate:
 - Done only when the current-day batch target or productive WIP cap is satisfied. A single successful breakdown does not satisfy a remaining daily batch deficit.
 - When the current-day count is below three because ready inventory is empty or contains no independently dispatchable family, keep this same allocator issue \`in_progress\` with \`executionPolicy.monitor.nextCheckAt\` set to a bounded inventory and refill-output recheck and notes naming the exact current-week refill case. At the monitor wake, read terminal linked worker outputs, update the source growth case as CMO, continue the next deficient track, and dispatch newly ready topics. The worker does not receive \`astrogen-growth-actions\` \`pipelines:write\`; its write rejection is not a blocker when case-visible output exists. Close only after three current-day slots are reserved/delivered, the WIP cap is reached, or a durable typed external/provider/explicit-owner-policy bound makes the remaining slots impossible for this business day. A repetitive-family cap or underfilled 12/5/3/3/2 track is not such a bound.
+- A family-cap or inventory-diversification deficit must never set the allocator to \`blocked\` or add \`blockedByIssueIds\`. The same CMO-owned execution issue remains \`in_progress\` with its assignee-owned native monitor. Only a shared API/authentication failure may block the allocator itself.
 - A refill in \`executing\` without active work or a future monitor is stranded work, not a completion condition. Repair its native delegation before scheduling the allocator recheck.
 - A comment, legacy child issue, narrative no-slot report, or raw tool output is not completion evidence.`,
+
+  articleCapacityPlanning: `Purpose: keep Astrogen's existing three-draft daily cadence supplied with a diverse, validated buffer before the allocator reaches 10:00 Europe/Kyiv.
+
+Scope:
+- This is CMO portfolio control, not article execution. Do not write, reserve, publish, or re-prioritize articles.
+- It never reserves a future topic or changes editorial selection.
+- Read only the native topic, article, and growth pipelines plus the canonical current-week refill case and its next-content-plan document.
+- Preserve all existing editorial policy: 12/5/3/3/2 track targets, one zodiac-compatibility topic per daily batch, repetitive-family caps, one-concept curriculum, demand/ownership/cannibalization/Winning Structure gates, and paused calendar-date themes.
+
+Capacity matrix:
+- Compute dispatchability for today and the next two Europe/Kyiv calendar days from lineage-valid ready or reserved topic rows. Apply the live daily caps before counting a row: one repetitive query family, at most one zodiac_compatibility topic, and the existing audience-interest editorial limits.
+- Record a compact three-day matrix in the current canonical refill case document next-content-plan: eligible count, dispatchable count, occupied article slots, excluded family counts, exact portfolio-track deficits, and source-lane continuation status. Do not invent titles or treat a phrase, comment, or planned row as a native topic.
+- A healthy operational buffer is nine independently dispatchable topics across that three-day window. This is a scheduling threshold only; it does not change the 25-topic editorial plan or any topic-selection rule.
+
+Deficit handling:
+- When a current or next-two-day slot cannot be supplied, update the canonical current-week topic-inventory-refill case. Map each missing portfolio track to its appropriate existing source lane and ensure exactly one bounded live continuation per deficient lane.
+- A cooldown in audience_trends may retain its own monitor, but it never parks curriculum, semantic, trust, commercial, or other actionable deficits. If another deficient lane lacks live work, transition the same refill case to executing and delegate or reuse that lane's bounded continuation before preserving a wait.
+- The daily allocator is never blocked merely because a family cap excludes remaining ready topics. Keep its same execution issue in_progress with an assignee-owned executionPolicy.monitor next check; record the capacity deficit as evidence and continue the refill independently.
+
+Completion gate:
+- Complete after the matrix and every deficit's live continuation or lane-specific future monitor are visible on the canonical refill case. A global external wait is valid only when every currently deficient lane has its own durable future monitor and no other approved source can proceed.
+
+Forbidden:
+- Do not create manual article tasks, bypass native breakdown, change editorial policy, publish CMS content, send owner-facing Telegram, or spend providers outside the existing approved bounded contracts.`,
 
   weeklySeoGeo: `Purpose: turn compact daily evidence into a weekly Astrogen SEO/GEO action cycle.
 
@@ -659,6 +686,12 @@ export const routineDefs = [
     status: "active",
     triggerEnabled: true,
     activation: "active_backlog_safety",
+  }),
+  routine("Daily Astrogen article capacity planner", "Chief Marketing Officer", "30 8 * * *", routineContracts.articleCapacityPlanning, "coalesce_if_active", "article_capacity_planning", {
+    status: "active",
+    triggerEnabled: true,
+    activation: "active_three_day_article_buffer",
+    catchUpPolicy: "skip_missed",
   }),
   routine("Astrogen article slot allocator", "Chief Marketing Officer", "0 10 * * *", routineContracts.articleSlotAllocator, "skip_if_active", "article_cadence", {
     status: "active",
@@ -1393,6 +1426,7 @@ function agentSpecificInstructions(agent) {
 - Pipeline stage automation is stored under \`stage.config.onEnter\` and \`stage.config.automation\`. Do not inspect only top-level \`stage.onEnter\` or \`stage.automation\`, and do not create manual bridging issues merely because those top-level aliases are null.
 - The bounded pipeline case-list response is always a direct JSON array of wrapper rows shaped as \`{case, stage, parentCase, activeWork, descendantActiveWorkCount}\`. Read fields from \`row.case\` and guarded lineage from \`row.parentCase.pipeline\`. Count only \`Array.isArray(response) ? response.length : protocol_error\`; a missing \`items\` or \`cases\` property is never evidence of zero inventory. On a non-array response, record a shared protocol blocker and do not create a refill or close the allocator from that response.
 - The scheduled allocator calculates the current-day batch deficit and selects up to three lineage-valid topics at \`ready\`, bounded by productive WIP. Eligibility requires \`selectedAction=new_article\` and the guarded search-demand parent. It calls \`POST /api/cases/{topicCaseId}/breakdown\` once per selected topic, so native breakdown creates/reuses each article child at \`opportunity\` and advances only that topic to \`reserved\`.
+- The capacity planner models today plus the next two Europe/Kyiv calendar days from live native rows after existing family caps. It never reserves future topics or changes editorial selection, but it keeps the canonical refill case supplied with one bounded continuation per missing source lane before a batch reaches 10:00.
 - The ready stage has no on-enter automation. Never reserve a topic merely because validation moved it to ready; only the scheduled allocator dispatches capacity.
 - Native article stage automations own SERP check, brief, Claude draft, validation, humanizing, layout, one-call image generation, CMS draft, and CMO delivery. Recovery resumes the same case and stage.
 - Phase 47 replaces the standalone SERP gate with the native \`strategy_input -> winning_structure -> structure_decision | structure_review\` path. CMO manages authority and portfolio continuity but never performs MCP research or writes the article.
@@ -1413,6 +1447,7 @@ function agentSpecificInstructions(agent) {
 - Require \`layerValidationMatrix\` in the trend ingestion result. Do not accept bounded exhaustion while any phrase has only \`parked_outside_layer\` or \`owner_mismatch\` evidence from a layer different from its preclassified intended layer.
 - After delegation, follow every opportunity and candidate through ownership, enrichment, and validation. Re-read live \`ready\` and \`reserved\` cases and count each topic once under exactly one primary segment; secondary segments never close a deficit.
 - If total eligible future supply is below 25 or any contentPortfolioTrack is below target, keep or return the canonical refill growth case to \`executing\`, select deficient tracks and their appropriate source lanes, delegate bounded continuations, and set \`nextReviewAt\`. \`semantic_core_and_curriculum\` and \`audience_trends\` are independent source lanes with at most one live continuation each. A live, blocked, or compatibility-focused semantic continuation never satisfies or freezes a deficient audience-trends track. The native grouped quota gate prevents false \`measured\` completion.
+- A source-lane cooldown is not a global refill stop. Keep the cooldown monitor for its named lane only; when another deficient lane has no live continuation, transition the same canonical refill case to \`executing\` and delegate/reuse that next lane. Do not put the article allocator in \`blocked\` or add \`blockedByIssueIds\` for a family-cap or inventory-diversification deficit.
 - Update \`next-content-plan\` on the canonical refill case from the same live native case IDs used by quota accounting, and include a separate visible \`trendOpportunityQueue\` section for audience-first trend candidates that are not yet counted. The verified topic section includes topicCaseId, topicKey, titleUk, primary query/frequency, one primary segment, ownership and duplicate verdicts, incoming/outgoing internal links, trend report run id, and native stage. The trend queue includes trendReportRunId, primaryAudienceSegmentId, audience signal, reader problem, proposed phrase, status, not-counted reason, next action owner, and evidence refs. Agent comments are not this document.
 - When the campaign daily/run bound is exhausted and the next permitted focused report is on a future Kyiv window, move the canonical refill case to \`external_wait\` with typed bounded-cooldown fields and a first-class monitor. Do not mark it measured or ask the owner to invent topics.
 - Missing evidence tooling becomes one typed blocker on the refill growth case. Empty inventory never freezes unrelated lanes and is never sent to the owner as a technical choice.

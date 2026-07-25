@@ -13,6 +13,7 @@ const TARGET_TITLES = new Set([
   "Daily Astrogen deterministic evidence collection",
   "Daily Astrogen due-URL GSC indexing audit",
   "Daily Astrogen leadership backlog triage",
+  "Daily Astrogen article capacity planner",
   "Astrogen article slot allocator",
   "Weekly Astrogen SEO/GEO action cycle",
   "Weekly Astrogen CMO growth portfolio plan",

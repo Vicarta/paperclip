@@ -10,6 +10,7 @@ const PIPELINE_MANIFEST = resolve(SCRIPT_DIR, "../manifests/pipelines.yaml");
 const AGENT_MANIFEST = resolve(SCRIPT_DIR, "../manifests/agents.yaml");
 const SECRET_MANIFEST = resolve(SCRIPT_DIR, "../manifests/secrets.yaml");
 const ROUTINE_MANIFEST = resolve(SCRIPT_DIR, "../manifests/routines.yaml");
+const WORKFLOW_MANIFEST = resolve(SCRIPT_DIR, "../manifests/workflows.yaml");
 
 function loadYaml(pathname) {
   const source = [
@@ -36,6 +37,7 @@ function main() {
   const agentManifest = loadYaml(AGENT_MANIFEST);
   const secretManifest = loadYaml(SECRET_MANIFEST);
   const routineManifest = loadYaml(ROUTINE_MANIFEST);
+  const workflowManifest = loadYaml(WORKFLOW_MANIFEST);
   assert(manifest.mode === "active", "Native pipeline manifest must be active");
   assert(
     agentManifest.policy?.writerHarness?.adapterType === "claude_local",
@@ -170,6 +172,8 @@ function main() {
     "do not schedule a monitor or create recovery work",
     "For every typed external cooldown with ownerActionRequired=false",
     "a case field, comment, or completed automation alone is never a continuation path",
+    "An external wait belongs only to the named lane",
+    "A cooldown for audience_trends never parks other portfolio deficits",
   ], "Growth manager-only approval external-wait exit");
 
   includesAll(routineContracts.articleSlotAllocator, [
@@ -188,9 +192,33 @@ function main() {
     "executionPolicy.monitor.nextCheckAt",
     "topic-inventory-refill:{ISO-week}:continuation:v{caseVersion}",
     "portfolio-diversification deficit",
+    "daily capacity planner owns the current day plus next two Europe/Kyiv calendar-day dispatchability matrix",
+    "A cooldown or external wait belongs only to its named source lane",
+    "must never set the allocator to `blocked` or add `blockedByIssueIds`",
     "The worker does not receive `astrogen-growth-actions` `pipelines:write`",
     "Never create a legacy article parent",
   ], "Article allocator contract");
+  includesAll(routineContracts.articleCapacityPlanning, [
+    "next two Europe/Kyiv calendar days",
+    "nine independently dispatchable topics",
+    "It never reserves a future topic or changes editorial selection",
+    "A cooldown in audience_trends may retain its own monitor",
+    "never blocked merely because a family cap excludes remaining ready topics",
+  ], "Article capacity planning contract");
+  assert(
+    routineManifest.routines?.some((routine) =>
+      routine.title === "Daily Astrogen article capacity planner"
+      && routine.cron === "30 8 * * *"
+      && routine.triggerEnabled === true
+      && routine.processContract?.capacityMatrix?.some((line) =>
+        String(line).includes("healthy buffer is nine independently dispatchable topics"),
+      ),
+    ),
+    "Article capacity planner routine manifest is missing or drifted",
+  );
+  const cadenceWorkflow = workflowManifest.workflows?.article_cadence;
+  assert(cadenceWorkflow?.capacityPlanning?.planningWindowDays === 3, "Article cadence capacity planning window must be three days");
+  assert(cadenceWorkflow?.capacityPlanning?.healthyDispatchableBuffer === 9, "Article cadence capacity buffer must be nine topics");
   includesAll(routineContracts.monthlyTrendDiscovery, [
     "sourceCaseId",
     "resultDocumentKey=trend-ingestion-result-{childIssueIdentifierLower}",
@@ -231,6 +259,7 @@ function main() {
       "consumed curriculum-node selection guard",
       "allocator native dispatch and refill",
       "three-slot daily batch and deficit reconciliation",
+      "three-day article capacity planning",
       "CEO foreign-issue boundary",
       "weekly native topic supply",
       "collector growth-case dedup",
