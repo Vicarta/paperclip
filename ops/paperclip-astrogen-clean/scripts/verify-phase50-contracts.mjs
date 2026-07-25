@@ -56,9 +56,11 @@ for (const [track, target] of Object.entries({
   requireText(pipelines, `${track}: ${target}`, `native grouped quota track ${track}`);
 }
 
-requireText(trendPolicy, "version: astrogen-trend-topic-v13", "trend policy version");
-requireText(trendPolicy, "liveEnabled: false", "provider execution lock");
-requireText(trendPolicy, "providerCacheModeWhileLocked: read_only", "no-spend cache mode");
+requireText(trendPolicy, "version: astrogen-trend-topic-v14", "trend policy version");
+requireText(trendPolicy, "liveEnabled: true", "bounded live trend execution");
+requireText(trendPolicy, "providerCacheModeForApprovedCandidateBatch: read_write", "approved provider cache mode");
+requireText(trendPolicy, "paidCandidateBatchLimit: 10", "approved provider candidate bound");
+forbidText(trendPolicy, "liveEnabled: false", "obsolete provider execution lock");
 requireText(trendPolicy, "currentSignalRequired: true", "trend current signal gate");
 requireText(trendPolicy, "everyCandidateRequiresCurrentSignal: true", "candidate current signal gate");
 requireText(trendPolicy, "clinical or psychotherapy terminology as the primary trend lane", "clinical primary lane guard");
@@ -98,7 +100,7 @@ requireText(trendPolicy, "never infer from accepted candidates or search-demand 
 requireText(routines, "project_id=astrogen-audience-trends-ukraine", "routine audience trend project id");
 requireText(routines, "do not send products", "routine products forbidden");
 requireText(routines, "explicit mode=provider", "routine canonical semantic provider mode");
-requireText(routines, "provider_cache_mode=read_only", "routine no-spend semantic cache mode");
+requireText(routines, "provider_cache_mode=read_write", "routine approved semantic provider cache mode");
 forbidText(routines, "run-layer-and-wait with explicit mode=live", "routine legacy semantic live mode");
 requireText(workflows, "productSeeds: forbidden", "workflow products forbidden");
 requireText(plugins, "trendProjectId: astrogen-audience-trends-ukraine", "plugin manifest trend project id");
@@ -126,9 +128,9 @@ requireText(outcomes, "ready plus reserved future-topic inventory is below 25", 
 requireText(bootstrap, "secondary segments never satisfy another quota", "agent no-double-count contract");
 requireText(bootstrap, "1-10 explicit \\`candidate_keywords\\`", "agent bounded semantic batch");
 requireText(bootstrap, "\\`mode=provider\\`", "agent canonical semantic provider mode");
-requireText(bootstrap, "\\`provider_cache_mode=read_only\\`", "agent no-spend semantic cache mode");
+requireText(bootstrap, "\\`provider_cache_mode=read_write\\`", "agent approved semantic provider cache mode");
 forbidText(bootstrap, "\\`mode=live\\`, \\`provider_cache_mode=read_write\\`", "agent legacy semantic execution contract");
-requireText(trendPolicy, "explicit mode=provider and provider_cache_mode=read_only", "review materialization no-spend contract");
+requireText(trendPolicy, "explicit mode=provider and provider_cache_mode=read_write", "review materialization provider contract");
 forbidText(trendPolicy, "original partition once with explicit mode=live", "review legacy semantic live mode");
 requireText(bootstrap, "linked-case-output contract", "linked case output writeback contract");
 requireText(bootstrap, "Do not PATCH source growth-case fields", "delegated source case field write guard");
