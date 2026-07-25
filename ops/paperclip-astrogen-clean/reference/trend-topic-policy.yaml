@@ -7,7 +7,7 @@ semanticValidationProjectId: astrogen-ukraine
 executionPolicy:
   liveEnabled: true
   owner: Paperclip company policy
-  enabledBehavior: Use only the bounded Paperclip plugin policies; omitted modes remain mock/fixture and an inactive Paperclip policy still produces one monitored external_wait without retries or fixture substitution.
+  enabledBehavior: Use only the bounded Paperclip plugin policies; omitted modes remain mock/fixture and an inactive policy retains a lane-local monitor in canonical refill executing without retries or fixture substitution.
   providerCacheModeForApprovedCandidateBatch: read_write
   providerCacheModeForNoSpendReread: read_only
   paidCandidateBatchLimit: 10

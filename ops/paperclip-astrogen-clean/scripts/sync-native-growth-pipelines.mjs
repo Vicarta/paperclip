@@ -297,6 +297,79 @@ function grantPipelinePermissions(definitions, pipelineByKey, agentByName) {
   }
 }
 
+function findRestoredPermissionAutomationCases() {
+  const raw = psql(`
+    select coalesce(json_agg(row_to_json(candidate) order by candidate."caseId"), '[]'::json)::text
+    from (
+      select distinct
+        pc.id as "caseId",
+        ps.key as "stageKey",
+        i.identifier as "blockedIssueIdentifier"
+      from pipeline_cases pc
+      join pipeline_stages ps on ps.id=pc.stage_id
+      join pipeline_case_issue_links l on l.case_id=pc.id
+        and l.company_id=pc.company_id
+        and l.role='automation'
+        and l.retired_at is null
+      join pipeline_automation_executions pae on pae.id=l.automation_attempt_id
+        and pae.case_id=pc.id
+        and pae.company_id=pc.company_id
+      join issues i on i.id=l.issue_id
+        and i.company_id=pc.company_id
+      join principal_permission_grants pg on pg.company_id=pc.company_id
+        and pg.principal_type='agent'
+        and pg.principal_id=(ps.config->'automation'->>'assigneeAgentId')
+        and pg.permission_key='pipelines:write'
+      where pc.company_id=${sqlLiteral(COMPANY_ID)}::uuid
+        and pc.terminal_kind is null
+        and pc.retired_at is null
+        and i.status='blocked'
+        and pae.routine_id=(ps.config->'onEnter'->>'routineId')::uuid
+        and (pg.scope is null or pg.scope->'pipelineIds' ? pc.pipeline_id::text)
+        and (
+          i.description ilike '%pipeline_write_forbidden%'
+          or exists (
+            select 1
+            from issue_comments c
+            where c.issue_id=i.id
+              and c.body ilike '%pipeline_write_forbidden%'
+          )
+        )
+        and not exists (
+          select 1
+          from pipeline_case_issue_links newer_link
+          join issues newer_issue on newer_issue.id=newer_link.issue_id
+          where newer_link.case_id=l.case_id
+            and newer_link.company_id=l.company_id
+            and newer_link.role='automation'
+            and newer_link.retired_at is null
+            and newer_link.created_at>l.created_at
+            and newer_issue.status in ('todo','in_progress','in_review')
+        )
+    ) candidate;
+  `);
+  return JSON.parse(raw || '[]');
+}
+
+async function rerunRestoredPermissionAutomations(token) {
+  const candidates = findRestoredPermissionAutomationCases();
+  const resumed = [];
+  for (const candidate of candidates) {
+    const detail = await request(token, 'GET', `/cases/${candidate.caseId}`);
+    const currentCase = detail.case ?? detail;
+    if (detail.stage?.key !== candidate.stageKey) continue;
+    const rerun = await request(token, 'POST', `/cases/${candidate.caseId}/automation/current-stage/rerun`, {
+      expectedVersion: currentCase.version,
+    });
+    resumed.push({
+      ...candidate,
+      automationIssueId: rerun.issueId ?? rerun.automation?.issueId ?? null,
+      automationStatus: rerun.status ?? rerun.automation?.status ?? null,
+    });
+  }
+  return { candidates, resumed };
+}
+
 async function syncPipeline(token, definition, pipelines, agentByName) {
   let pipeline = pipelines.find((candidate) => candidate.key === definition.key) ?? null;
   let changed = false;
@@ -460,6 +533,7 @@ async function main() {
     }
     const pipelineByKey = new Map(results.map((result) => [result.pipeline.key, result.pipeline]));
     grantPipelinePermissions(manifest.pipelines, pipelineByKey, agentByName);
+    const restoredPermissionAutomations = await rerunRestoredPermissionAutomations(token);
 
     const unhealthy = results.filter((result) => !result.health.ok);
     console.log(JSON.stringify({
@@ -479,6 +553,7 @@ async function main() {
         healthOk: result.health.ok,
         warnings: result.health.warnings,
       })),
+      restoredPermissionAutomations,
     }, null, 2));
     if (unhealthy.length) process.exitCode = 2;
   } finally {

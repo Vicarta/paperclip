@@ -11,6 +11,7 @@ const AGENT_MANIFEST = resolve(SCRIPT_DIR, "../manifests/agents.yaml");
 const SECRET_MANIFEST = resolve(SCRIPT_DIR, "../manifests/secrets.yaml");
 const ROUTINE_MANIFEST = resolve(SCRIPT_DIR, "../manifests/routines.yaml");
 const WORKFLOW_MANIFEST = resolve(SCRIPT_DIR, "../manifests/workflows.yaml");
+const TREND_POLICY = resolve(SCRIPT_DIR, "../reference/trend-topic-policy.yaml");
 
 function loadYaml(pathname) {
   const source = [
@@ -38,6 +39,7 @@ function main() {
   const secretManifest = loadYaml(SECRET_MANIFEST);
   const routineManifest = loadYaml(ROUTINE_MANIFEST);
   const workflowManifest = loadYaml(WORKFLOW_MANIFEST);
+  const trendPolicy = loadYaml(TREND_POLICY);
   assert(manifest.mode === "active", "Native pipeline manifest must be active");
   assert(
     agentManifest.policy?.writerHarness?.adapterType === "claude_local",
@@ -204,6 +206,17 @@ function main() {
     !bootstrapSource.includes("move the canonical refill case to \\`external_wait\\` with typed bounded-cooldown fields"),
     "A source-lane cooldown must not move the canonical refill to external_wait",
   );
+  includesAll(String(trendPolicy.executionPolicy?.enabledBehavior ?? ""), [
+    "lane-local monitor",
+    "canonical refill executing",
+  ], "Trend policy cooldown behavior");
+  const pipelineSyncSource = readFileSync(resolve(SCRIPT_DIR, "sync-native-growth-pipelines.mjs"), "utf8");
+  includesAll(pipelineSyncSource, [
+    "findRestoredPermissionAutomationCases",
+    "pipeline_write_forbidden",
+    "rerunRestoredPermissionAutomations",
+    "/automation/current-stage/rerun",
+  ], "Restored pipeline permission automation recovery");
 
   includesAll(routineContracts.articleSlotAllocator, [
     "POST /api/cases/{topicCaseId}/breakdown",
