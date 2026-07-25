@@ -13,6 +13,7 @@ const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const DEFAULT_MANIFEST = resolve(SCRIPT_DIR, "../manifests/pipelines.yaml");
 const CURRICULUM_DRAFT_SEQUENCING_POLICY_VERSION = "v1";
 const OWNED_DEMAND_ROUTING_POLICY_VERSION = "v1";
+const OWNED_DEMAND_ACTION_ENUM_POLICY_VERSION = "v1";
 
 function run(command, args, input) {
   const result = spawnSync(command, args, {
@@ -370,6 +371,12 @@ function findRestoredPermissionAutomationCases() {
             and newer_link.created_at>l.created_at
             and newer_issue.status in ('todo','in_progress','in_review')
         )
+        and not exists (
+          select 1
+          from issue_comments recovery
+          where recovery.issue_id=i.id
+            and recovery.body like 'System recovery: scoped pipelines:write is restored for this current native stage.%'
+        )
     ) candidate;
   `);
   return JSON.parse(raw || '[]');
@@ -473,6 +480,30 @@ function findOwnedDemandEvidenceLoops() {
         and nullif(pc.fields->>'currentOwnerUrl', '') is not null
         and nullif(pc.fields->>'selectedAction', '') is null
         and coalesce(pc.fields->>'ownershipRoutingPolicyVersion', '') <> ${sqlLiteral(OWNED_DEMAND_ROUTING_POLICY_VERSION)}
+    ) candidate;
+  `);
+  return JSON.parse(raw || '[]');
+}
+
+function findInvalidOwnedDemandActions() {
+  const raw = psql(`
+    select coalesce(json_agg(row_to_json(candidate) order by candidate."caseId"), '[]'::json)::text
+    from (
+      select pc.id as "caseId"
+      from pipeline_cases pc
+      join pipelines p on p.id=pc.pipeline_id
+      join pipeline_stages ps on ps.id=pc.stage_id
+      where pc.company_id=${sqlLiteral(COMPANY_ID)}::uuid
+        and p.key='astrogen-search-demand-opportunities'
+        and ps.key='action_selected'
+        and pc.terminal_kind is null
+        and pc.retired_at is null
+        and pc.fields->>'ownershipVerdict' like 'covered_existing%'
+        and nullif(pc.fields->>'currentOwnerUrl', '') is not null
+        and coalesce(pc.fields->>'selectedAction', '') not in (
+          'new_article', 'refresh', 'merge', 'reposition', 'internal_link', 'technical', 'no_action'
+        )
+        and coalesce(pc.fields->>'ownershipActionEnumPolicyVersion', '') <> ${sqlLiteral(OWNED_DEMAND_ACTION_ENUM_POLICY_VERSION)}
     ) candidate;
   `);
   return JSON.parse(raw || '[]');
@@ -598,6 +629,34 @@ async function resumeOwnedDemandEvidenceLoops(token) {
     });
   }
   return { candidates, resumed };
+}
+
+async function normalizeInvalidOwnedDemandActions(token) {
+  const candidates = findInvalidOwnedDemandActions();
+  const normalized = [];
+  for (const candidate of candidates) {
+    const detail = await request(token, 'GET', `/cases/${candidate.caseId}`);
+    if (detail.stage?.key !== 'action_selected') continue;
+    const current = detail.case ?? detail;
+    if (!String(current.fields?.ownershipVerdict ?? '').startsWith('covered_existing')) continue;
+    if (!current.fields?.currentOwnerUrl) continue;
+    const patched = await request(token, 'PATCH', `/cases/${candidate.caseId}`, {
+      expectedVersion: current.version,
+      fieldPatch: {
+        selectedAction: 'refresh',
+        actionReasonCode: 'covered_existing_owner_refresh_required',
+        actionReasonSummary: 'A published Astrogen page already owns this intent and has a bounded documented gap. Route one refresh action instead of creating a duplicate article.',
+        ownershipActionEnumPolicyVersion: OWNED_DEMAND_ACTION_ENUM_POLICY_VERSION,
+        ownershipActionEnumPolicyAppliedAt: new Date().toISOString(),
+      },
+    });
+    normalized.push({
+      ...candidate,
+      selectedAction: (patched.case ?? patched).fields?.selectedAction ?? null,
+      caseVersion: patched.version ?? patched.case?.version ?? null,
+    });
+  }
+  return { candidates, normalized };
 }
 
 async function syncPipeline(token, definition, pipelines, agentByName) {
@@ -767,6 +826,7 @@ async function main() {
     const restoredAllocatorDeficits = await resumeStrandedAllocatorDeficits(token);
     const restoredCurriculumDraftSequencing = await resumeCurriculumDraftSequencingRefreshes(token);
     const restoredOwnedDemandEvidenceLoops = await resumeOwnedDemandEvidenceLoops(token);
+    const normalizedInvalidOwnedDemandActions = await normalizeInvalidOwnedDemandActions(token);
 
     const unhealthy = results.filter((result) => !result.health.ok);
     console.log(JSON.stringify({
@@ -790,6 +850,7 @@ async function main() {
       restoredAllocatorDeficits,
       restoredCurriculumDraftSequencing,
       restoredOwnedDemandEvidenceLoops,
+      normalizedInvalidOwnedDemandActions,
     }, null, 2));
     if (unhealthy.length) process.exitCode = 2;
   } finally {

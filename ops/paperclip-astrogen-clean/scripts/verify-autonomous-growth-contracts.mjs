@@ -135,9 +135,19 @@ function main() {
   const searchDemand = manifest.pipelines.find((pipeline) => pipeline.key === "astrogen-search-demand-opportunities");
   includesAll(searchDemand?.stageAutomation?.ownership_review?.instructions ?? "", [
     "do not request evidence changes merely to search for a duplicate new article",
+    "recommendedActionClass",
+    "never writes selectedAction",
     "approve to action_selected",
   ], "Existing-owner action-selection contract");
+  const actionSelected = searchDemand?.stages?.find((stage) => stage.key === "action_selected");
+  assert(
+    JSON.stringify(actionSelected?.config?.agentFieldAllowedValues?.selectedAction)
+      === JSON.stringify(["new_article", "refresh", "merge", "reposition", "internal_link", "technical", "no_action"]),
+    "CMO action selection must enforce the closed selectedAction enum",
+  );
   includesAll(searchDemand?.stageAutomation?.action_selected?.instructions ?? "", [
+    "Never append a reason to the enum value or combine alternatives",
+    "default to refresh",
     "new_article is forbidden",
     "never send the case back to evidence_ready solely because the owner exists",
   ], "Existing-owner CMO routing contract");
@@ -270,6 +280,8 @@ function main() {
     "do not create a CMS record directly",
     "OWNED_DEMAND_ROUTING_POLICY_VERSION",
     "select_non_article_action_for_existing_owner",
+    "OWNED_DEMAND_ACTION_ENUM_POLICY_VERSION",
+    "normalizeInvalidOwnedDemandActions",
   ], "Curriculum draft-sequencing recovery");
 
   includesAll(routineContracts.articleSlotAllocator, [
