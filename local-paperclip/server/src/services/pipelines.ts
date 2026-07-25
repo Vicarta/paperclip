@@ -2988,7 +2988,10 @@ async function retireFutureStageAutomationMonitorsForExitedStage(
       eq(pipelineAutomationExecutions.automationId, automation.id),
       eq(issues.companyId, input.companyId),
       inArray(issues.status, ["in_progress", "in_review"]),
-      sql`${issues.monitorNextCheckAt} > ${now}`,
+      // postgres-js cannot bind a raw Date inside this tagged SQL fragment.
+      // Use the canonical timestamp string so monitor retirement never makes
+      // a valid pipeline transition fail at runtime.
+      sql`${issues.monitorNextCheckAt} > ${now.toISOString()}`,
     ));
   if (candidates.length === 0) return [];
 
