@@ -122,19 +122,19 @@ async function main() {
     });
     detail = await request(token, "GET", `/cases/${refill.id}`);
     refill = caseRow(detail);
-    const transition = await request(token, "POST", `/cases/${refill.id}/transition`, {
+    await request(token, "POST", `/cases/${refill.id}/transition`, {
       toStageKey: "executing",
       expectedVersion: refill.version,
       reason: "Resume the canonical refill through the approved western-astrology curriculum lane; no owner action or manual article dispatch is required.",
     });
-    if (transition.stage?.key !== "executing") throw new Error("Refill did not enter executing");
+    const transitionedDetail = await request(token, "GET", `/cases/${refill.id}`);
+    if (transitionedDetail.stage?.key !== "executing") throw new Error("Refill did not enter executing");
     console.log(JSON.stringify({
       ok: true,
       mode: "resumed",
       caseKey,
       caseId: refill.id,
-      stage: transition.stage?.key,
-      automationIssueId: transition.automationExecution?.execution?.executionIssueId ?? null,
+      stage: transitionedDetail.stage?.key,
       backup: backup.filename ?? backup.backupDir ?? null,
     }, null, 2));
   } finally {
