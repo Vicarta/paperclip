@@ -305,7 +305,8 @@ function findRestoredPermissionAutomationCases() {
         pc.id as "caseId",
         ps.key as "stageKey",
         i.id as "blockedIssueId",
-        i.identifier as "blockedIssueIdentifier"
+        i.identifier as "blockedIssueIdentifier",
+        r.assignee_agent_id as "routineAssigneeAgentId"
       from pipeline_cases pc
       join pipeline_stages ps on ps.id=pc.stage_id
       join pipeline_case_issue_links l on l.case_id=pc.id
@@ -378,6 +379,9 @@ async function resumeRestoredPermissionAutomationIssues(token) {
     const restored = await request(token, 'PATCH', `/issues/${candidate.blockedIssueId}`, {
       status: 'todo',
       blockedByIssueIds: [],
+      // A historical recovery issue may be assigned to CTO/CEO. The current
+      // stage's routine agent is the only identity with its scoped case grant.
+      assigneeAgentId: candidate.routineAssigneeAgentId,
       comment: permissionRecoveryComment(candidate),
     });
     resumed.push({
