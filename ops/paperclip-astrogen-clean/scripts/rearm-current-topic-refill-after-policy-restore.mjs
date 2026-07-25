@@ -83,7 +83,12 @@ function caseRow(value) {
 
 function currentCmoMonitor(caseId) {
   const raw = psql(`
-    select json_build_object('id', i.id, 'identifier', i.identifier, 'status', i.status)::text
+    select json_build_object(
+      'id', i.id,
+      'identifier', i.identifier,
+      'status', i.status,
+      'nextCheckAt', i.monitor_next_check_at
+    )::text
     from pipeline_case_issue_links link
     join issues i on i.id=link.issue_id
     join agents a on a.id=i.assignee_agent_id
@@ -92,8 +97,9 @@ function currentCmoMonitor(caseId) {
       and link.retired_at is null
       and link.role='automation'
       and i.status='in_progress'
+      and i.monitor_next_check_at is not null
       and a.name='Chief Marketing Officer'
-    order by i.updated_at desc
+    order by i.monitor_next_check_at asc, i.updated_at desc
     limit 1;
   `);
   return raw ? JSON.parse(raw) : null;
