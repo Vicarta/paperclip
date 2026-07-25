@@ -321,7 +321,7 @@ function findRestoredPermissionAutomationCases() {
         and i.company_id=pc.company_id
       join principal_permission_grants pg on pg.company_id=pc.company_id
         and pg.principal_type='agent'
-        and pg.principal_id=r.assignee_agent_id
+        and pg.principal_id=r.assignee_agent_id::text
         and pg.permission_key='pipelines:write'
       where pc.company_id=${sqlLiteral(COMPANY_ID)}::uuid
         and pc.terminal_kind is null
