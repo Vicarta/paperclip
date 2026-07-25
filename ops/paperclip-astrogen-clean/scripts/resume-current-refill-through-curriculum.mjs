@@ -95,7 +95,10 @@ async function main() {
       && stage === "external_wait"
       && refill.fields?.actionType === "topic_inventory_refill"
       && refill.fields?.ownerActionRequired === true
-      && refill.fields?.executionStatus === "external_wait_bounded_source_lanes_exhausted_low_inventory"
+      && [
+        "external_wait_bounded_source_lanes_exhausted_low_inventory",
+        "external_wait_bounded_source_lane_cooldown",
+      ].includes(refill.fields?.executionStatus)
       && refill.fields?.blockerOwner === "Chief Marketing Officer";
     if (!nonOwnerRefill && !repairEligible) {
       throw new Error("Current refill is not a non-owner topic_inventory_refill case or the explicitly repairable agent-owned external wait");
