@@ -168,6 +168,8 @@ function main() {
     "clear blockerClass/blockerOwner/blockerAction",
     "transition this source case to executing in the same heartbeat",
     "do not schedule a monitor or create recovery work",
+    "For every typed external cooldown with ownerActionRequired=false",
+    "a case field, comment, or completed automation alone is never a continuation path",
   ], "Growth manager-only approval external-wait exit");
 
   includesAll(routineContracts.articleSlotAllocator, [

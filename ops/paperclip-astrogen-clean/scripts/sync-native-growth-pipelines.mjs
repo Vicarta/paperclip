@@ -262,6 +262,13 @@ function grantPipelinePermissions(definitions, pipelineByKey, agentByName) {
       ids.add(pipeline.id);
       pipelineIdsByAgentId.set(owner.id, ids);
     }
+    for (const writerName of definition.writerAgents ?? []) {
+      const writer = agentByName.get(writerName);
+      if (!writer) throw new Error(`Pipeline writer not found: ${writerName}`);
+      const ids = pipelineIdsByAgentId.get(writer.id) ?? new Set();
+      ids.add(pipeline.id);
+      pipelineIdsByAgentId.set(writer.id, ids);
+    }
   }
   pipelineIdsByAgentId.set(ceo.id, new Set([growthPipeline.id]));
   const grants = [
