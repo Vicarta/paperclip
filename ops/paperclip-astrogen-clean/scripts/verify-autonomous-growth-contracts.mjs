@@ -197,7 +197,13 @@ function main() {
     "A local Semantic Core snapshot with zero accepted keywords or clusters is not a no-topic result",
     "first prerequisite-ready missing node",
     "never justifies",
+    "keep the canonical refill case in \\`executing\\` with typed lane-local cooldown fields",
+    "An inactive Paperclip policy is a lane-local monitor inside the canonical refill's executing path",
   ], "Curriculum refill continuation contract");
+  assert(
+    !bootstrapSource.includes("move the canonical refill case to \\`external_wait\\` with typed bounded-cooldown fields"),
+    "A source-lane cooldown must not move the canonical refill to external_wait",
+  );
 
   includesAll(routineContracts.articleSlotAllocator, [
     "POST /api/cases/{topicCaseId}/breakdown",
