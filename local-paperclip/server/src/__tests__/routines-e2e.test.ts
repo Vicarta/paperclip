@@ -367,6 +367,7 @@ describeEmbeddedPostgres("routine routes end-to-end", () => {
     const runRes = await postRoutineRun(app, createRes.body.id, {
       source: "manual",
       variables: { repo: "paperclip" },
+      descriptionAppendix: "## Current run controls\n\n- validationWave: 3",
     });
 
     expect(runRes.status).toBe(202);
@@ -399,7 +400,9 @@ describeEmbeddedPostgres("routine routes end-to-end", () => {
       .from(issues)
       .where(eq(issues.id, runRes.body.linkedIssueId));
 
-    expect(issue?.description).toBe("Review paperclip for high bugs");
+    expect(issue?.description).toBe(
+      "Review paperclip for high bugs\n\n## Current run controls\n\n- validationWave: 3",
+    );
   });
 
   it("allows drafting a routine without defaults and running it with one-off overrides", async () => {

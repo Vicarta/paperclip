@@ -157,6 +157,7 @@ export type UpdateRoutineTrigger = z.infer<typeof updateRoutineTriggerSchema>;
 export const runRoutineSchema = z.object({
   triggerId: z.string().uuid().optional().nullable(),
   payload: z.record(z.string(), z.unknown()).optional().nullable(),
+  descriptionAppendix: z.string().trim().max(20_000).optional().nullable(),
   variables: z.record(z.string(), routineVariableValueSchema).optional().nullable(),
   projectId: z.string().uuid().optional().nullable(),
   projectWorkspaceId: z.string().uuid().optional().nullable(),
