@@ -375,6 +375,10 @@ describe.sequential("issue goal context routes", () => {
           assigneeUserId: null,
           updatedAt: new Date("2026-03-24T12:05:00Z"),
           summary: "Layout stage is live.",
+          resultProjection: {
+            key: "layoutResult",
+            value: { finalDisposition: "ready_for_parent" },
+          },
         },
       ],
       childIssueSummaryTruncated: false,
@@ -398,6 +402,10 @@ describe.sequential("issue goal context routes", () => {
         identifier: "PAP-582",
         status: "in_progress",
         summary: "Layout stage is live.",
+        resultProjection: {
+          key: "layoutResult",
+          value: { finalDisposition: "ready_for_parent" },
+        },
       }),
     ]);
   });

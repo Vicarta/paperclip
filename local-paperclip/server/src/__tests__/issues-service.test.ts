@@ -3539,6 +3539,14 @@ describeEmbeddedPostgres("issueService blockers and dependency wake readiness", 
         companyId,
         parentId,
         title: "Child A",
+        description: [
+          "Validation evidence.",
+          "",
+          "## trendIngestionResult",
+          "```json",
+          '{"finalDisposition":"covered_existing_owner","createdSearchDemandCaseIds":[]}',
+          "```",
+        ].join("\n"),
         status: "done",
         priority: "medium",
       },
@@ -3606,6 +3614,14 @@ describeEmbeddedPostgres("issueService blockers and dependency wake readiness", 
         companyId,
         parentId,
         title: "Child A",
+        description: [
+          "Validation evidence.",
+          "",
+          "## trendIngestionResult",
+          "```json",
+          '{"finalDisposition":"covered_existing_owner","createdSearchDemandCaseIds":[]}',
+          "```",
+        ].join("\n"),
         status: "done",
         priority: "medium",
       },
@@ -3648,16 +3664,104 @@ describeEmbeddedPostgres("issueService blockers and dependency wake readiness", 
           id: childA,
           status: "done",
           summary: "Agent handoff evidence for child A.",
+          resultProjection: {
+            key: "trendIngestionResult",
+            value: {
+              finalDisposition: "covered_existing_owner",
+              createdSearchDemandCaseIds: [],
+            },
+          },
         }),
         expect.objectContaining({
           id: childB,
           status: "in_progress",
           summary: null,
+          resultProjection: null,
         }),
       ],
       childIssueSummaryTruncated: false,
       openChildCount: 1,
       terminalChildCount: 1,
+    });
+  });
+
+  it("skips non-machine-readable child result sections before the valid JSON projection", async () => {
+    const companyId = randomUUID();
+    const assigneeAgentId = randomUUID();
+    await db.insert(companies).values({
+      id: companyId,
+      name: "Paperclip",
+      issuePrefix: `T${companyId.replace(/-/g, "").slice(0, 6).toUpperCase()}`,
+      requireBoardApprovalForNewAgents: false,
+    });
+    await db.insert(agents).values({
+      id: assigneeAgentId,
+      companyId,
+      name: "CodexCoder",
+      role: "engineer",
+      status: "active",
+      adapterType: "codex_local",
+      adapterConfig: {},
+      runtimeConfig: {},
+      permissions: {},
+    });
+
+    const parentId = randomUUID();
+    const childId = randomUUID();
+    await db.insert(issues).values([
+      {
+        id: parentId,
+        companyId,
+        title: "Parent issue",
+        status: "in_progress",
+        priority: "medium",
+        assigneeAgentId,
+      },
+      {
+        id: childId,
+        companyId,
+        parentId,
+        title: "Child with duplicate result headings",
+        status: "done",
+        priority: "medium",
+        description: [
+          "Validation evidence.",
+          "",
+          "## trendIngestionResult",
+          "",
+          "Required fields:",
+          "- finalDisposition",
+          "- createdSearchDemandCaseIds",
+          "",
+          "## trendIngestionResult",
+          "",
+          "```json",
+          JSON.stringify({
+            finalDisposition: "completed_all_parked_no_search_demand_ingestion",
+            createdSearchDemandCaseIds: [],
+            primaryAudienceSegmentId: "life_decisions",
+          }),
+          "```",
+        ].join("\n"),
+      },
+    ]);
+
+    expect(await svc.getChildHandoffSummary(parentId)).toMatchObject({
+      childIssueIds: [childId],
+      childIssueSummaries: [
+        expect.objectContaining({
+          id: childId,
+          status: "done",
+          resultProjection: {
+            key: "trendIngestionResult",
+            value: {
+              finalDisposition: "completed_all_parked_no_search_demand_ingestion",
+              createdSearchDemandCaseIds: [],
+              primaryAudienceSegmentId: "life_decisions",
+            },
+          },
+        }),
+      ],
     });
   });
 });

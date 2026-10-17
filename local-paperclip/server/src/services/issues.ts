@@ -33,6 +33,7 @@ import {
   pipelineCaseIssueLinks,
   pipelineCases,
   pipelineAutomationExecutions,
+  pipelineStages,
   projectWorkspaces,
   projects,
   workspaceOperations,
@@ -107,6 +108,7 @@ async function assertPipelineAutomationCompletionProof(
       automationAttemptId: pipelineCaseIssueLinks.automationAttemptId,
       currentStageId: pipelineCases.stageId,
       terminalKind: pipelineCases.terminalKind,
+      fields: pipelineCases.fields,
     })
     .from(pipelineCaseIssueLinks)
     .innerJoin(pipelineCases, eq(pipelineCaseIssueLinks.caseId, pipelineCases.id))
@@ -121,6 +123,7 @@ async function assertPipelineAutomationCompletionProof(
       automationAttemptId: string | null;
       currentStageId: string;
       terminalKind: string | null;
+      fields: Record<string, unknown>;
     }>) => rows[0] ?? null);
   if (!linked?.automationAttemptId || linked.terminalKind) return;
 
@@ -163,6 +166,33 @@ async function assertPipelineAutomationCompletionProof(
     .limit(1)
     .then((rows: Array<{ id: string }>) => rows[0] ?? null);
   if (exitedStage) return;
+
+  const stage = await dbOrTx
+    .select({ config: pipelineStages.config })
+    .from(pipelineStages)
+    .where(eq(pipelineStages.id, entryEvent.toStageId))
+    .then((rows: Array<{ config: Record<string, unknown> }>) => rows[0] ?? null);
+  const childrenTerminalOutcome = parseObject(stage?.config?.childrenTerminalOutcome);
+  const childCaseIdField = typeof childrenTerminalOutcome?.childCaseIdField === "string"
+    ? childrenTerminalOutcome.childCaseIdField
+    : null;
+  const childCaseId = childCaseIdField && typeof linked.fields?.[childCaseIdField] === "string"
+    ? linked.fields[childCaseIdField]
+    : null;
+  if (childrenTerminalOutcome?.requireCurrentDirectChild === true && childCaseId) {
+    const currentDirectChild = await dbOrTx
+      .select({ id: pipelineCases.id })
+      .from(pipelineCases)
+      .where(and(
+        eq(pipelineCases.id, childCaseId),
+        eq(pipelineCases.companyId, issue.companyId),
+        eq(pipelineCases.parentCaseId, linked.caseId),
+        isNull(pipelineCases.terminalKind),
+      ))
+      .limit(1)
+      .then((rows: Array<{ id: string }>) => rows[0] ?? null);
+    if (currentDirectChild) return;
+  }
 
   throw unprocessable(
     "Pipeline automation cannot complete before its case leaves the assigned stage",
@@ -274,6 +304,7 @@ const ISSUE_LIST_RELATED_QUERY_CHUNK_SIZE = 500;
 export const MAX_CHILD_ISSUES_CREATED_BY_HELPER = 25;
 const MAX_CHILD_COMPLETION_SUMMARIES = 20;
 const CHILD_COMPLETION_SUMMARY_BODY_MAX_CHARS = 500;
+const CHILD_RESULT_PROJECTION_MAX_BYTES = 32_768;
 const ISSUE_COMMENT_RUN_LOG_DERIVATION_MAX_LOG_BYTES = 2_000_000;
 const ISSUE_COMMENT_RUN_LOG_DERIVATION_CHUNK_BYTES = 256_000;
 const ISSUE_COMMENT_RUN_LOG_DERIVATION_END_SLACK_MS = 60_000;
@@ -585,6 +616,10 @@ export type ChildIssueCompletionSummary = {
   assigneeUserId: string | null;
   updatedAt: Date;
   summary: string | null;
+  resultProjection: {
+    key: string;
+    value: Record<string, unknown>;
+  } | null;
 };
 export type IssueCompletionHandoffSummary = ChildIssueCompletionSummary;
 
@@ -619,6 +654,26 @@ function truncateInlineSummary(value: string | null | undefined, maxChars = CHIL
   return normalized.length > maxChars ? `${normalized.slice(0, Math.max(0, maxChars - 15)).trimEnd()} [truncated]` : normalized;
 }
 
+function parseChildMachineResultProjection(description: string | null | undefined): ChildIssueCompletionSummary["resultProjection"] {
+  if (!description) return null;
+  const headers = description.matchAll(/^##\s+([A-Za-z][A-Za-z0-9_-]{0,63}Result)\s*$/gm);
+  for (const header of headers) {
+    if (!header?.[1] || header.index == null) continue;
+    const section = description.slice(header.index + header[0].length).trimStart();
+    const fenced = /^```json\s*\r?\n([\s\S]*?)\r?\n```(?:\s|$)/i.exec(section);
+    if (!fenced?.[1]) continue;
+    if (Buffer.byteLength(fenced[1], "utf8") > CHILD_RESULT_PROJECTION_MAX_BYTES) continue;
+    try {
+      const value = JSON.parse(fenced[1]) as unknown;
+      if (!value || typeof value !== "object" || Array.isArray(value)) continue;
+      return { key: header[1], value: value as Record<string, unknown> };
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+
 async function listIssueCompletionHandoffSummaries(
   dbOrTx: Db,
   companyId: string,
@@ -637,6 +692,7 @@ async function listIssueCompletionHandoffSummaries(
       assigneeAgentId: issues.assigneeAgentId,
       assigneeUserId: issues.assigneeUserId,
       updatedAt: issues.updatedAt,
+      description: issues.description,
     })
     .from(issues)
     .where(and(eq(issues.companyId, companyId), inArray(issues.id, uniqueIssueIds)))
@@ -669,11 +725,12 @@ async function listIssueCompletionHandoffSummaries(
     }
   }
 
-  return issueRows.map((issue) => ({
+  return issueRows.map(({ description, ...issue }) => ({
     ...issue,
     summary: truncateInlineSummary(
       latestNonSystemCommentByIssueId.get(issue.id) ?? latestCommentByIssueId.get(issue.id),
     ),
+    resultProjection: parseChildMachineResultProjection(description),
   }));
 }
 
