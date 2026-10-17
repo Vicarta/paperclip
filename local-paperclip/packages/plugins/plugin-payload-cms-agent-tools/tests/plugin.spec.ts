@@ -9,6 +9,7 @@ import {
   buildBlogPostPayload,
   cleanupTechnicalBlogPostDraft,
   createBlogPostDraft,
+  deleteOwnerRejectedBlogPostDraft,
   deleteTaxonomyTerm,
   ensureAuthor,
   ensureTaxonomyTerm,
@@ -19,7 +20,11 @@ import {
   updateTaxonomyTerm,
 } from "../src/payload-cms-client.js";
 import { markdownToLexical } from "../src/markdown-to-lexical.js";
-import { blogPostFieldsSchema, updateBlogPostDraftParametersSchema } from "../src/schemas.js";
+import {
+  articleContentSchema,
+  blogPostFieldsSchema,
+  updateBlogPostDraftParametersSchema,
+} from "../src/schemas.js";
 
 vi.mock("../src/payload-cms-client.js", async () => {
   const actual =
@@ -31,6 +36,7 @@ vi.mock("../src/payload-cms-client.js", async () => {
     healthCheck: vi.fn(),
     createBlogPostDraft: vi.fn(),
     cleanupTechnicalBlogPostDraft: vi.fn(),
+    deleteOwnerRejectedBlogPostDraft: vi.fn(),
     ensureAuthor: vi.fn(),
     ensureTaxonomyTerm: vi.fn(),
     deleteTaxonomyTerm: vi.fn(),
@@ -44,6 +50,7 @@ vi.mock("../src/payload-cms-client.js", async () => {
 const healthCheckMock = vi.mocked(healthCheck);
 const createBlogPostDraftMock = vi.mocked(createBlogPostDraft);
 const cleanupTechnicalBlogPostDraftMock = vi.mocked(cleanupTechnicalBlogPostDraft);
+const deleteOwnerRejectedBlogPostDraftMock = vi.mocked(deleteOwnerRejectedBlogPostDraft);
 const deleteTaxonomyTermMock = vi.mocked(deleteTaxonomyTerm);
 const ensureAuthorMock = vi.mocked(ensureAuthor);
 const ensureTaxonomyTermMock = vi.mocked(ensureTaxonomyTerm);
@@ -57,6 +64,7 @@ describe("plugin-payload-cms-agent-tools", () => {
     healthCheckMock.mockReset();
     createBlogPostDraftMock.mockReset();
     cleanupTechnicalBlogPostDraftMock.mockReset();
+    deleteOwnerRejectedBlogPostDraftMock.mockReset();
     deleteTaxonomyTermMock.mockReset();
     ensureAuthorMock.mockReset();
     ensureTaxonomyTermMock.mockReset();
@@ -105,9 +113,15 @@ describe("plugin-payload-cms-agent-tools", () => {
   });
 
   it("exposes strict articleContent.v1 schemas for create/update draft tools", () => {
+    const validateTool = manifest.tools.find((tool) => tool.name === TOOL_NAMES.validateArticleContent);
     const createTool = manifest.tools.find((tool) => tool.name === TOOL_NAMES.createBlogPostDraft);
     const updateTool = manifest.tools.find((tool) => tool.name === TOOL_NAMES.updateBlogPostDraft);
 
+    expect(validateTool?.parametersSchema).toMatchObject({
+      properties: { articleContent: articleContentSchema },
+      required: ["articleContent"],
+      additionalProperties: false,
+    });
     expect(createTool?.parametersSchema).toBe(blogPostFieldsSchema);
     expect(updateTool?.parametersSchema).toBe(updateBlogPostDraftParametersSchema);
     expect(blogPostFieldsSchema.additionalProperties).toBe(false);
@@ -120,6 +134,57 @@ describe("plugin-payload-cms-agent-tools", () => {
       required: ["fields"],
       additionalProperties: false,
     });
+  });
+
+  it("validates articleContent locally before CMS or media mutations", async () => {
+    const harness = createTestHarness({ manifest });
+    await plugin.definition.setup(harness.ctx);
+
+    const result = await harness.executeTool(TOOL_NAMES.validateArticleContent, {
+      articleContent: {
+        schemaVersion: "articleContent.v1",
+        blocks: [
+          {
+            type: "editorialCallout",
+            variant: "soft",
+            title: "Коротко",
+            body: "Стислий підсумок.",
+          },
+          {
+            type: "iconList",
+            style: "compact",
+            title: "Орієнтири",
+            items: [{ icon: "editorial-check", label: "Перевірити" }],
+          },
+        ],
+      },
+    });
+
+    expect(result.data).toEqual({
+      valid: true,
+      schemaVersion: "articleContent.v1",
+      blockCount: 2,
+    });
+
+    await expect(harness.executeTool(TOOL_NAMES.validateArticleContent, {
+      articleContent: {
+        schemaVersion: "articleContent.v1",
+        blocks: [
+          {
+            type: "editorialCallout",
+            variant: "soft",
+            title: "Коротко",
+            body: "Стислий підсумок.",
+          },
+          {
+            type: "iconList",
+            style: "compact",
+            title: "Орієнтири",
+            items: [{ icon: "editorial-home", label: "Дім" }],
+          },
+        ],
+      },
+    })).rejects.toThrow(/allowed icon registry/);
   });
 
   it("creates blog post drafts without publishing", async () => {
@@ -409,6 +474,34 @@ describe("plugin-payload-cms-agent-tools", () => {
       }),
     );
   });
+
+  it("deletes an owner-rejected editorial draft only through the guarded owner decision tool", async () => {
+    const harness = createTestHarness({ manifest });
+    await plugin.definition.setup(harness.ctx);
+
+    deleteOwnerRejectedBlogPostDraftMock.mockResolvedValueOnce({
+      content: "Deleted owner-rejected Payload CMS blog draft: id=131",
+      data: { deleted: true, ownerDecisionRef: "AST-756" },
+    });
+
+    await harness.executeTool(TOOL_NAMES.deleteOwnerRejectedBlogPostDraft, {
+      id: 131,
+      expectedSlug: "horoskop-na-sogodni",
+      expectedTitle: "Гороскоп на сьогодні",
+      ownerDecisionRef: "AST-756",
+      confirmOwnerApprovedDraftDeletion: true,
+    });
+
+    expect(deleteOwnerRejectedBlogPostDraftMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 131,
+        expectedSlug: "horoskop-na-sogodni",
+        expectedTitle: "Гороскоп на сьогодні",
+        ownerDecisionRef: "AST-756",
+        confirmOwnerApprovedDraftDeletion: true,
+      }),
+    );
+  });
 });
 
 describe("Payload CMS content helpers", () => {
@@ -637,6 +730,7 @@ describe("Payload CMS content helpers", () => {
         },
       }),
     ).toThrow(/must appear before block 5/);
+
   });
 
   it("accepts structured articleContent inline spans", () => {

@@ -1,10 +1,16 @@
 import { definePlugin, runWorker, type ToolResult } from "@paperclipai/plugin-sdk";
 import path from "node:path";
 import { PLUGIN_ID, TOOL_NAMES } from "./constants.js";
-import { blogPostFieldsSchema, updateBlogPostDraftParametersSchema } from "./schemas.js";
+import {
+  articleContentSchema,
+  blogPostFieldsSchema,
+  updateBlogPostDraftParametersSchema,
+} from "./schemas.js";
+import { validateArticleContentV1 } from "./article-content.js";
 import {
   createBlogPostDraft,
   cleanupTechnicalBlogPostDraft,
+  deleteOwnerRejectedBlogPostDraft,
   deleteTaxonomyTerm,
   ensureAuthor,
   findBlogPost,
@@ -490,6 +496,35 @@ const plugin = definePlugin({
     );
 
     ctx.tools.register(
+      TOOL_NAMES.validateArticleContent,
+      {
+        displayName: "Payload CMS Validate Article Content",
+        description:
+          "Validate canonical articleContent.v1 locally before media upload or any CMS mutation. Performs no network call.",
+        parametersSchema: {
+          type: "object",
+          properties: {
+            articleContent: articleContentSchema,
+          },
+          required: ["articleContent"],
+          additionalProperties: false,
+        },
+      },
+      async (params): Promise<ToolResult> => {
+        const typed = readObjectParams(params);
+        const articleContent = validateArticleContentV1(typed.articleContent);
+        return toolResult({
+          content: `articleContent.v1 is valid (${articleContent.blocks.length} blocks)`,
+          data: {
+            valid: true,
+            schemaVersion: articleContent.schemaVersion,
+            blockCount: articleContent.blocks.length,
+          },
+        });
+      },
+    );
+
+    ctx.tools.register(
       TOOL_NAMES.createBlogPostDraft,
       {
         displayName: "Payload CMS Create Blog Post Draft",
@@ -520,6 +555,48 @@ const plugin = definePlugin({
             id: typed.id as string | number | undefined,
             slug: typed.slug as string | undefined,
             fields,
+          }),
+        ));
+      },
+    );
+
+    ctx.tools.register(
+      TOOL_NAMES.deleteOwnerRejectedBlogPostDraft,
+      {
+        displayName: "Payload CMS Delete Owner-Rejected Blog Post Draft",
+        description:
+          "Permanently delete an unpublished editorial blog draft after an explicit owner decision recorded in a Paperclip AST issue. Requires exact identity guards and refuses published or approved content.",
+        parametersSchema: {
+          type: "object",
+          properties: {
+            id: { type: ["number", "string"] },
+            slug: { type: "string" },
+            expectedSlug: { type: "string" },
+            expectedTitle: { type: "string" },
+            ownerDecisionRef: { type: "string" },
+            confirmOwnerApprovedDraftDeletion: { type: "boolean" },
+          },
+          required: [
+            "expectedSlug",
+            "expectedTitle",
+            "ownerDecisionRef",
+            "confirmOwnerApprovedDraftDeletion",
+          ],
+          additionalProperties: false,
+        },
+      },
+      async (params): Promise<ToolResult> => {
+        const typed = readObjectParams(params);
+        return toolResult(await withClientConfig(ctx, (base) =>
+          deleteOwnerRejectedBlogPostDraft({
+            ...base,
+            id: typed.id as string | number | undefined,
+            slug: typed.slug as string | undefined,
+            expectedSlug: typed.expectedSlug as string,
+            expectedTitle: typed.expectedTitle as string,
+            ownerDecisionRef: typed.ownerDecisionRef as string,
+            confirmOwnerApprovedDraftDeletion:
+              typed.confirmOwnerApprovedDraftDeletion as boolean | undefined,
           }),
         ));
       },

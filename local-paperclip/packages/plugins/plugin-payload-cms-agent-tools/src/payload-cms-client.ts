@@ -23,6 +23,16 @@ export type PayloadCmsPluginConfig = {
   authorsCollectionSlug?: string;
   buildStateGlobalSlug?: string;
   requestTimeoutMs?: number;
+  defaultEditorialAuthor?: {
+    name?: string;
+    slug?: string;
+    roleTitle?: string;
+  };
+  articleTypeCategoryDefaults?: Record<string, {
+    slug?: string;
+    title?: string;
+    ensureCategory?: boolean;
+  }>;
 };
 
 export type BlogPostFields = {
@@ -43,6 +53,9 @@ export type BlogPostFields = {
   seoDescription?: string;
   canonicalUrl?: string;
   noindex?: boolean;
+  // Paperclip-only routing metadata. It is resolved to a CMS category relation
+  // and never sent to Payload as a blog post field.
+  articleType?: string;
   categorySlug?: string;
   categoryTitle?: string;
   ensureCategory?: boolean;
@@ -124,6 +137,15 @@ export type PayloadCmsCleanupTechnicalBlogPostDraftInput = PayloadCmsRequestInpu
   expectedSlug?: string;
   expectedTitle?: string;
   confirmTechnicalDraftCleanup?: boolean;
+};
+
+export type PayloadCmsDeleteOwnerRejectedBlogPostDraftInput = PayloadCmsRequestInput & {
+  id?: number | string;
+  slug?: string;
+  expectedSlug: string;
+  expectedTitle: string;
+  ownerDecisionRef: string;
+  confirmOwnerApprovedDraftDeletion?: boolean;
 };
 
 function readNonEmptyString(value: unknown) {
@@ -1034,44 +1056,111 @@ export async function updateMedia(input: PayloadCmsUpdateMediaInput) {
   };
 }
 
-async function resolveBlogPostFields(input: PayloadCmsRequestInput & BlogPostFields) {
+type RelationResolutionOptions = {
+  requireAuthor: boolean;
+  requireCategory: boolean;
+};
+
+function hasRelationId(value: unknown) {
+  return value !== undefined && value !== null && String(value).trim().length > 0;
+}
+
+function configuredDefaultAuthor(config: PayloadCmsPluginConfig) {
+  const value = config.defaultEditorialAuthor;
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const name = readNonEmptyString(value.name);
+  if (!name) return null;
+  return {
+    name,
+    slug: readNonEmptyString(value.slug) ?? undefined,
+    roleTitle: readNonEmptyString(value.roleTitle) ?? undefined,
+  };
+}
+
+function configuredCategoryDefault(config: PayloadCmsPluginConfig, articleType: string | null) {
+  if (!articleType) return null;
+  const values = config.articleTypeCategoryDefaults;
+  if (!values || typeof values !== "object" || Array.isArray(values)) return null;
+  const value = values[articleType];
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const slug = readNonEmptyString(value.slug);
+  const title = readNonEmptyString(value.title);
+  if (!slug && !title) return null;
+  return {
+    slug: slug ?? undefined,
+    title: title ?? undefined,
+    ensureCategory: value.ensureCategory === true,
+  };
+}
+
+async function resolveBlogPostFields(
+  input: PayloadCmsRequestInput & BlogPostFields,
+  options: RelationResolutionOptions,
+) {
   const fields: BlogPostFields = { ...input };
-  if (fields.category === undefined || fields.category === null || String(fields.category).trim().length === 0) {
+  const articleType = readNonEmptyString(fields.articleType);
+  const authorDefault = !hasRelationId(fields.author) ? configuredDefaultAuthor(input.config) : null;
+  if (options.requireAuthor && !hasRelationId(fields.author) && !authorDefault) {
+    throw new Error("Payload CMS author is required; pass author or configure defaultEditorialAuthor");
+  }
+
+  if (!hasRelationId(fields.category)) {
     const categorySlug = readNonEmptyString(fields.categorySlug);
     const categoryTitle = readNonEmptyString(fields.categoryTitle);
-    if (categorySlug || categoryTitle) {
+    const categoryDefault = !categorySlug && !categoryTitle
+      ? configuredCategoryDefault(input.config, articleType)
+      : null;
+    if (categoryDefault) {
+      fields.categorySlug = categoryDefault.slug;
+      fields.categoryTitle = categoryDefault.title;
+      fields.ensureCategory = categoryDefault.ensureCategory;
+    }
+    const resolvedSlug = readNonEmptyString(fields.categorySlug);
+    const resolvedTitle = readNonEmptyString(fields.categoryTitle);
+    if (resolvedSlug || resolvedTitle) {
       const term = fields.ensureCategory
         ? await ensureTaxonomyTerm({
             ...input,
             collection: "categories",
-            title: categoryTitle ?? categorySlug ?? "",
-            slug: categorySlug ?? undefined,
+            title: resolvedTitle ?? resolvedSlug ?? "",
+            slug: resolvedSlug ?? undefined,
           })
         : await findTaxonomyTerm({
             ...input,
             collection: "categories",
-            slug: categorySlug ?? undefined,
-            title: categoryTitle ?? undefined,
+            slug: resolvedSlug ?? undefined,
+            title: resolvedTitle ?? undefined,
           });
       const doc = (term.data as { doc?: { id?: unknown } }).doc;
       if (!doc?.id) {
         throw new Error(
-          `Payload CMS category was not found for ${categorySlug ? `slug ${categorySlug}` : `title ${categoryTitle}`}; pass ensureCategory=true to create it when allowed`,
+          `Payload CMS category was not found for ${resolvedSlug ? `slug ${resolvedSlug}` : `title ${resolvedTitle}`}; pass ensureCategory=true to create it when allowed`,
         );
       }
       fields.category = doc.id as string | number;
     }
   }
+  if (options.requireCategory && !hasRelationId(fields.category)) {
+    throw new Error("Payload CMS category is required; pass category/categorySlug or articleType with a configured category default");
+  }
+
+  if (!hasRelationId(fields.author) && authorDefault) {
+    const author = await ensureAuthor({ ...input, ...authorDefault });
+    const doc = (author.data as { doc?: { id?: unknown } }).doc;
+    if (!doc?.id) throw new Error("Payload CMS default editorial author did not resolve to a concrete id");
+    fields.author = doc.id as string | number;
+  }
   delete fields.categorySlug;
   delete fields.categoryTitle;
   delete fields.ensureCategory;
+  delete fields.articleType;
   return fields;
 }
 
 export async function createBlogPostDraft(
   input: PayloadCmsRequestInput & BlogPostFields,
 ) {
-  const fields = await resolveBlogPostFields(input);
+  const fields = await resolveBlogPostFields(input, { requireAuthor: true, requireCategory: true });
   const data = await payloadRequest<unknown>({
     ...input,
     method: "POST",
@@ -1111,7 +1200,7 @@ export async function updateBlogPostDraft(
       resolveSecret: input.resolveSecret,
       fetchFn: input.fetchFn,
       ...input.fields,
-    })),
+    }, { requireAuthor: false, requireCategory: false })),
   });
   const withAdminUrl = addBlogPostAdminUrls(input.config, data);
   return {
@@ -1176,6 +1265,69 @@ export async function cleanupTechnicalBlogPostDraft(
     data: {
       deleted: true,
       deletedDoc: record,
+      response: data,
+    },
+  };
+}
+
+export async function deleteOwnerRejectedBlogPostDraft(
+  input: PayloadCmsDeleteOwnerRejectedBlogPostDraftInput,
+) {
+  if (input.confirmOwnerApprovedDraftDeletion !== true) {
+    throw new Error("Owner-rejected blog draft deletion requires confirmOwnerApprovedDraftDeletion=true");
+  }
+
+  const expectedSlug = readNonEmptyString(input.expectedSlug);
+  const expectedTitle = readNonEmptyString(input.expectedTitle);
+  const ownerDecisionRef = readNonEmptyString(input.ownerDecisionRef);
+  if (!expectedSlug || !expectedTitle) {
+    throw new Error("Owner-rejected blog draft deletion requires exact expectedSlug and expectedTitle");
+  }
+  if (!ownerDecisionRef || !/AST-\d+/i.test(ownerDecisionRef)) {
+    throw new Error("Owner-rejected blog draft deletion requires a Paperclip AST issue reference");
+  }
+
+  const found = await findBlogPost({
+    ...input,
+    id: input.id,
+    slug: input.slug,
+    draft: true,
+    depth: 0,
+  });
+  const doc = input.id !== undefined && input.id !== null
+    ? found.data
+    : (found.data as { doc?: unknown }).doc;
+  if (!doc || typeof doc !== "object") {
+    throw new Error("Payload blog post was not found for owner-approved draft deletion");
+  }
+
+  const record = doc as Record<string, unknown>;
+  const id = record.id;
+  if (id === undefined || id === null || String(id).trim().length === 0) {
+    throw new Error("Payload blog post id is required for owner-approved draft deletion");
+  }
+  if (record.slug !== expectedSlug) {
+    throw new Error(`Refusing deletion: expected slug ${expectedSlug}, got ${String(record.slug ?? "")}`);
+  }
+  if (record.title !== expectedTitle) {
+    throw new Error(`Refusing deletion: expected title ${expectedTitle}, got ${String(record.title ?? "")}`);
+  }
+  if (isPublishedOrApprovedBlogPost(record)) {
+    throw new Error("Refusing deletion: published, approved, or previously published blog posts cannot be deleted");
+  }
+
+  const data = await payloadRequest<unknown>({
+    ...input,
+    method: "DELETE",
+    pathname: `/${blogPostsCollection(input.config)}/${encodeURIComponent(String(id))}`,
+    query: { draft: true },
+  });
+  return {
+    content: `Deleted owner-rejected Payload CMS blog draft: ${summarizeDoc(record)}`,
+    data: {
+      deleted: true,
+      deletedDoc: record,
+      ownerDecisionRef,
       response: data,
     },
   };

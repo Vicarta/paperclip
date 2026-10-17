@@ -14,6 +14,7 @@ import {
   TOOL_NAMES,
 } from "./constants.js";
 import {
+  articleContentSchema,
   blogPostFieldsSchema,
   looseObjectSchema,
   updateBlogPostDraftParametersSchema,
@@ -94,6 +95,34 @@ const manifest: PaperclipPluginManifestV1 = {
         type: "number",
         title: "Request Timeout Ms",
         default: 60000,
+      },
+      defaultEditorialAuthor: {
+        type: "object",
+        title: "Default Editorial Author",
+        description:
+          "Company-scoped author resolved idempotently for new general editorial drafts when the caller does not pass an author id.",
+        properties: {
+          name: { type: "string" },
+          slug: { type: "string" },
+          roleTitle: { type: "string" },
+        },
+        required: ["name"],
+        additionalProperties: false,
+      },
+      articleTypeCategoryDefaults: {
+        type: "object",
+        title: "Article Type Category Defaults",
+        description:
+          "Company-scoped category slugs used only for new drafts when an article type has no more specific approved category policy.",
+        additionalProperties: {
+          type: "object",
+          properties: {
+            slug: { type: "string" },
+            title: { type: "string" },
+            ensureCategory: { type: "boolean" },
+          },
+          additionalProperties: false,
+        },
       },
     },
   },
@@ -310,6 +339,20 @@ const manifest: PaperclipPluginManifestV1 = {
       },
     },
     {
+      name: TOOL_NAMES.validateArticleContent,
+      displayName: "Payload CMS Validate Article Content",
+      description:
+        "Validate canonical articleContent.v1 locally before media upload or any CMS mutation. Returns a bounded schema summary and performs no network call.",
+      parametersSchema: {
+        type: "object",
+        properties: {
+          articleContent: articleContentSchema,
+        },
+        required: ["articleContent"],
+        additionalProperties: false,
+      },
+    },
+    {
       name: TOOL_NAMES.createBlogPostDraft,
       displayName: "Payload CMS Create Blog Post Draft",
       description:
@@ -322,6 +365,30 @@ const manifest: PaperclipPluginManifestV1 = {
       description:
         "Update an existing Payload blog post as a draft/revision by id or slug using articleContent.v1. Does not publish unless the publish tool is called separately.",
       parametersSchema: updateBlogPostDraftParametersSchema,
+    },
+    {
+      name: TOOL_NAMES.deleteOwnerRejectedBlogPostDraft,
+      displayName: "Payload CMS Delete Owner-Rejected Blog Post Draft",
+      description:
+        "Permanently delete an unpublished editorial blog draft after an explicit owner decision recorded in a Paperclip AST issue. Requires exact id/slug/title guards and never deletes published, approved, or previously published content.",
+      parametersSchema: {
+        type: "object",
+        properties: {
+          id: { type: ["number", "string"] },
+          slug: { type: "string" },
+          expectedSlug: { type: "string" },
+          expectedTitle: { type: "string" },
+          ownerDecisionRef: { type: "string" },
+          confirmOwnerApprovedDraftDeletion: { type: "boolean" },
+        },
+        required: [
+          "expectedSlug",
+          "expectedTitle",
+          "ownerDecisionRef",
+          "confirmOwnerApprovedDraftDeletion",
+        ],
+        additionalProperties: false,
+      },
     },
     {
       name: TOOL_NAMES.cleanupTechnicalBlogPostDraft,

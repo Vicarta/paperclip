@@ -192,6 +192,7 @@ export const blogPostFieldsSchema = {
     ogImage: { type: ["number", "string"] },
     author: { type: ["number", "string"] },
     category: { type: ["number", "string"] },
+    articleType: { type: "string" },
     categorySlug: { type: "string" },
     categoryTitle: { type: "string" },
     ensureCategory: { type: "boolean" },

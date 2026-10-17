@@ -1,5 +1,10 @@
 # Payload CMS Agent Tools
 
+Editorial draft deletion is available only through
+`payload_cms_delete_owner_rejected_blog_post_draft`. The tool requires exact
+slug/title guards, an `AST-*` owner-decision reference, and explicit
+confirmation. It refuses published, approved, or previously published posts.
+
 Server-side Paperclip plugin for Payload CMS blog operations.
 
 ## What It Does
@@ -88,3 +93,17 @@ fields: `name`, `slug`, `bio`, `photo`, `roleTitle`, and `socialLinks`.
 If `expertUrl` is provided, it is stored as a normal social link labeled
 `Профіль експерта Astrogen`. Do not substitute a different author when the issue
 requires a named expert author.
+
+
+## Create-Time Relation Policy
+
+For new general editorial drafts, a company may configure
+`defaultEditorialAuthor` and `articleTypeCategoryDefaults`. A create request
+passes `articleType`; the plugin resolves the configured author and category
+slug to current Payload relations before its single draft write. These policy
+keys keep unstable numeric CMS IDs out of article workflow artifacts.
+
+An explicit `author`, `category`, `categorySlug`, or `categoryTitle` takes
+precedence over the fallback. Existing-draft updates do not inject defaults or
+replace already stored relations. Missing create-time author/category policy is
+rejected before a blog-post write rather than producing a partial draft.
