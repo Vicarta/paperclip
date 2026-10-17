@@ -22,6 +22,47 @@ Do not search OpenAPI, browser assets, or Paperclip source to discover these rou
 - Events: `GET /cases/{caseId}/events`
 - Context pack: `GET /cases/{caseId}/context-pack`
 
+`GET /cases/{caseId}` returns a detail envelope, not a bare case row. Read mutable
+case data from `.case`, the current stage from `.stage`, and transition choices
+from `.allowedNextStages`:
+
+```jq
+{
+  version: .case.version,
+  fields: .case.fields,
+  stageKey: .stage.key,
+  allowedNextStageKeys: [.allowedNextStages[]?.key]
+}
+```
+
+Do not read top-level `.version` or `.fields`; those paths are absent and produce
+`null`, which is not a valid case version or an empty field set.
+
+Document reads are also envelopes:
+
+- `GET /cases/{caseId}/documents/{key}` returns metadata in `.document`, the
+  current content in `.revision.body`, and link metadata in `.link`.
+- `GET /cases/{caseId}/outputs/documents/{documentId}` returns the bounded
+  cross-agent content in `.document.body` and its producer metadata in `.source`.
+
+Do not interpret a missing top-level `.body` as a missing document. Select the
+document body from the envelope path above and treat a non-string body as a
+protocol error.
+
+### Plugin Tool Response Shape
+
+Native stage agents commonly use company-bound plugin tools:
+
+- `GET /agents/me/plugin-tools` returns a direct JSON array of tool descriptors.
+- `POST /agents/me/plugin-tools/execute` returns a dispatcher envelope with
+  `pluginId`, `toolName`, and `result`.
+- Read typed provider/plugin output from `.result.data`; `.result.content` is the
+  optional human-readable content channel.
+
+Do not read `.tools` from discovery or top-level `.data`, `.id`, or `.document`
+from execution. Validate the envelope and treat an unexpected shape as a protocol
+error before retrying or spending provider budget.
+
 ### Inventory Discovery For Routine Tasks
 
 Do not guess generic `/cases`, `/pipeline-cases`, or key-in-UUID routes. Resolve
@@ -35,11 +76,17 @@ The case list also accepts exact `caseKey={caseKey}` for canonical idempotent
 lookups. `limit` is capped at 100. Omit `stageKey`, `terminal`, `caseKey`, or
 `offset` only when the routine contract does not need that filter.
 
+The response is a **direct JSON array** of case rows, even when it contains no
+rows. Count it with `Array.isArray(response) ? response.length : protocol_error`.
+Only `[]` proves an empty result. Do not read `response.items` or
+`response.cases`, and do not treat a non-array response as empty inventory.
+Record it as a protocol failure instead.
+
 Agent run JWTs may read these routes only inside their own company. A `500`
 caused by putting a pipeline key where `{pipelineId}` requires a UUID is a caller
 contract error, not evidence that native inventory is unavailable.
 
-Always read the case immediately before a write and use the returned `case.version`.
+Always read the case immediately before a write and use the returned `.case.version`.
 Follow the fetch hint returned by case outputs for full document bodies. Do not read a
 linked agent's document through its foreign issue route; case outputs are the typed
 cross-agent handoff boundary.
@@ -52,15 +99,16 @@ cross-agent handoff boundary.
 {
   "title": "Optional title",
   "summary": "Optional summary",
-  "fields": {},
+  "fieldPatch": { "status": "verified" },
   "workspaceRef": null,
   "parentCaseId": null,
   "expectedVersion": 3
 }
 ```
 
-`fields` replaces the complete fields object. Merge the current fields locally and send the full
-result. Never send a partial fields object that would erase existing evidence.
+Use `fieldPatch` for incremental field updates. Paperclip merges those top-level keys atomically
+into the current fields object under the same `expectedVersion` check. Use `fields` only when you
+intentionally replace the complete fields object. Never send both in one request.
 
 ## Documents
 
