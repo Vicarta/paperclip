@@ -51,6 +51,7 @@ FROM base AS build
 WORKDIR /app
 COPY --from=deps /app /app
 COPY . .
+RUN pnpm --filter @paperclipai/adapter-utils build
 RUN pnpm --filter @paperclipai/ui build
 RUN pnpm --filter @paperclipai/plugin-sdk build
 RUN pnpm install --frozen-lockfile
@@ -58,6 +59,7 @@ RUN pnpm --filter paperclip-plugin-telegram build \
   && pnpm --filter @paperclipai/plugin-payload-cms-agent-tools build \
   && pnpm --filter @paperclipai/plugin-gsc-bing-ga4-mcp-agent-tools build \
   && pnpm --filter @paperclipai/plugin-crawlobserver-agent-tools build \
+  && pnpm --filter @paperclipai/plugin-semantic-core-mcp-agent-tools build \
   && pnpm --filter @paperclipai/plugin-email-notifications build \
   && pnpm --filter @paperclipai/plugin-openrouter-image-agent-tools build \
   && pnpm --filter @paperclipai/plugin-serper-agent-tools build \
