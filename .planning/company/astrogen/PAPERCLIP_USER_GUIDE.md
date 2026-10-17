@@ -315,9 +315,21 @@ SEO-комунікація з власником іде через `Roger (Herme
 
 ### Контент-план і внутрішня перелінковка
 
-Актуальна людська версія rolling content plan + internal linking map:
+Операційний rolling content plan зберігається у clean Paperclip як справжній
+документ канонічного topic-refill case з ключем `next-content-plan`. Відкривати
+потрібно вкладку документів цієї задачі, а не шукати план у коментарях агентів.
+Документ оновлює CMO з live native topic cases і показує щонайменше 25 майбутніх
+тем: по п'ять тем для кожного з п'яти primary audience segments. Кожна тема
+зараховується лише одному основному сегменту.
 
-`CONTENT_PLAN_AND_INTERNAL_LINKING_UA.md`
+`CONTENT_PLAN_AND_INTERNAL_LINKING_UA.md` лишається довідником щодо логіки
+кластерів і внутрішньої перелінковки. Він не є поточним операційним
+контент-планом і не підтверджує наявність готової теми.
+
+У `next-content-plan` зараховуються тільки теми в native stages `ready` або
+`reserved`, які пройшли перевірку попиту, ownership/cannibalization review та
+мають план вхідних і вихідних внутрішніх посилань. Raw trend ideas, agent chat,
+`candidate` і `evidence_ready` до квоти не входять.
 
 Практичне правило: внутрішня перелінковка має впливати на теми наступних статей. Якщо продуктова сторінка або експертна категорія потребує підтримки, CMO має або створити задачі на body links / `relatedPosts`, або додати supporting articles у контент-план, або явно зафіксувати watch/cooldown/data-quality blocker.
 

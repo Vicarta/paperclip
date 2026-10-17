@@ -14,8 +14,10 @@ See: `.planning/company/astrogen/README.md`
 
 Phase: Astrogen growth/content operating system hardening
 Status: Active
-Last activity: 2026-07-15 - Completed Phase 48 native search-demand opportunity pipeline and removed the standalone SEO Performance Loop.
-Current phase note: Clean Astrogen runs native article, topic, growth-action, and search-demand opportunity pipelines. Search demand now follows `discovered -> evidence_ready -> ownership_review -> action_selected -> delegated -> verified -> measured`; only a delegated `selectedAction=new_article` case may create a guarded topic candidate. Refresh, merge, reposition, internal-link, technical, and no-action decisions remain outside topic inventory. Weekly SEO/GEO and CMO routines are active, and detailed weekly HTML email uses the company-scoped `paperclip.email-notifications` plugin. The old `paperclip.seo-performance-loop` source, image bundle, manifest, registry row, and jobs are removed. Old Paperclip remains stopped, Telegram proactive watches remain disabled, and CMS publication remains manual.
+Last activity: 2026-07-21 - Activated runtime `.126` and replaced the five-per-audience-segment model with the approved 12/5/3/3/2 content portfolio; CMS drafts 133/134 are progressing through native image repair.
+Current phase note: Clean Astrogen runs native article, topic, growth-action, and search-demand opportunity pipelines. Search demand follows `discovered -> evidence_ready -> ownership_review -> action_selected -> delegated -> verified -> measured`; only a delegated `selectedAction=new_article` case may create a guarded topic candidate. Project-scoped trend reports remain evidence and must pass semantic validation, CMS ownership, duplicate, and cannibalization gates. Explicit day/month topics such as `22 травня` and ephemeral single-sign `на сьогодні` horoscopes are paused. The live trend-derived article `Таро для самопізнання: вправи без фаталізму` completed to CMS draft 132; publication remains manual and measurement waits on a first-class monitor. Runtime `.113` prevents future-monitored work from entering immediate recovery loops. Old Paperclip remains stopped and Telegram proactive watches remain disabled.
+
+Phase 50 is in progress. The rolling content-plan SLO is being raised from a generic 3-10 topic buffer to 25 eligible future topics: five uniquely counted topics for each of `life_decisions`, `relationships`, `self_reflection`, `family_and_parenting`, and `expert_selection`. Daily article production remains capped at three. Raw trend ideas, comments, and unvalidated candidates do not count.
 
 ## Current Focus
 
@@ -62,7 +64,7 @@ Current phase note: Clean Astrogen runs native article, topic, growth-action, an
 - Client portal semantic-core review must now evolve beyond a batch-only queue. The portal should expose a complete living semantic-core inventory where accepted keywords from all previous layers are visible under `Статус = Погоджено`, while the current decision queue contains only genuinely new/unresolved proposals. Already accepted Layer 1 keywords such as `Astrogen` must not reappear as pending Layer 2 decisions; later occurrences should attach as evidence/history to the canonical keyword.
 - Astrogen needs manual semantic-core lifecycle controls in the portal: add keyword, soft-remove/exclude keyword, restore keyword, and change status with audit history. Future Google Search Console query suggestions should enter as deduplicated candidates, not as automatic accepted-core items.
 - Semantic-core portal lifecycle V1 is live. Paperclip endpoint `/api/portal/companies/astrogen/semantic-core/review` returns 82 current review items and does not include `Astrogen`. Paperclip endpoint `/api/portal/companies/astrogen/semantic-core` returns 618 inventory items with lifecycle counts: accepted 27, candidate 588, deferred 1, rejected 2, removed 0. `status`/`lifecycleMembership=accepted` means active semantic core only; machine triage such as `currentMachineMembership=accepted` is exposed separately as `recommendation.sourceSignal=machine_recommended_accept` with the client label `Рекомендовано до погодження`.
-- Astrogen traffic strategy clarification: all funnel stages are in scope. Broad astrology-related search demand, including daily horoscope and zodiac/date-sign queries, is target-audience traffic when it is a real query with demand. Layer 3 must not require product binding; layer 4 requires an astrology editorial bridge for broader audience interests. Live Astrogen CMO, SEO Semantic Core Strategist, SEO Semantic Core Validator, CTO, HIA, and Stage 53/54 process docs now carry this policy.
+- Astrogen traffic strategy clarification: all funnel stages are in scope. Broad durable astrology-related search demand is valid when evidence supports it, but current owner policy excludes explicit calendar-date topics and ephemeral single-sign daily horoscopes. Layer 3 must not require product binding; layer 4 requires an astrology editorial bridge for broader audience interests. Live CMO and semantic/topic policies enforce this boundary before article production.
 - Astrogen blog planning should follow Phase 14: semantic core -> article opportunities -> SERP-checked clusters for the shortlist -> human-adjustable priorities -> paced waves -> content plan validation -> article production -> performance loop feedback. The strategic sequence is reach first, then trust, then expertise, then objection handling, then conversion support; waves should mix roles progressively instead of producing only one role for months.
 - Existing-article `content_refresh` is a SERP/value-gap SEO improvement lane.
   It must start from relevant keyphrases, competitor SERP coverage, missing user
@@ -124,12 +126,34 @@ Current phase note: Clean Astrogen runs native article, topic, growth-action, an
 
 ## Roadmap Evolution
 
+- Phase 50.6 added: Semantic Core Provider Contract Activation. The target state is an explicitly enabled remote provider gate plus an explicit Paperclip policy: exact semantic candidate batches of 1-10 may use `read_write`, live trend research uses a private-project cache, and standalone content parsing is an evidence-only bounded operation. Omitted modes remain mock/fixture and all other paid paths remain rejected. The phase includes live cost-ledger proof and deployment-drift checks.
+- Phase 50 revised: Content Portfolio And Curriculum Authority uses track targets 12/5/3/3/2. Audience segments are diversity guardrails, trend research fills only `audience_trends`, and western-astrology curriculum prerequisites may use typed curriculum proof without waiving ownership, cannibalization, SERP analysis, internal links, safety, or Winning Structure.
+
+- 2026-07-19: Owner-rejected CMS drafts 128 (`22 травня...`) and 131 (`Гороскоп Водолія на сьогодні`) were removed by CMO-delegated agents through the guarded Payload draft-deletion tool. Their daily/date upstream demand is terminal `no_action`; valid trend-derived CMS draft 132 remains unchanged. Runtime `.113` makes future issue monitors authoritative across successful handoff, failed-run release, stranded/productive recovery, and timer selection. Canonical refill now waits without repeated runs until the next permitted trend window at `2026-07-20T07:00:00Z`.
+
+- 2026-07-19: Phase 49 passed a live end-to-end canary. Trend report `run_20260719_030615_trend_topic_e0c18fbd` produced the validated non-date topic `таро для самопізнання вправи`; the native pipeline delivered CMS draft 132 with Winning Structure value units and one justified image retry. Runtime `.110` adds atomic `fieldPatch`, bounded response contracts, reserved automation completion, paragraph schema validation, and first-class publication monitoring. Topic is consumed, article delivered, and search-demand remains verified until publication evidence exists.
+
+- 2026-07-18: Phase 49 started. The private Semantic Core MCP is healthy and exposes `generate_trend_topic_report`. The Paperclip adapter is being upgraded so trend reports are project-scoped evidence only, never semantic imports or direct topic inventory. Search-demand policy now favors audience breadth, limits repetitive query families, and pauses explicit calendar-date themes such as `22 травня`.
+
 - 2026-07-16: Phase 47.1 started after a real native article case repeatedly
   cycled because the deployed adapter substituted local validation success for
   remote MCP validation. The repair makes remote validation authoritative,
   returns typed error paths, restores missing plugin activation and service
   supervision, and resumes the existing case only after a live plugin smoke.
   Current remote run: `wsrun_20260716120612098654_07b5d4ca8f`.
+- 2026-07-16: Article cadence was corrected from a one-slot normal run to a
+  bounded three-slot daily batch. The allocator now fills the current-day
+  deficit only from validated native ready topics, counts existing reservations
+  and deliveries, preserves the productive WIP cap of three, and continues
+  past a topic-specific failure without creating manual article tasks.
+- 2026-07-16: The allocator contract repair also fixed two harness defects:
+  bounded native case lists are direct JSON arrays (only `[]` is empty; a
+  non-array is a protocol error), and the Claude/fallback writers now have
+  distinct checked instruction roots. A fresh clean DB backup precedes the
+  live root repair; all 22 agent contracts are synchronized and verified.
+- 2026-07-16: Routine sync now converges unused routine env to `null`; the
+  old `controlled_target_1_after_phase41` flags are no longer injected into
+  article allocator heartbeats after the revisioned three-slot contract.
 - Phase 47 added: Winning Structure And Evidence-Backed Article Value. It upgrades the parked four-operation MCP adapter, makes Winning Structure the article ownership/value source of truth, introduces an eight-type Astrogen value system, adds a post-humanizer MC quality gate, and keeps Trend Discovery, selective GEO checks, and scaled-content auditing outside the normal per-article hot path.
 - 2026-07-15: Phase 47 completed on clean Astrogen. `winning-structure-mcp`
   v0.2 exposes five verified private tools with durable result import and
@@ -211,3 +235,9 @@ Current phase note: Clean Astrogen runs native article, topic, growth-action, an
 Last session: 2026-04-29
 Stopped at: Astrogen context restored locally; ready for Astrogen-specific planning/execution.
 Resume file: None
+## 2026-07-16: Article batch recovery invariant
+
+- Daily article target is three CMS drafts, bounded by productive WIP and ready-topic inventory.
+- Pipeline case lists are direct arrays; an object-shaped response is a protocol error, not zero inventory.
+- A hard cover-image QA failure routes through native CMO `image_recovery_review`, which may authorize exactly one corrective provider retry without owner approval. A per-axis size deviation within 20% is accepted when visual QA passes and never authorizes a retry.
+- New general editorial CMS drafts resolve the idempotent `Astrogen` brand author through the Payload adapter before create; the create payload must carry the verified author id. Missing author resolution is a typed adapter blocker, never an owner decision.
