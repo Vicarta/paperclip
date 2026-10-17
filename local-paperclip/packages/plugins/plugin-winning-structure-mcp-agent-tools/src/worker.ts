@@ -125,7 +125,7 @@ async function callMcpTool(input: {
         billingType: WINNING_STRUCTURE_COST_BILLING_TYPE,
         model: WINNING_STRUCTURE_COST_MODEL,
         service: "winning-structure",
-        operation: input.toolName,
+        operation: "completed_run_estimate",
         toolName: input.toolName,
         inputTokens: 0,
         cachedInputTokens: 0,
@@ -139,6 +139,10 @@ async function callMcpTool(input: {
         recordedAt: new Date().toISOString(),
         amountMicros,
         currency: result.providerCost.currency,
+        estimationStatus: result.providerCost.estimationStatus,
+        telemetryStatus: result.providerCost.telemetryStatus,
+        pricingSource: result.providerCost.pricingSource,
+        pricingVersion: result.providerCost.pricingVersion,
       });
     }
   }

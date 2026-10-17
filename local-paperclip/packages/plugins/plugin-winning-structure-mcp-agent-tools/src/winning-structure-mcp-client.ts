@@ -54,6 +54,10 @@ export type WinningStructureProviderCost = {
   amountUsd: number;
   currency: string;
   runId: string | null;
+  estimationStatus: "estimated";
+  telemetryStatus: "complete";
+  pricingSource: string;
+  pricingVersion: string;
 };
 
 const ACTIVE_STATUSES = new Set([
@@ -183,6 +187,12 @@ function assertOperationArguments(
     }
     if (!isRecord(payload.market)) {
       throw new Error("Winning Structure MCP market is required");
+    }
+    if (payload.gist_enabled !== undefined && typeof payload.gist_enabled !== "boolean") {
+      throw new Error("Winning Structure MCP gist_enabled must be a boolean");
+    }
+    if (payload.cost_policy !== undefined && !isRecord(payload.cost_policy)) {
+      throw new Error("Winning Structure MCP cost_policy must be an object");
     }
   } else {
     assertRequiredString(payload, "run_id");
@@ -319,6 +329,8 @@ function compactSummary(
     "status",
     "stage",
     "valid",
+    "validation_source",
+    "task_input_contract_version",
     "accepted",
     "reused_submission",
     "reused_existing_run",
@@ -326,6 +338,7 @@ function compactSummary(
     "effective_input_hash",
     "decision_set_version",
     "human_review_required",
+    "gist_enabled",
     "expires_at",
   ];
   for (const key of scalarKeys) {
@@ -347,6 +360,15 @@ function compactSummary(
   }
   if (readNonEmptyString(payload.error)) summary.error = payload.error;
   if (isRecord(payload.cost)) summary.cost = payload.cost;
+  if (isRecord(payload.content_selection_audit)) {
+    summary.content_selection_audit = {
+      enabled: payload.content_selection_audit.enabled,
+      policy_version: payload.content_selection_audit.policy_version,
+    };
+  }
+  if (isRecord(payload.meta_evidence_brief)) {
+    summary.meta_evidence_brief_status = payload.meta_evidence_brief.status;
+  }
   if (isRecord(payload.retention)) summary.retention = payload.retention;
   if (Array.isArray(payload.winning_structure)) {
     summary.winning_structure_count = payload.winning_structure.length;
@@ -379,14 +401,31 @@ export function extractWinningStructureProviderCost(
   const cost = candidates.find(isRecord);
   if (!cost) return null;
 
-  const amountUsd = readNonNegativeNumber(cost.total_estimated)
-    ?? readNonNegativeNumber(cost.total);
+  if (readNonEmptyString(cost.estimation_status) !== "estimated") return null;
+  if (readNonEmptyString(cost.telemetry_status) !== "complete") return null;
+
+  const amountUsd = readNonNegativeNumber(cost.total_estimated);
   if (amountUsd === null) return null;
+  const pricingSource = readNonEmptyString(cost.pricing_source);
+  const pricingVersion = readNonEmptyString(cost.pricing_version);
+  if (!pricingSource || !pricingVersion) return null;
+  if (amountUsd === 0) {
+    if (!isRecord(cost.request_counts)) return null;
+    const paidOperationObserved = Object.values(cost.request_counts).some(
+      (value) => readNonNegativeNumber(value) !== null && Number(value) > 0,
+    );
+    if (paidOperationObserved) return null;
+    if (Array.isArray(cost.usage_gaps) && cost.usage_gaps.length > 0) return null;
+  }
 
   return {
     amountUsd,
     currency: readNonEmptyString(cost.currency)?.toUpperCase() ?? "USD",
     runId: readNonEmptyString(payload.run_id),
+    estimationStatus: "estimated",
+    telemetryStatus: "complete",
+    pricingSource,
+    pricingVersion,
   };
 }
 

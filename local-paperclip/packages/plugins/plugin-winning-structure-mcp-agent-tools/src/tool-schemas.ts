@@ -50,6 +50,36 @@ const openObjectSchema = {
   additionalProperties: true,
 } as const;
 
+const costOperationNames = [
+  "serper_search_request",
+  "dataforseo_content_parsing_request",
+  "dataforseo_screenshot_request",
+  "serper_scrape_request",
+  "llmlayer_scrape_request",
+  "llmlayer_proxy_scrape_request",
+  "llmlayer_screenshot_request",
+  "llmlayer_proxy_screenshot_request",
+  "exa_search_request",
+  "openai_chat_completion",
+] as const;
+
+const costPolicySchema = {
+  type: "object",
+  properties: {
+    currency: { type: "string", enum: ["USD"] },
+    operation_rates_usd: {
+      type: "object",
+      properties: Object.fromEntries(
+        costOperationNames.map((name) => [name, { type: "number", minimum: 0 }]),
+      ),
+      additionalProperties: false,
+    },
+    pricing_source: { type: "string", minLength: 1 },
+    pricing_version: { type: "string", minLength: 1 },
+  },
+  additionalProperties: false,
+} as const;
+
 export const WINNING_STRUCTURE_TASK_PAYLOAD_SCHEMA = {
   type: "object",
   properties: {
@@ -58,7 +88,9 @@ export const WINNING_STRUCTURE_TASK_PAYLOAD_SCHEMA = {
     input_hash: { type: "string" },
     task: taskSchema,
     market: marketSchema,
+    gist_enabled: { type: "boolean", default: true },
     cache_policy: openObjectSchema,
+    cost_policy: costPolicySchema,
     editorial_constraints: {
       type: "array",
       items: { type: "string" },

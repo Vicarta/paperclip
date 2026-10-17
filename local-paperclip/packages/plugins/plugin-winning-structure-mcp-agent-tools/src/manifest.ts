@@ -15,7 +15,7 @@ const manifest: PaperclipPluginManifestV1 = {
   version: PLUGIN_VERSION,
   displayName: "Winning Structure MCP Agent Tools",
   description:
-    "Server-side adapter for the five-operation Winning Structure MCP lifecycle, including paused-run decisions, contract verification, and provider-reported cost accounting without exposing endpoint credentials.",
+    "Server-side adapter for the five-operation Winning Structure MCP lifecycle, including evidence routing, optional GIST selection artifacts, paused-run decisions, contract verification, and conservative completed-run cost accounting without exposing endpoint credentials.",
   author: "Paperclip",
   categories: ["connector", "automation"],
   capabilities: [
@@ -64,7 +64,7 @@ const manifest: PaperclipPluginManifestV1 = {
       costAccountingMode: {
         type: "string",
         title: "Cost Accounting Mode",
-        description: "Write the provider-reported completed-run cost to the Paperclip cost ledger.",
+        description: "Write only a fully estimated, telemetry-complete run cost to the Paperclip cost ledger.",
         enum: ["provider_reported", "disabled"],
         default: "provider_reported",
       },

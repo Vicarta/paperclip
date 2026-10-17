@@ -1,11 +1,11 @@
 export const PLUGIN_ID = "paperclip.winning-structure-mcp-agent-tools";
-export const PLUGIN_VERSION = "0.2.0";
+export const PLUGIN_VERSION = "0.3.0";
 
 export const DEFAULT_WINNING_STRUCTURE_MCP_URL = "";
 
 export const WINNING_STRUCTURE_COST_PROVIDER = "winning-structure-mcp";
 export const WINNING_STRUCTURE_COST_BILLING_TYPE = "metered_api";
-export const WINNING_STRUCTURE_COST_MODEL = "winning-structure-mcp-v1";
+export const WINNING_STRUCTURE_COST_MODEL = "winning-structure-mcp-v1.5";
 
 export const SLOT_IDS = {
   settingsPage: "winning-structure-mcp-agent-tools-settings-page",

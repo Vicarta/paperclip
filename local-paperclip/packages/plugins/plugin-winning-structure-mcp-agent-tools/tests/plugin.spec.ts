@@ -12,6 +12,7 @@ import {
   normalizeWinningStructureToolResult,
   prepareWinningStructureMcpArguments,
   verifyWinningStructureMcpContract,
+  type WinningStructureProviderCost,
 } from "../src/winning-structure-mcp-client.js";
 
 vi.mock("../src/winning-structure-mcp-client.js", async () => {
@@ -40,6 +41,7 @@ const namespace = {
 const taskPayload = {
   ...namespace,
   idempotency_key: "winning-structure:task-1:v1",
+  gist_enabled: true,
   task: {
     page_mode: "existing",
     target_url: "https://www.diskinternals.com/vmfs-recovery/convert-vhd-to-vmdk/",
@@ -86,7 +88,7 @@ const toolRunCtx = {
 
 function normalizedResult(
   payload: Record<string, unknown>,
-  providerCost: { amountUsd: number; currency: string; runId: string | null } | null = null,
+  providerCost: WinningStructureProviderCost | null = null,
 ) {
   return {
     content: JSON.stringify(payload),
@@ -107,8 +109,8 @@ describe("plugin-winning-structure-mcp-agent-tools", () => {
     verifyWinningStructureMcpContractMock.mockResolvedValue([...MCP_TOOL_NAMES]);
   });
 
-  it("publishes the v0.2.0 five-operation manifest and required capabilities", () => {
-    expect(manifest.version).toBe("0.2.0");
+  it("publishes the v0.3.0 five-operation manifest and required capabilities", () => {
+    expect(manifest.version).toBe("0.3.0");
     expect(manifest.tools?.map((tool) => tool.name)).toEqual(Object.values(TOOL_NAMES));
     expect(manifest.capabilities).toEqual(
       expect.arrayContaining(["costs.write", "plugin.state.read", "plugin.state.write"]),
@@ -130,6 +132,10 @@ describe("plugin-winning-structure-mcp-agent-tools", () => {
       .toBe(true);
     expect(TOOL_PARAMETER_SCHEMAS.validateTaskInput.properties.business_context)
       .toMatchObject({ type: "object", additionalProperties: true });
+    expect(TOOL_PARAMETER_SCHEMAS.validateTaskInput.properties.gist_enabled)
+      .toMatchObject({ type: "boolean", default: true });
+    expect(TOOL_PARAMETER_SCHEMAS.validateTaskInput.properties.cost_policy)
+      .toMatchObject({ type: "object", additionalProperties: false });
     expect(TOOL_PARAMETER_SCHEMAS.getRunStatus.required).toContain("run_id");
     expect(TOOL_PARAMETER_SCHEMAS.submitRunDecisions.properties.decisions)
       .toMatchObject({ minItems: 1, maxItems: 1 });
@@ -267,6 +273,22 @@ describe("plugin-winning-structure-mcp-agent-tools", () => {
     ).toThrow(/idempotency_key is required/);
   });
 
+  it("rejects malformed Phase 32/33 top-level controls before the remote call", () => {
+    expect(() =>
+      prepareWinningStructureMcpArguments({
+        toolName: "validate_task_input",
+        args: { ...taskPayload, gist_enabled: "true" },
+      }),
+    ).toThrow(/gist_enabled must be a boolean/);
+
+    expect(() =>
+      prepareWinningStructureMcpArguments({
+        toolName: "start_winning_structure_run",
+        args: { ...taskPayload, cost_policy: [] },
+      }),
+    ).toThrow(/cost_policy must be an object/);
+  });
+
   it("enforces the client_key allowlist for task, lookup, and decision operations", () => {
     const allowedClientKeys = new Set(["diskinternals-us"]);
     expect(
@@ -350,6 +372,41 @@ describe("plugin-winning-structure-mcp-agent-tools", () => {
     expect(result.data.structuredContent).toBe(structuredContent);
   });
 
+  it("exposes remote validation proof in the compact agent-facing result", () => {
+    const structuredContent = {
+      valid: true,
+      validation_source: "remote_mcp",
+      task_input_contract_version: "winning-structure-task-input-v1.1",
+      input_hash: "input-hash-1",
+    };
+
+    const result = normalizeWinningStructureToolResult({ structuredContent });
+    const summary = JSON.parse(result.content) as Record<string, unknown>;
+
+    expect(summary).toMatchObject({
+      valid: true,
+      validation_source: "remote_mcp",
+      task_input_contract_version: "winning-structure-task-input-v1.1",
+      input_hash: "input-hash-1",
+    });
+  });
+
+  it("exposes remote validation proof from JSON text fallback", () => {
+    const payload = {
+      valid: true,
+      validation_source: "remote_mcp",
+      task_input_contract_version: "winning-structure-task-input-v1.1",
+      input_hash: "input-hash-2",
+    };
+
+    const result = normalizeWinningStructureToolResult({
+      content: [{ type: "text", text: JSON.stringify(payload) }],
+    });
+    const summary = JSON.parse(result.content) as Record<string, unknown>;
+
+    expect(summary).toMatchObject(payload);
+  });
+
   it("classifies stale and conflicting decision responses as non-retryable", () => {
     expect(
       classifyWinningStructureResult({
@@ -374,6 +431,9 @@ describe("plugin-winning-structure-mcp-agent-tools", () => {
       status: "completed",
       human_review_required: true,
       human_review_reasons: ["ownership_boundary_review"],
+      gist_enabled: true,
+      content_selection_audit: { enabled: true, policy_version: "evidence-selection-v1" },
+      meta_evidence_brief: { status: "verified_meta_fact_candidates" },
       winning_structure: Array.from({ length: 20 }, (_, index) => ({
         section_id: `section-${index}`,
         writer_instruction: "Detailed instruction that remains in structuredContent.",
@@ -388,6 +448,9 @@ describe("plugin-winning-structure-mcp-agent-tools", () => {
       winning_structure_count: 20,
       added_value_plan_count: 1,
       artifact_keys: ["json", "markdown"],
+      gist_enabled: true,
+      content_selection_audit: { enabled: true, policy_version: "evidence-selection-v1" },
+      meta_evidence_brief_status: "verified_meta_fact_candidates",
     });
     expect(result.content).not.toContain("Detailed instruction");
     expect(result.data.structuredContent).toBe(structuredContent);
@@ -437,35 +500,88 @@ describe("plugin-winning-structure-mcp-agent-tools", () => {
     expect(redacted.content).not.toContain("super-secret-token");
   });
 
-  it("extracts and normalizes completed provider costs from result or status metadata", () => {
+  it("extracts only telemetry-complete estimated costs from completed runs", () => {
     expect(
       extractWinningStructureProviderCost({
         run_id: "wsrun_1",
         status: "completed",
-        cost: { total_estimated: "0.001", currency: "usd" },
+        cost: {
+          estimation_status: "estimated",
+          telemetry_status: "complete",
+          total_estimated: "0.001",
+          currency: "usd",
+          pricing_source: "Astrogen project pricing policy",
+          pricing_version: "2026-07",
+        },
       }),
-    ).toEqual({ amountUsd: 0.001, currency: "USD", runId: "wsrun_1" });
+    ).toEqual({
+      amountUsd: 0.001,
+      currency: "USD",
+      runId: "wsrun_1",
+      estimationStatus: "estimated",
+      telemetryStatus: "complete",
+      pricingSource: "Astrogen project pricing policy",
+      pricingVersion: "2026-07",
+    });
 
     expect(
       extractWinningStructureProviderCost({
         run_id: "wsrun_2",
         status: "completed",
-        status_metadata: { cost: { total: 1.25 } },
+        status_metadata: {
+          cost: {
+            estimation_status: "estimated",
+            telemetry_status: "complete",
+            total_estimated: 1.25,
+            pricing_source: "Astrogen project pricing policy",
+            pricing_version: "2026-07",
+          },
+        },
       }),
-    ).toEqual({ amountUsd: 1.25, currency: "USD", runId: "wsrun_2" });
+    ).toEqual({
+      amountUsd: 1.25,
+      currency: "USD",
+      runId: "wsrun_2",
+      estimationStatus: "estimated",
+      telemetryStatus: "complete",
+      pricingSource: "Astrogen project pricing policy",
+      pricingVersion: "2026-07",
+    });
 
     expect(
       extractWinningStructureProviderCost({
         run_id: "wsrun_zero",
         status: "completed",
-        cost: { total_estimated: 0, currency: "usd" },
+        cost: {
+          estimation_status: "estimated",
+          telemetry_status: "complete",
+          total_estimated: 0,
+          currency: "usd",
+          request_counts: {},
+          usage_gaps: [],
+          pricing_source: "Astrogen project pricing policy",
+          pricing_version: "2026-07",
+        },
       }),
-    ).toEqual({ amountUsd: 0, currency: "USD", runId: "wsrun_zero" });
+    ).toEqual({
+      amountUsd: 0,
+      currency: "USD",
+      runId: "wsrun_zero",
+      estimationStatus: "estimated",
+      telemetryStatus: "complete",
+      pricingSource: "Astrogen project pricing policy",
+      pricingVersion: "2026-07",
+    });
 
     for (const payload of [
-      { status: "fetching_serp", cost: { total_estimated: 1 } },
-      { status: "completed", cost: { total_estimated: -1 } },
-      { status: "completed", cost: { total_estimated: "not-a-number" } },
+      { status: "fetching_serp", cost: { estimation_status: "estimated", telemetry_status: "complete", total_estimated: 1 } },
+      { status: "completed", cost: { estimation_status: "partial", telemetry_status: "complete", total_estimated: null, priced_subtotal: 0.5 } },
+      { status: "completed", cost: { estimation_status: "estimated", telemetry_status: "partial", total_estimated: 1 } },
+      { status: "completed", cost: { estimation_status: "estimated", telemetry_status: "complete", total_estimated: 0, request_counts: { serper_search_request: 1 } } },
+      { status: "completed", cost: { estimation_status: "estimated", telemetry_status: "complete", total_estimated: -1 } },
+      { status: "completed", cost: { estimation_status: "estimated", telemetry_status: "complete", total_estimated: "not-a-number" } },
+      { status: "completed", cost: { estimation_status: "estimated", telemetry_status: "complete", total_estimated: 1, pricing_source: "missing-version" } },
+      { status: "completed", cost: { total: 1.25 } },
     ]) {
       expect(extractWinningStructureProviderCost(payload)).toBeNull();
     }
@@ -476,7 +592,15 @@ describe("plugin-winning-structure-mcp-agent-tools", () => {
     await plugin.definition.setup(harness.ctx);
     const completed = normalizedResult(
       { run_id: "wsrun_cost", status: "completed" },
-      { amountUsd: 0.001, currency: "USD", runId: "wsrun_cost" },
+      {
+        amountUsd: 0.001,
+        currency: "USD",
+        runId: "wsrun_cost",
+        estimationStatus: "estimated",
+        telemetryStatus: "complete",
+        pricingSource: "Astrogen project pricing policy",
+        pricingVersion: "2026-07",
+      },
     );
     callWinningStructureMcpToolMock
       .mockResolvedValueOnce(completed)
@@ -504,7 +628,7 @@ describe("plugin-winning-structure-mcp-agent-tools", () => {
       costCents: 0,
       amountMicros: 1000,
       currency: "USD",
-      operation: "get_run_status",
+      operation: "completed_run_estimate",
     });
   });
 
@@ -524,7 +648,15 @@ describe("plugin-winning-structure-mcp-agent-tools", () => {
     await plugin.definition.setup(harness.ctx);
     const completed = normalizedResult(
       { run_id: "wsrun_zero_cost", status: "completed" },
-      { amountUsd: 0, currency: "USD", runId: "wsrun_zero_cost" },
+      {
+        amountUsd: 0,
+        currency: "USD",
+        runId: "wsrun_zero_cost",
+        estimationStatus: "estimated",
+        telemetryStatus: "complete",
+        pricingSource: "Astrogen project pricing policy",
+        pricingVersion: "2026-07",
+      },
     );
     callWinningStructureMcpToolMock
       .mockResolvedValueOnce(completed)
@@ -545,7 +677,7 @@ describe("plugin-winning-structure-mcp-agent-tools", () => {
     expect(harness.costs[0]).toMatchObject({
       costCents: 0,
       amountMicros: 0,
-      operation: "get_run_status",
+      operation: "completed_run_estimate",
       provider: "winning-structure-mcp",
     });
   });
@@ -558,7 +690,15 @@ describe("plugin-winning-structure-mcp-agent-tools", () => {
     await plugin.definition.setup(harness.ctx);
     callWinningStructureMcpToolMock.mockResolvedValueOnce(normalizedResult(
       { run_id: "wsrun_disabled_cost", status: "completed" },
-      { amountUsd: 0.25, currency: "USD", runId: "wsrun_disabled_cost" },
+      {
+        amountUsd: 0.25,
+        currency: "USD",
+        runId: "wsrun_disabled_cost",
+        estimationStatus: "estimated",
+        telemetryStatus: "complete",
+        pricingSource: "Astrogen project pricing policy",
+        pricingVersion: "2026-07",
+      },
     ));
 
     const result = await harness.executeTool(

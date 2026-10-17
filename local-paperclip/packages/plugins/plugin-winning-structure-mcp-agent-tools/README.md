@@ -1,4 +1,4 @@
-# Winning Structure MCP Agent Tools v0.2.0
+# Winning Structure MCP Agent Tools v0.3.0
 
 Thin Paperclip adapter for a Winning Structure MCP server.
 
@@ -124,6 +124,18 @@ Recommended inputs:
 - `cache_policy`
 - `editorial_constraints`
 - `business_context`
+- `gist_enabled` (defaults to `true`)
+- project-scoped `cost_policy` with a pricing source and version
 
 The MCP must not return final publishable prose. Allowed recommendation fields
 include `section_purpose`, `writer_instruction`, and `examples_to_avoid`.
+
+`content_selection_audit` and `meta_evidence_brief` are recommendation evidence,
+not publishable article copy or generated metadata. A baseline comparison uses a
+separate run and idempotency key; the adapter never chooses a winner.
+
+The adapter records a Paperclip ledger event only when the completed result has
+`estimation_status=estimated`, `telemetry_status=complete`, and a numeric
+`total_estimated`. Partial `priced_subtotal` values and unknown totals remain in
+the durable MCP result but are never presented as the complete run cost. A zero
+cost is accepted only when request telemetry proves no paid operation occurred.
