@@ -126,6 +126,21 @@ try {
         output_language: "uk-UA",
         primary_device: "mobile",
       },
+      gist_enabled: true,
+      cost_policy: {
+        currency: "USD",
+        operation_rates_usd: {
+          serper_search_request: 0.01,
+          dataforseo_content_parsing_request: 0.10,
+          dataforseo_screenshot_request: 0.03,
+          serper_scrape_request: 0.01,
+          llmlayer_scrape_request: 0.02,
+          exa_search_request: 0.005,
+          openai_chat_completion: 0.004,
+        },
+        pricing_source: "SEO Winning Structure integration guide project baseline",
+        pricing_version: "2026-07",
+      },
       ownership_context: {
         forbidden_competing_urls: [],
         forbidden_topics: [],
@@ -181,6 +196,12 @@ try {
   if (typeof validation.input_hash !== "string" || !validation.input_hash) {
     throw new Error("Winning Structure validation did not return input_hash");
   }
+  if (validation.normalized_input?.gist_enabled !== true) {
+    throw new Error("Winning Structure validation did not preserve gist_enabled=true");
+  }
+  if (validation.normalized_input?.cost_policy?.pricing_version !== "2026-07") {
+    throw new Error("Winning Structure validation did not preserve the project cost policy");
+  }
   console.log(JSON.stringify({
     ok: true,
     toolCount: names.length,
@@ -190,6 +211,8 @@ try {
     warningCount: Array.isArray(validation?.warnings) ? validation.warnings.length : 0,
     inputHashPresent: typeof validation?.input_hash === "string" && validation.input_hash.length > 0,
     validationSource: validation.validation_source,
+    gistEnabled: validation.normalized_input?.gist_enabled ?? null,
+    pricingVersion: validation.normalized_input?.cost_policy?.pricing_version ?? null,
     responseShape: {
       top: Object.keys(result ?? {}).sort(),
       execution: Object.keys(execution ?? {}).sort(),

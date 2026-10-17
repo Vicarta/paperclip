@@ -100,13 +100,49 @@ async function main() {
     assert(breakdown?.targetPipelineId === topics.id, "Delegated breakdown does not target topic inventory");
     assert(breakdown?.targetStageKey === "candidate", "Delegated breakdown does not target candidate");
     assert(breakdown?.whenCaseField === "selectedAction" && breakdown?.whenCaseFieldEquals === "new_article", "Breakdown action guard is missing");
-    assert(breakdown?.waitForPieces === true && breakdown?.whenFinishedMoveTo === "verified", "Breakdown does not wait for downstream completion");
+    assert(breakdown?.waitForPieces === true && breakdown?.whenFinishedMoveTo === "verified", "New-article breakdown does not wait for guarded article completion");
 
     const candidate = topic.stages.find((stage) => stage.key === "candidate");
     const guard = candidate?.config?.intakeGuard;
     assert(guard?.requiredParentPipelineId === opportunities.id, "Topic intake parent pipeline guard is missing");
     assert(guard?.requiredParentStageKeys?.length === 1 && guard.requiredParentStageKeys[0] === "delegated", "Topic intake parent stage guard is incorrect");
     assert(guard?.requiredParentCaseField === "selectedAction" && guard?.requiredParentCaseFieldEquals === "new_article", "Topic intake action guard is incorrect");
+    const ready = topic.stages.find((stage) => stage.key === "ready");
+    const readyBreakdown = ready?.config?.breakdown;
+    assert(
+      readyBreakdown?.whenCaseField === "selectedAction" && readyBreakdown?.whenCaseFieldEquals === "new_article",
+      "Topic ready breakdown eligibility guard is missing",
+    );
+
+    const strategistGrant = psql(`
+      select scope::text
+      from principal_permission_grants pg
+      join agents a on a.id::text=pg.principal_id
+      where pg.company_id=${sqlLiteral(COMPANY_ID)}::uuid
+        and pg.principal_type='agent'
+        and pg.permission_key='pipelines:write'
+        and a.name='SEO Blog Content Strategist';
+    `);
+    const strategistPipelineIds = strategistGrant ? JSON.parse(strategistGrant).pipelineIds ?? [] : [];
+    assert(strategistPipelineIds.includes(opportunities.id), "SEO Blog Content Strategist lacks scoped write access to search-demand opportunities");
+
+    const legacyReadyCount = Number(psql(`
+      select count(*)
+      from pipeline_cases pc
+      join pipeline_stages ps on ps.id=pc.stage_id
+      left join pipeline_cases parent on parent.id=pc.parent_case_id
+      left join pipelines parent_pipeline on parent_pipeline.id=parent.pipeline_id
+      where pc.company_id=${sqlLiteral(COMPANY_ID)}::uuid
+        and pc.pipeline_id=${sqlLiteral(topics.id)}::uuid
+        and ps.key='ready'
+        and pc.terminal_kind is null
+        and pc.hidden_from_board_at is null
+        and (
+          coalesce(pc.fields->>'selectedAction','') <> 'new_article'
+          or parent_pipeline.key is distinct from 'astrogen-search-demand-opportunities'
+        );
+    `));
+    assert(legacyReadyCount === 0, `Lineage-invalid legacy ready topics remain: ${legacyReadyCount}`);
 
     const forbidden = await response(token, "POST", `/pipelines/${topics.id}/cases`, {
       caseKey: `phase48-forbidden-direct-topic-${keyId}`,
@@ -133,9 +169,10 @@ async function main() {
         healthOk: true,
         stages: expectedStages,
         guardedBreakdown: true,
-        waitsForDownstreamOutcome: true,
+        waitsForNewArticleOutcomeOnly: true,
       },
-      topicInventory: { id: topics.id, healthOk: true, guardedIntake: true },
+      topicInventory: { id: topics.id, healthOk: true, guardedIntake: true, guardedReadyBreakdown: true, legacyReadyCount },
+      strategistOpportunityWriteAccess: true,
       forbiddenDirectTopicSmoke: {
         status: forbidden.status,
         code: forbidden.body?.details?.code,

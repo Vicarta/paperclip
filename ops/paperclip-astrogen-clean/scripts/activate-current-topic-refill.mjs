@@ -88,13 +88,13 @@ async function main() {
       fields: {
         findingFingerprint: fingerprint,
         actionClass: "content_supply",
-        businessOutcome: "Maintain at least 3 ready topics and target 10 so daily article cadence can continue without operator intervention.",
+        businessOutcome: "Maintain a rolling plan of at least 25 eligible ready or reserved topics across the approved 12/5/3/3/2 content portfolio, while daily article production remains capped at three.",
         evidenceRefs: [`readyTopicCount:${readyCases.length}`, "Payload CMS", "GSC/GA4", "semantic-core", "CrawlObserver"],
         managerId: cmo.id,
         executorId: strategist.id,
         blockerClass: null,
         nextReviewAt: new Date(Date.now() + 86400000).toISOString(),
-        completionProof: "3-10 stable native topic candidate case ids are present; validator transitions evidence-backed safe topics to ready; low-water mark is at least 3 when evidence supports it.",
+        completionProof: "At least 25 lineage-valid native topic case ids satisfy western_astrology_learning=12, audience_applied_questions=5, audience_trends=3, trust_expert_method_boundaries=3, commercial_unmet_demand=2, and next-content-plan lists the same ids with evidence and internal-link plans.",
         measurementWindow: "Review ready inventory before the next daily 10:00 Europe/Kiev allocator run.",
       },
     });

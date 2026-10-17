@@ -101,7 +101,10 @@ async function main() {
     );
 
     assert(readyTopics.length > 0 && readyTopics.length <= 10, `Unexpected ready topic count: ${readyTopics.length}`);
-    assert(secondReadyTopic.length === Math.min(1, Math.max(0, readyTopics.length - 1)), "Pagination did not return the expected second ready topic");
+    assert(
+      secondReadyTopic.length === Math.min(1, Math.max(0, readyTopics.length - 1)),
+      `Pagination did not return the expected second ready topic: firstPage=${JSON.stringify(readyTopics.map((row) => row.case.caseKey))}; secondPage=${JSON.stringify(secondReadyTopic.map((row) => row.case.caseKey))}`,
+    );
     assert(articleWip.length <= 10, `Article WIP exceeded bound: ${articleWip.length}`);
     assert(refill.length <= 1, `Exact canonical refill lookup returned duplicates: ${refill.length}`);
 
