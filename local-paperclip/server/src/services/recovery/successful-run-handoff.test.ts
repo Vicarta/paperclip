@@ -29,7 +29,10 @@ const issue = {
   status: "in_progress",
   assigneeAgentId: "agent-1",
   assigneeUserId: null,
+  executionPolicy: null,
   executionState: null,
+  monitorNextCheckAt: null,
+  monitorAttemptCount: 0,
 } as any;
 
 const agent = {
@@ -118,6 +121,40 @@ describe("successful run handoff decision", () => {
       kind: "skip",
       reason: "issue already has an active execution path",
     });
+  });
+
+  it("does not queue when a future scheduled monitor owns the continuation", () => {
+    expect(decide({
+      issue: {
+        ...issue,
+        executionPolicy: {
+          monitor: {
+            nextCheckAt: "2099-01-01T00:00:00.000Z",
+            scheduledBy: "assignee",
+          },
+        },
+        monitorNextCheckAt: new Date("2099-01-01T00:00:00.000Z"),
+      } as any,
+    })).toEqual({
+      kind: "skip",
+      reason: "future scheduled monitor owns the next action",
+    });
+  });
+
+  it("queues normally after the scheduled monitor becomes due", () => {
+    const decision = decide({
+      issue: {
+        ...issue,
+        executionPolicy: {
+          monitor: {
+            nextCheckAt: "2000-01-01T00:00:00.000Z",
+            scheduledBy: "assignee",
+          },
+        },
+        monitorNextCheckAt: new Date("2000-01-01T00:00:00.000Z"),
+      } as any,
+    });
+    expect(decision.kind).toBe("enqueue");
   });
 
   it("does not queue when another wake or dependency path already owns the next action", () => {

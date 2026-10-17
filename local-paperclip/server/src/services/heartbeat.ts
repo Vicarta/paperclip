@@ -149,6 +149,7 @@ import {
   buildSuccessfulRunHandoffRequiredNotice,
   decideRunLivenessContinuation,
   decideSuccessfulRunHandoff,
+  hasScheduledMonitor,
   findExistingFinishSuccessfulRunHandoffWake,
   findExistingRunLivenessContinuationWake,
   SUCCESSFUL_RUN_HANDOFF_REQUIRED_NOTICE_BODY,
@@ -5407,7 +5408,10 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
         status: issues.status,
         assigneeAgentId: issues.assigneeAgentId,
         assigneeUserId: issues.assigneeUserId,
+        executionPolicy: issues.executionPolicy,
         executionState: issues.executionState,
+        monitorNextCheckAt: issues.monitorNextCheckAt,
+        monitorAttemptCount: issues.monitorAttemptCount,
         projectId: issues.projectId,
       })
       .from(issues)
@@ -7333,6 +7337,7 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
           isNull(issues.assigneeUserId),
           isNull(issues.hiddenAt),
           inArray(issues.status, [...TIMER_ACTIONABLE_ISSUE_STATUSES]),
+          or(isNull(issues.monitorNextCheckAt), lte(issues.monitorNextCheckAt, new Date())),
         ),
       )
       .limit(1)
@@ -10719,7 +10724,8 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
         (issue.status === "todo" || issue.status === "in_progress") &&
         !issue.assigneeUserId &&
         issue.assigneeAgentId === run.agentId &&
-        (run.status === "failed" || run.status === "timed_out" || run.status === "cancelled");
+        (run.status === "failed" || run.status === "timed_out" || run.status === "cancelled") &&
+        !hasScheduledMonitor(issue, Date.now());
 
       if (!issueNeedsImmediateRecovery) {
         return { kind: "released" as const };

@@ -55,6 +55,7 @@ import {
 } from "./origins.js";
 import {
   classifyIssueGraphLiveness,
+  hasScheduledMonitor,
   type IssueLivenessFinding,
 } from "./issue-graph-liveness.js";
 import {
@@ -2790,6 +2791,11 @@ export function recoveryService(db: Db, deps: { enqueueWakeup: RecoveryWakeup })
 
       const agent = await getAgent(agentId);
       if (!agent || agent.companyId !== issue.companyId || !(await isAgentInvokable(agent))) {
+        result.skipped += 1;
+        continue;
+      }
+
+      if (hasScheduledMonitor(issue, Date.now())) {
         result.skipped += 1;
         continue;
       }

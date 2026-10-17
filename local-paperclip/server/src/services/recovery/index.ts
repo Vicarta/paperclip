@@ -14,6 +14,7 @@ export type {
 } from "./origins.js";
 export {
   classifyIssueGraphLiveness,
+  hasScheduledMonitor,
 } from "./issue-graph-liveness.js";
 export type {
   IssueGraphLivenessInput,

@@ -3439,6 +3439,40 @@ describeEmbeddedPostgres("heartbeat orphaned process recovery", () => {
     }
   });
 
+  it("does not recover a productive in-progress issue before its future monitor is due", async () => {
+    const { agentId, issueId, runId } = await seedStrandedIssueFixture({
+      status: "in_progress",
+      runStatus: "succeeded",
+      livenessState: "advanced",
+    });
+    const nextCheckAt = new Date(Date.now() + 60 * 60 * 1000);
+    await db
+      .update(issues)
+      .set({
+        executionPolicy: {
+          mode: "normal",
+          stages: [],
+          monitor: {
+            kind: "external_service",
+            nextCheckAt: nextCheckAt.toISOString(),
+            scheduledBy: "assignee",
+          },
+        },
+        monitorNextCheckAt: nextCheckAt,
+      })
+      .where(eq(issues.id, issueId));
+    const heartbeat = heartbeatService(db);
+
+    const result = await heartbeat.reconcileStrandedAssignedIssues();
+    expect(result.continuationRequeued).toBe(0);
+    expect(result.escalated).toBe(0);
+    expect(result.skipped).toBe(1);
+    expect(result.issueIds).toEqual([]);
+
+    const runs = await db.select().from(heartbeatRuns).where(eq(heartbeatRuns.agentId, agentId));
+    expect(runs.map((row) => row.id)).toEqual([runId]);
+  });
+
   it("reuses the raced stranded recovery issue when duplicate active recovery creation conflicts", async () => {
     const { companyId, issueId } = await seedStrandedIssueFixture({
       status: "in_progress",
