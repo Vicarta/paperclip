@@ -53,6 +53,42 @@ function extractJsonObjectText(text: string): string | null {
   return null;
 }
 
+export function isLikelyTruncatedIssueProtocol(text: string): boolean {
+  let candidate = text.trim();
+  if (!candidate) return false;
+
+  candidate = candidate.replace(/^```(?:json)?\s*/i, "");
+  if (!candidate.startsWith("{")) return false;
+
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+
+  for (const char of candidate) {
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (char === "\\") {
+        escaped = true;
+      } else if (char === '"') {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (char === '"') {
+      inString = true;
+    } else if (char === "{") {
+      depth += 1;
+    } else if (char === "}") {
+      depth -= 1;
+      if (depth < 0) return false;
+    }
+  }
+
+  return depth > 0 || inString || escaped;
+}
+
 export function extractNativePipelineCaseId(text: string): string | null {
   const match = /(?:^|\n)\s*-?\s*case_id:\s*([0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12})\b/im.exec(text);
   return match?.[1]?.toLowerCase() ?? null;

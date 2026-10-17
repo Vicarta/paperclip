@@ -23,6 +23,11 @@ type PipelineTransitionResult = {
   version: number | null;
 };
 
+export type DeterministicPipelineTransition = {
+  fromStageKey: string | null;
+  toStageKey: string;
+};
+
 function trimApiUrl(apiUrl: string) {
   return apiUrl.replace(/\/+$/, "");
 }
@@ -156,6 +161,70 @@ export async function uploadIssueArtifactViaApi(input: UploadIssueArtifactInput)
       `Paperclip issue artifact upload failed (${response.status}): ${summarizeErrorPayload(payload) || responseText || "unknown error"}`,
     );
   }
+}
+
+export async function resolveSingleAllowedPipelineTransitionViaApi(input: {
+  apiUrl: string;
+  authToken: string;
+  runId: string;
+  caseId: string;
+}): Promise<DeterministicPipelineTransition | null> {
+  const headers = buildHeaders(input);
+  const detailResponse = await fetch(
+    `${trimApiUrl(input.apiUrl)}/api/cases/${encodeURIComponent(input.caseId)}`,
+    { method: "GET", headers },
+  );
+  const detailText = await detailResponse.text();
+  const detailPayload = detailText ? parseJson(detailText) : null;
+  if (!detailResponse.ok) {
+    throw new Error(
+      `Pipeline case read failed (${detailResponse.status}): ${summarizeErrorPayload(detailPayload) || detailText || "unknown error"}`,
+    );
+  }
+
+  const detail = parseObject(detailPayload);
+  const pipeline = parseObject(detail.pipeline);
+  const stage = parseObject(detail.stage);
+  const pipelineId = typeof pipeline.id === "string" ? pipeline.id.trim() : "";
+  const stageId = typeof stage.id === "string" ? stage.id.trim() : "";
+  if (!pipelineId || !stageId || pipeline.enforceTransitions !== true) return null;
+
+  const pipelineResponse = await fetch(
+    `${trimApiUrl(input.apiUrl)}/api/pipelines/${encodeURIComponent(pipelineId)}`,
+    { method: "GET", headers },
+  );
+  const pipelineText = await pipelineResponse.text();
+  const pipelinePayload = pipelineText ? parseJson(pipelineText) : null;
+  if (!pipelineResponse.ok) {
+    throw new Error(
+      `Pipeline read failed (${pipelineResponse.status}): ${summarizeErrorPayload(pipelinePayload) || pipelineText || "unknown error"}`,
+    );
+  }
+
+  const pipelineDetail = parseObject(pipelinePayload);
+  const stages = Array.isArray(pipelineDetail.stages) ? pipelineDetail.stages.map(parseObject) : [];
+  const stageById = new Map(stages.flatMap((candidate) => {
+    const id = typeof candidate.id === "string" ? candidate.id.trim() : "";
+    const key = typeof candidate.key === "string" ? candidate.key.trim() : "";
+    const kind = typeof candidate.kind === "string" ? candidate.kind.trim() : "";
+    return id && key ? [[id, { key, kind }] as const] : [];
+  }));
+  const targetKeys = new Set(
+    (Array.isArray(pipelineDetail.transitions) ? pipelineDetail.transitions : [])
+      .map(parseObject)
+      .filter((transition) => transition.fromStageId === stageId)
+      .flatMap((transition) => {
+        const targetId = typeof transition.toStageId === "string" ? transition.toStageId.trim() : "";
+        const target = targetId ? stageById.get(targetId) : null;
+        if (!target || target.kind === "cancelled" || target.key === "cancelled") return [];
+        return [target.key];
+      }),
+  );
+  if (targetKeys.size !== 1) return null;
+  return {
+    fromStageKey: typeof stage.key === "string" ? stage.key : null,
+    toStageKey: [...targetKeys][0]!,
+  };
 }
 
 export async function transitionPipelineCaseViaApi(input: {

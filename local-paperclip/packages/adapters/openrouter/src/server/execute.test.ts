@@ -109,6 +109,57 @@ describe("OpenRouter execute issue protocol", () => {
     expect(body.comment).toContain("Here is the draft without JSON.");
   });
 
+  it("leaves a truncated issue protocol in progress for bounded automatic retry", async () => {
+    vi.stubEnv("PAPERCLIP_API_URL", "https://paperclip.example");
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(openRouterResponse([
+        "```json",
+        "{",
+        '  "status": "done",',
+        '  "artifact": {',
+        '    "relativePath": "work/draft.md",',
+        '    "body": "# Draft\\n\\nIncomplete article',
+      ].join("\n")));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await execute(makeContext());
+
+    expect(result.exitCode).toBe(1);
+    expect(result.errorCode).toBe("protocol_response_truncated");
+    expect(result.errorFamily).toBe("transient_upstream");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(result.resultJson).toMatchObject({
+      protocol: {
+        applied: false,
+        error: "protocol_response_truncated",
+      },
+    });
+  });
+
+  it("accepts one complete fenced issue protocol object", async () => {
+    vi.stubEnv("PAPERCLIP_API_URL", "https://paperclip.example");
+    const payload = {
+      status: "done",
+      comment: "Draft complete.",
+      artifact: {
+        relativePath: "work/draft.md",
+        body: "# Draft",
+      },
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(openRouterResponse(`\`\`\`json\n${JSON.stringify(payload)}\n\`\`\``))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: "attachment-1" }), { status: 201 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await execute(makeContext());
+
+    expect(result.exitCode).toBe(0);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
   it("passes sanitized provider routing to OpenRouter", async () => {
     const fetchMock = vi
       .fn()
@@ -230,5 +281,129 @@ describe("OpenRouter execute issue protocol", () => {
       expectedVersion: 8,
     });
     expect(JSON.parse(String(fetchMock.mock.calls[4]?.[1]?.body))).toMatchObject({ status: "done" });
+  });
+
+  it("infers the only allowed native transition when a completed response omits it", async () => {
+    vi.stubEnv("PAPERCLIP_API_URL", "https://paperclip.example");
+    const caseDetail = {
+      case: { id: "11111111-1111-4111-8111-111111111111", version: 8 },
+      stage: { id: "stage-draft", key: "draft" },
+      pipeline: { id: "pipeline-1", enforceTransitions: true },
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(openRouterResponse(JSON.stringify({
+        status: "done",
+        comment: "Canonical draft is ready.",
+        document: null,
+        artifact: {
+          relativePath: "work/59-seo-blog-article-drafts/active/native-inferred.md",
+          body: "# Draft",
+        },
+        pipelineTransition: null,
+      })))
+      .mockResolvedValueOnce(new Response(JSON.stringify(caseDetail), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        id: "pipeline-1",
+        enforceTransitions: true,
+        stages: [
+          { id: "stage-draft", key: "draft", kind: "working" },
+          { id: "stage-validate", key: "validate", kind: "review" },
+          { id: "stage-cancelled", key: "cancelled", kind: "cancelled" },
+        ],
+        transitions: [
+          { fromStageId: "stage-draft", toStageId: "stage-validate" },
+          { fromStageId: "stage-draft", toStageId: "stage-cancelled" },
+        ],
+      }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: "attachment-1" }), { status: 201 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(caseDetail), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ case: { version: 9 } }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await execute(makeContext({
+      context: {
+        paperclipIssueId: "issue-1",
+        paperclipIssueIdentifier: "AST-999",
+        paperclipCurrentIssueMarkdown: [
+          "# AST-999",
+          "",
+          "### Technical Context",
+          "- case_id: 11111111-1111-4111-8111-111111111111",
+        ].join("\n"),
+        paperclipWorkspace: { cwd: "/tmp/paperclip-openrouter-test" },
+      },
+    }));
+
+    expect(result.exitCode).toBe(0);
+    expect(fetchMock).toHaveBeenCalledTimes(7);
+    expect(fetchMock.mock.calls[5]?.[0]).toBe(
+      "https://paperclip.example/api/cases/11111111-1111-4111-8111-111111111111/transition",
+    );
+    expect(JSON.parse(String(fetchMock.mock.calls[5]?.[1]?.body))).toMatchObject({
+      toStageKey: "validate",
+      expectedVersion: 8,
+    });
+  });
+
+  it("preserves the artifact before blocking an ambiguous missing transition", async () => {
+    vi.stubEnv("PAPERCLIP_API_URL", "https://paperclip.example");
+    const caseDetail = {
+      case: { id: "11111111-1111-4111-8111-111111111111", version: 8 },
+      stage: { id: "stage-review", key: "review" },
+      pipeline: { id: "pipeline-1", enforceTransitions: true },
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(openRouterResponse(JSON.stringify({
+        status: "done",
+        comment: "Review artifact complete.",
+        artifact: {
+          relativePath: "work/review.md",
+          body: "# Review",
+        },
+        pipelineTransition: null,
+      })))
+      .mockResolvedValueOnce(new Response(JSON.stringify(caseDetail), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        id: "pipeline-1",
+        enforceTransitions: true,
+        stages: [
+          { id: "stage-review", key: "review" },
+          { id: "stage-approved", key: "approved" },
+          { id: "stage-rejected", key: "rejected" },
+        ],
+        transitions: [
+          { fromStageId: "stage-review", toStageId: "stage-approved" },
+          { fromStageId: "stage-review", toStageId: "stage-rejected" },
+        ],
+      }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: "attachment-1" }), { status: 201 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await execute(makeContext({
+      context: {
+        paperclipIssueId: "issue-1",
+        paperclipIssueIdentifier: "AST-999",
+        paperclipCurrentIssueMarkdown: [
+          "# AST-999",
+          "",
+          "### Technical Context",
+          "- case_id: 11111111-1111-4111-8111-111111111111",
+        ].join("\n"),
+        paperclipWorkspace: { cwd: "/tmp/paperclip-openrouter-test" },
+      },
+    }));
+
+    expect(result.exitCode).toBe(1);
+    expect(result.errorCode).toBe("pipeline_transition_required");
+    expect(result.resultJson).toMatchObject({ protocol: { artifactPreserved: true } });
+    expect(fetchMock).toHaveBeenCalledTimes(5);
+    expect(fetchMock.mock.calls[3]?.[0]).toBe(
+      "https://paperclip.example/api/companies/company-1/issues/issue-1/attachments",
+    );
+    expect(fetchMock.mock.calls[4]?.[0]).toBe("https://paperclip.example/api/issues/issue-1");
   });
 });

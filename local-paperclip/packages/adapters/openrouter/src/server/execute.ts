@@ -24,9 +24,11 @@ import { loadOpenRouterPromptSkills } from "./skills.js";
 import {
   buildOpenRouterIssueProtocolInstruction,
   extractNativePipelineCaseId,
+  isLikelyTruncatedIssueProtocol,
   parseOpenRouterIssueProtocolIntent,
 } from "./paperclip-protocol.js";
 import {
+  resolveSingleAllowedPipelineTransitionViaApi,
   transitionPipelineCaseViaApi,
   uploadIssueArtifactViaApi,
   upsertIssueDocumentViaApi,
@@ -35,11 +37,17 @@ import { persistIssueArtifactToWorkspace } from "./paperclip-workspace-artifact.
 
 type OpenRouterResponse = {
   model?: unknown;
+  choices?: unknown;
   usage?: {
     prompt_tokens?: unknown;
     completion_tokens?: unknown;
   } | null;
 } & Record<string, unknown>;
+
+function extractOpenRouterFinishReason(payload: OpenRouterResponse): string | null {
+  const firstChoice = Array.isArray(payload.choices) ? parseObject(payload.choices[0]) : {};
+  return asString(firstChoice.finish_reason ?? firstChoice.native_finish_reason, "").trim() || null;
+}
 
 function renderTextSection(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
@@ -380,6 +388,38 @@ export async function execute(
       }
 
       if (!intent) {
+        const finishReason = extractOpenRouterFinishReason(payload);
+        const responseWasTruncated =
+          finishReason === "length" || isLikelyTruncatedIssueProtocol(assistantText);
+
+        if (responseWasTruncated) {
+          return {
+            exitCode: 1,
+            signal: null,
+            timedOut: false,
+            errorCode: "protocol_response_truncated",
+            errorMessage:
+              "OpenRouter returned a truncated Paperclip issue JSON object; a bounded automatic retry is required.",
+            errorFamily: "transient_upstream",
+            usage: readUsage(payload.usage),
+            provider: "openrouter",
+            model: asString(payload.model, model),
+            billingType: "api",
+            costUsd: extractCostUsd(payload),
+            resultJson: {
+              provider: "openrouter",
+              protocol: {
+                applied: false,
+                error: "protocol_response_truncated",
+                finishReason,
+                rawPreview: assistantText.slice(0, 400),
+              },
+            },
+            summary: `OpenRouter ${model}`,
+            clearSession: true,
+          };
+        }
+
         await patchIssueViaApi({
           apiUrl,
           authToken,
@@ -512,33 +552,22 @@ export async function execute(
         };
       }
 
-      if (nativePipelineCaseId && intent.status === "done" && !intent.pipelineTransition) {
-        await patchIssueViaApi({
-          apiUrl,
-          authToken,
-          runId,
-          issueId: currentIssueId,
-          status: "blocked",
-          comment: buildProtocolBlockedComment({
-            reason: "A completed native pipeline stage must declare its typed pipelineTransition.",
-          }),
-        });
-        return {
-          exitCode: 1,
-          signal: null,
-          timedOut: false,
-          errorCode: "pipeline_transition_required",
-          errorMessage: "OpenRouter native pipeline stage requires a typed transition.",
-          usage: readUsage(payload.usage),
-          provider: "openrouter",
-          model: asString(payload.model, model),
-          billingType: "api",
-          costUsd: extractCostUsd(payload),
-          resultJson: { provider: "openrouter", protocol: { applied: false, error: "pipeline_transition_required" } },
-          summary: `OpenRouter ${model}`,
-          clearSession: true,
-        };
-      }
+      const deterministicPipelineTransition =
+        nativePipelineCaseId && intent.status === "done" && !intent.pipelineTransition
+          ? await resolveSingleAllowedPipelineTransitionViaApi({
+              apiUrl,
+              authToken,
+              runId,
+              caseId: nativePipelineCaseId,
+            })
+          : null;
+
+      const missingRequiredPipelineTransition = Boolean(
+        nativePipelineCaseId
+        && intent.status === "done"
+        && !intent.pipelineTransition
+        && !deterministicPipelineTransition,
+      );
 
       if (intent.document) {
         await upsertIssueDocumentViaApi({
@@ -571,14 +600,55 @@ export async function execute(
         });
       }
 
-      const pipelineTransition = intent.pipelineTransition
+      if (missingRequiredPipelineTransition) {
+        await patchIssueViaApi({
+          apiUrl,
+          authToken,
+          runId,
+          issueId: currentIssueId,
+          status: "blocked",
+          comment: buildProtocolBlockedComment({
+            reason: "A completed native pipeline stage with zero or multiple allowed next stages must declare its typed pipelineTransition. The returned artifact was preserved for transition-only recovery.",
+          }),
+        });
+        return {
+          exitCode: 1,
+          signal: null,
+          timedOut: false,
+          errorCode: "pipeline_transition_required",
+          errorMessage: "OpenRouter native pipeline stage requires a typed transition.",
+          usage: readUsage(payload.usage),
+          provider: "openrouter",
+          model: asString(payload.model, model),
+          billingType: "api",
+          costUsd: extractCostUsd(payload),
+          resultJson: {
+            provider: "openrouter",
+            protocol: {
+              applied: false,
+              error: "pipeline_transition_required",
+              artifactPreserved: Boolean(intent.artifact),
+            },
+          },
+          summary: `OpenRouter ${model}`,
+          clearSession: true,
+        };
+      }
+
+      const effectivePipelineTransition = intent.pipelineTransition ?? (deterministicPipelineTransition
+        ? {
+            toStageKey: deterministicPipelineTransition.toStageKey,
+            reason: "Paperclip selected the native state machine's only allowed next stage.",
+          }
+        : null);
+      const pipelineTransition = effectivePipelineTransition
         ? await transitionPipelineCaseViaApi({
             apiUrl,
             authToken,
             runId,
             caseId: nativePipelineCaseId ?? "",
-            toStageKey: intent.pipelineTransition.toStageKey,
-            reason: intent.pipelineTransition.reason,
+            toStageKey: effectivePipelineTransition.toStageKey,
+            reason: effectivePipelineTransition.reason,
           })
         : null;
 
