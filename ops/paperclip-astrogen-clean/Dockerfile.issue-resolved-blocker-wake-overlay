@@ -1,0 +1,12 @@
+# syntax=docker/dockerfile:1.20
+ARG BASE_IMAGE=paperclip-app:v2026.626.0-vicarta.119-semantic-trend-candidate-guard-20260720
+FROM ${BASE_IMAGE}
+
+USER root
+COPY issues-routes.js /app/server/dist/routes/issues.js
+RUN grep -q 'issue.blockers_already_resolved' /app/server/dist/routes/issues.js
+
+# If a blocker relation is attached after the blocker issue is already done,
+# Paperclip now emits the same issue_blockers_resolved wake as a normal blocker
+# completion. This prevents valid parent/native pipeline work from deadlocking
+# on stale dependency ordering.

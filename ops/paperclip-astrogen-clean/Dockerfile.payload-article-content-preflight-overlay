@@ -1,0 +1,19 @@
+# syntax=docker/dockerfile:1.20
+ARG BASE_IMAGE=paperclip-app:v2026.626.0-vicarta.129-openrouter-artifact-preserving-transition-20260721
+FROM ${BASE_IMAGE}
+
+USER root
+COPY --chown=node:node package.json /app/packages/plugins/plugin-payload-cms-agent-tools/package.json
+COPY --chown=node:node src/constants.ts /app/packages/plugins/plugin-payload-cms-agent-tools/src/constants.ts
+COPY --chown=node:node src/manifest.ts /app/packages/plugins/plugin-payload-cms-agent-tools/src/manifest.ts
+COPY --chown=node:node src/worker.ts /app/packages/plugins/plugin-payload-cms-agent-tools/src/worker.ts
+COPY --chown=node:node dist/constants.js /app/packages/plugins/plugin-payload-cms-agent-tools/dist/constants.js
+COPY --chown=node:node dist/constants.js.map /app/packages/plugins/plugin-payload-cms-agent-tools/dist/constants.js.map
+COPY --chown=node:node dist/manifest.js /app/packages/plugins/plugin-payload-cms-agent-tools/dist/manifest.js
+COPY --chown=node:node dist/manifest.js.map /app/packages/plugins/plugin-payload-cms-agent-tools/dist/manifest.js.map
+COPY --chown=node:node dist/worker.js /app/packages/plugins/plugin-payload-cms-agent-tools/dist/worker.js
+COPY --chown=node:node dist/worker.js.map /app/packages/plugins/plugin-payload-cms-agent-tools/dist/worker.js.map
+RUN grep -q 'payload_cms_validate_article_content' /app/packages/plugins/plugin-payload-cms-agent-tools/dist/constants.js \
+  && grep -q 'before media upload or any CMS mutation' /app/packages/plugins/plugin-payload-cms-agent-tools/dist/worker.js
+
+USER node

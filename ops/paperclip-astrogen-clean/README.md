@@ -156,7 +156,10 @@ Search-demand discovery and action selection are native Paperclip pipelines.
 -> verified -> measured`. Only `selectedAction=new_article` can use guarded
 native breakdown to create an `astrogen-topic-inventory` candidate. Refresh,
 merge, reposition, internal-link and technical decisions route to execution
-lanes instead of creating article ideas.
+lanes instead of creating article ideas. For non-article actions, search-demand
+is complete when delegation into `astrogen-growth-actions` is proven; the actual
+implementation and outcome measurement stay in that linked execution lane and
+must not block topic refill.
 
 ## Old Runtime Stop
 

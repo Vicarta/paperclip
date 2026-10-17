@@ -1,0 +1,13 @@
+ARG BASE_IMAGE=paperclip-app:v2026.626.0-vicarta.87-semantic-trend-exact-schema-20260719
+FROM ${BASE_IMAGE}
+
+USER root
+COPY --chown=node:node server/plugin-tool-registry.js /app/server/dist/services/plugin-tool-registry.js
+COPY --chown=node:node server/plugin-worker-manager.js /app/server/dist/services/plugin-worker-manager.js
+COPY --chown=node:node server/plugin-host-services.js /app/server/dist/services/plugin-host-services.js
+COPY --chown=node:node shared/plugin-validator.js /app/packages/shared/dist/validators/plugin.js
+COPY --chown=node:node sdk/worker-rpc-host.js /app/packages/plugins/sdk/dist/worker-rpc-host.js
+COPY --chown=node:node semantic-core/package.json /app/packages/plugins/plugin-semantic-core-mcp-agent-tools/package.json
+COPY --chown=node:node semantic-core/dist/ /app/packages/plugins/plugin-semantic-core-mcp-agent-tools/dist/
+
+# The base image entrypoint, command, database tooling, and unrelated plugins stay unchanged.

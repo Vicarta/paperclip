@@ -1,0 +1,9 @@
+# syntax=docker/dockerfile:1.20
+ARG BASE_IMAGE=paperclip-app:v2026.626.0-vicarta.123-openrouter-protocol-retry-20260721
+FROM ${BASE_IMAGE}
+
+USER root
+COPY --chown=node:node pipelines.js /app/server/dist/services/pipelines.js
+RUN grep -q "successor_issue.status in ('in_progress', 'done')" /app/server/dist/services/pipelines.js
+
+USER node

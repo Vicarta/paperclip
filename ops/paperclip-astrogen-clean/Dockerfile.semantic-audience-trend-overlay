@@ -1,0 +1,17 @@
+# syntax=docker/dockerfile:1.20
+ARG BASE_IMAGE=paperclip-app:v2026.626.0-vicarta.116-audience-trend-guard-20260720
+FROM ${BASE_IMAGE}
+
+USER root
+COPY --chown=node:node semantic-core/package.json /app/packages/plugins/plugin-semantic-core-mcp-agent-tools/package.json
+COPY --chown=node:node semantic-core/dist/ /app/packages/plugins/plugin-semantic-core-mcp-agent-tools/dist/
+RUN test -f /app/packages/plugins/plugin-semantic-core-mcp-agent-tools/dist/worker.js \
+  && grep -q 'ASTROGEN_TREND_PROJECT_REQUIRED' /app/packages/plugins/plugin-semantic-core-mcp-agent-tools/dist/worker.js \
+  && grep -q 'ASTROGEN_AUDIENCE_TREND_PRODUCTS_FORBIDDEN' /app/packages/plugins/plugin-semantic-core-mcp-agent-tools/dist/worker.js \
+  && grep -q 'astrogen-audience-trends-ukraine' /app/packages/plugins/plugin-semantic-core-mcp-agent-tools/dist/worker.js \
+  && grep -q 'allowedProjectIds.has(providedProjectId)' /app/packages/plugins/plugin-semantic-core-mcp-agent-tools/dist/semantic-core-mcp-client.js \
+  && node -e "const p=require('/app/packages/plugins/plugin-semantic-core-mcp-agent-tools/package.json'); if(p.version!=='0.3.13') process.exit(1)"
+
+# Astrogen trend reports must be audience-segment-first and use the separate
+# astrogen-audience-trends-ukraine project; astrogen-ukraine remains for
+# downstream semantic validation only.

@@ -1,0 +1,12 @@
+# syntax=docker/dockerfile:1.20
+ARG BASE_IMAGE=paperclip-app:v2026.626.0-vicarta.110-native-agent-harness-20260719
+FROM ${BASE_IMAGE}
+
+USER root
+COPY --chown=node:node packages/plugins/plugin-payload-cms-agent-tools/ /app/packages/plugins/plugin-payload-cms-agent-tools/
+RUN test -f /app/packages/plugins/plugin-payload-cms-agent-tools/dist/worker.js \
+  && grep -q 'payload_cms_delete_owner_rejected_blog_post_draft' /app/packages/plugins/plugin-payload-cms-agent-tools/dist/constants.js \
+  && grep -q 'confirmOwnerApprovedDraftDeletion' /app/packages/plugins/plugin-payload-cms-agent-tools/dist/payload-cms-client.js \
+  && node -e "const p=require('/app/packages/plugins/plugin-payload-cms-agent-tools/package.json'); if(p.version!=='0.1.3') process.exit(1)"
+
+# Keep the base image entrypoint, command, and runtime server/SDK unchanged.

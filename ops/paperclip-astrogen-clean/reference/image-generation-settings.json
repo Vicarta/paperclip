@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "canonicalFor": "astrogen.seoBlog.coverImage.standard",
   "provider": "openrouter",
   "historyTool": "paperclip.openrouter-image-agent-tools:image-visual-history-get",
@@ -24,10 +24,26 @@
     "noAlternateModels": true,
     "noPaidRetryForSimilarity": true
   },
+  "visualQa": {
+    "hardDefects": [
+      "readable_text",
+      "readable_numbers",
+      "language_like_glyph_clutter",
+      "fabricated_screen_content",
+      "explicit_visual_policy_violation"
+    ],
+    "notDefectsByThemselves": [
+      "familiar_non_linguistic_pictogram",
+      "small_decorative_stroke",
+      "repeated_lines_without_readable_letters_words_numbers_controls_or_fake_interface_content"
+    ],
+    "falsePositiveRecovery": "accept_existing_after_visual_review"
+  },
   "runtimeNotes": [
     "Read recent visual fingerprints before constructing a human-scene prompt.",
     "Astrogen style is a stable palette, light, and refinement layer; scene, action, emotion, gaze, framing, and props must vary.",
     "The plugin rejects a human-scene direction that is too similar before the paid provider call.",
-    "The provider output may be accepted at its native size when both dimensions are within the configured 20 percent tolerance and visual QA passes."
+    "The provider output may be accepted at its native size when both dimensions are within the configured 20 percent tolerance and visual QA passes.",
+    "A false-positive first-pass QA decision must reuse the existing candidate through typed visual-review recovery instead of triggering another paid generation."
   ]
 }

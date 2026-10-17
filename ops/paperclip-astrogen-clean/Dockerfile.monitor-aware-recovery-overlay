@@ -1,0 +1,17 @@
+# syntax=docker/dockerfile:1.20
+ARG BASE_IMAGE=paperclip-app:v2026.626.0-vicarta.112-monitor-aware-harness-20260719
+FROM ${BASE_IMAGE}
+
+USER root
+COPY heartbeat.js /app/server/dist/services/heartbeat.js
+COPY recovery-index.js /app/server/dist/services/recovery/index.js
+COPY recovery-service.js /app/server/dist/services/recovery/service.js
+COPY successful-run-handoff.js /app/server/dist/services/recovery/successful-run-handoff.js
+COPY issue-graph-liveness.js /app/server/dist/services/recovery/issue-graph-liveness.js
+RUN grep -q 'future scheduled monitor owns the next action' /app/server/dist/services/recovery/successful-run-handoff.js \
+  && grep -q 'hasScheduledMonitor(issue, Date.now())' /app/server/dist/services/recovery/service.js \
+  && grep -q '!hasScheduledMonitor(issue, Date.now())' /app/server/dist/services/heartbeat.js \
+  && grep -q 'hasScheduledMonitor' /app/server/dist/services/recovery/index.js
+
+# Future monitors are valid waiting paths across successful handoff, failed-run
+# release, stranded recovery, and generic timer work selection.

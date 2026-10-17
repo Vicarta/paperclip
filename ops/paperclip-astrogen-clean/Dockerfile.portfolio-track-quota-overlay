@@ -1,0 +1,11 @@
+# syntax=docker/dockerfile:1.20
+ARG BASE_IMAGE=paperclip-app:v2026.626.0-vicarta.125-winning-structure-validation-proof-20260721
+FROM ${BASE_IMAGE}
+
+USER root
+COPY --chown=node:node shared/pipeline.js /app/packages/shared/dist/validators/pipeline.js
+COPY --chown=node:node server/pipelines.js /app/server/dist/services/pipelines.js
+RUN grep -q 'minimumCountByGroup' /app/packages/shared/dist/validators/pipeline.js \
+  && grep -q 'minimumCountByGroup' /app/server/dist/services/pipelines.js
+
+USER node

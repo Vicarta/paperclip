@@ -1,0 +1,42 @@
+version: astrogen-cms-delivery-v1
+
+# This is company policy, not a CMS schema. The plugin resolves these slugs to
+# live Payload relations immediately before a create request, so numeric IDs
+# never leak into article contracts.
+defaultEditorialAuthor:
+  name: Astrogen
+  slug: astrogen
+  roleTitle: "Редакція Astrogen"
+
+articleTypeCategoryDefaults:
+  zodiac_profile:
+    slug: astrologiya
+    title: "Астрологія"
+  product_education:
+    slug: inshi
+    title: "Інші"
+  expert_method_selection:
+    slug: eksperty
+    title: "Експерти"
+  life_situation_decision:
+    slug: inshi
+    title: "Інші"
+  concept_explainer:
+    slug: astrologiya
+    title: "Астрологія"
+  relationship_compatibility:
+    slug: stosunky
+    title: "Стосунки"
+  forecast_cycle:
+    slug: free-horoscope
+    title: "Безкоштовний персональний тижневий гороскоп"
+  historical_cultural_explainer:
+    slug: inshi
+    title: "Інші"
+
+selectionRules:
+  - A brief must persist cmsCategorySlug and cmsCategoryTitle before layout.
+  - An explicit topic or service category overrides the article-type default.
+  - Product education for Solar, finance, children, or a free horoscope must use the matching service category rather than the generic fallback.
+  - Categories are looked up by slug at delivery time; numeric CMS IDs must not appear in durable article contracts.
+  - Creating a new category requires an explicit approved policy entry with allowCreate=true. Normal article delivery never creates taxonomy terms.

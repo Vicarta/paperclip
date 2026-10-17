@@ -1,0 +1,12 @@
+# syntax=docker/dockerfile:1.20
+ARG BASE_IMAGE=paperclip-app:v2026.626.0-vicarta.127-openrouter-deterministic-transition-20260721
+FROM ${BASE_IMAGE}
+
+USER root
+COPY --chown=node:node notification-policy.ts /app/packages/plugins/plugin-telegram/src/notification-policy.ts
+COPY --chown=node:node notification-policy.js /app/packages/plugins/plugin-telegram/dist/notification-policy.js
+COPY --chown=node:node notification-policy.js.map /app/packages/plugins/plugin-telegram/dist/notification-policy.js.map
+RUN grep -q 'native pipeline stage requires a typed transition' /app/packages/plugins/plugin-telegram/src/notification-policy.ts \
+  && grep -q 'native pipeline stage requires a typed transition' /app/packages/plugins/plugin-telegram/dist/notification-policy.js
+
+USER node

@@ -1,0 +1,13 @@
+# syntax=docker/dockerfile:1.20
+ARG BASE_IMAGE=paperclip-app:v2026.626.0-vicarta.128-telegram-protocol-noise-suppression-20260721
+FROM ${BASE_IMAGE}
+
+USER root
+COPY --chown=node:node execute.ts /app/packages/adapters/openrouter/src/server/execute.ts
+COPY --chown=node:node paperclip-issue-client.ts /app/packages/adapters/openrouter/src/server/paperclip-issue-client.ts
+RUN grep -q 'resolveSingleAllowedPipelineTransitionViaApi' /app/packages/adapters/openrouter/src/server/execute.ts \
+  && grep -q 'Paperclip selected the native state machine' /app/packages/adapters/openrouter/src/server/execute.ts \
+  && grep -q 'artifactPreserved' /app/packages/adapters/openrouter/src/server/execute.ts \
+  && grep -q 'targetKeys.size !== 1' /app/packages/adapters/openrouter/src/server/paperclip-issue-client.ts
+
+USER node

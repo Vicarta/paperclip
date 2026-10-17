@@ -1,0 +1,12 @@
+# syntax=docker/dockerfile:1.20
+ARG BASE_IMAGE=paperclip-app:v2026.626.0-vicarta.101-crawlobserver-project-scope-20260719
+FROM ${BASE_IMAGE}
+
+USER root
+COPY --chown=node:node packages/shared/dist/validators/routine.js /app/packages/shared/dist/validators/routine.js
+COPY --chown=node:node server/dist/services/routines.js /app/server/dist/services/routines.js
+RUN grep -q 'descriptionAppendix' /app/packages/shared/dist/validators/routine.js \
+  && grep -q 'descriptionAppendix' /app/server/dist/services/routines.js \
+  && command -v psql >/dev/null 2>&1
+
+# Keep the base image entrypoint, command, runtime plugins, and database unchanged.

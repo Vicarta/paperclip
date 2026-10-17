@@ -1,0 +1,11 @@
+# syntax=docker/dockerfile:1.20
+ARG BASE_IMAGE=paperclip-app:v2026.626.0-vicarta.114-segmented-content-plan-20260719
+FROM ${BASE_IMAGE}
+
+USER root
+COPY routes-pipelines.js /app/server/dist/routes/pipelines.js
+RUN grep -q 'linked_case_output' /app/server/dist/routes/pipelines.js \
+  && grep -q 'Linked case output writes can only publish work links' /app/server/dist/routes/pipelines.js
+
+# Linked work/automation issues may publish bounded case outputs without broad
+# pipelines:write; transitions and field mutations still require pipeline write.

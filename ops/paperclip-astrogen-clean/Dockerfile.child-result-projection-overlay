@@ -1,0 +1,12 @@
+# syntax=docker/dockerfile:1.20
+ARG BASE_IMAGE=paperclip-app:v2026.626.0-vicarta.102-routine-run-appendix-20260719
+FROM ${BASE_IMAGE}
+
+USER root
+COPY --chown=node:node server/dist/services/issues.js /app/server/dist/services/issues.js
+COPY --chown=node:node skills/paperclip/SKILL.md /app/skills/paperclip/SKILL.md
+RUN grep -q 'resultProjection' /app/server/dist/services/issues.js \
+  && grep -q 'childWork.childIssueSummaries' /app/skills/paperclip/SKILL.md \
+  && command -v psql >/dev/null 2>&1
+
+# Expose only parsed, bounded direct-child machine results through heartbeat context.

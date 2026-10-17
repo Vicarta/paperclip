@@ -1,0 +1,14 @@
+# syntax=docker/dockerfile:1.20
+ARG BASE_IMAGE=paperclip-app:v2026.626.0-vicarta.111-payload-owner-draft-delete-20260719
+FROM ${BASE_IMAGE}
+
+USER root
+COPY heartbeat.js /app/server/dist/services/heartbeat.js
+COPY successful-run-handoff.js /app/server/dist/services/recovery/successful-run-handoff.js
+COPY issue-graph-liveness.js /app/server/dist/services/recovery/issue-graph-liveness.js
+RUN grep -q 'future scheduled monitor owns the next action' /app/server/dist/services/recovery/successful-run-handoff.js \
+  && grep -q 'monitorNextCheckAt' /app/server/dist/services/heartbeat.js \
+  && grep -q 'hasScheduledMonitor' /app/server/dist/services/recovery/issue-graph-liveness.js
+
+# Keep the base image entrypoint and command. This overlay only prevents
+# future-monitored issues from being redispatched before their due time.

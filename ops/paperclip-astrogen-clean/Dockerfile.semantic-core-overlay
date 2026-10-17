@@ -1,0 +1,11 @@
+# syntax=docker/dockerfile:1.20
+ARG BASE_IMAGE=paperclip-app:v2026.626.0-vicarta.82-winning-structure-cost-provenance-20260716
+FROM ${BASE_IMAGE}
+
+USER root
+COPY --chown=node:node packages/plugins/plugin-semantic-core-mcp-agent-tools/ /app/packages/plugins/plugin-semantic-core-mcp-agent-tools/
+RUN test -f /app/packages/plugins/plugin-semantic-core-mcp-agent-tools/dist/worker.js \
+  && node -e "const p=require('/app/packages/plugins/plugin-semantic-core-mcp-agent-tools/package.json'); if(p.version!=='0.3.11') process.exit(1)" \
+  && command -v psql >/dev/null 2>&1
+
+# Keep the base image entrypoint, command, and runtime server/SDK unchanged.

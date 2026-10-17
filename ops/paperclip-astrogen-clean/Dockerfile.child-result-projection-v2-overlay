@@ -1,0 +1,12 @@
+# syntax=docker/dockerfile:1.20
+ARG BASE_IMAGE=paperclip-app:v2026.626.0-vicarta.117-audience-trend-project-allowlist-20260720
+FROM ${BASE_IMAGE}
+
+USER root
+COPY --chown=node:node server/dist/services/issues.js /app/server/dist/services/issues.js
+RUN grep -q 'CHILD_RESULT_PROJECTION_MAX_BYTES' /app/server/dist/services/issues.js \
+  && grep -q 'description.matchAll' /app/server/dist/services/issues.js
+
+# Child result projection reader now skips prose/checklist duplicate headings and
+# reads the first valid fenced JSON machine result, preventing parent recovery
+# loops when agents accidentally include explanatory text before the handoff.

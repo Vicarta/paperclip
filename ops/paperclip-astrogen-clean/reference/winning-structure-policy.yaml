@@ -1,0 +1,110 @@
+version: astrogen-winning-structure-phase32-33-v1
+sourceContracts:
+  update: /Users/savitsky/CodexProjects/seo-winning-structure/docs/AGENT_UPDATE_PHASE_32_33.md
+  full: /Users/savitsky/CodexProjects/seo-winning-structure/docs/AGENT_INTEGRATION_GUIDE.md
+
+taskInputContract:
+  pageModes: [existing, new]
+  editorialConstraintsShape: list_of_strings
+  readerValueEvidenceTypes:
+    - official_documentation
+    - expert_observation
+    - original_test
+    - original_visual
+    - anonymized_case
+    - support_data
+    - internal_analytics
+    - business_evidence
+    - aggregated_community_pattern
+  manualValueAssetTypes:
+    - original_test
+    - original_screenshot
+    - original_video
+    - expert_review
+    - first_party_data
+    - anonymized_case
+    - non_serp_research
+    - other
+
+gist:
+  defaultEnabled: true
+  productionMode: single_run
+  comparison:
+    automatic: false
+    requiresExplicitCanary: true
+    requiresDistinctTaskRevision: true
+    requiresDistinctIdempotencyKey: true
+    winnerAuthority: paperclip_review
+  artifacts: [content_selection_audit, meta_evidence_brief]
+  artifactRole: recommendation_evidence_not_publishable_copy
+
+evidenceRouting:
+  serp:
+    provider: serper
+    requiredContext: [geo, search_language, primary_device, pagination]
+  competitorText:
+    orderedProviders:
+      - dataforseo_content_parsing
+      - serper_scrape
+      - llmlayer_standard
+      - llmlayer_eligible_proxy_once
+  reddit:
+    allowedProviders: [reddit_api, reddit_json]
+    genericExtractionForbidden: true
+  visualEvidence:
+    separateFromTextCapture: true
+    noVisualConclusionBlocksUxClaim: true
+  requiredProvenance: [quality_flags, provider_attempts, raw_artifact_refs, cost]
+
+costPolicy:
+  currency: USD
+  pricingSource: SEO Winning Structure integration guide project baseline
+  pricingVersion: 2026-07
+  operationRatesUsd:
+    serper_search_request: 0.01
+    dataforseo_content_parsing_request: 0.10
+    dataforseo_screenshot_request: 0.03
+    serper_scrape_request: 0.01
+    llmlayer_scrape_request: 0.02
+    exa_search_request: 0.005
+    openai_chat_completion: 0.004
+  intentionallyUnpricedOperations:
+    - llmlayer_proxy_scrape_request
+    - llmlayer_screenshot_request
+    - llmlayer_proxy_screenshot_request
+  partialPricingRule: priced_subtotal_is_lower_bound_not_total
+  unknownPricingRule: null_is_unknown_not_zero
+  zeroPricingRule: valid_only_when_no_paid_operation_observed
+
+persistence:
+  beforeArtifactExpiry: true
+  immutableDocuments:
+    result: winning-structure-result
+    selectionAudit: winning-structure-content-selection-audit
+    metaEvidenceBrief: winning-structure-meta-evidence-brief
+    providerProvenance: winning-structure-provider-provenance
+    cost: winning-structure-cost
+  requiredValues:
+    - original_input_hash
+    - effective_input_hash
+    - gist_enabled
+    - content_selection_audit
+    - meta_evidence_brief
+    - content_quality_requirements
+    - quality_flags
+    - provider_attempts
+    - raw_artifact_refs
+    - cache
+    - cost
+
+publication:
+  resultIsRecommendationOnly: true
+  resultCannotSupplyPublishableProse: true
+  metaEvidenceBriefCannotSupplyGeneratedMetadata: true
+  blocksWhileUnresolved:
+    - ownership
+    - reader_value
+    - original_contribution
+    - evidence_quality_flags
+    - main_content_quality_audit
+    - rendered_page_implementation_audit

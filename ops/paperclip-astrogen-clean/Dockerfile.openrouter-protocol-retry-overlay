@@ -1,0 +1,11 @@
+# syntax=docker/dockerfile:1.20
+ARG BASE_IMAGE=paperclip-app:v2026.626.0-vicarta.122-intent-cluster-gate-20260720
+FROM ${BASE_IMAGE}
+
+USER root
+COPY --chown=node:node execute.ts /app/packages/adapters/openrouter/src/server/execute.ts
+COPY --chown=node:node paperclip-protocol.ts /app/packages/adapters/openrouter/src/server/paperclip-protocol.ts
+RUN grep -q 'protocol_response_truncated' /app/packages/adapters/openrouter/src/server/execute.ts \
+  && grep -q 'isLikelyTruncatedIssueProtocol' /app/packages/adapters/openrouter/src/server/paperclip-protocol.ts
+
+USER node

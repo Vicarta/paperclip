@@ -1,0 +1,4 @@
+ARG BASE_IMAGE=paperclip-app:v2026.626.0-vicarta.83-semantic-trends-20260718
+FROM ${BASE_IMAGE}
+
+COPY pipelines.js /app/server/dist/services/pipelines.js

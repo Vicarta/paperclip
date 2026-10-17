@@ -1,0 +1,9 @@
+ARG BASE_IMAGE=paperclip-app:v2026.626.0-vicarta.90-semantic-trend-sdk-timeout-20260719
+FROM ${BASE_IMAGE}
+
+USER root
+COPY --chown=node:node semantic-core/package.json /app/packages/plugins/plugin-semantic-core-mcp-agent-tools/package.json
+COPY --chown=node:node semantic-core/dist/ /app/packages/plugins/plugin-semantic-core-mcp-agent-tools/dist/
+
+# Keep the proven server timeout propagation from the base image and only
+# extend the bounded Semantic Core trend invocation budget.

@@ -1,0 +1,21 @@
+ARG BASE_IMAGE=paperclip-app:v2026.626.0-vicarta.104-semantic-secret-once-20260719
+FROM ${BASE_IMAGE}
+
+USER root
+COPY pipelines-routes.js /app/server/dist/routes/pipelines.js
+COPY pipelines-service.js /app/server/dist/services/pipelines.js
+COPY issues-service.js /app/server/dist/services/issues.js
+COPY pipeline-cases.md /app/skills/paperclip/references/pipeline-cases.md
+RUN grep -q 'fieldPatch' /app/server/dist/routes/pipelines.js \
+  && grep -q 'current.fields' /app/server/dist/services/pipelines.js \
+  && grep -q 'requireCurrentDirectChild' /app/server/dist/services/issues.js \
+  && grep -q 'Use `fieldPatch` for incremental field updates' /app/skills/paperclip/references/pipeline-cases.md \
+  && grep -q 'detail envelope, not a bare case row' /app/skills/paperclip/references/pipeline-cases.md \
+  && grep -q 'current content in `.revision.body`' /app/skills/paperclip/references/pipeline-cases.md \
+  && grep -q 'cross-agent content in `.document.body`' /app/skills/paperclip/references/pipeline-cases.md \
+  && grep -q 'typed provider/plugin output from `.result.data`' /app/skills/paperclip/references/pipeline-cases.md
+
+# Incremental case updates now have an atomic merge path. Full `fields`
+# replacement remains available only for intentional complete rewrites.
+# Reserved-stage automation may finish after it has verified the configured
+# current direct child; the native child-terminal outcome owns the later stage move.

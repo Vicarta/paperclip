@@ -1,0 +1,13 @@
+# syntax=docker/dockerfile:1.20
+ARG BASE_IMAGE=paperclip-app:v2026.626.0-vicarta.121-semantic-trend-payload-normalization-20260720
+FROM ${BASE_IMAGE}
+
+USER root
+COPY --chown=node:node server-dist/ /app/server/dist/
+COPY --chown=node:node shared-dist/ /app/packages/shared/dist/
+RUN test -f /app/server/dist/services/pipelines.js \
+  && grep -q 'pipeline_case_required_fields_missing' /app/server/dist/services/pipelines.js \
+  && test -f /app/packages/shared/dist/validators/pipeline.js \
+  && grep -q 'transitionFieldRequirements' /app/packages/shared/dist/validators/pipeline.js
+
+USER node
