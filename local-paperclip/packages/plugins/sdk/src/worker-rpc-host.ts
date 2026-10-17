@@ -343,7 +343,10 @@ export function startWorkerRpcHost(options: WorkerRpcHostOptions): WorkerRpcHost
         nextOutboundId = 1;
       }
       const id = nextOutboundId++;
-      const timeout = timeoutMs ?? rpcTimeoutMs;
+      const activeInvocation = invocationContextStorage.getStore();
+      const timeout = timeoutMs
+        ?? (method === "http.fetch" ? activeInvocation?.timeoutMs : undefined)
+        ?? rpcTimeoutMs;
       let settled = false;
 
       const settle = <T>(fn: (value: T) => void, value: T): void => {
@@ -378,7 +381,6 @@ export function startWorkerRpcHost(options: WorkerRpcHostOptions): WorkerRpcHost
       });
 
       try {
-        const activeInvocation = invocationContextStorage.getStore();
         const request = {
           ...createRequest(method, params, id),
           ...(activeInvocation ? { paperclipInvocationId: activeInvocation.id } : {}),
@@ -553,9 +555,11 @@ export function startWorkerRpcHost(options: WorkerRpcHostOptions): WorkerRpcHost
             }
           }
 
+          const activeInvocation = invocationContextStorage.getStore();
           const result = await callHost("http.fetch", {
             url,
             init: Object.keys(serializedInit).length > 0 ? serializedInit : undefined,
+            timeoutMs: activeInvocation?.timeoutMs,
           });
 
           // Reconstruct a Response-like object from the serialized result

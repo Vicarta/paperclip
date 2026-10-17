@@ -116,6 +116,12 @@ export interface PluginToolDeclaration {
   description: string;
   /** JSON Schema describing the tool's input parameters. */
   parametersSchema: JsonSchema;
+  /**
+   * Host-to-worker RPC timeout for this tool. Use only when the declared
+   * operation legitimately outlives the host default; the host caps it at
+   * fifteen minutes.
+   */
+  executionTimeoutMs?: number;
 }
 
 /**

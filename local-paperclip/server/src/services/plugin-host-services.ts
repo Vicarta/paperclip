@@ -87,6 +87,14 @@ import type { StorageService } from "../storage/types.js";
 /** Maximum time (ms) a plugin fetch request may take before being aborted. */
 const PLUGIN_FETCH_TIMEOUT_MS = 30_000;
 
+/** Hard cap inherited from host-to-worker RPC execution. */
+const MAX_PLUGIN_FETCH_TIMEOUT_MS = 15 * 60 * 1_000;
+
+export function resolvePluginFetchTimeoutMs(value: unknown): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) return PLUGIN_FETCH_TIMEOUT_MS;
+  return Math.max(1_000, Math.min(Math.trunc(value), MAX_PLUGIN_FETCH_TIMEOUT_MS));
+}
+
 /** Maximum time (ms) to wait for a DNS lookup before aborting. */
 const DNS_LOOKUP_TIMEOUT_MS = 5_000;
 
@@ -1274,7 +1282,8 @@ export function buildHostServices(
         const target = await validateAndResolveFetchUrl(params.url);
 
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), PLUGIN_FETCH_TIMEOUT_MS);
+        const timeoutMs = resolvePluginFetchTimeoutMs(params.timeoutMs);
+        const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
         try {
           const init = params.init as RequestInit | undefined;

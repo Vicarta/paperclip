@@ -531,10 +531,15 @@ export function createPluginWorkerHandle(
     return null;
   }
 
-  function registerInvocation(scope: PluginInvocationScope, ttlMs?: number): PluginInvocationContext {
+  function registerInvocation(
+    scope: PluginInvocationScope,
+    ttlMs?: number,
+    timeoutMs?: number,
+  ): PluginInvocationContext {
     const invocation: PluginInvocationContext = {
       id: randomUUID(),
       scope,
+      ...(timeoutMs === undefined ? {} : { timeoutMs }),
     };
     const entry: ActiveInvocation = { scope };
     if (ttlMs !== undefined) {
@@ -1134,7 +1139,9 @@ export function createPluginWorkerHandle(
       const id = nextRequestId++;
       const timeout = Math.min(timeoutMs ?? rpcTimeoutMs, MAX_RPC_TIMEOUT_MS);
       const invocationScope = deriveInvocationScope(method, params);
-      const invocation = invocationScope ? registerInvocation(invocationScope) : null;
+      const invocation = invocationScope
+        ? registerInvocation(invocationScope, undefined, timeout)
+        : null;
 
       // Guard against double-settlement. When a process exits all pending
       // requests are rejected via rejectAllPending(), but the timeout timer

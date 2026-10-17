@@ -43,6 +43,7 @@ const MANIFEST: PaperclipPluginManifestV1 = {
       displayName: "Ping",
       description: "Test tool",
       parametersSchema: { type: "object", properties: {} },
+      executionTimeoutMs: 120_000,
     },
   ],
 } as unknown as PaperclipPluginManifestV1;
@@ -138,6 +139,12 @@ describe("dispatcher.registerPluginTools — activation path", () => {
     // Routing evidence: isRunning was called with the UUID, never the pluginKey.
     expect(workerManager.isRunning).toHaveBeenCalledWith(PLUGIN_DB_ID);
     expect(workerManager.isRunning).not.toHaveBeenCalledWith(PLUGIN_KEY);
+    expect(workerManager.call).toHaveBeenCalledWith(
+      PLUGIN_DB_ID,
+      "executeTool",
+      expect.any(Object),
+      120_000,
+    );
   });
 
   // ---------------------------------------------------------------------------

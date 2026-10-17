@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { resolvePluginPrivateHttpAllowSet } from "../services/plugin-host-services.js";
+import {
+  resolvePluginFetchTimeoutMs,
+  resolvePluginPrivateHttpAllowSet,
+} from "../services/plugin-host-services.js";
 
 describe("plugin private HTTP allowlist", () => {
   it("accepts exact lower-cased host and port authorities", () => {
@@ -23,5 +26,14 @@ describe("plugin private HTTP allowlist", () => {
 
   it("returns an empty set when no authorities are configured", () => {
     expect(resolvePluginPrivateHttpAllowSet("").size).toBe(0);
+  });
+});
+
+describe("plugin HTTP timeout bounds", () => {
+  it("keeps the secure default and clamps explicit invocation bounds", () => {
+    expect(resolvePluginFetchTimeoutMs(undefined)).toBe(30_000);
+    expect(resolvePluginFetchTimeoutMs(180_000)).toBe(180_000);
+    expect(resolvePluginFetchTimeoutMs(10)).toBe(1_000);
+    expect(resolvePluginFetchTimeoutMs(20 * 60 * 1_000)).toBe(15 * 60 * 1_000);
   });
 });

@@ -281,6 +281,8 @@ export interface PluginInvocationScope {
 export interface PluginInvocationContext {
   id: string;
   scope: PluginInvocationScope;
+  /** Host-bounded timeout inherited by long-running nested HTTP calls. */
+  timeoutMs?: number;
 }
 
 /**
@@ -941,7 +943,7 @@ export interface WorkerToHostMethods {
 
   // HTTP
   "http.fetch": [
-    params: { url: string; init?: Record<string, unknown> },
+    params: { url: string; init?: Record<string, unknown>; timeoutMs?: number },
     result: { status: number; statusText: string; headers: Record<string, string>; body: string },
   ];
 
