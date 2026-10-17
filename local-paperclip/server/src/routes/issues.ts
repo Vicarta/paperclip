@@ -6670,6 +6670,7 @@ export function issueRoutes(
       referencedIssueIdentifiers?: string[];
     } = issue;
     let updatedRelations: Awaited<ReturnType<typeof svc.getRelationSummaries>> | null = null;
+    let addedBlockedByIssueIdsForWake: string[] = [];
     if (issue && Array.isArray(req.body.blockedByIssueIds)) {
       updatedRelations = await svc.getRelationSummaries(issue.id);
       issueResponse = {
@@ -6818,6 +6819,7 @@ export function issueRoutes(
       const nextBlockedByIds = new Set(req.body.blockedByIssueIds as string[]);
       const addedBlockedByIssueIds = [...nextBlockedByIds].filter((candidate) => !previousBlockedByIds.has(candidate));
       const removedBlockedByIssueIds = [...previousBlockedByIds].filter((candidate) => !nextBlockedByIds.has(candidate));
+      addedBlockedByIssueIdsForWake = addedBlockedByIssueIds;
       const nextBlockedByRelations = updatedRelations?.blockedBy ?? [];
       const previousBlockedByRelations = existingRelations?.blockedBy ?? [];
       if (addedBlockedByIssueIds.length > 0 || removedBlockedByIssueIds.length > 0) {
@@ -7121,6 +7123,39 @@ export function issueRoutes(
             ...(interruptedRunId ? { interruptedRunId } : {}),
           },
         });
+      }
+
+      if (addedBlockedByIssueIdsForWake.length > 0) {
+        const immediateWakeIssueIds = new Set<string>();
+        for (const blockerIssueId of addedBlockedByIssueIdsForWake) {
+          const dependents = await svc.listWakeableBlockedDependents(blockerIssueId);
+          for (const dependent of dependents) {
+            if (dependent.id !== issue.id || immediateWakeIssueIds.has(dependent.id)) continue;
+            immediateWakeIssueIds.add(dependent.id);
+            addWakeup(dependent.assigneeAgentId, {
+              source: "automation",
+              triggerDetail: "system",
+              reason: "issue_blockers_resolved",
+              payload: {
+                issueId: dependent.id,
+                resolvedBlockerIssueId: blockerIssueId,
+                blockerIssueIds: dependent.blockerIssueIds,
+                resolvedBlockerSummaries: dependent.resolvedBlockerSummaries,
+              },
+              requestedByActorType: actor.actorType,
+              requestedByActorId: actor.actorId,
+              contextSnapshot: {
+                issueId: dependent.id,
+                taskId: dependent.id,
+                wakeReason: "issue_blockers_resolved",
+                source: "issue.blockers_already_resolved",
+                resolvedBlockerIssueId: blockerIssueId,
+                blockerIssueIds: dependent.blockerIssueIds,
+                resolvedBlockerSummaries: dependent.resolvedBlockerSummaries,
+              },
+            });
+          }
+        }
       }
 
       if (commentBody && comment) {

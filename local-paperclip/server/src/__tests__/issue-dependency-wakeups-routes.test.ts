@@ -10,6 +10,7 @@ const mockIssueService = vi.hoisted(() => ({
   getComment: vi.fn(),
   getCommentCursor: vi.fn(),
   getRelationSummaries: vi.fn(),
+  getDependencyReadiness: vi.fn(),
   update: vi.fn(),
   listWakeableBlockedDependents: vi.fn(),
   getWakeableParentAfterChildCompletion: vi.fn(),
@@ -122,6 +123,15 @@ describe("issue dependency wakeups in issue routes", () => {
       latestCommentAt: null,
     });
     mockIssueService.getRelationSummaries.mockResolvedValue({ blockedBy: [], blocks: [] });
+    mockIssueService.getDependencyReadiness.mockResolvedValue({
+      issueId: "issue",
+      blockerIssueIds: [],
+      unresolvedBlockerCount: 0,
+      resolvedBlockerCount: 0,
+      unresolvedBlockerIssues: [],
+      resolvedBlockerIssues: [],
+      isDependencyReady: true,
+    });
     mockIssueService.listWakeableBlockedDependents.mockResolvedValue([]);
     mockIssueService.getWakeableParentAfterChildCompletion.mockResolvedValue(null);
   });
@@ -206,6 +216,84 @@ describe("issue dependency wakeups in issue routes", () => {
                 summary: "ready_for_brief_creation=yes; top topic selected.",
               }),
             ]),
+          }),
+        }),
+      );
+    });
+  });
+
+  it("wakes an issue when a newly attached blocker is already resolved", async () => {
+    const blockerIssueId = "11111111-1111-4111-8111-111111111111";
+    const dependentIssueId = "22222222-2222-4222-8222-222222222222";
+    const existingIssue = {
+      id: dependentIssueId,
+      companyId: "company-1",
+      identifier: "PAP-200",
+      title: "Dependent task",
+      description: null,
+      status: "blocked",
+      priority: "medium",
+      parentId: null,
+      assigneeAgentId: "agent-2",
+      assigneeUserId: null,
+      createdByAgentId: null,
+      createdByUserId: null,
+      executionWorkspaceId: null,
+      labels: [],
+      labelIds: [],
+    };
+    const doneBlocker = {
+      id: blockerIssueId,
+      identifier: "PAP-100",
+      title: "Already done blocker",
+      status: "done",
+      priority: "medium",
+      assigneeAgentId: "agent-1",
+      assigneeUserId: null,
+      updatedAt: new Date("2026-04-18T12:00:00.000Z"),
+      summary: "SERP value-gap artifact recovered.",
+    };
+    mockIssueService.getById.mockResolvedValue(existingIssue);
+    mockIssueService.update.mockResolvedValue({
+      ...existingIssue,
+      status: "blocked",
+    });
+    mockIssueService.getRelationSummaries
+      .mockResolvedValueOnce({ blockedBy: [], blocks: [] })
+      .mockResolvedValueOnce({ blockedBy: [doneBlocker], blocks: [] });
+    mockIssueService.listWakeableBlockedDependents.mockResolvedValue([
+      {
+        id: dependentIssueId,
+        assigneeAgentId: "agent-2",
+        blockerIssueIds: [blockerIssueId],
+        resolvedBlockerSummaries: [doneBlocker],
+      },
+    ]);
+
+    const res = await request(await createApp())
+      .patch(`/api/issues/${dependentIssueId}`)
+      .send({ status: "blocked", blockedByIssueIds: [blockerIssueId] });
+    expect(res.status).toBe(200);
+    expect(mockIssueService.listWakeableBlockedDependents).toHaveBeenCalledWith(blockerIssueId);
+    await vi.waitFor(() => {
+      expect(mockWakeup).toHaveBeenCalledWith(
+        "agent-2",
+        expect.objectContaining({
+          reason: "issue_blockers_resolved",
+          payload: expect.objectContaining({
+            issueId: dependentIssueId,
+            resolvedBlockerIssueId: blockerIssueId,
+            resolvedBlockerSummaries: expect.arrayContaining([
+              expect.objectContaining({
+                identifier: "PAP-100",
+                summary: "SERP value-gap artifact recovered.",
+              }),
+            ]),
+          }),
+          contextSnapshot: expect.objectContaining({
+            issueId: dependentIssueId,
+            source: "issue.blockers_already_resolved",
+            resolvedBlockerIssueId: blockerIssueId,
           }),
         }),
       );
