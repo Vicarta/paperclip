@@ -115,6 +115,8 @@ const ASTROGEN_AGENT_ERROR_NOISE_PATTERNS = [
   /cheap status-only recovery runs cannot update issue documents/i,
   /status-only recovery runs cannot update issue documents/i,
   /cannot update issue documents,\s*plans,\s*or deliverable artifacts/i,
+  /native pipeline stage requires a typed transition/i,
+  /pipeline_transition_required/i,
   /error_max_turns/i,
   /max_turns_exhausted/i,
   /reached maximum number of turns/i,

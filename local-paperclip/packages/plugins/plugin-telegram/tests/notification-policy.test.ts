@@ -236,6 +236,13 @@ describe("Telegram agent error notification policy", () => {
 
     expect(shouldSuppressAgentErrorNotification({
       companyName: "Astrogen",
+      issueIdentifier: "AST-1085",
+      issueTitle: "Claude Draft automation",
+      errorMessage: "OpenRouter native pipeline stage requires a typed transition.",
+    })).toBe(true);
+
+    expect(shouldSuppressAgentErrorNotification({
+      companyName: "Astrogen",
       issueIdentifier: "AST-1734",
       issueTitle: "Claude Draft automation",
       errorMessage: "Claude run failed: subtype=error_max_turns: Reached maximum number of turns (16)",
